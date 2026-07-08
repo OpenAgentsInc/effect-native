@@ -9,6 +9,7 @@
     { "path": "./packages/platform-desktop" },
     { "path": "./packages/gallery" },
     { "path": "./packages/devtools" },
-    { "path": "./packages/testkit" }
+    { "path": "./packages/testkit" },
+    { "path": "./packages/site" }
   ]
 }

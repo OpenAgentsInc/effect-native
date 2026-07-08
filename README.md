@@ -163,7 +163,11 @@ generated controls, a web/mobile story browser, and a relative-path-safe static
 build. [**The guide**](./docs/guide/README.md) is a buildable tutorial plus
 full catalog reference for building an app on Effect Native from outside this
 repository — every code block in it is extracted and type-checked against the
-real packages by `bun run check:doc-snippets`.
+real packages by `bun run check:doc-snippets`. The
+[effectnative.org source](./docs/website.md) -- the framework's own website,
+home page through component library, built and statically prerendered
+entirely with Effect Native itself -- is in this repository too; hosting is
+tracked separately.
 
 See the **[roadmap](./ROADMAP.md)** for what we're building and in what
 order — web and mobile are the priority targets.

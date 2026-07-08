@@ -3,4 +3,5 @@ dist
 .DS_Store
 *.tsbuildinfo
 scripts/.doc-snippets
+packages/site/src/content.generated.json
 

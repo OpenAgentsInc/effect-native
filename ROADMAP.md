@@ -107,7 +107,9 @@ The leverage that falls out of "views are data, interactions are values":
   infrastructure (#18 complete; see [`docs/gallery.md`](./docs/gallery.md))
 - **effectnative.org**: the framework's website — home, explainers, and
   the component library — built entirely with Effect Native itself and
-  statically prerendered by its own DOM renderer (#19)
+  statically prerendered by its own DOM renderer (#19 source + static build
+  shipped; see [`docs/website.md`](./docs/website.md); hosting/DNS tracked
+  downstream)
 - Authoring ergonomics (helpers, possibly typed utility aliases for styles —
   never a string contract) stay on the gap register until friction is
   demonstrated.

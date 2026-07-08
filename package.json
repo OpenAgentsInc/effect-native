@@ -20,7 +20,10 @@
     "gallery": "bun build ./examples/gallery/main.ts --outfile ./examples/gallery/public/app.js --format esm && bun ./examples/gallery/server.ts",
     "gallery:build": "bun ./scripts/build-gallery.ts",
     "example:desktop-khala-chat": "bun build ./examples/desktop-khala-chat/main.ts --outfile ./examples/desktop-khala-chat/public/app.js --format esm && bun ./examples/desktop-khala-chat/server.ts",
-    "devtools": "bun build ./packages/devtools/src/panel-main.ts --outfile ./packages/devtools/public/panel.js --format esm && bun ./packages/devtools/src/server.ts"
+    "devtools": "bun build ./packages/devtools/src/panel-main.ts --outfile ./packages/devtools/public/panel.js --format esm && bun ./packages/devtools/src/server.ts",
+    "site:content": "bun ./scripts/generate-site-content.ts",
+    "site": "bun run site:content && bun build ./examples/site/main.ts --outfile ./examples/site/public/app.js --format esm && bun ./examples/site/server.ts",
+    "site:build": "bun ./scripts/build-site.ts"
   },
   "dependencies": {
     "@effect-native/core": "workspace:*",
@@ -30,6 +33,7 @@
     "@effect-native/render-canvas": "workspace:*",
     "@effect-native/render-dom": "workspace:*",
     "@effect-native/render-rn": "workspace:*",
+    "@effect-native/site": "workspace:*",
     "@effect-native/testkit": "workspace:*",
     "@effect-native/tokens": "workspace:*",
     "effect": "4.0.0-beta.94"
