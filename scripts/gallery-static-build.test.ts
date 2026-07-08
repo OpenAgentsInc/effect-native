@@ -10,13 +10,28 @@ const contentType = (path: string): string => path.endsWith(".js")
   ? "text/javascript; charset=utf-8"
   : "text/html; charset=utf-8"
 
+const isHtmlFallback = (request: Request, pathname: string): boolean =>
+  !pathname.split("/").at(-1)?.includes(".") &&
+  (request.headers.get("accept") ?? "").includes("text/html")
+
+const fallbackIndex = (base: string, pathname: string): string =>
+  pathname === "/gallery" || pathname.startsWith("/gallery/")
+    ? resolve(base, "./gallery/index.html")
+    : resolve(base, "./index.html")
+
 const makeStaticServer = (base: string) => {
   const server = Bun.serve({
     port: 0,
-    fetch: (request) => {
+    fetch: async (request) => {
       const url = new URL(request.url)
       const pathname = url.pathname.endsWith("/") ? `${url.pathname}index.html` : url.pathname
-      const file = Bun.file(resolve(base, `.${pathname}`))
+      let file = Bun.file(resolve(base, `.${pathname}`))
+      if (!(await file.exists())) {
+        if (!isHtmlFallback(request, pathname)) {
+          return new Response("Not found", { status: 404 })
+        }
+        file = Bun.file(fallbackIndex(base, pathname))
+      }
       return new Response(file, {
         headers: { "content-type": contentType(pathname) }
       })
@@ -48,14 +63,33 @@ describe("gallery static build", () => {
     const subpathServer = makeStaticServer(resolve(root, "dist"))
     const rootIndex = await fetch(`http://localhost:${rootServer.port}/`)
     const rootApp = await fetch(`http://localhost:${rootServer.port}/app.js`)
+    const rootStory = await fetch(`http://localhost:${rootServer.port}/stories/button-primary`, {
+      headers: { accept: "text/html" }
+    })
+    const rootMissingAsset = await fetch(`http://localhost:${rootServer.port}/stories/missing.js`)
     const subpathIndex = await fetch(`http://localhost:${subpathServer.port}/gallery/`)
+    const subpathIndexNoSlash = await fetch(`http://localhost:${subpathServer.port}/gallery`, {
+      headers: { accept: "text/html" }
+    })
     const subpathApp = await fetch(`http://localhost:${subpathServer.port}/gallery/app.js`)
+    const subpathStory = await fetch(`http://localhost:${subpathServer.port}/gallery/stories/button-primary`, {
+      headers: { accept: "text/html" }
+    })
+    const subpathMissingAsset = await fetch(`http://localhost:${subpathServer.port}/gallery/stories/missing.js`)
 
     expect(rootIndex.status).toBe(200)
     expect(rootApp.status).toBe(200)
+    expect(rootStory.status).toBe(200)
+    expect(rootMissingAsset.status).toBe(404)
     expect(subpathIndex.status).toBe(200)
+    expect(subpathIndexNoSlash.status).toBe(200)
     expect(subpathApp.status).toBe(200)
-    expect(await rootIndex.text()).toContain("./app.js")
-    expect(await subpathIndex.text()).toContain("./app.js")
+    expect(subpathStory.status).toBe(200)
+    expect(subpathMissingAsset.status).toBe(404)
+    expect(await rootIndex.text()).toContain("normalizedBasePath")
+    expect(await rootStory.text()).toContain("normalizedBasePath")
+    expect(await subpathIndex.text()).toContain("app.js")
+    expect(await subpathIndexNoSlash.text()).toContain("app.js")
+    expect(await subpathStory.text()).toContain("app.js")
   })
 })

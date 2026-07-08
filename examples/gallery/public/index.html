@@ -34,6 +34,20 @@
   </head>
   <body>
     <main id="app"></main>
-    <script type="module" src="./app.js"></script>
+    <script type="module">
+      const pathSegments = location.pathname.split("/").filter(Boolean)
+      const storiesIndex = pathSegments.indexOf("stories")
+      const hasFileExtension = /\/[^/]+\.[^/]+$/.test(location.pathname)
+      const basePath = storiesIndex >= 0
+        ? `/${pathSegments.slice(0, storiesIndex).join("/")}/`
+        : location.pathname.endsWith("/")
+          ? location.pathname
+          : hasFileExtension
+            ? location.pathname.replace(/[^/]*$/, "")
+            : `${location.pathname}/`
+      const normalizedBasePath = basePath === "//" ? "/" : basePath
+
+      import(`${normalizedBasePath}app.js`)
+    </script>
   </body>
 </html>

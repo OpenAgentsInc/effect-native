@@ -1,4 +1,5 @@
 import { Effect, Exit, Scope, Stream, SubscriptionRef } from "effect"
+import { IntentRef, StaticPayload, resolveIntentRef } from "@effect-native/core"
 import { makeDomRenderer } from "@effect-native/render-dom"
 import {
   galleryThemes,
@@ -6,6 +7,25 @@ import {
   makeGalleryRuntime,
   type GalleryState
 } from "@effect-native/gallery"
+
+const storyIdFromLocation = (location: Location): string | undefined => {
+  const url = new URL(location.href)
+  const queryStory = url.searchParams.get("story")?.trim()
+  if (queryStory !== undefined && queryStory.length > 0) {
+    return queryStory
+  }
+
+  const pathSegments = url.pathname.split("/").filter(Boolean)
+  const storySegment = pathSegments.indexOf("stories")
+  if (storySegment >= 0) {
+    const storyId = pathSegments[storySegment + 1]
+    if (storyId !== undefined && storyId.trim().length > 0) {
+      return decodeURIComponent(storyId)
+    }
+  }
+
+  return undefined
+}
 
 const themeFor = (state: GalleryState) =>
   galleryThemes.find((theme) => theme.id === state.activeThemeId)?.theme ?? galleryThemes[0].theme
@@ -20,6 +40,13 @@ const boot = Effect.gen(function*() {
   }
 
   const runtime = yield* makeGalleryRuntime()
+  const linkedStory = storyIdFromLocation(globalThis.location)
+  if (linkedStory !== undefined) {
+    yield* runtime.registry.dispatch(resolveIntentRef(
+      IntentRef("Gallery.StorySelected", StaticPayload(linkedStory))
+    ))
+    yield* Effect.yieldNow
+  }
   const initialState = yield* runtime.program.currentState
   const scope = yield* Scope.make()
   const mounted = yield* Scope.provide(scope)(

@@ -11,14 +11,21 @@ const contentType = (path: string): string => {
   return "text/html; charset=utf-8"
 }
 
+const isHtmlFallback = (request: Request, pathname: string): boolean =>
+  !pathname.split("/").at(-1)?.includes(".") &&
+  (request.headers.get("accept") ?? "").includes("text/html")
+
 Bun.serve({
   port,
   fetch: async (request) => {
     const url = new URL(request.url)
     const pathname = url.pathname.endsWith("/") ? `${url.pathname}index.html` : url.pathname
-    const file = Bun.file(new URL(`.${pathname}`, root))
+    let file = Bun.file(new URL(`.${pathname}`, root))
     if (!(await file.exists())) {
-      return new Response("Not found", { status: 404 })
+      if (!isHtmlFallback(request, pathname)) {
+        return new Response("Not found", { status: 404 })
+      }
+      file = Bun.file(new URL("./gallery/index.html", root))
     }
 
     return new Response(file, {

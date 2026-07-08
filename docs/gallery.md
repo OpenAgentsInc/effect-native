@@ -37,9 +37,22 @@ The static build writes:
 - `dist/gallery/index.html`
 - `dist/gallery/app.js`
 
-The emitted HTML uses a relative script URL (`./app.js`), so the same output is
-safe at both a domain root and a nested path. `scripts/gallery-static-build.test.ts`
-serves the output at `/` and `/gallery/` to keep that contract covered.
+The emitted HTML computes its `app.js` import from the current root or subpath,
+so the same output is safe at both a domain root and a nested path.
+`scripts/gallery-static-build.test.ts` serves the output at `/`,
+`/stories/button-primary`, `/gallery/`, and `/gallery/stories/button-primary`
+to keep that contract covered.
+
+## Link To A Story
+
+The browser gallery accepts either URL shape:
+
+- `/stories/<story-id>`
+- `?story=<story-id>`
+
+For example, `/stories/button-primary` opens the primary Button story. Static
+hosts should rewrite extensionless HTML requests to `index.html`; asset requests
+such as `/app.js` should still 404 if the file is missing.
 
 ## Run On Mobile
 
