@@ -3,7 +3,7 @@
 Core runtime package for Effect Native.
 
 This package holds the closed component catalog as Effect Schema data. The
-current catalog is `effect-native/v1` and has exactly nine components:
+current catalog is `effect-native/v2` and has exactly nine components:
 `Stack`, `Text`, `Button`, `Image`, `TextField`, `List`, `Card`, `Spacer`,
 and `Link`.
 
@@ -172,6 +172,31 @@ Spacer({
 
 `Spacer` accepts layout keys, so color keys are rejected at compile time and by
 schema decode. The same contract applies to every catalog component.
+
+Responsive layout uses the same typed-data rule. `ViewportService` carries
+`width`, `height`, and the derived active breakpoint token. Responsive values
+are total records with a `base` value and optional `sm` / `md` / `lg` / `xl`
+overrides; the runtime resolves them in breakpoint order before a renderer
+paints.
+
+```ts
+Stack({
+  direction: { base: "column", md: "row" },
+  gap: { base: "2", lg: "4" },
+  padding: { base: "3", md: "6" }
+}, [
+  Image({
+    source: "https://example.com/hero.png",
+    alt: "Hero",
+    width: { base: "sm", md: "lg" },
+    height: { base: 160, md: 320 }
+  })
+])
+```
+
+The minimal responsive surface is deliberately narrow: `Stack.direction`,
+`Stack.gap`, `Stack.padding`, and `Image.width` / `Image.height`. Additional
+responsive props must go through the gap register.
 
 Catalog growth is documented in the repository root `GAPS.md`. The renderer
 conformance suite under `scripts/renderer-conformance.test.ts` mounts,

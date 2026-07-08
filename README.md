@@ -112,6 +112,12 @@ style definition lowers to atomic CSS on the web, style objects on React
 Native, and native attributes beyond that. Platform, state, and breakpoint
 are typed variants resolved by the runtime, not a cascade.
 
+Viewport is runtime data too. Renderers feed the current width and height into
+the shared resolver, which derives the active breakpoint token and re-emits a
+resolved tree before painting. The first responsive surface is intentionally
+small: `Stack` layout props and `Image` dimensions, enough for real
+phone-to-desktop page reflow without opening an unbounded style language.
+
 ### Why this matters for AI-authored software
 
 An agent emitting a typed view tree, validated against a closed catalog,

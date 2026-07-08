@@ -20,15 +20,18 @@ import {
   TypeScaleTokenSchema,
   breakpointTokens,
   colorTokens,
+  defaultTheme,
   dimensionTokens,
   radiusTokens,
   spacingTokens,
   typeScaleTokens,
+  type BreakpointTheme,
   type BreakpointToken,
   type ColorToken,
   type DimensionToken,
   type RadiusToken,
   type SpacingToken,
+  type Theme,
   type TypeScaleToken
 } from "@effect-native/tokens"
 
@@ -58,11 +61,12 @@ export {
 
 export const packageName = "@effect-native/core" as const
 
-export const PreviousCatalogVersion = "effect-native/v0" as const
-export const CatalogVersion = "effect-native/v1" as const
+export const LegacyCatalogVersion = "effect-native/v0" as const
+export const PreviousCatalogVersion = "effect-native/v1" as const
+export const CatalogVersion = "effect-native/v2" as const
 export const CatalogVersionSchema = Schema.Literal(CatalogVersion)
 export type CatalogVersion = typeof CatalogVersion
-export const compatibleCatalogVersions = [PreviousCatalogVersion, CatalogVersion] as const
+export const compatibleCatalogVersions = [LegacyCatalogVersion, PreviousCatalogVersion, CatalogVersion] as const
 export type CompatibleCatalogVersion = (typeof compatibleCatalogVersions)[number]
 export const CompatibleCatalogVersionSchema = Schema.Literals(compatibleCatalogVersions)
 
@@ -434,6 +438,73 @@ export const NonNegativeNumberSchema = Schema.Number.check(
 export const DimensionSchema = Schema.Union([DimensionTokenSchema, NonNegativeNumberSchema])
 export type Dimension = Schema.Schema.Type<typeof DimensionSchema>
 
+export const ViewportInputSchema = Schema.Struct({
+  width: NonNegativeNumberSchema,
+  height: NonNegativeNumberSchema
+})
+export const ViewportSchema = Schema.Struct({
+  width: NonNegativeNumberSchema,
+  height: NonNegativeNumberSchema,
+  breakpoint: BreakpointTokenSchema
+})
+export type ViewportInput = Schema.Schema.Type<typeof ViewportInputSchema>
+export type Viewport = Schema.Schema.Type<typeof ViewportSchema>
+
+export const defaultViewportInput: ViewportInput = {
+  width: 1024,
+  height: 768
+}
+
+export const deriveActiveBreakpoint = (
+  width: number,
+  breakpoints: BreakpointTheme = defaultTheme.breakpoint
+): BreakpointToken => {
+  let active: BreakpointToken = breakpointTokens[0]
+  for (const token of breakpointTokens) {
+    if (width >= breakpoints[token]) {
+      active = token
+    }
+  }
+  return active
+}
+
+export const makeViewport = (
+  input: ViewportInput = defaultViewportInput,
+  theme: Theme = defaultTheme
+): Viewport => ViewportSchema.make({
+  width: input.width,
+  height: input.height,
+  breakpoint: deriveActiveBreakpoint(input.width, theme.breakpoint)
+})
+
+export interface ViewportService {
+  readonly current: Effect.Effect<Viewport>
+  readonly stream: Stream.Stream<Viewport>
+  readonly set: (input: ViewportInput) => Effect.Effect<void>
+}
+
+export const ViewportService = Context.Service<ViewportService>("@effect-native/core/ViewportService")
+
+export const makeViewportService = (
+  initial: ViewportInput = defaultViewportInput,
+  options: { readonly theme?: Theme } = {}
+): Effect.Effect<ViewportService> =>
+  Effect.gen(function*() {
+    const theme = options.theme ?? defaultTheme
+    const ref = yield* SubscriptionRef.make(makeViewport(initial, theme))
+
+    return {
+      current: SubscriptionRef.get(ref),
+      stream: SubscriptionRef.changes(ref),
+      set: (input) => SubscriptionRef.set(ref, makeViewport(input, theme))
+    }
+  })
+
+export const makeViewportServiceLayer = (
+  initial: ViewportInput = defaultViewportInput,
+  options?: { readonly theme?: Theme }
+) => Layer.effect(ViewportService, makeViewportService(initial, options))
+
 export const OpacitySchema = Schema.Number.check(
   Schema.isFinite({ title: "FiniteNumber" }),
   Schema.isGreaterThanOrEqualTo(0, { title: "MinOpacity" }),
@@ -482,6 +553,12 @@ export interface StyleProperties {
 }
 
 export type StyleKey = keyof StyleProperties
+export type ResponsiveBreakpoints<T> = {
+  readonly base: T
+} & {
+  readonly [Key in BreakpointToken]?: T
+}
+export type ResponsiveValue<T> = T | ResponsiveBreakpoints<T>
 export type StyleVariants<StyleValue> = {
   readonly state?: { readonly [Key in StateVariant]?: StyleValue }
   readonly platform?: { readonly [Key in PlatformVariant]?: StyleValue }
@@ -691,6 +768,17 @@ const optionalVariantFields = <const Keys extends ReadonlyArray<string>, S exten
   return Object.fromEntries(keys.map((key) => [key, pipeable.pipe(Schema.optionalKey)])) as Schema.Struct.Fields
 }
 
+export const makeResponsiveValueSchema = <const S extends Schema.Constraint>(
+  schema: S
+): Schema.Codec<ResponsiveValue<Schema.Schema.Type<S>>, ResponsiveValue<Schema.Schema.Type<S>>> =>
+  Schema.Union([
+    schema,
+    exactStruct({
+      base: schema,
+      ...optionalVariantFields(breakpointTokens, schema)
+    })
+  ]) as unknown as Schema.Codec<ResponsiveValue<Schema.Schema.Type<S>>, ResponsiveValue<Schema.Schema.Type<S>>>
+
 const makeStyleSchema = <const Keys extends ReadonlyArray<StyleKey>>(
   keys: Keys
 ): Schema.Codec<StyleFor<Keys[number]>, StyleFor<Keys[number]>> => {
@@ -718,6 +806,10 @@ export const TextFieldStyleSchema = makeStyleSchema(textFieldStyleKeys)
 export const ListStyleSchema = makeStyleSchema(listStyleKeys)
 export const CardStyleSchema = makeStyleSchema(cardStyleKeys)
 export const SpacerStyleSchema = makeStyleSchema(spacerStyleKeys)
+
+export const ResponsiveStackDirectionSchema = makeResponsiveValueSchema(StackDirectionSchema)
+export const ResponsiveSpacingTokenSchema = makeResponsiveValueSchema(SpacingTokenSchema)
+export const ResponsiveDimensionSchema = makeResponsiveValueSchema(DimensionSchema)
 
 const copyFlatStyle = <Key extends StyleKey>(style: StyleFor<Key> | FlatStyleFor<Key>): FlatStyleFor<Key> => {
   const flat: Record<string, unknown> = {}
@@ -809,6 +901,37 @@ const activeStates = (state: StyleResolution["state"]): ReadonlySet<StateVariant
   return new Set(Array.isArray(state) ? state : [state])
 }
 
+const isResponsiveBreakpoints = <T>(value: ResponsiveValue<T>): value is ResponsiveBreakpoints<T> =>
+  typeof value === "object" &&
+  value !== null &&
+  "base" in value
+
+export const resolveResponsiveValue = <T>(
+  value: ResponsiveValue<T>,
+  viewport?: Viewport
+): T => {
+  if (!isResponsiveBreakpoints(value)) {
+    return value
+  }
+
+  let resolved = value.base
+  if (viewport === undefined) {
+    return resolved
+  }
+
+  for (const token of breakpointTokens) {
+    const tokenValue = value[token]
+    if (tokenValue !== undefined) {
+      resolved = tokenValue
+    }
+    if (token === viewport.breakpoint) {
+      break
+    }
+  }
+
+  return resolved
+}
+
 export const resolveStyle = <Key extends StyleKey>(
   style: StyleFor<Key>,
   input: StyleResolution = {}
@@ -850,11 +973,11 @@ export interface NodeBase {
 
 export interface StackView extends NodeBase {
   readonly _tag: "Stack"
-  readonly direction: StackDirection
-  readonly gap?: SpacingToken
+  readonly direction: ResponsiveValue<StackDirection>
+  readonly gap?: ResponsiveValue<SpacingToken>
   readonly align?: StackAlign
   readonly justify?: StackJustify
-  readonly padding?: SpacingToken
+  readonly padding?: ResponsiveValue<SpacingToken>
   readonly style?: StackStyle
   readonly children: ReadonlyArray<View>
 }
@@ -881,8 +1004,8 @@ export interface ImageView extends NodeBase {
   readonly _tag: "Image"
   readonly source: string
   readonly alt: string
-  readonly width?: Dimension
-  readonly height?: Dimension
+  readonly width?: ResponsiveValue<Dimension>
+  readonly height?: ResponsiveValue<Dimension>
   readonly fit?: ImageFit
   readonly style?: ImageStyle
 }
@@ -977,11 +1100,11 @@ const CommonFields = {
 
 export const StackSchema: Schema.Codec<StackView, StackView> = Schema.TaggedStruct("Stack", {
   ...CommonFields,
-  direction: StackDirectionSchema,
-  gap: SpacingTokenSchema.pipe(Schema.optionalKey),
+  direction: ResponsiveStackDirectionSchema,
+  gap: ResponsiveSpacingTokenSchema.pipe(Schema.optionalKey),
   align: StackAlignSchema.pipe(Schema.optionalKey),
   justify: StackJustifySchema.pipe(Schema.optionalKey),
-  padding: SpacingTokenSchema.pipe(Schema.optionalKey),
+  padding: ResponsiveSpacingTokenSchema.pipe(Schema.optionalKey),
   style: StackStyleSchema.pipe(Schema.optionalKey),
   children: Schema.Array(ViewSelf)
 })
@@ -1008,8 +1131,8 @@ export const ImageSchema: Schema.Codec<ImageView, ImageView> = Schema.TaggedStru
   ...CommonFields,
   source: UriStringSchema,
   alt: Schema.String,
-  width: DimensionSchema.pipe(Schema.optionalKey),
-  height: DimensionSchema.pipe(Schema.optionalKey),
+  width: ResponsiveDimensionSchema.pipe(Schema.optionalKey),
+  height: ResponsiveDimensionSchema.pipe(Schema.optionalKey),
   fit: ImageFitSchema.pipe(Schema.optionalKey),
   style: ImageStyleSchema.pipe(Schema.optionalKey)
 })
@@ -1191,43 +1314,80 @@ const stringifyBoundText = (value: JsonPayload): string => {
 const resolveBoundText = (value: Bound<string>, state: unknown): string =>
   isBinding(value) ? stringifyBoundText(readStatePath(state, value.path)) : value
 
-export const resolveBindings = <State>(view: View, state: State): View => {
+export interface ViewResolution {
+  readonly state?: unknown
+  readonly viewport?: Viewport
+  readonly platform?: PlatformVariant
+}
+
+const styleResolution = (input: ViewResolution): StyleResolution => ({
+  ...(input.platform === undefined ? {} : { platform: input.platform }),
+  ...(input.viewport === undefined ? {} : { breakpoint: input.viewport.breakpoint })
+})
+
+export const resolveView = (view: View, input: ViewResolution = {}): View => {
+  const resolution = styleResolution(input)
   switch (view._tag) {
     case "Stack":
       return {
         ...view,
-        children: view.children.map((child) => resolveBindings(child, state))
+        direction: resolveResponsiveValue(view.direction, input.viewport),
+        ...(view.gap === undefined ? {} : { gap: resolveResponsiveValue(view.gap, input.viewport) }),
+        ...(view.padding === undefined ? {} : { padding: resolveResponsiveValue(view.padding, input.viewport) }),
+        ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) }),
+        children: view.children.map((child) => resolveView(child, input))
       }
     case "Text":
       return {
         ...view,
-        content: resolveBoundText(view.content, state)
+        content: input.state === undefined ? view.content : resolveBoundText(view.content, input.state),
+        ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) })
       }
     case "Button":
-      return view
+      return {
+        ...view,
+        ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) })
+      }
     case "Image":
-      return view
+      return {
+        ...view,
+        ...(view.width === undefined ? {} : { width: resolveResponsiveValue(view.width, input.viewport) }),
+        ...(view.height === undefined ? {} : { height: resolveResponsiveValue(view.height, input.viewport) }),
+        ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) })
+      }
     case "TextField":
-      return view
+      return {
+        ...view,
+        ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) })
+      }
     case "List":
       return {
         ...view,
-        items: view.items.map((item) => resolveBindings(item, state) as KeyedView)
+        ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) }),
+        items: view.items.map((item) => resolveView(item, input) as KeyedView)
       }
     case "Card":
       return {
         ...view,
-        children: view.children.map((child) => resolveBindings(child, state))
+        ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) }),
+        children: view.children.map((child) => resolveView(child, input))
       }
     case "Spacer":
-      return view
+      return {
+        ...view,
+        ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) })
+      }
     case "Link":
       return {
         ...view,
-        children: view.children.map((child) => resolveBindings(child, state) as LinkChildView)
+        ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) }),
+        children: view.children.map((child) => resolveView(child, input) as LinkChildView)
       }
   }
 }
+
+export const resolveBindings = <State>(view: View, state: State): View =>
+  resolveView(view, { state })
 
 export interface ViewProgram<State> {
   readonly state: SubscriptionRef.SubscriptionRef<State>
@@ -1246,7 +1406,7 @@ export const makeViewProgramFromState = <State>(
   state,
   render,
   viewStream: SubscriptionRef.changes(state).pipe(
-    Stream.map((value) => resolveBindings(render(value), value))
+    Stream.map((value) => resolveView(render(value), { state: value }))
   ),
   currentState: SubscriptionRef.get(state),
   setState: (value) => SubscriptionRef.set(state, value),
@@ -1284,13 +1444,23 @@ export interface HeadlessContainer {
   readonly onFinalize?: Effect.Effect<void>
 }
 
+export interface HeadlessRendererOptions {
+  readonly viewport?: ViewportInput
+  readonly theme?: Theme
+  readonly platform?: PlatformVariant
+}
+
 export interface HeadlessSurface extends MountedSurface {
   readonly snapshots: Effect.Effect<ReadonlyArray<View>>
   readonly current: Effect.Effect<View | undefined>
+  readonly currentViewport: Effect.Effect<Viewport>
+  readonly setViewport: (input: ViewportInput) => Effect.Effect<void>
   readonly simulate: (ref: IntentRef, runtimeValue?: JsonPayload) => Effect.Effect<void, IntentError, IntentRegistry>
 }
 
-export const makeHeadlessRenderer = (): RendererAdapter<HeadlessContainer | undefined, HeadlessSurface> => ({
+export const makeHeadlessRenderer = (
+  options: HeadlessRendererOptions = {}
+): RendererAdapter<HeadlessContainer | undefined, HeadlessSurface> => ({
   mount: (container, viewStream, report) =>
     Effect.gen(function*() {
       const parentScope = yield* Scope.Scope
@@ -1298,7 +1468,19 @@ export const makeHeadlessRenderer = (): RendererAdapter<HeadlessContainer | unde
 
       return yield* Scope.provide(surfaceScope)(Effect.gen(function*() {
         const snapshots = yield* Ref.make<ReadonlyArray<View>>([])
+        const viewport = yield* makeViewportService(
+          options.viewport ?? defaultViewportInput,
+          options.theme === undefined ? {} : { theme: options.theme }
+        )
         const ready = yield* Deferred.make<void>()
+        const resolvedViewStream = viewStream.pipe(
+          Stream.zipLatestWith(viewport.stream, (view, currentViewport) =>
+            resolveView(view, {
+              viewport: currentViewport,
+              ...(options.platform === undefined ? {} : { platform: options.platform })
+            })
+          )
+        )
 
         yield* Effect.addFinalizer(() =>
           container?.onFinalize === undefined
@@ -1306,7 +1488,7 @@ export const makeHeadlessRenderer = (): RendererAdapter<HeadlessContainer | unde
             : container.onFinalize
         )
 
-        yield* viewStream.pipe(
+        yield* resolvedViewStream.pipe(
           Stream.runForEach((view) =>
             Effect.gen(function*() {
               yield* Ref.update(snapshots, (views) => [...views, view])
@@ -1325,6 +1507,8 @@ export const makeHeadlessRenderer = (): RendererAdapter<HeadlessContainer | unde
           unmount: Scope.close(surfaceScope, Exit.void),
           snapshots: Ref.get(snapshots),
           current,
+          currentViewport: viewport.current,
+          setViewport: viewport.set,
           simulate: (ref: IntentRef, runtimeValue: JsonPayload = null) =>
             report(ref, runtimeValue).pipe(Effect.andThen(Effect.yieldNow))
         }

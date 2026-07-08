@@ -23,7 +23,7 @@ their reason so pressure is visible without weakening the catalog contract.
 
 ## Catalog Versioning Policy
 
-The current catalog marker is `effect-native/v1`, exposed by
+The current catalog marker is `effect-native/v2`, exposed by
 `CatalogVersion`. `compatibleCatalogVersions` is the decode allow-list, and
 `CompatibleViewSchema` is the schema app authors and renderers should use when
 accepting persisted or externally-authored trees.
@@ -46,7 +46,7 @@ until it has a fixture and every renderer declares and proves support for it.
 | Element or capability | Demanding screen | Date | Status |
 |---|---|---:|---|
 | Link + typed navigation intent | Marketing landing page needs external links, route links, and in-page anchors | 2026-07-08 | shipped -> #10 |
-| Responsive breakpoint variants | Marketing landing page must reflow across phone and desktop widths | 2026-07-08 | accepted -> #11 |
+| Responsive breakpoint variants | Marketing landing page must reflow across phone and desktop widths | 2026-07-08 | shipped -> #11 |
 | Schema-backed forms | Marketing intake form and dashboard settings forms | 2026-07-08 | accepted -> #12 |
 | Modal + Sheet overlays | Dashboard approvals and confirmation surfaces | 2026-07-08 | accepted -> #13 |
 | Virtualized List + SectionList | Dashboard activity feed and grouped settings/history lists | 2026-07-08 | accepted -> #14 |

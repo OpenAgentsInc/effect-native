@@ -5,6 +5,7 @@ import {
   Binding,
   Button,
   Card,
+  Image,
   IntentRef,
   Link,
   NavigationHandler,
@@ -228,6 +229,52 @@ describe("DOM renderer", () => {
     ))
 
     expect(scrolled).toBe(true)
+  })
+
+  test("responsive viewport is read before first paint and updates on resize", async () => {
+    const window = new Window({ url: "https://example.com/", width: 390, height: 800 })
+    const document = window.document as unknown as Document
+    const container = document.createElement("main")
+    document.body.appendChild(container)
+    const view = Stack({
+      key: "responsive",
+      direction: { base: "column", md: "row" },
+      gap: { base: "1", md: "3" },
+      padding: { base: "1", md: "4" }
+    }, [
+      Image({
+        key: "hero",
+        source: "https://example.com/hero.png",
+        alt: "Hero",
+        width: { base: "sm", md: "lg" },
+        height: { base: 80, md: 160 }
+      })
+    ])
+
+    await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
+      const surface = yield* makeDomRenderer({ document }).mount(container, Stream.make(view), noopReport)
+      const stack = () => container.querySelector('[data-en-key="responsive"]') as HTMLElement | null
+      const image = () => container.querySelector('[data-en-key="hero"]') as HTMLImageElement | null
+
+      expect((yield* surface.currentViewport).breakpoint).toBe("sm")
+      expect(stack()?.style.flexDirection).toBe("column")
+      expect(stack()?.style.gap).toBe("var(--en-spacing-1)")
+      expect(image()?.style.width).toBe("var(--en-dimension-sm)")
+      expect(image()?.style.height).toBe("80px")
+
+      window.innerWidth = 900
+      window.innerHeight = 800
+      window.dispatchEvent(new window.Event("resize"))
+      yield* nextTask
+      yield* Effect.yieldNow
+
+      expect((yield* surface.currentViewport).breakpoint).toBe("md")
+      expect(stack()?.style.flexDirection).toBe("row")
+      expect(stack()?.style.gap).toBe("var(--en-spacing-3)")
+      expect(stack()?.style.padding).toBe("var(--en-spacing-4)")
+      expect(image()?.style.width).toBe("var(--en-dimension-lg)")
+      expect(image()?.style.height).toBe("160px")
+    })))
   })
 
   test("atomic CSS rules are deduped and theme swaps update custom properties", async () => {

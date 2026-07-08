@@ -113,3 +113,9 @@ The React Native renderer does not own routing. `Link` reports the typed
 `Navigate` intent through the same reporter path as every other interaction,
 and the host app provides the `NavigationHandler` that translates the
 destination into its router.
+
+Responsive layout is fed by the host `Dimensions` API when available. Window
+metric changes update the renderer viewport, the shared runtime resolver
+flattens breakpoint props and styles, and the RN surface re-renders through the
+same `RendererAdapter` path. Tests may also call `setViewport` on the mounted
+surface for deterministic snapshots.

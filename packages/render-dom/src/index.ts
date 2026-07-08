@@ -21,8 +21,14 @@ import {
   type TextFieldView,
   type TextView,
   type View,
+  type Viewport,
+  type ViewportInput,
+  defaultViewportInput,
   defaultTheme,
   makeNavigateIntent,
+  makeViewportService,
+  resolveResponsiveValue,
+  resolveView,
   resolveStyle
 } from "@effect-native/core"
 import {
@@ -38,6 +44,7 @@ export const packageName = "@effect-native/render-dom" as const
 export interface DomRendererOptions {
   readonly document?: Document
   readonly theme?: Theme
+  readonly viewport?: ViewportInput
 }
 
 export interface DomMountedSurface extends MountedSurface {
@@ -46,6 +53,8 @@ export interface DomMountedSurface extends MountedSurface {
   readonly serialize: Effect.Effect<DomStructure | undefined>
   readonly stylesheetText: Effect.Effect<string>
   readonly setTheme: (theme: Theme) => Effect.Effect<void>
+  readonly currentViewport: Effect.Effect<Viewport>
+  readonly setViewport: (input: ViewportInput) => Effect.Effect<void>
 }
 
 export interface DomStructure {
@@ -150,6 +159,14 @@ const flexKeyword = (value: string): string => {
       return "space-around"
     default:
       return value
+  }
+}
+
+const readDomViewport = (document: Document): ViewportInput => {
+  const window = document.defaultView
+  return {
+    width: window?.innerWidth ?? defaultViewportInput.width,
+    height: window?.innerHeight ?? defaultViewportInput.height
   }
 }
 
@@ -386,13 +403,16 @@ const renderChildren = (
 
 const renderStack = (view: StackView, state: DomRendererState, report: IntentReporter): HTMLElement => {
   const element = state.keyedElement(view, "div")
+  const direction = resolveResponsiveValue(view.direction)
+  const gap = view.gap === undefined ? undefined : resolveResponsiveValue(view.gap)
+  const padding = view.padding === undefined ? undefined : resolveResponsiveValue(view.padding)
   state.resetListeners(element)
   element.style.display = "flex"
-  element.style.flexDirection = view.direction
-  element.style.gap = view.gap === undefined ? "" : `var(--en-spacing-${cssEscape(view.gap)})`
+  element.style.flexDirection = direction
+  element.style.gap = gap === undefined ? "" : `var(--en-spacing-${cssEscape(gap)})`
   element.style.alignItems = view.align === undefined ? "" : flexKeyword(view.align)
   element.style.justifyContent = view.justify === undefined ? "" : flexKeyword(view.justify)
-  element.style.padding = view.padding === undefined ? "" : `var(--en-spacing-${cssEscape(view.padding)})`
+  element.style.padding = padding === undefined ? "" : `var(--en-spacing-${cssEscape(padding)})`
   applyBaseStyle(element, view, state)
   renderChildren(element, view.children, state, report)
   return element
@@ -455,15 +475,23 @@ const renderLink = (view: LinkView, state: DomRendererState, report: IntentRepor
 
 const renderImage = (view: ImageView, state: DomRendererState): HTMLElement => {
   const element = state.keyedElement(view, "img") as HTMLImageElement
+  const width = view.width === undefined ? undefined : resolveResponsiveValue(view.width)
+  const height = view.height === undefined ? undefined : resolveResponsiveValue(view.height)
   state.resetListeners(element)
   element.src = view.source
   element.alt = view.alt
   element.style.objectFit = view.fit ?? ""
-  if (typeof view.width === "number") {
-    element.width = view.width
+  element.style.width = width === undefined ? "" : dimensionValue(width)
+  element.style.height = height === undefined ? "" : dimensionValue(height)
+  if (typeof width === "number") {
+    element.width = width
+  } else {
+    element.removeAttribute("width")
   }
-  if (typeof view.height === "number") {
-    element.height = view.height
+  if (typeof height === "number") {
+    element.height = height
+  } else {
+    element.removeAttribute("height")
   }
   applyBaseStyle(element, view, state)
   return element
@@ -681,16 +709,37 @@ export const makeDomRenderer = (options: DomRendererOptions = {}): RendererAdapt
 
       return yield* Scope.provide(surfaceScope)(Effect.gen(function*() {
         const document = options.document ?? container.ownerDocument ?? globalThis.document
-        const state = new DomRendererState(container, document, options.theme ?? defaultTheme)
+        const theme = options.theme ?? defaultTheme
+        const viewport = yield* makeViewportService(options.viewport ?? readDomViewport(document), { theme })
+        const state = new DomRendererState(container, document, theme)
         const ready = yield* Deferred.make<void>()
+        const window = document.defaultView
+        const resolvedViewStream = viewStream.pipe(
+          Stream.zipLatestWith(viewport.stream, (view, currentViewport) =>
+            resolveView(view, { viewport: currentViewport, platform: "web" })
+          )
+        )
 
         yield* Effect.addFinalizer(() =>
           Effect.sync(() => {
             state.dispose()
           })
         )
+        if (window !== null) {
+          const updateViewport = () => {
+            void Effect.runPromise(viewport.set(readDomViewport(document))).catch(() => {
+              // Host resize callbacks must stay total.
+            })
+          }
+          window.addEventListener("resize", updateViewport)
+          yield* Effect.addFinalizer(() =>
+            Effect.sync(() => {
+              window.removeEventListener("resize", updateViewport)
+            })
+          )
+        }
 
-        yield* viewStream.pipe(
+        yield* resolvedViewStream.pipe(
           Stream.runForEach((view) =>
             Effect.gen(function*() {
               yield* Effect.sync(() => {
@@ -709,7 +758,9 @@ export const makeDomRenderer = (options: DomRendererOptions = {}): RendererAdapt
           unmount: Scope.close(surfaceScope, Exit.void),
           serialize: Effect.sync(() => serializeDomStructure(state.root)),
           stylesheetText: Effect.sync(() => state.styles.element.textContent ?? ""),
-          setTheme: (theme: Theme) => Effect.sync(() => state.styles.setTheme(theme))
+          setTheme: (theme: Theme) => Effect.sync(() => state.styles.setTheme(theme)),
+          currentViewport: viewport.current,
+          setViewport: viewport.set
         }
       }))
     })

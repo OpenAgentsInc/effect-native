@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { Effect, Exit, Ref, Schema, SubscriptionRef } from "effect"
+import { Effect, Exit, Ref, Schema, Stream, SubscriptionRef } from "effect"
 import { Window } from "happy-dom"
 import {
   Binding,
@@ -160,6 +160,28 @@ const expectedInitialStructure: Structure = {
     { tag: "Spacer", key: "spacer" }
   ]
 }
+
+const responsiveFixture = Stack({
+  key: "responsive",
+  direction: { base: "column", md: "row" },
+  gap: { base: "1", md: "3" },
+  padding: { base: "1", md: "4" },
+  style: {
+    variants: {
+      breakpoint: {
+        md: { backgroundColor: "surface" }
+      }
+    }
+  }
+}, [
+  Image({
+    key: "responsive-image",
+    source: "https://example.com/responsive.png",
+    alt: "Responsive image",
+    width: { base: "sm", md: "lg" },
+    height: { base: 80, md: 160 }
+  })
+])
 
 const catalogRendererTags = [
   "Stack",
@@ -435,5 +457,81 @@ describe("renderer conformance suite", () => {
     expect(result.events).toEqual(["success", "success", "success"])
     expect(result.cardStyle).toMatchObject({ backgroundColor: "#f8fafc", borderColor: "#cbd5e1" })
     expect(result.lastRender).toBeUndefined()
+  })
+
+  test("all renderers re-resolve responsive viewport changes", async () => {
+    const headless = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
+      const surface = yield* makeHeadlessRenderer({
+        viewport: { width: 390, height: 800 }
+      }).mount(undefined, Stream.make(responsiveFixture), () => Effect.succeed(undefined))
+      const initial = yield* surface.current
+      yield* surface.setViewport({ width: 900, height: 800 })
+      yield* nextTask
+      yield* Effect.yieldNow
+      const updated = yield* surface.current
+      return { initial, updated }
+    })))
+
+    const window = new Window({ width: 390, height: 800 })
+    const document = window.document as unknown as Document
+    const container = document.createElement("main")
+    document.body.appendChild(container)
+    const dom = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
+      const surface = yield* makeDomRenderer({ document }).mount(
+        container,
+        Stream.make(responsiveFixture),
+        () => Effect.succeed(undefined)
+      )
+      const initial = container.querySelector('[data-en-key="responsive"]') as HTMLElement | null
+      const initialImage = container.querySelector('[data-en-key="responsive-image"]') as HTMLImageElement | null
+      const initialDirection = initial?.style.flexDirection
+      const initialWidth = initialImage?.style.width
+      yield* surface.setViewport({ width: 900, height: 800 })
+      yield* nextTask
+      yield* Effect.yieldNow
+      const updated = container.querySelector('[data-en-key="responsive"]') as HTMLElement | null
+      const updatedImage = container.querySelector('[data-en-key="responsive-image"]') as HTMLImageElement | null
+      return {
+        initialDirection,
+        initialWidth,
+        updatedDirection: updated?.style.flexDirection,
+        updatedWidth: updatedImage?.style.width
+      }
+    })))
+
+    const rn = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
+      const surface = yield* makeReactNativeRenderer({ dependencies: rnDependencies }).mount(
+        undefined,
+        Stream.make(responsiveFixture),
+        () => Effect.succeed(undefined)
+      )
+      yield* surface.setViewport({ width: 390, height: 800 })
+      yield* nextTask
+      yield* Effect.yieldNow
+      const initialStack = findNativeNode(yield* surface.currentElement, "Stack", "responsive")
+      const initialImage = findNativeNode(yield* surface.currentElement, "Image", "responsive-image")
+      yield* surface.setViewport({ width: 900, height: 800 })
+      yield* nextTask
+      yield* Effect.yieldNow
+      const updatedStack = findNativeNode(yield* surface.currentElement, "Stack", "responsive")
+      const updatedImage = findNativeNode(yield* surface.currentElement, "Image", "responsive-image")
+      return {
+        initialStyle: initialStack?.props.style,
+        initialImageStyle: initialImage?.props.style,
+        updatedStyle: updatedStack?.props.style,
+        updatedImageStyle: updatedImage?.props.style
+      }
+    })))
+
+    expect(headless.initial?._tag === "Stack" && headless.initial.direction).toBe("column")
+    expect(headless.updated?._tag === "Stack" && headless.updated.direction).toBe("row")
+    expect(dom.initialDirection).toBe("column")
+    expect(dom.initialWidth).toBe("var(--en-dimension-sm)")
+    expect(dom.updatedDirection).toBe("row")
+    expect(dom.updatedWidth).toBe("var(--en-dimension-lg)")
+    expect(rn.initialStyle).toMatchObject({ flexDirection: "column", gap: 4, padding: 4 })
+    expect(rn.initialImageStyle).toMatchObject({ width: 240, height: 80 })
+    expect(rn.updatedStyle).toMatchObject({ flexDirection: "row", gap: 12, padding: 16 })
+    expect(rn.updatedImageStyle).toMatchObject({ width: 480, height: 160 })
   })
 })

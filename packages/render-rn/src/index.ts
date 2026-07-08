@@ -20,8 +20,15 @@ import {
   type TextFieldView,
   type TextView,
   type View,
+  type Viewport,
+  type ViewportInput,
+  defaultViewportInput,
   defaultTheme,
+  makeViewport,
+  makeViewportService,
   makeNavigateIntent,
+  resolveResponsiveValue,
+  resolveView,
   resolveStyle
 } from "@effect-native/core"
 import {
@@ -69,9 +76,23 @@ export interface ReactNativeRuntime {
   readonly TextInput: unknown
   readonly FlatList: unknown
   readonly Image: unknown
+  readonly Dimensions?: ReactNativeDimensions
   readonly StyleSheet?: {
     readonly create: <Styles extends Record<string, ReactNativeStyle>>(styles: Styles) => Styles
   }
+}
+
+export interface ReactNativeDimensionMetrics {
+  readonly width: number
+  readonly height: number
+}
+
+export interface ReactNativeDimensions {
+  readonly get: (name: "window" | string) => ReactNativeDimensionMetrics
+  readonly addEventListener?: (
+    type: "change",
+    listener: (event: { readonly window?: ReactNativeDimensionMetrics }) => void
+  ) => { readonly remove: () => void } | (() => void)
 }
 
 export interface ReactNativeDependencies {
@@ -82,6 +103,7 @@ export interface ReactNativeDependencies {
 export interface ReactNativeRenderOptions {
   readonly theme?: Theme
   readonly platform?: ReactNativePlatform
+  readonly viewport?: ViewportInput | Viewport
 }
 
 export interface EffectNativeSurfaceProps extends ReactNativeRenderOptions {
@@ -102,6 +124,8 @@ export interface ReactNativeMountedSurface extends MountedSurface {
   readonly current: Effect.Effect<View | undefined>
   readonly currentElement: Effect.Effect<ReactNodeLike | undefined>
   readonly serialize: Effect.Effect<ReactNativeStructure | undefined>
+  readonly currentViewport: Effect.Effect<Viewport>
+  readonly setViewport: (input: ViewportInput) => Effect.Effect<void>
 }
 
 export interface ReactNativeStructure {
@@ -237,7 +261,13 @@ const viewStyle = (view: View, options: ReactNativeRenderOptions): ReactNativeSt
     return {}
   }
 
-  return lowerStyle(resolveStyle(view.style, { platform: options.platform ?? "ios" }), options)
+  const viewport = options.viewport === undefined
+    ? undefined
+    : makeViewport(options.viewport, options.theme ?? defaultTheme)
+  return lowerStyle(resolveStyle(view.style, {
+    platform: options.platform ?? "ios",
+    ...(viewport === undefined ? {} : { breakpoint: viewport.breakpoint })
+  }), options)
 }
 
 const mergeNativeStyles = (...styles: ReadonlyArray<ReactNativeStyle | undefined>): ReactNativeStyle =>
@@ -285,26 +315,41 @@ const baseProps = (view: View, style: ReactNativeStyle): Record<string, unknown>
   style
 })
 
+const readReactNativeViewport = (dependencies: ReactNativeDependencies): ViewportInput => {
+  const dimensions = dependencies.ReactNative.Dimensions
+  if (dimensions === undefined) {
+    return defaultViewportInput
+  }
+  const window = dimensions.get("window")
+  return {
+    width: window.width,
+    height: window.height
+  }
+}
+
 const renderStack = (
   view: StackView,
   dependencies: ReactNativeDependencies,
   report: IntentReporter,
   options: ReactNativeRenderOptions
 ): ReactElementLike => {
+  const direction = resolveResponsiveValue(view.direction)
+  const gap = view.gap === undefined ? undefined : resolveResponsiveValue(view.gap)
+  const padding = view.padding === undefined ? undefined : resolveResponsiveValue(view.padding)
   const style = mergeNativeStyles({
     display: "flex",
-    flexDirection: view.direction,
-    ...(view.gap === undefined ? {} : { gap: spacingValue(options.theme ?? defaultTheme, view.gap) }),
+    flexDirection: direction,
+    ...(gap === undefined ? {} : { gap: spacingValue(options.theme ?? defaultTheme, gap) }),
     ...(view.align === undefined ? {} : { alignItems: flexKeyword(view.align) }),
     ...(view.justify === undefined ? {} : { justifyContent: flexKeyword(view.justify) }),
-    ...(view.padding === undefined ? {} : { padding: spacingValue(options.theme ?? defaultTheme, view.padding) })
+    ...(padding === undefined ? {} : { padding: spacingValue(options.theme ?? defaultTheme, padding) })
   }, viewStyle(view, options))
 
   return createElement(
     dependencies,
     dependencies.ReactNative.View,
     baseProps(view, style),
-    ...view.children.map((child) => renderReactNativeView(child, dependencies, report, options))
+    ...view.children.map((child) => renderResolvedReactNativeView(child, dependencies, report, options))
   )
 }
 
@@ -381,7 +426,7 @@ const renderLink = (
       accessibilityRole: "link",
       onPress: () => runReportedIntent(report, makeNavigateIntent(view.destination))
     },
-    ...view.children.map((child) => renderReactNativeView(child, dependencies, report, options))
+    ...view.children.map((child) => renderResolvedReactNativeView(child, dependencies, report, options))
   )
 }
 
@@ -390,10 +435,12 @@ const renderImage = (
   dependencies: ReactNativeDependencies,
   options: ReactNativeRenderOptions
 ): ReactElementLike => {
+  const width = view.width === undefined ? undefined : resolveResponsiveValue(view.width)
+  const height = view.height === undefined ? undefined : resolveResponsiveValue(view.height)
   const style = mergeNativeStyles(
     {
-      ...(view.width === undefined ? {} : { width: dimensionValue(options.theme ?? defaultTheme, view.width) }),
-      ...(view.height === undefined ? {} : { height: dimensionValue(options.theme ?? defaultTheme, view.height) })
+      ...(width === undefined ? {} : { width: dimensionValue(options.theme ?? defaultTheme, width) }),
+      ...(height === undefined ? {} : { height: dimensionValue(options.theme ?? defaultTheme, height) })
     },
     viewStyle(view, options)
   )
@@ -455,7 +502,7 @@ const renderList = (
       data: view.items,
       keyExtractor: (item: View & { readonly key: string }) => item.key,
       renderItem: ({ item }: { readonly item: View }) =>
-        renderReactNativeView(item, dependencies, report, options)
+        renderResolvedReactNativeView(item, dependencies, report, options)
     }
   )
 }
@@ -478,7 +525,7 @@ const renderCard = (
     dependencies,
     dependencies.ReactNative.View,
     baseProps(view, style),
-    ...view.children.map((child) => renderReactNativeView(child, dependencies, report, options))
+    ...view.children.map((child) => renderResolvedReactNativeView(child, dependencies, report, options))
   )
 }
 
@@ -508,7 +555,7 @@ const renderSpacer = (
   )
 }
 
-export const renderReactNativeView = (
+const renderResolvedReactNativeView = (
   view: View,
   dependencies: ReactNativeDependencies,
   report: IntentReporter,
@@ -534,6 +581,22 @@ export const renderReactNativeView = (
     case "Spacer":
       return renderSpacer(view, dependencies, options)
   }
+}
+
+export const renderReactNativeView = (
+  view: View,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions = {}
+): ReactElementLike => {
+  const viewport = options.viewport === undefined
+    ? undefined
+    : makeViewport(options.viewport, options.theme ?? defaultTheme)
+  const resolved = resolveView(view, {
+    ...(viewport === undefined ? {} : { viewport }),
+    platform: options.platform ?? "ios"
+  })
+  return renderResolvedReactNativeView(resolved, dependencies, report, options)
 }
 
 const normalizeChildren = (children: unknown): ReadonlyArray<ReactNodeLike> => {
@@ -668,7 +731,8 @@ export const createEffectNativeSurface = (
 
     const renderOptions: ReactNativeRenderOptions = {
       ...(props.theme === undefined ? {} : { theme: props.theme }),
-      ...(props.platform === undefined ? {} : { platform: props.platform })
+      ...(props.platform === undefined ? {} : { platform: props.platform }),
+      ...(props.viewport === undefined ? {} : { viewport: props.viewport })
     }
 
     return view === undefined
@@ -695,20 +759,54 @@ export const makeReactNativeRenderer = (
 
       return yield* Scope.provide(surfaceScope)(Effect.gen(function*() {
         const dependencies = options.dependencies ?? loadPeerDependencies()
+        const viewport = yield* makeViewportService(
+          options.viewport ?? readReactNativeViewport(dependencies),
+          options.theme === undefined ? {} : { theme: options.theme }
+        )
         const current = yield* Ref.make<View | undefined>(undefined)
         const currentElement = yield* Ref.make<ReactNodeLike | undefined>(undefined)
         const ready = yield* Deferred.make<void>()
+        const dimensions = dependencies.ReactNative.Dimensions
+        const resolvedViewStream = viewStream.pipe(
+          Stream.zipLatestWith(viewport.stream, (view, currentViewport) =>
+            resolveView(view, {
+              viewport: currentViewport,
+              platform: options.platform ?? "ios"
+            })
+          )
+        )
 
         yield* Effect.addFinalizer(() =>
           Effect.sync(() => {
             container?.render?.(undefined)
           })
         )
+        if (dimensions?.addEventListener !== undefined) {
+          const updateViewport = (event: { readonly window?: ReactNativeDimensionMetrics }) => {
+            const metrics = event.window ?? dimensions.get("window")
+            void Effect.runPromise(viewport.set({
+              width: metrics.width,
+              height: metrics.height
+            })).catch(() => {
+              // Host dimension callbacks must stay total.
+            })
+          }
+          const subscription = dimensions.addEventListener("change", updateViewport)
+          yield* Effect.addFinalizer(() =>
+            Effect.sync(() => {
+              if (typeof subscription === "function") {
+                subscription()
+              } else {
+                subscription.remove()
+              }
+            })
+          )
+        }
 
-        yield* viewStream.pipe(
+        yield* resolvedViewStream.pipe(
           Stream.runForEach((view) =>
             Effect.gen(function*() {
-              const element = renderReactNativeView(view, dependencies, report, options)
+              const element = renderResolvedReactNativeView(view, dependencies, report, options)
               yield* Ref.set(current, view)
               yield* Ref.set(currentElement, element)
               yield* Effect.sync(() => {
@@ -725,7 +823,9 @@ export const makeReactNativeRenderer = (
           unmount: Scope.close(surfaceScope, Exit.void),
           current: Ref.get(current),
           currentElement: Ref.get(currentElement),
-          serialize: Ref.get(currentElement).pipe(Effect.map((element) => reactNativeStructure(element)))
+          serialize: Ref.get(currentElement).pipe(Effect.map((element) => reactNativeStructure(element))),
+          currentViewport: viewport.current,
+          setViewport: viewport.set
         }
       }))
     })

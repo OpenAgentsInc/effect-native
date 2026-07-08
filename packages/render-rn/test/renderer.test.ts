@@ -85,6 +85,31 @@ const dependencies: ReactNativeDependencies = {
   ReactNative: host
 }
 
+const createDimensions = (initial: { readonly width: number; readonly height: number }) => {
+  let current = initial
+  const listeners = new Set<(event: { readonly window: typeof current }) => void>()
+
+  return {
+    dimensions: {
+      get: () => current,
+      addEventListener: (_type: "change", listener: (event: { readonly window: typeof current }) => void) => {
+        listeners.add(listener)
+        return {
+          remove: () => {
+            listeners.delete(listener)
+          }
+        }
+      }
+    },
+    set: (next: typeof current) => {
+      current = next
+      for (const listener of listeners) {
+        listener({ window: current })
+      }
+    }
+  }
+}
+
 const nextTask = Effect.promise<void>(() => new Promise((resolve) => setTimeout(resolve, 0)))
 
 const noopReport: IntentReporter = () => Effect.succeed(undefined)
@@ -273,6 +298,72 @@ describe("React Native renderer", () => {
       yield* nextTask
 
       expect(recorded).toEqual([destination])
+    })))
+  })
+
+  test("mocked dimension changes re-resolve responsive layout", async () => {
+    const viewport = createDimensions({ width: 390, height: 800 })
+    const responsiveDependencies: ReactNativeDependencies = {
+      React: { createElement },
+      ReactNative: {
+        ...host,
+        Dimensions: viewport.dimensions
+      }
+    }
+    const view = Stack({
+      key: "responsive",
+      direction: { base: "column", md: "row" },
+      gap: { base: "1", md: "3" },
+      padding: { base: "1", md: "4" }
+    }, [
+      Image({
+        key: "hero",
+        source: "https://example.com/hero.png",
+        alt: "Hero",
+        width: { base: "sm", md: "lg" },
+        height: { base: 80, md: 160 }
+      })
+    ])
+
+    await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
+      const surface = yield* makeReactNativeRenderer({ dependencies: responsiveDependencies }).mount(
+        undefined,
+        Stream.make(view),
+        noopReport
+      )
+      const initialElement = yield* surface.currentElement
+      const initialStack = findByNativeId(initialElement, nativeId("Stack", "responsive"))
+      const initialImage = findByNativeId(initialElement, nativeId("Image", "hero"))
+
+      expect((yield* surface.currentViewport).breakpoint).toBe("sm")
+      expect(initialStack?.props.style).toMatchObject({
+        flexDirection: "column",
+        gap: 4,
+        padding: 4
+      })
+      expect(initialImage?.props.style).toMatchObject({
+        width: 240,
+        height: 80
+      })
+
+      viewport.set({ width: 900, height: 800 })
+      yield* nextTask
+      yield* Effect.yieldNow
+
+      const updatedElement = yield* surface.currentElement
+      const updatedStack = findByNativeId(updatedElement, nativeId("Stack", "responsive"))
+      const updatedImage = findByNativeId(updatedElement, nativeId("Image", "hero"))
+
+      expect((yield* surface.currentViewport).breakpoint).toBe("md")
+      expect(updatedStack?.props.style).toMatchObject({
+        flexDirection: "row",
+        gap: 12,
+        padding: 16
+      })
+      expect(updatedImage?.props.style).toMatchObject({
+        width: 480,
+        height: 160
+      })
     })))
   })
 

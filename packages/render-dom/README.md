@@ -90,3 +90,10 @@ and accessible. Clicks also report the typed `Navigate` intent. Hosts may wire
 that intent to their router, or use `makeDomNavigationHandlerLayer()` for the
 default browser behavior: external URLs, history push/replace for paths, and
 hash navigation for anchors.
+
+Responsive layout is resolved through the runtime, not through a second
+CSS-first model. The DOM renderer reads `window.innerWidth` / `innerHeight`
+before the first commit, derives the active breakpoint from the theme, and
+re-renders on `resize`. CSS media-query emission is intentionally deferred:
+responsive props can affect renderer output such as flex direction and image
+dimensions, so a single runtime source of truth is the baseline.
