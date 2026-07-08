@@ -1227,15 +1227,20 @@ const stylePropertySchemas = {
   textAlign: TextAlignSchema
 } as const satisfies { readonly [Key in StyleKey]: Schema.Constraint }
 
-const exactStruct = <const Fields extends Schema.Struct.Fields>(fields: Fields) => {
-  const knownKeys = new Set(Object.keys(fields))
-  const ExtraKeySchema = Schema.String.check(
-    Schema.makeFilter<string>((key) =>
-      knownKeys.has(key) ? { path: [], issue: "Known key belongs to the struct" } : undefined
-    )
-  )
-  return Schema.StructWithRest(Schema.Struct(fields), [Schema.Record(ExtraKeySchema, Schema.Never)])
-}
+// Exact struct: accepts exactly the declared keys and rejects any excess key.
+//
+// This is implemented by baking `onExcessProperty: "error"` into the struct's
+// AST via `annotate`, rather than by pairing the struct with a rest
+// `Record(ExtraKey, Never)`. The rest-record approach is fragile: it depends on
+// `StructWithRest` routing *only* non-struct keys through the rest record. Some
+// runtimes/bundles instead run the rest record's key schema against every key,
+// including known ones, which made a valid known style key such as `width`
+// fail with "Known key belongs to the struct" at `["style"]["width"]`
+// (issue #44, blocking the openagents.com /stage1 port). Baking the excess-key
+// policy into the schema itself preserves exact/unknown-key rejection while
+// keeping every declared key accepted, independent of that routing behavior.
+const exactStruct = <const Fields extends Schema.Struct.Fields>(fields: Fields) =>
+  Schema.Struct(fields).annotate({ parseOptions: { onExcessProperty: "error" } })
 
 const optionalStyleFields = <const Keys extends ReadonlyArray<StyleKey>>(keys: Keys) =>
   Object.fromEntries(

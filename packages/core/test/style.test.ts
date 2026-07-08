@@ -6,6 +6,7 @@ import {
   Spacer,
   SpacerSchema,
   Stack,
+  StackSchema,
   StyleSchema,
   Text,
   TextSchema,
@@ -134,6 +135,43 @@ describe("typed style values", () => {
 
     expect(Exit.isFailure(spacerExit)).toBe(true)
     expect(Exit.isFailure(textExit)).toBe(true)
+  })
+
+  // Regression for issue #44: the exact style schema must accept valid known
+  // style keys (e.g. `width`, `minHeight`) while still rejecting unknown keys.
+  // The previous StructWithRest-based exact struct could reject a legitimate
+  // key with "Known key belongs to the struct" at ["style"]["width"] under the
+  // embedded openagents.com /stage1 runtime.
+  test("issue #44: exact style schema accepts valid known keys via node decode", () => {
+    const textExit = Schema.decodeUnknownExit(TextSchema)({
+      _tag: "Text",
+      catalogVersion: CatalogVersion,
+      content: "Software, built by agents.",
+      variant: "heading",
+      style: { width: "full" }
+    })
+    const stackExit = Schema.decodeUnknownExit(StackSchema)({
+      _tag: "Stack",
+      catalogVersion: CatalogVersion,
+      direction: "column",
+      children: [],
+      style: { width: "full", minHeight: "full" }
+    })
+
+    expect(Exit.isSuccess(textExit)).toBe(true)
+    expect(Exit.isSuccess(stackExit)).toBe(true)
+  })
+
+  test("issue #44: exact style schema still rejects unknown keys like className", () => {
+    const exit = Schema.decodeUnknownExit(TextSchema)({
+      _tag: "Text",
+      catalogVersion: CatalogVersion,
+      content: "Software, built by agents.",
+      variant: "heading",
+      style: { width: "full", className: "pt-4" }
+    })
+
+    expect(Exit.isFailure(exit)).toBe(true)
   })
 
   test("styles in a view tree survive JSON round-trip", () => {
