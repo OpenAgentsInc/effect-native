@@ -88,7 +88,7 @@ headless, DOM, and React Native renderer coverage.
 **Exit criterion:** the catalog covers the elements of a complete production
 app on both priority targets.
 
-## Phase 3 — Developer experience (in progress — issues #15–#18)
+## Phase 3 — Developer experience (in progress — issues #15–#19)
 
 The leverage that falls out of "views are data, interactions are values":
 
@@ -105,6 +105,9 @@ The leverage that falls out of "views are data, interactions are values":
   stories as serializable data, prop knobs generated from the schemas, and
   a fully static web build any team can deploy to their own
   infrastructure (#18)
+- **effectnative.org**: the framework's website — home, explainers, and
+  the component library — built entirely with Effect Native itself and
+  statically prerendered by its own DOM renderer (#19)
 - Authoring ergonomics (helpers, possibly typed utility aliases for styles —
   never a string contract) stay on the gap register until friction is
   demonstrated.
