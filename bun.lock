@@ -17,6 +17,7 @@
       "name": "@effect-native/core",
       "version": "0.0.0",
       "dependencies": {
+        "@effect-native/tokens": "workspace:*",
         "effect": "4.0.0-beta.94",
       },
     },

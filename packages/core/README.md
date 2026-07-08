@@ -120,3 +120,43 @@ expressions: a bound `Text.content` such as `Binding(["count"])` resolves
 against the runtime state before a renderer sees the tree. The headless
 renderer records plain view-data snapshots and is intended for deterministic
 runtime and renderer tests.
+
+Styles are typed objects, not class strings. Each component accepts only its
+own style contract, `mergeStyles` is deterministic last-wins by property, and
+variants resolve to flat style data before a renderer lowers values.
+
+```ts
+import {
+  Spacer,
+  Text,
+  mergeStyles,
+  resolveStyle
+} from "@effect-native/core"
+
+const label = Text({
+  content: "Save",
+  variant: "label",
+  style: mergeStyles(
+    { color: "textPrimary", marginTop: "2" },
+    {
+      variants: {
+        state: {
+          pressed: { color: "accent" }
+        }
+      }
+    }
+  )
+})
+
+const resolved = resolveStyle(label.style!, { state: "pressed" })
+
+Spacer({
+  size: "4",
+  style: {
+    marginTop: "2"
+  }
+})
+```
+
+`Spacer` accepts layout keys, so color keys are rejected at compile time and by
+schema decode. The same contract applies to every catalog component.

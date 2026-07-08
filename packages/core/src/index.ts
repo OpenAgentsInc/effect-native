@@ -11,6 +11,50 @@ import {
   Stream,
   SubscriptionRef
 } from "effect"
+import {
+  BreakpointTokenSchema,
+  ColorTokenSchema,
+  DimensionTokenSchema,
+  RadiusTokenSchema,
+  SpacingTokenSchema,
+  TypeScaleTokenSchema,
+  breakpointTokens,
+  colorTokens,
+  dimensionTokens,
+  radiusTokens,
+  spacingTokens,
+  typeScaleTokens,
+  type BreakpointToken,
+  type ColorToken,
+  type DimensionToken,
+  type RadiusToken,
+  type SpacingToken,
+  type TypeScaleToken
+} from "@effect-native/tokens"
+
+export {
+  BreakpointTokenSchema,
+  ColorTokenSchema,
+  DimensionTokenSchema,
+  RadiusTokenSchema,
+  SpacingTokenSchema,
+  TypeScaleTokenSchema,
+  breakpointTokens,
+  colorTokens,
+  defaultTheme,
+  defineTheme,
+  dimensionTokens,
+  radiusTokens,
+  spacingTokens,
+  typeScaleTokens,
+  type BreakpointToken,
+  type ColorToken,
+  type DimensionToken,
+  type RadiusToken,
+  type SpacingToken,
+  type Theme,
+  type TypeScaleToken
+} from "@effect-native/tokens"
 
 export const packageName = "@effect-native/core" as const
 
@@ -29,32 +73,6 @@ export const componentTags = [
   "Spacer"
 ] as const
 export type ComponentTag = (typeof componentTags)[number]
-
-// TODO(#5): re-export token-name schemas from @effect-native/tokens.
-export const spacingTokens = ["0", "1", "2", "3", "4", "6", "8", "12"] as const
-export const colorTokens = [
-  "background",
-  "surface",
-  "textPrimary",
-  "textMuted",
-  "accent",
-  "danger"
-] as const
-export const radiusTokens = ["none", "sm", "md", "lg", "full"] as const
-export const typeScaleTokens = ["caption", "body", "label", "title", "heading"] as const
-export const dimensionTokens = ["xs", "sm", "md", "lg", "xl", "full"] as const
-
-export const SpacingTokenSchema = Schema.Literals(spacingTokens)
-export const ColorTokenSchema = Schema.Literals(colorTokens)
-export const RadiusTokenSchema = Schema.Literals(radiusTokens)
-export const TypeScaleTokenSchema = Schema.Literals(typeScaleTokens)
-export const DimensionTokenSchema = Schema.Literals(dimensionTokens)
-
-export type SpacingToken = (typeof spacingTokens)[number]
-export type ColorToken = (typeof colorTokens)[number]
-export type RadiusToken = (typeof radiusTokens)[number]
-export type TypeScaleToken = (typeof typeScaleTokens)[number]
-export type DimensionToken = (typeof dimensionTokens)[number]
 
 export const NodeKeySchema = Schema.NonEmptyString
 export type NodeKey = Schema.Schema.Type<typeof NodeKeySchema>
@@ -347,6 +365,412 @@ export const NonNegativeNumberSchema = Schema.Number.check(
 export const DimensionSchema = Schema.Union([DimensionTokenSchema, NonNegativeNumberSchema])
 export type Dimension = Schema.Schema.Type<typeof DimensionSchema>
 
+export const OpacitySchema = Schema.Number.check(
+  Schema.isFinite({ title: "FiniteNumber" }),
+  Schema.isGreaterThanOrEqualTo(0, { title: "MinOpacity" }),
+  Schema.isLessThanOrEqualTo(1, { title: "MaxOpacity" })
+)
+export const TextAlignSchema = Schema.Literals(["left", "center", "right"] as const)
+export const AlignSelfSchema = Schema.Literals(["start", "center", "end", "stretch"] as const)
+export const stateVariants = ["pressed", "focused", "disabled"] as const
+export const platformVariants = ["web", "ios", "android"] as const
+
+export type Opacity = Schema.Schema.Type<typeof OpacitySchema>
+export type TextAlign = Schema.Schema.Type<typeof TextAlignSchema>
+export type AlignSelf = Schema.Schema.Type<typeof AlignSelfSchema>
+export type StateVariant = (typeof stateVariants)[number]
+export type PlatformVariant = (typeof platformVariants)[number]
+
+export interface StyleProperties {
+  readonly margin: SpacingToken
+  readonly marginTop: SpacingToken
+  readonly marginRight: SpacingToken
+  readonly marginBottom: SpacingToken
+  readonly marginLeft: SpacingToken
+  readonly padding: SpacingToken
+  readonly paddingTop: SpacingToken
+  readonly paddingRight: SpacingToken
+  readonly paddingBottom: SpacingToken
+  readonly paddingLeft: SpacingToken
+  readonly gap: SpacingToken
+  readonly width: Dimension
+  readonly height: Dimension
+  readonly minWidth: Dimension
+  readonly minHeight: Dimension
+  readonly maxWidth: Dimension
+  readonly maxHeight: Dimension
+  readonly flex: number
+  readonly alignSelf: AlignSelf
+  readonly opacity: Opacity
+  readonly backgroundColor: ColorToken
+  readonly borderColor: ColorToken
+  readonly borderRadius: RadiusToken
+  readonly borderWidth: number
+  readonly color: ColorToken
+  readonly typeScale: TypeScaleToken
+  readonly fontWeight: TextWeight
+  readonly textAlign: TextAlign
+}
+
+export type StyleKey = keyof StyleProperties
+export type StyleVariants<StyleValue> = {
+  readonly state?: { readonly [Key in StateVariant]?: StyleValue }
+  readonly platform?: { readonly [Key in PlatformVariant]?: StyleValue }
+  readonly breakpoint?: { readonly [Key in BreakpointToken]?: StyleValue }
+}
+export type StyleFor<Key extends StyleKey> = {
+  readonly [Property in Key]?: StyleProperties[Property]
+} & {
+  readonly variants?: StyleVariants<StyleFor<Key>>
+}
+export type FlatStyleFor<Key extends StyleKey> = {
+  readonly [Property in Key]?: StyleProperties[Property]
+}
+export type Style = StyleFor<StyleKey>
+export type FlatStyle = FlatStyleFor<StyleKey>
+
+export const styleKeys = [
+  "margin",
+  "marginTop",
+  "marginRight",
+  "marginBottom",
+  "marginLeft",
+  "padding",
+  "paddingTop",
+  "paddingRight",
+  "paddingBottom",
+  "paddingLeft",
+  "gap",
+  "width",
+  "height",
+  "minWidth",
+  "minHeight",
+  "maxWidth",
+  "maxHeight",
+  "flex",
+  "alignSelf",
+  "opacity",
+  "backgroundColor",
+  "borderColor",
+  "borderRadius",
+  "borderWidth",
+  "color",
+  "typeScale",
+  "fontWeight",
+  "textAlign"
+] as const satisfies ReadonlyArray<StyleKey>
+
+const layoutStyleKeys = [
+  "margin",
+  "marginTop",
+  "marginRight",
+  "marginBottom",
+  "marginLeft",
+  "padding",
+  "paddingTop",
+  "paddingRight",
+  "paddingBottom",
+  "paddingLeft",
+  "gap",
+  "width",
+  "height",
+  "minWidth",
+  "minHeight",
+  "maxWidth",
+  "maxHeight",
+  "flex",
+  "alignSelf",
+  "opacity"
+] as const satisfies ReadonlyArray<StyleKey>
+const boxStyleKeys = [
+  ...layoutStyleKeys,
+  "backgroundColor",
+  "borderColor",
+  "borderRadius",
+  "borderWidth"
+] as const satisfies ReadonlyArray<StyleKey>
+
+export const stackStyleKeys = boxStyleKeys
+export const textStyleKeys = [
+  "margin",
+  "marginTop",
+  "marginRight",
+  "marginBottom",
+  "marginLeft",
+  "width",
+  "height",
+  "minWidth",
+  "minHeight",
+  "maxWidth",
+  "maxHeight",
+  "flex",
+  "alignSelf",
+  "opacity",
+  "color",
+  "typeScale",
+  "fontWeight",
+  "textAlign"
+] as const satisfies ReadonlyArray<StyleKey>
+export const buttonStyleKeys = [
+  ...boxStyleKeys,
+  "color",
+  "typeScale",
+  "fontWeight",
+  "textAlign"
+] as const satisfies ReadonlyArray<StyleKey>
+export const imageStyleKeys = [
+  "margin",
+  "marginTop",
+  "marginRight",
+  "marginBottom",
+  "marginLeft",
+  "width",
+  "height",
+  "minWidth",
+  "minHeight",
+  "maxWidth",
+  "maxHeight",
+  "flex",
+  "alignSelf",
+  "opacity",
+  "borderRadius"
+] as const satisfies ReadonlyArray<StyleKey>
+export const textFieldStyleKeys = buttonStyleKeys
+export const listStyleKeys = boxStyleKeys
+export const cardStyleKeys = boxStyleKeys
+export const spacerStyleKeys = [
+  "margin",
+  "marginTop",
+  "marginRight",
+  "marginBottom",
+  "marginLeft",
+  "width",
+  "height",
+  "minWidth",
+  "minHeight",
+  "maxWidth",
+  "maxHeight",
+  "flex",
+  "alignSelf",
+  "opacity"
+] as const satisfies ReadonlyArray<StyleKey>
+
+export type StackStyle = StyleFor<(typeof stackStyleKeys)[number]>
+export type TextStyle = StyleFor<(typeof textStyleKeys)[number]>
+export type ButtonStyle = StyleFor<(typeof buttonStyleKeys)[number]>
+export type ImageStyle = StyleFor<(typeof imageStyleKeys)[number]>
+export type TextFieldStyle = StyleFor<(typeof textFieldStyleKeys)[number]>
+export type ListStyle = StyleFor<(typeof listStyleKeys)[number]>
+export type CardStyle = StyleFor<(typeof cardStyleKeys)[number]>
+export type SpacerStyle = StyleFor<(typeof spacerStyleKeys)[number]>
+
+const stylePropertySchemas = {
+  margin: SpacingTokenSchema,
+  marginTop: SpacingTokenSchema,
+  marginRight: SpacingTokenSchema,
+  marginBottom: SpacingTokenSchema,
+  marginLeft: SpacingTokenSchema,
+  padding: SpacingTokenSchema,
+  paddingTop: SpacingTokenSchema,
+  paddingRight: SpacingTokenSchema,
+  paddingBottom: SpacingTokenSchema,
+  paddingLeft: SpacingTokenSchema,
+  gap: SpacingTokenSchema,
+  width: DimensionSchema,
+  height: DimensionSchema,
+  minWidth: DimensionSchema,
+  minHeight: DimensionSchema,
+  maxWidth: DimensionSchema,
+  maxHeight: DimensionSchema,
+  flex: NonNegativeNumberSchema,
+  alignSelf: AlignSelfSchema,
+  opacity: OpacitySchema,
+  backgroundColor: ColorTokenSchema,
+  borderColor: ColorTokenSchema,
+  borderRadius: RadiusTokenSchema,
+  borderWidth: NonNegativeNumberSchema,
+  color: ColorTokenSchema,
+  typeScale: TypeScaleTokenSchema,
+  fontWeight: TextWeightSchema,
+  textAlign: TextAlignSchema
+} as const satisfies { readonly [Key in StyleKey]: Schema.Constraint }
+
+const exactStruct = <const Fields extends Schema.Struct.Fields>(fields: Fields) => {
+  const knownKeys = new Set(Object.keys(fields))
+  const ExtraKeySchema = Schema.String.check(
+    Schema.makeFilter<string>((key) =>
+      knownKeys.has(key) ? { path: [], issue: "Known key belongs to the struct" } : undefined
+    )
+  )
+  return Schema.StructWithRest(Schema.Struct(fields), [Schema.Record(ExtraKeySchema, Schema.Never)])
+}
+
+const optionalStyleFields = <const Keys extends ReadonlyArray<StyleKey>>(keys: Keys) =>
+  Object.fromEntries(
+    keys.map((key) => [key, stylePropertySchemas[key].pipe(Schema.optionalKey)])
+  ) as Schema.Struct.Fields
+
+const optionalVariantFields = <const Keys extends ReadonlyArray<string>, S extends Schema.Constraint>(
+  keys: Keys,
+  schema: S
+) => {
+  const pipeable = schema as S & {
+    readonly pipe: (f: typeof Schema.optionalKey) => Schema.Constraint
+  }
+  return Object.fromEntries(keys.map((key) => [key, pipeable.pipe(Schema.optionalKey)])) as Schema.Struct.Fields
+}
+
+const makeStyleSchema = <const Keys extends ReadonlyArray<StyleKey>>(
+  keys: Keys
+): Schema.Codec<StyleFor<Keys[number]>, StyleFor<Keys[number]>> => {
+  let styleSchema: Schema.Codec<any, any, any, any>
+  const StyleSelf = Schema.suspend((): Schema.Codec<any, any, any, any> => styleSchema)
+  const variantsSchema = exactStruct({
+    state: exactStruct(optionalVariantFields(stateVariants, StyleSelf)).pipe(Schema.optionalKey),
+    platform: exactStruct(optionalVariantFields(platformVariants, StyleSelf)).pipe(Schema.optionalKey),
+    breakpoint: exactStruct(optionalVariantFields(breakpointTokens, StyleSelf)).pipe(Schema.optionalKey)
+  })
+  styleSchema = exactStruct({
+    ...optionalStyleFields(keys),
+    variants: variantsSchema.pipe(Schema.optionalKey)
+  }) as unknown as Schema.Codec<any, any, any, any>
+  return styleSchema as unknown as Schema.Codec<StyleFor<Keys[number]>, StyleFor<Keys[number]>>
+}
+
+export const StyleSchema = makeStyleSchema(styleKeys)
+export const StackStyleSchema = makeStyleSchema(stackStyleKeys)
+export const TextStyleSchema = makeStyleSchema(textStyleKeys)
+export const ButtonStyleSchema = makeStyleSchema(buttonStyleKeys)
+export const ImageStyleSchema = makeStyleSchema(imageStyleKeys)
+export const TextFieldStyleSchema = makeStyleSchema(textFieldStyleKeys)
+export const ListStyleSchema = makeStyleSchema(listStyleKeys)
+export const CardStyleSchema = makeStyleSchema(cardStyleKeys)
+export const SpacerStyleSchema = makeStyleSchema(spacerStyleKeys)
+
+const copyFlatStyle = <Key extends StyleKey>(style: StyleFor<Key> | FlatStyleFor<Key>): FlatStyleFor<Key> => {
+  const flat: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(style)) {
+    if (key !== "variants" && value !== undefined) {
+      flat[key] = value
+    }
+  }
+  return flat as FlatStyleFor<Key>
+}
+
+const mergeVariantSets = <Key extends StyleKey>(
+  left: StyleVariants<StyleFor<Key>> | undefined,
+  right: StyleVariants<StyleFor<Key>> | undefined
+): StyleVariants<StyleFor<Key>> | undefined => {
+  if (right === undefined) {
+    return left
+  }
+
+  const merged: {
+    state?: Record<string, StyleFor<Key>>
+    platform?: Record<string, StyleFor<Key>>
+    breakpoint?: Record<string, StyleFor<Key>>
+  } = {
+    ...(left === undefined ? {} : left)
+  }
+
+  for (const axis of ["state", "platform", "breakpoint"] as const) {
+    const rightAxis = right[axis]
+    if (rightAxis === undefined) {
+      continue
+    }
+    const leftAxis = merged[axis] ?? {}
+    const axisResult: Record<string, StyleFor<Key>> = { ...leftAxis }
+    for (const [variant, style] of Object.entries(rightAxis)) {
+      if (style !== undefined) {
+        axisResult[variant] = mergeStyles(axisResult[variant], style)
+      }
+    }
+    merged[axis] = axisResult
+  }
+
+  return merged as StyleVariants<StyleFor<Key>>
+}
+
+export const mergeStyles = <Key extends StyleKey>(
+  ...styles: ReadonlyArray<StyleFor<Key> | undefined>
+): StyleFor<Key> => {
+  const merged: Record<string, unknown> = {}
+  let variants: StyleVariants<StyleFor<Key>> | undefined
+
+  for (const style of styles) {
+    if (style === undefined) {
+      continue
+    }
+    Object.assign(merged, copyFlatStyle(style))
+    variants = mergeVariantSets(variants, style.variants)
+  }
+
+  if (variants !== undefined) {
+    merged.variants = variants
+  }
+
+  return merged as StyleFor<Key>
+}
+
+const mergeFlatStyles = <Key extends StyleKey>(
+  ...styles: ReadonlyArray<StyleFor<Key> | FlatStyleFor<Key> | undefined>
+): FlatStyleFor<Key> => {
+  const merged: Record<string, unknown> = {}
+  for (const style of styles) {
+    if (style !== undefined) {
+      Object.assign(merged, copyFlatStyle(style))
+    }
+  }
+  return merged as FlatStyleFor<Key>
+}
+
+export interface StyleResolution {
+  readonly state?: StateVariant | ReadonlyArray<StateVariant>
+  readonly platform?: PlatformVariant
+  readonly breakpoint?: BreakpointToken
+}
+
+const activeStates = (state: StyleResolution["state"]): ReadonlySet<StateVariant> => {
+  if (state === undefined) {
+    return new Set()
+  }
+  return new Set(Array.isArray(state) ? state : [state])
+}
+
+export const resolveStyle = <Key extends StyleKey>(
+  style: StyleFor<Key>,
+  input: StyleResolution = {}
+): FlatStyleFor<Key> => {
+  const variants = style.variants
+  const active: Array<FlatStyleFor<Key>> = []
+
+  if (input.platform !== undefined) {
+    const platformStyle = variants?.platform?.[input.platform]
+    if (platformStyle !== undefined) {
+      active.push(resolveStyle(platformStyle, input))
+    }
+  }
+
+  if (input.breakpoint !== undefined) {
+    const breakpointStyle = variants?.breakpoint?.[input.breakpoint]
+    if (breakpointStyle !== undefined) {
+      active.push(resolveStyle(breakpointStyle, input))
+    }
+  }
+
+  const states = activeStates(input.state)
+  for (const state of stateVariants) {
+    if (states.has(state)) {
+      const stateStyle = variants?.state?.[state]
+      if (stateStyle !== undefined) {
+        active.push(resolveStyle(stateStyle, input))
+      }
+    }
+  }
+
+  return mergeFlatStyles(copyFlatStyle(style), ...active)
+}
+
 export interface NodeBase {
   readonly catalogVersion: CatalogVersion
   readonly key?: NodeKey
@@ -359,6 +783,7 @@ export interface StackView extends NodeBase {
   readonly align?: StackAlign
   readonly justify?: StackJustify
   readonly padding?: SpacingToken
+  readonly style?: StackStyle
   readonly children: ReadonlyArray<View>
 }
 
@@ -368,6 +793,7 @@ export interface TextView extends NodeBase {
   readonly variant: TypeScaleToken
   readonly color?: ColorToken
   readonly weight?: TextWeight
+  readonly style?: TextStyle
 }
 
 export interface ButtonView extends NodeBase {
@@ -376,6 +802,7 @@ export interface ButtonView extends NodeBase {
   readonly variant: ButtonVariant
   readonly disabled?: boolean
   readonly onPress: IntentRef
+  readonly style?: ButtonStyle
 }
 
 export interface ImageView extends NodeBase {
@@ -385,6 +812,7 @@ export interface ImageView extends NodeBase {
   readonly width?: Dimension
   readonly height?: Dimension
   readonly fit?: ImageFit
+  readonly style?: ImageStyle
 }
 
 export interface BaseTextFieldView extends NodeBase {
@@ -394,6 +822,7 @@ export interface BaseTextFieldView extends NodeBase {
   readonly label?: string
   readonly onChange?: IntentRef
   readonly onSubmit?: IntentRef
+  readonly style?: TextFieldStyle
 }
 
 export interface SecureTextFieldView extends BaseTextFieldView {
@@ -410,6 +839,7 @@ export type TextFieldView = SecureTextFieldView | PlainTextFieldView
 
 export interface ListView extends NodeBase {
   readonly _tag: "List"
+  readonly style?: ListStyle
   readonly items: ReadonlyArray<View & { readonly key: NodeKey }>
 }
 
@@ -417,6 +847,7 @@ export interface CardView extends NodeBase {
   readonly _tag: "Card"
   readonly padding?: SpacingToken
   readonly radius?: RadiusToken
+  readonly style?: CardStyle
   readonly children: ReadonlyArray<View>
 }
 
@@ -424,11 +855,13 @@ export interface SpacerSizeView extends NodeBase {
   readonly _tag: "Spacer"
   readonly size: SpacingToken
   readonly flex?: false
+  readonly style?: SpacerStyle
 }
 
 export interface SpacerFlexView extends NodeBase {
   readonly _tag: "Spacer"
   readonly flex: true
+  readonly style?: SpacerStyle
 }
 
 export type SpacerView = SpacerSizeView | SpacerFlexView
@@ -468,6 +901,7 @@ export const StackSchema: Schema.Codec<StackView, StackView> = Schema.TaggedStru
   align: StackAlignSchema.pipe(Schema.optionalKey),
   justify: StackJustifySchema.pipe(Schema.optionalKey),
   padding: SpacingTokenSchema.pipe(Schema.optionalKey),
+  style: StackStyleSchema.pipe(Schema.optionalKey),
   children: Schema.Array(ViewSelf)
 })
 
@@ -476,7 +910,8 @@ export const TextSchema: Schema.Codec<TextView, TextView> = Schema.TaggedStruct(
   content: Schema.Union([Schema.String, BindingSchema]),
   variant: TypeScaleTokenSchema,
   color: ColorTokenSchema.pipe(Schema.optionalKey),
-  weight: TextWeightSchema.pipe(Schema.optionalKey)
+  weight: TextWeightSchema.pipe(Schema.optionalKey),
+  style: TextStyleSchema.pipe(Schema.optionalKey)
 })
 
 export const ButtonSchema: Schema.Codec<ButtonView, ButtonView> = Schema.TaggedStruct("Button", {
@@ -484,7 +919,8 @@ export const ButtonSchema: Schema.Codec<ButtonView, ButtonView> = Schema.TaggedS
   label: Schema.String,
   variant: ButtonVariantSchema,
   disabled: Schema.Boolean.pipe(Schema.optionalKey),
-  onPress: IntentRefSchema
+  onPress: IntentRefSchema,
+  style: ButtonStyleSchema.pipe(Schema.optionalKey)
 })
 
 export const ImageSchema: Schema.Codec<ImageView, ImageView> = Schema.TaggedStruct("Image", {
@@ -493,7 +929,8 @@ export const ImageSchema: Schema.Codec<ImageView, ImageView> = Schema.TaggedStru
   alt: Schema.String,
   width: DimensionSchema.pipe(Schema.optionalKey),
   height: DimensionSchema.pipe(Schema.optionalKey),
-  fit: ImageFitSchema.pipe(Schema.optionalKey)
+  fit: ImageFitSchema.pipe(Schema.optionalKey),
+  style: ImageStyleSchema.pipe(Schema.optionalKey)
 })
 
 const BaseTextFieldFields = {
@@ -502,7 +939,8 @@ const BaseTextFieldFields = {
   placeholder: Schema.String.pipe(Schema.optionalKey),
   label: Schema.String.pipe(Schema.optionalKey),
   onChange: IntentRefSchema.pipe(Schema.optionalKey),
-  onSubmit: IntentRefSchema.pipe(Schema.optionalKey)
+  onSubmit: IntentRefSchema.pipe(Schema.optionalKey),
+  style: TextFieldStyleSchema.pipe(Schema.optionalKey)
 } as const
 
 export const SecureTextFieldSchema: Schema.Codec<SecureTextFieldView, SecureTextFieldView> =
@@ -526,6 +964,7 @@ export const TextFieldSchema: Schema.Codec<TextFieldView, TextFieldView> = Schem
 
 export const ListSchema: Schema.Codec<ListView, ListView> = Schema.TaggedStruct("List", {
   ...CommonFields,
+  style: ListStyleSchema.pipe(Schema.optionalKey),
   items: KeyedViewArraySchema
 })
 
@@ -533,6 +972,7 @@ export const CardSchema: Schema.Codec<CardView, CardView> = Schema.TaggedStruct(
   ...CommonFields,
   padding: SpacingTokenSchema.pipe(Schema.optionalKey),
   radius: RadiusTokenSchema.pipe(Schema.optionalKey),
+  style: CardStyleSchema.pipe(Schema.optionalKey),
   children: Schema.Array(ViewSelf)
 })
 
@@ -540,13 +980,15 @@ export const SpacerSizeSchema: Schema.Codec<SpacerSizeView, SpacerSizeView> =
   Schema.TaggedStruct("Spacer", {
     ...CommonFields,
     size: SpacingTokenSchema,
-    flex: Schema.Literal(false).pipe(Schema.optionalKey)
+    flex: Schema.Literal(false).pipe(Schema.optionalKey),
+    style: SpacerStyleSchema.pipe(Schema.optionalKey)
   })
 
 export const SpacerFlexSchema: Schema.Codec<SpacerFlexView, SpacerFlexView> =
   Schema.TaggedStruct("Spacer", {
     ...CommonFields,
-    flex: Schema.Literal(true)
+    flex: Schema.Literal(true),
+    style: SpacerStyleSchema.pipe(Schema.optionalKey)
   })
 
 export const SpacerSchema: Schema.Codec<SpacerView, SpacerView> = Schema.Union([
