@@ -1,12 +1,18 @@
 import { Effect, Schema, SubscriptionRef } from "effect"
 import {
+  Badge,
   Button,
   Card,
+  Chip,
   ComponentValueBinding,
+  Divider,
   Host,
   Icon,
   Image,
   IntentRef,
+  Meter,
+  StatTile,
+  Table,
   IntentSchema,
   JsonPayloadSchema,
   Link,
@@ -26,6 +32,7 @@ import {
   hostKinds,
   iconNames,
   iconSizes,
+  tones,
   defineIntent,
   makeIntentRegistry,
   makeViewProgramFromState,
@@ -626,6 +633,89 @@ const componentStoryMap = {
         enumControl("icon-name", "Name", ["children", 0, "name"], iconNames[0], iconNames),
         enumControl("icon-size", "Size", ["children", 0, "size"], "md", iconSizes)
       ]
+    })
+  ],
+  Divider: [
+    story({
+      id: "divider-horizontal",
+      component: "Divider",
+      title: "Divider",
+      description: "Section separator with typed orientation.",
+      view: Divider({ key: "divider-horizontal", orientation: "horizontal" }),
+      controls: [
+        enumControl("divider-orientation", "Orientation", ["orientation"], "horizontal", ["horizontal", "vertical"])
+      ]
+    })
+  ],
+  Badge: [
+    story({
+      id: "badge-tone",
+      component: "Badge",
+      title: "Badge",
+      description: "Status/count badge with typed tone.",
+      view: Badge({ key: "badge-tone", label: "Live", tone: "success" }),
+      controls: [enumControl("badge-tone", "Tone", ["tone"], "success", tones)]
+    })
+  ],
+  Chip: [
+    story({
+      id: "chip-value",
+      component: "Chip",
+      title: "Chip",
+      description: "Label + value pill for the fleet cockpit strip.",
+      view: Chip({ key: "chip-value", label: "Slots", value: "3/8", tone: "info" }),
+      controls: [enumControl("chip-tone", "Tone", ["tone"], "info", tones)]
+    })
+  ],
+  Meter: [
+    story({
+      id: "meter-determinate",
+      component: "Meter",
+      title: "Meter",
+      description: "Determinate capacity/budget readout.",
+      view: Meter({ key: "meter-determinate", value: 0.5, label: "Capacity", tone: "info" }),
+      controls: [enumControl("meter-tone", "Tone", ["tone"], "info", tones)]
+    })
+  ],
+  StatTile: [
+    story({
+      id: "stat-tile",
+      component: "StatTile",
+      title: "StatTile",
+      description: "Label + strong value summary cell.",
+      view: StatTile({ key: "stat-tile", label: "Workers", value: "12", tone: "neutral" }),
+      controls: [enumControl("stat-tone", "Tone", ["tone"], "neutral", tones)]
+    })
+  ],
+  Table: [
+    story({
+      id: "table-basic",
+      component: "Table",
+      title: "Table",
+      description: "Non-virtualized table with typed columns and keyed rows.",
+      view: Table({
+        key: "table-basic",
+        columns: [
+          { id: "name", header: "Name", align: "start" },
+          { id: "status", header: "Status", align: "end" }
+        ],
+        rows: [
+          {
+            id: "row-1",
+            cells: [
+              Text({ key: "c1-name", content: "Orrery", variant: "body" }),
+              Badge({ key: "c1-status", label: "ok", tone: "success" })
+            ]
+          },
+          {
+            id: "row-2",
+            cells: [
+              Text({ key: "c2-name", content: "Whitefang", variant: "body" }),
+              Badge({ key: "c2-status", label: "offline", tone: "danger" })
+            ]
+          }
+        ]
+      })
     })
   ]
 } satisfies { readonly [Tag in ComponentTag]: ReadonlyArray<Story> }

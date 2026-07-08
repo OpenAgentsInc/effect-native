@@ -23,7 +23,7 @@ their reason so pressure is visible without weakening the catalog contract.
 
 ## Catalog Versioning Policy
 
-The current catalog marker is `effect-native/v8`, exposed by
+The current catalog marker is `effect-native/v9`, exposed by
 `CatalogVersion`. `compatibleCatalogVersions` is the decode allow-list, and
 `CompatibleViewSchema` is the schema app authors and renderers should use when
 accepting persisted or externally-authored trees.
@@ -68,7 +68,7 @@ until it has a fixture and every renderer declares and proves support for it.
 | CodeBlock / unified diff | Khala transcript and review surfaces need pre-tokenized code and unified diff rows | 2026-07-08 | accepted -> #36 |
 | GraphFigure | Fleet board and gym arbiter graphs need canvas plus DOM/SVG fallback | 2026-07-08 | accepted -> #37 |
 | Settings form controls | Khala settings require toggle, select, checkbox, radio, slider, and number controls beyond the base FormSpec | 2026-07-08 | accepted -> #38 |
-| Data display | Khala settings, fleet, usage, and review panes require table, chip/badge, meter/progress, divider, and stat tile | 2026-07-08 | accepted -> #39 |
+| Data display | Khala settings, fleet, usage, and review panes require table, chip/badge, meter/progress, divider, and stat tile | 2026-07-08 | shipped -> #39 (v9: Divider, Badge, Chip, Meter/Progress, StatTile, and non-virtualized Table with typed columns/keyed rows + onRowSelect; closed Tone set; DOM + RN + headless) |
 | Toast / status banner / recovery overlay | Khala boot-degraded, update, recovery, and notification states | 2026-07-08 | accepted -> #40 |
 | Hotkey registry / focus management | Khala global commands, palette scope, composer scope, recent-thread hints, and focus return | 2026-07-08 | accepted -> #41 |
 | Sheet drag-to-dismiss gesture | Gesture demand not yet demonstrated beyond basic sheet presentation | 2026-07-08 | waiting |

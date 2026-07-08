@@ -1,9 +1,16 @@
 import { Deferred, Effect, Exit, Fiber, Ref, Scope, Stream } from "effect"
 import {
   type AriaRole,
+  type BadgeView,
   type ButtonView,
   type CardView,
+  type ChipView,
   type ColorToken,
+  type DividerView,
+  type MeterView,
+  type StatTileView,
+  type TableView,
+  type Tone,
   type HostView,
   type IconName,
   type IconSize,
@@ -880,6 +887,183 @@ const renderIcon = (
   )
 }
 
+// Data-display components (issue #39) on React Native.
+const toneColorToken: Record<Tone, ColorToken> = {
+  neutral: "textMuted",
+  info: "info",
+  success: "success",
+  warn: "warning",
+  danger: "danger"
+}
+
+const rnTextAlign = (align: "start" | "center" | "end" | undefined): "left" | "center" | "right" =>
+  align === "center" ? "center" : align === "end" ? "right" : "left"
+
+const renderDivider = (
+  view: DividerView,
+  dependencies: ReactNativeDependencies,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const theme = options.theme ?? defaultTheme
+  const orientation = view.orientation ?? "horizontal"
+  const style = mergeNativeStyles(
+    orientation === "vertical"
+      ? { width: 1, alignSelf: "stretch", backgroundColor: colorValue(theme, "border") }
+      : { height: 1, backgroundColor: colorValue(theme, "border") },
+    viewStyle(view, options)
+  )
+  return createElement(dependencies, dependencies.ReactNative.View, {
+    ...baseProps(view, style),
+    accessibilityRole: "none"
+  })
+}
+
+const renderBadge = (
+  view: BadgeView,
+  dependencies: ReactNativeDependencies,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const theme = options.theme ?? defaultTheme
+  const tone = view.tone ?? "neutral"
+  const style = mergeNativeStyles({ color: colorValue(theme, toneColorToken[tone]) }, viewStyle(view, options))
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.Text,
+    { ...baseProps(view, style), testID: `en-badge:${tone}` },
+    view.label
+  )
+}
+
+const renderChip = (
+  view: ChipView,
+  dependencies: ReactNativeDependencies,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const theme = options.theme ?? defaultTheme
+  const tone = view.tone ?? "neutral"
+  const style = mergeNativeStyles({ flexDirection: "row", gap: spacingValue(theme, "1") }, viewStyle(view, options))
+  const parts: Array<ReactElementLike> = [
+    createElement(dependencies, dependencies.ReactNative.Text, { key: "label" }, view.label)
+  ]
+  if (view.value !== undefined) {
+    parts.push(
+      createElement(
+        dependencies,
+        dependencies.ReactNative.Text,
+        { key: "value", style: { color: colorValue(theme, toneColorToken[tone]) } },
+        view.value
+      )
+    )
+  }
+  return createElement(dependencies, dependencies.ReactNative.View, baseProps(view, style), ...parts)
+}
+
+const renderMeter = (
+  view: MeterView,
+  dependencies: ReactNativeDependencies,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const theme = options.theme ?? defaultTheme
+  const tone = view.tone ?? "info"
+  const indeterminate = view.indeterminate === true
+  const value = view.value ?? 0
+  const bar = createElement(dependencies, dependencies.ReactNative.View, {
+    key: "bar",
+    testID: "en-meter-bar",
+    style: {
+      height: "100%",
+      width: indeterminate ? "100%" : `${Math.round(value * 100)}%`,
+      backgroundColor: colorValue(theme, toneColorToken[tone])
+    }
+  })
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    {
+      ...baseProps(view, viewStyle(view, options)),
+      accessibilityRole: "progressbar",
+      ...(view.label === undefined ? {} : { accessibilityLabel: view.label }),
+      ...(indeterminate
+        ? { "aria-busy": true }
+        : { accessibilityValue: { min: 0, max: 1, now: value } })
+    },
+    bar
+  )
+}
+
+const renderStatTile = (
+  view: StatTileView,
+  dependencies: ReactNativeDependencies,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const theme = options.theme ?? defaultTheme
+  const tone = view.tone ?? "neutral"
+  const style = mergeNativeStyles({ flexDirection: "column" }, viewStyle(view, options))
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    baseProps(view, style),
+    createElement(dependencies, dependencies.ReactNative.Text, { key: "label" }, view.label),
+    createElement(
+      dependencies,
+      dependencies.ReactNative.Text,
+      { key: "value", style: { color: colorValue(theme, toneColorToken[tone]) } },
+      view.value
+    )
+  )
+}
+
+const renderTable = (
+  view: TableView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const headerCells = view.columns.map((column) =>
+    createElement(
+      dependencies,
+      dependencies.ReactNative.Text,
+      { key: `col-${column.id}`, style: { flex: 1, textAlign: rnTextAlign(column.align) } },
+      column.header
+    ))
+  const headerRow = createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    { key: "header", style: { flexDirection: "row" } },
+    ...headerCells
+  )
+  const bodyRows = view.rows.map((row) => {
+    const cells = row.cells.map((cell, index) =>
+      createElement(
+        dependencies,
+        dependencies.ReactNative.View,
+        { key: `cell-${index}`, style: { flex: 1, alignItems: rnAlignItems(view.columns[index]?.align) } },
+        renderResolvedReactNativeView(cell, dependencies, report, options)
+      ))
+    const rowProps: Record<string, unknown> = { key: `row-${row.id}`, style: { flexDirection: "row" } }
+    if (view.onRowSelect !== undefined) {
+      const onRowSelect = view.onRowSelect
+      return createElement(
+        dependencies,
+        dependencies.ReactNative.Pressable,
+        { ...rowProps, onPress: () => runReportedIntent(report, onRowSelect, row.id) },
+        ...cells
+      )
+    }
+    return createElement(dependencies, dependencies.ReactNative.View, rowProps, ...cells)
+  })
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    baseProps(view, viewStyle(view, options)),
+    headerRow,
+    ...bodyRows
+  )
+}
+
+const rnAlignItems = (align: "start" | "center" | "end" | undefined): "flex-start" | "center" | "flex-end" =>
+  align === "center" ? "center" : align === "end" ? "flex-end" : "flex-start"
+
 const renderResolvedReactNativeView = (
   view: View,
   dependencies: ReactNativeDependencies,
@@ -915,6 +1099,18 @@ const renderResolvedReactNativeView = (
       return renderHost(view, dependencies, options)
     case "Icon":
       return renderIcon(view, dependencies, options)
+    case "Divider":
+      return renderDivider(view, dependencies, options)
+    case "Badge":
+      return renderBadge(view, dependencies, options)
+    case "Chip":
+      return renderChip(view, dependencies, options)
+    case "Meter":
+      return renderMeter(view, dependencies, options)
+    case "StatTile":
+      return renderStatTile(view, dependencies, options)
+    case "Table":
+      return renderTable(view, dependencies, report, options)
   }
 }
 

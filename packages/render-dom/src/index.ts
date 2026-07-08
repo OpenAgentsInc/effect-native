@@ -1,9 +1,16 @@
 import { Deferred, Effect, Exit, Layer, Scope, Stream } from "effect"
 import {
+  type BadgeView,
   type ButtonView,
   type CardView,
+  type ChipView,
   type ColorToken,
   type Dimension,
+  type DividerView,
+  type MeterView,
+  type StatTileView,
+  type TableView,
+  type Tone,
   type FlatStyle,
   FormFieldValueBinding,
   type HostKind,
@@ -1396,6 +1403,169 @@ const renderHost = (view: HostView, state: DomRendererState, report: IntentRepor
   return element
 }
 
+// Data-display components (issue #39). Bounded typed building blocks composed
+// from Text/Icon primitives and theme tones.
+const toneColorToken: Record<Tone, ColorToken> = {
+  neutral: "textMuted",
+  info: "info",
+  success: "success",
+  warn: "warning",
+  danger: "danger"
+}
+
+const textAlignFor = (align: "start" | "center" | "end" | undefined): string =>
+  align === "center" ? "center" : align === "end" ? "right" : "left"
+
+const renderDivider = (view: DividerView, state: DomRendererState): HTMLElement => {
+  const element = state.keyedElement(view, "div")
+  state.resetListeners(element)
+  const orientation = view.orientation ?? "horizontal"
+  element.setAttribute("role", "separator")
+  element.setAttribute("aria-orientation", orientation)
+  if (orientation === "vertical") {
+    element.style.width = "1px"
+    element.style.alignSelf = "stretch"
+    element.style.borderTop = ""
+    element.style.borderLeft = `1px solid ${colorValue("border")}`
+  } else {
+    element.style.height = "1px"
+    element.style.borderLeft = ""
+    element.style.borderTop = `1px solid ${colorValue("border")}`
+  }
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  return element
+}
+
+const renderBadge = (view: BadgeView, state: DomRendererState): HTMLElement => {
+  const element = state.keyedElement(view, "span")
+  state.resetListeners(element)
+  const tone = view.tone ?? "neutral"
+  element.setAttribute("data-en-tone", tone)
+  element.textContent = view.label
+  element.style.display = "inline-flex"
+  element.style.color = colorValue(toneColorToken[tone])
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  applyInteractions(element, view, state, () => Effect.succeed(undefined))
+  return element
+}
+
+const renderChip = (view: ChipView, state: DomRendererState): HTMLElement => {
+  const element = state.keyedElement(view, "span")
+  state.resetListeners(element)
+  const tone = view.tone ?? "neutral"
+  element.setAttribute("data-en-tone", tone)
+  element.style.display = "inline-flex"
+  element.style.gap = "var(--en-spacing-1)"
+  const document = element.ownerDocument
+  const label = document.createElement("span")
+  label.setAttribute("data-en-role", "label")
+  label.textContent = view.label
+  const children: Array<HTMLElement> = [label]
+  if (view.value !== undefined) {
+    const value = document.createElement("span")
+    value.setAttribute("data-en-role", "value")
+    value.style.color = colorValue(toneColorToken[tone])
+    value.textContent = view.value
+    children.push(value)
+  }
+  element.replaceChildren(...children)
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  return element
+}
+
+const renderMeter = (view: MeterView, state: DomRendererState): HTMLElement => {
+  const element = state.keyedElement(view, "div")
+  state.resetListeners(element)
+  const tone = view.tone ?? "info"
+  element.setAttribute("role", "progressbar")
+  const indeterminate = view.indeterminate === true
+  const value = view.value ?? 0
+  if (indeterminate) {
+    element.setAttribute("aria-busy", "true")
+    element.removeAttribute("aria-valuenow")
+  } else {
+    element.setAttribute("aria-valuemin", "0")
+    element.setAttribute("aria-valuemax", "1")
+    element.setAttribute("aria-valuenow", String(value))
+    element.removeAttribute("aria-busy")
+  }
+  if (view.label !== undefined) {
+    element.setAttribute("aria-label", view.label)
+  }
+  const bar = element.ownerDocument.createElement("div")
+  bar.setAttribute("data-en-role", "bar")
+  bar.style.height = "100%"
+  bar.style.width = indeterminate ? "100%" : `${Math.round(value * 100)}%`
+  bar.style.background = colorValue(toneColorToken[tone])
+  element.replaceChildren(bar)
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  return element
+}
+
+const renderStatTile = (view: StatTileView, state: DomRendererState): HTMLElement => {
+  const element = state.keyedElement(view, "div")
+  state.resetListeners(element)
+  const tone = view.tone ?? "neutral"
+  element.setAttribute("data-en-tone", tone)
+  element.style.display = "flex"
+  element.style.flexDirection = "column"
+  const document = element.ownerDocument
+  const label = document.createElement("span")
+  label.setAttribute("data-en-role", "label")
+  label.textContent = view.label
+  const value = document.createElement("span")
+  value.setAttribute("data-en-role", "value")
+  value.style.color = colorValue(toneColorToken[tone])
+  value.textContent = view.value
+  element.replaceChildren(label, value)
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  return element
+}
+
+const renderTable = (view: TableView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const element = state.keyedElement(view, "table") as HTMLTableElement
+  state.resetListeners(element)
+  element.style.borderCollapse = "collapse"
+  const document = element.ownerDocument
+  const head = document.createElement("thead")
+  const headRow = document.createElement("tr")
+  for (const column of view.columns) {
+    const th = document.createElement("th")
+    th.setAttribute("data-en-col", column.id)
+    th.textContent = column.header
+    th.style.textAlign = textAlignFor(column.align)
+    headRow.appendChild(th)
+  }
+  head.appendChild(headRow)
+  const body = document.createElement("tbody")
+  for (const row of view.rows) {
+    const tr = document.createElement("tr")
+    tr.setAttribute("data-en-row", row.id)
+    if (view.onRowSelect !== undefined) {
+      const onRowSelect = view.onRowSelect
+      tr.style.cursor = "pointer"
+      state.addListener(tr, "click", () => runReportedIntent(report, onRowSelect, row.id))
+    }
+    row.cells.forEach((cell, index) => {
+      const td = document.createElement("td")
+      td.style.textAlign = textAlignFor(view.columns[index]?.align)
+      td.appendChild(renderView(cell, state, report))
+      tr.appendChild(td)
+    })
+    body.appendChild(tr)
+  }
+  element.replaceChildren(head, body)
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  applyInteractions(element, view, state, report)
+  return element
+}
+
 const renderView = (view: View, state: DomRendererState, report: IntentReporter): HTMLElement => {
   switch (view._tag) {
     case "Stack":
@@ -1426,6 +1596,18 @@ const renderView = (view: View, state: DomRendererState, report: IntentReporter)
       return renderHost(view, state, report)
     case "Icon":
       return renderIcon(view, state)
+    case "Divider":
+      return renderDivider(view, state)
+    case "Badge":
+      return renderBadge(view, state)
+    case "Chip":
+      return renderChip(view, state)
+    case "Meter":
+      return renderMeter(view, state)
+    case "StatTile":
+      return renderStatTile(view, state)
+    case "Table":
+      return renderTable(view, state, report)
   }
 }
 

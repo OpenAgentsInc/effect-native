@@ -6,6 +6,9 @@ import {
   type View
 } from "../src/index"
 
+// The catalog now exceeds `.pipe`'s 20-argument overload limit, so the matcher
+// is built in two chained pipes. The final `Match.exhaustive` still enforces
+// totality over the whole closed catalog.
 const describeView = Match.type<View>().pipe(
   Match.tag("Stack", () => "layout"),
   Match.tag("Text", () => "text"),
@@ -18,9 +21,16 @@ const describeView = Match.type<View>().pipe(
   Match.tag("Spacer", () => "space"),
   Match.tag("Link", () => "navigation"),
   Match.tag("Modal", () => "overlay"),
-  Match.tag("Sheet", () => "overlay"),
+  Match.tag("Sheet", () => "overlay")
+).pipe(
   Match.tag("Host", () => "host"),
   Match.tag("Icon", () => "icon"),
+  Match.tag("Divider", () => "separator"),
+  Match.tag("Badge", () => "status"),
+  Match.tag("Chip", () => "status"),
+  Match.tag("Meter", () => "status"),
+  Match.tag("StatTile", () => "status"),
+  Match.tag("Table", () => "data"),
   Match.exhaustive
 )
 

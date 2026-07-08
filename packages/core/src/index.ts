@@ -73,8 +73,9 @@ export const CollectionCatalogVersion = "effect-native/v5" as const
 export const InteractionCatalogVersion = "effect-native/v6" as const
 export const HostCatalogVersion = "effect-native/v7" as const
 export const IconCatalogVersion = "effect-native/v8" as const
-export const PreviousCatalogVersion = HostCatalogVersion
-export const CatalogVersion = IconCatalogVersion
+export const DataDisplayCatalogVersion = "effect-native/v9" as const
+export const PreviousCatalogVersion = IconCatalogVersion
+export const CatalogVersion = DataDisplayCatalogVersion
 export const CatalogVersionSchema = Schema.Literal(CatalogVersion)
 export type CatalogVersion = typeof CatalogVersion
 export const compatibleCatalogVersions = [
@@ -85,6 +86,7 @@ export const compatibleCatalogVersions = [
   OverlayCatalogVersion,
   CollectionCatalogVersion,
   InteractionCatalogVersion,
+  HostCatalogVersion,
   PreviousCatalogVersion,
   CatalogVersion
 ] as const
@@ -105,7 +107,13 @@ export const componentTags = [
   "Modal",
   "Sheet",
   "Host",
-  "Icon"
+  "Icon",
+  "Divider",
+  "Badge",
+  "Chip",
+  "Meter",
+  "StatTile",
+  "Table"
 ] as const
 export type ComponentTag = (typeof componentTags)[number]
 
@@ -1481,6 +1489,11 @@ export const iconSizes = ["sm", "md", "lg"] as const
 export const IconSizeSchema = Schema.Literals(iconSizes)
 export type IconSize = (typeof iconSizes)[number]
 
+// Closed tone set for data-display components (issue #39), aligned to the blue
+// status system.
+export const tones = ["neutral", "info", "success", "warn", "danger"] as const
+export const ToneSchema = Schema.Literals(tones)
+
 const copyFlatStyle = <Key extends StyleKey>(style: StyleFor<Key> | FlatStyleFor<Key>): FlatStyleFor<Key> => {
   const flat: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(style)) {
@@ -1821,6 +1834,71 @@ export interface IconView extends NodeBase {
   readonly style?: TextStyle
 }
 
+// Data-display catalog components (issue #39). Bounded typed building blocks
+// for stat strips, tables, and status readouts, built on Text/Icon + theme
+// tones. `tone` is a closed set aligned to the blue status system.
+export type Tone = "neutral" | "info" | "success" | "warn" | "danger"
+
+export interface DividerView extends NodeBase {
+  readonly _tag: "Divider"
+  readonly orientation?: "horizontal" | "vertical"
+  readonly style?: CardStyle
+}
+
+export interface BadgeView extends NodeBase {
+  readonly _tag: "Badge"
+  readonly label: string
+  readonly tone?: Tone
+  readonly style?: CardStyle
+}
+
+export interface ChipView extends NodeBase {
+  readonly _tag: "Chip"
+  readonly label: string
+  readonly value?: string
+  readonly tone?: Tone
+  readonly style?: CardStyle
+}
+
+export interface MeterView extends NodeBase {
+  readonly _tag: "Meter"
+  // Determinate progress in [0, 1]; omit with indeterminate: true for
+  // in-flight/unknown-duration work.
+  readonly value?: number
+  readonly indeterminate?: boolean
+  readonly label?: string
+  readonly tone?: Tone
+  readonly style?: CardStyle
+}
+
+export interface StatTileView extends NodeBase {
+  readonly _tag: "StatTile"
+  readonly label: string
+  readonly value: string
+  readonly tone?: Tone
+  readonly style?: CardStyle
+}
+
+export interface TableColumn {
+  readonly id: string
+  readonly header: string
+  readonly align?: "start" | "center" | "end"
+  readonly width?: DimensionToken
+}
+
+export interface TableRow {
+  readonly id: string
+  readonly cells: ReadonlyArray<View>
+}
+
+export interface TableView extends NodeBase {
+  readonly _tag: "Table"
+  readonly columns: ReadonlyArray<TableColumn>
+  readonly rows: ReadonlyArray<TableRow>
+  readonly onRowSelect?: IntentRef
+  readonly style?: CardStyle
+}
+
 export type View =
   | StackView
   | TextView
@@ -1836,6 +1914,12 @@ export type View =
   | SheetView
   | HostView
   | IconView
+  | DividerView
+  | BadgeView
+  | ChipView
+  | MeterView
+  | StatTileView
+  | TableView
 
 export type KeyedView = View & { readonly key: NodeKey }
 
@@ -1866,6 +1950,12 @@ const childViewEntries = (
       return view.children.map((child, index) => ({ path: ["children", index], view: child }))
     case "Sheet":
       return view.children.map((child, index) => ({ path: ["children", index], view: child }))
+    case "Table":
+      return view.rows.flatMap((row, rowIndex) =>
+        row.cells.map((cell, cellIndex) => ({
+          path: ["rows", rowIndex, "cells", cellIndex],
+          view: cell
+        })))
     default:
       return []
   }
@@ -2141,6 +2231,70 @@ export const IconSchema: Schema.Codec<IconView, IconView> = Schema.TaggedStruct(
   style: TextStyleSchema.pipe(Schema.optionalKey)
 })
 
+export const DividerSchema: Schema.Codec<DividerView, DividerView> = Schema.TaggedStruct("Divider", {
+  ...CommonFields,
+  orientation: Schema.Literals(["horizontal", "vertical"]).pipe(Schema.optionalKey),
+  style: CardStyleSchema.pipe(Schema.optionalKey)
+})
+
+export const BadgeSchema: Schema.Codec<BadgeView, BadgeView> = Schema.TaggedStruct("Badge", {
+  ...CommonFields,
+  label: Schema.String,
+  tone: ToneSchema.pipe(Schema.optionalKey),
+  style: CardStyleSchema.pipe(Schema.optionalKey)
+})
+
+export const ChipSchema: Schema.Codec<ChipView, ChipView> = Schema.TaggedStruct("Chip", {
+  ...CommonFields,
+  label: Schema.String,
+  value: Schema.String.pipe(Schema.optionalKey),
+  tone: ToneSchema.pipe(Schema.optionalKey),
+  style: CardStyleSchema.pipe(Schema.optionalKey)
+})
+
+const MeterValueSchema = Schema.Number.check(
+  Schema.makeFilter<number>((value) =>
+    value >= 0 && value <= 1 ? undefined : { path: [], issue: "Meter value must be within [0, 1]" }
+  )
+)
+
+export const MeterSchema: Schema.Codec<MeterView, MeterView> = Schema.TaggedStruct("Meter", {
+  ...CommonFields,
+  value: MeterValueSchema.pipe(Schema.optionalKey),
+  indeterminate: Schema.Boolean.pipe(Schema.optionalKey),
+  label: Schema.String.pipe(Schema.optionalKey),
+  tone: ToneSchema.pipe(Schema.optionalKey),
+  style: CardStyleSchema.pipe(Schema.optionalKey)
+})
+
+export const StatTileSchema: Schema.Codec<StatTileView, StatTileView> = Schema.TaggedStruct("StatTile", {
+  ...CommonFields,
+  label: Schema.String,
+  value: Schema.String,
+  tone: ToneSchema.pipe(Schema.optionalKey),
+  style: CardStyleSchema.pipe(Schema.optionalKey)
+})
+
+export const TableColumnSchema: Schema.Codec<TableColumn, TableColumn> = Schema.Struct({
+  id: Schema.NonEmptyString,
+  header: Schema.String,
+  align: Schema.Literals(["start", "center", "end"]).pipe(Schema.optionalKey),
+  width: DimensionTokenSchema.pipe(Schema.optionalKey)
+})
+
+export const TableRowSchema: Schema.Codec<TableRow, TableRow> = Schema.Struct({
+  id: Schema.NonEmptyString,
+  cells: Schema.Array(ViewSelf)
+})
+
+export const TableSchema: Schema.Codec<TableView, TableView> = Schema.TaggedStruct("Table", {
+  ...CommonFields,
+  columns: Schema.Array(TableColumnSchema),
+  rows: Schema.Array(TableRowSchema),
+  onRowSelect: IntentRefSchema.pipe(Schema.optionalKey),
+  style: CardStyleSchema.pipe(Schema.optionalKey)
+})
+
 export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
   Schema.Union([
     StackSchema,
@@ -2156,7 +2310,13 @@ export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
     ModalSchema,
     SheetSchema,
     HostSchema,
-    IconSchema
+    IconSchema,
+    DividerSchema,
+    BadgeSchema,
+    ChipSchema,
+    MeterSchema,
+    StatTileSchema,
+    TableSchema
   ]).check(OverlayStackFilter)
 )
 
@@ -2239,6 +2399,30 @@ export const Host = (props: HostProps): HostView =>
 export type IconProps = WithoutTagAndVersion<IconView>
 export const Icon = (props: IconProps): IconView =>
   IconSchema.make({ _tag: "Icon", catalogVersion: CatalogVersion, ...props })
+
+export type DividerProps = WithoutTagAndVersion<DividerView>
+export const Divider = (props: DividerProps = {}): DividerView =>
+  DividerSchema.make({ _tag: "Divider", catalogVersion: CatalogVersion, ...props })
+
+export type BadgeProps = WithoutTagAndVersion<BadgeView>
+export const Badge = (props: BadgeProps): BadgeView =>
+  BadgeSchema.make({ _tag: "Badge", catalogVersion: CatalogVersion, ...props })
+
+export type ChipProps = WithoutTagAndVersion<ChipView>
+export const Chip = (props: ChipProps): ChipView =>
+  ChipSchema.make({ _tag: "Chip", catalogVersion: CatalogVersion, ...props })
+
+export type MeterProps = WithoutTagAndVersion<MeterView>
+export const Meter = (props: MeterProps): MeterView =>
+  MeterSchema.make({ _tag: "Meter", catalogVersion: CatalogVersion, ...props })
+
+export type StatTileProps = WithoutTagAndVersion<StatTileView>
+export const StatTile = (props: StatTileProps): StatTileView =>
+  StatTileSchema.make({ _tag: "StatTile", catalogVersion: CatalogVersion, ...props })
+
+export type TableProps = WithoutTagAndVersion<TableView>
+export const Table = (props: TableProps): TableView =>
+  TableSchema.make({ _tag: "Table", catalogVersion: CatalogVersion, ...props })
 
 export const decodeView = Schema.decodeUnknownSync(ViewSchema)
 export const encodeView = Schema.encodeSync(ViewSchema)
@@ -2381,9 +2565,23 @@ export const resolveView = (view: View, input: ViewResolution = {}): View => {
       }
     case "Host":
     case "Icon":
+    case "Divider":
+    case "Badge":
+    case "Chip":
+    case "Meter":
+    case "StatTile":
       return {
         ...view,
         ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) })
+      }
+    case "Table":
+      return {
+        ...view,
+        ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) }),
+        rows: view.rows.map((row) => ({
+          ...row,
+          cells: row.cells.map((cell) => resolveView(cell, input))
+        }))
       }
   }
 }
@@ -2406,7 +2604,20 @@ export const resolveBindings = <State>(view: View, state: State): View => {
     case "Spacer":
     case "Host":
     case "Icon":
+    case "Divider":
+    case "Badge":
+    case "Chip":
+    case "Meter":
+    case "StatTile":
       return view
+    case "Table":
+      return {
+        ...view,
+        rows: view.rows.map((row) => ({
+          ...row,
+          cells: row.cells.map((cell) => resolveBindings(cell, state))
+        }))
+      }
     case "List":
       return {
         ...view,
@@ -2495,6 +2706,14 @@ export const redactSecureView = (view: View): View => {
             value: redactedValue
           }
         : view
+    case "Table":
+      return {
+        ...view,
+        rows: view.rows.map((row) => ({
+          ...row,
+          cells: row.cells.map(redactSecureView)
+        }))
+      }
     default:
       return view
   }

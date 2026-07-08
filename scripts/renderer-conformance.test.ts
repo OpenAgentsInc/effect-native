@@ -7,11 +7,17 @@ import {
   Card,
   ComponentValueBinding,
   FieldBinding,
+  Badge,
+  Chip,
+  Divider,
   FormFieldValueBinding,
   Host,
   Icon,
   Image,
   IntentRef,
+  Meter,
+  StatTile,
+  Table,
   Link,
   List,
   Modal,
@@ -185,7 +191,22 @@ const catalogFixturesByTag = {
     props: { placeholder: true },
     style: { backgroundColor: "surface" }
   }),
-  Icon: Icon({ key: "icon", name: "Check", size: "md", color: "accent", label: "Done" })
+  Icon: Icon({ key: "icon", name: "Check", size: "md", color: "accent", label: "Done" }),
+  Divider: Divider({ key: "divider", orientation: "horizontal" }),
+  Badge: Badge({ key: "badge", label: "Live", tone: "success" }),
+  Chip: Chip({ key: "chip", label: "Slots", value: "3/8", tone: "info" }),
+  Meter: Meter({ key: "meter", value: 0.5, label: "Capacity", tone: "info" }),
+  StatTile: StatTile({ key: "stat", label: "Workers", value: "12", tone: "neutral" }),
+  Table: Table({
+    key: "table",
+    columns: [
+      { id: "name", header: "Name", align: "start" },
+      { id: "status", header: "Status", align: "end" }
+    ],
+    rows: [
+      { id: "row-1", cells: [Text({ key: "c-name", content: "Orrery", variant: "body" }), Badge({ key: "c-status", label: "ok", tone: "success" })] }
+    ]
+  })
 } satisfies { readonly [Tag in (typeof componentTags)[number]]: View }
 
 const allFixtureTags = Object.keys(catalogFixturesByTag).sort()
@@ -273,7 +294,13 @@ const catalogRendererTags = [
   "Link",
   "Modal",
   "Sheet",
-  "Icon"
+  "Icon",
+  "Divider",
+  "Badge",
+  "Chip",
+  "Meter",
+  "StatTile",
+  "Table"
 ] as const
 
 // Host (issue #23) is supported by the headless recorder and the DOM renderer
