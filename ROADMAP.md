@@ -1,0 +1,148 @@
+# Roadmap
+
+What we're building and in what order. **Web and mobile are the priority
+targets.** Everything else follows once the core promise is proven on those
+two.
+
+The ordering rule throughout: the typed contract comes first, renderers are
+added one at a time, and the component catalog grows only when a real screen
+needs an element — never speculatively. A small, correct core makes
+everything after it cheap; a bloated one recreates the wall this framework
+exists to avoid.
+
+## Phase 0 — The core (in progress)
+
+The substrate everything else stands on. Deliberately tiny.
+
+- **The component set** (`@effect-native/core`): Effect-Schema definitions
+  for a v0 catalog of ~8 components — `Stack` (row/column, the layout
+  primitive), `Text`, `Button`, `Image`, `TextField`, `List`, `Card`,
+  `Spacer` — each with typed, bounded props. A view is a serializable typed
+  tree of these; an invalid tree cannot be constructed.
+- **The intent algebra**: `onPress`, `onChange`, `onSubmit` as **named typed
+  intents** resolved by the runtime — never inline closures in the view
+  data. This is what keeps the tree serializable, loggable, replayable, and
+  safe for machine authorship.
+- **The runtime**: a small Effect interpreter that walks a view, binds data,
+  and dispatches intents as Effect programs. Pure and snapshot-testable.
+  Built on Effect v4 (`effect-smol`).
+- **Design tokens** (`@effect-native/tokens`): a typed token set — spacing,
+  color, radius, type scale — that every renderer reads. Styles are typed
+  values with a deterministic last-wins merge (no cascade); tokens are the
+  only vocabulary styles speak.
+
+**Exit criterion:** the catalog, intents, and runtime exist, fully typed,
+with snapshot tests — no renderer yet required to validate a view.
+
+## Phase 1 — Two renderers, one screen (the proof)
+
+The framework's core promise, demonstrated: one screen, defined once as
+typed data, rendered identically on web and mobile.
+
+- **DOM renderer** (`@effect-native/render-dom`): maps each catalog
+  component to plain typed DOM output. **No React required.** Styles lower
+  to atomic CSS from the shared tokens.
+- **React Native renderer** (`@effect-native/render-rn`): maps each catalog
+  component to RN host components (`View`, `Text`, `Pressable`,
+  `TextInput`, …), layout compiling to Yoga. We use React Native here as a
+  **rendering backend, not a programming model** — no JSX screens, no
+  hooks, no component-local state; only the adapter speaks React. RN is the
+  pragmatic first mobile renderer because Fabric + Yoga is a decade of
+  solved native rendering we'd be foolish to reimplement on day one; the
+  contract above it is what lets us go fully native later (Phase 5) without
+  a rewrite.
+- **The receipt:** a real, non-trivial screen (form + list + actions)
+  authored once, rendered by both adapters, snapshot-tested on both.
+
+**Exit criterion:** the same view tree renders on web and on an iOS/Android
+device with matching behavior and look, and the demo lives in this repo.
+
+## Phase 2 — Catalog growth, driven by real apps
+
+Grow the component set from what actual screens demand:
+
+- forms and validation (typed, Schema-backed)
+- virtualized lists and section lists
+- images and media
+- modals, sheets, and tabs
+- a **typed navigation intent** (routing expressed as data, delegating to
+  the platform's router below the adapter line)
+- typed variants for platform, interaction state (pressed/focused/disabled),
+  and breakpoint — resolved by the runtime, never a cascade
+
+A component enters the catalog when a screen needs it. A gap register
+tracks what's missing rather than speculatively building it.
+
+**Exit criterion:** the catalog covers the elements of a complete production
+app on both priority targets.
+
+## Phase 3 — Developer experience
+
+The leverage that falls out of "views are data, interactions are values":
+
+- **DevTools**: inspect the live view tree, log and replay intents,
+  time-travel state.
+- **Testing story**: deterministic view snapshots, intent-driven interaction
+  tests, visual baselines per renderer.
+- **Authoring ergonomics**: helpers and (possibly) typed utility aliases for
+  styles, without ever making a string the contract.
+- Documentation and examples good enough for someone outside the project to
+  build an app.
+
+Runs alongside Phase 2 — DX is built on the substrate, not bolted on later.
+
+## Phase 4 — Desktop and canvas
+
+- **Desktop**: any webview-based desktop shell (Electron and friends)
+  consumes the DOM renderer directly — desktop is largely free once web is
+  solid. A dedicated desktop adapter only if a real need appears.
+- **Canvas renderer** (`@effect-native/render-canvas`): a reconciler for
+  typed scene-descriptor trees (WebGL/Three.js), with frame scheduling and
+  resource lifetimes on Effect `Scope`/`Stream` — so 3D and data-viz
+  surfaces sit under the same component contract as everything else.
+
+## Phase 5 — True native renderers (the fidelity upgrade)
+
+Per-component **Swift (iOS)** and **Jetpack Compose (Android)** renderers,
+swapped in where fidelity or performance demands it, with the RN adapter as
+the fallback for the long tail. Because the contract is renderer-agnostic,
+this is a migration, never a rewrite — and it can proceed one component at
+a time. This phase starts only once the catalog is stable and a real screen
+proves it needs native.
+
+This is the insurance the whole architecture exists to enable: the day a
+dependency churns or a screen needs more than RN can give, the path is a
+contained per-component project, not a platform rewrite.
+
+## Phase 6 — Beyond (as demand proves out)
+
+- **Server-driven UI**: the view tree is already serializable data; serving
+  it from a backend (change a screen without an app release) is a designed-
+  for option, built when a real use case pulls it.
+- **Terminal renderer**: same contract, text-mode adapter — if justified.
+- Additional platform hosts following the `@effect/platform-*` pattern.
+
+## Non-goals
+
+- **Replacing React Native's engine from scratch.** Fabric/Yoga is used,
+  not reimplemented. Native renderers arrive per-component, by demand.
+- **An open-ended component zoo.** The catalog is closed and versioned;
+  that's a feature, not a limitation.
+- **Class-string styling.** Styles are typed values lowered per renderer;
+  no `className` appears in any public contract.
+- **Mandating an app architecture.** Effect Native is the substrate; an
+  MVU-style shell can sit above it, or not.
+
+## Sequencing at a glance
+
+```
+Phase 0 (core) ──► Phase 1 (DOM + RN, one screen)
+                        │
+                        ├──► Phase 2 (catalog) ∥ Phase 3 (DX)
+                        │
+                        └──► Phase 4 (desktop/canvas)
+                                  │
+                                  └──► Phase 5 (native Swift/Compose)
+                                            │
+                                            └──► Phase 6 (server-driven, tty, …)
+```

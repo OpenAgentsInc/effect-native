@@ -138,6 +138,9 @@ a handful of components, the Effect runtime, and two renderers (DOM and
 React Native) proving the core promise — one screen, defined once as typed
 data, rendered identically on both.
 
+See the **[roadmap](./ROADMAP.md)** for what we're building and in what
+order — web and mobile are the priority targets.
+
 Nothing here is stable yet. APIs will change without notice until a first
 tagged release.
 
