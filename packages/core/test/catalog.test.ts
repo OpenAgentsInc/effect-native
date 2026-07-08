@@ -1,0 +1,237 @@
+import { describe, expect, test } from "bun:test"
+import { Exit, Schema } from "effect"
+import fc from "fast-check"
+import {
+  Button,
+  Card,
+  CatalogVersion,
+  Image,
+  List,
+  Spacer,
+  Stack,
+  Text,
+  TextField,
+  ViewSchema,
+  colorTokens,
+  componentTags,
+  decodeView,
+  dimensionTokens,
+  encodeView,
+  radiusTokens,
+  spacingTokens,
+  type ButtonVariant,
+  type ColorToken,
+  type Dimension,
+  type ImageFit,
+  type IntentRef,
+  type KeyedView,
+  type RadiusToken,
+  type SpacingToken,
+  type StackAlign,
+  type StackDirection,
+  type StackJustify,
+  type TextWeight,
+  type View,
+  type TypeScaleToken,
+  typeScaleTokens
+} from "../src/index"
+
+const nonEmptyString = fc.string({ minLength: 1, maxLength: 24 })
+const key = nonEmptyString
+
+const spacingToken = fc.constantFrom<SpacingToken>(...spacingTokens)
+const colorToken = fc.constantFrom<ColorToken>(...colorTokens)
+const radiusToken = fc.constantFrom<RadiusToken>(...radiusTokens)
+const typeScaleToken = fc.constantFrom<TypeScaleToken>(...typeScaleTokens)
+const dimensionToken = fc.constantFrom<Extract<Dimension, string>>(...dimensionTokens)
+
+const intentRef = fc.record({
+  name: nonEmptyString,
+  payload: fc.option(fc.jsonValue(), { nil: undefined })
+}).map(({ name, payload }): IntentRef => (
+  payload === undefined ? { name } : { name, payload: payload as Exclude<IntentRef["payload"], undefined> }
+))
+
+const dimension: fc.Arbitrary<Dimension> = fc.oneof(
+  dimensionToken,
+  fc.integer({ min: 0, max: 1200 })
+)
+
+const leafView = (): fc.Arbitrary<View> =>
+  fc.oneof(
+    fc.record({
+      key,
+      content: fc.string({ maxLength: 80 }),
+      variant: typeScaleToken,
+      color: colorToken,
+      weight: fc.constantFrom<TextWeight>("regular", "medium", "semibold", "bold")
+    }).map(Text),
+    fc.record({
+      key,
+      label: fc.string({ minLength: 1, maxLength: 40 }),
+      variant: fc.constantFrom<ButtonVariant>("primary", "secondary", "ghost"),
+      disabled: fc.boolean(),
+      onPress: intentRef
+    }).map(Button),
+    fc.record({
+      key,
+      sourceId: fc.integer({ min: 1, max: 100000 }),
+      alt: fc.string({ minLength: 1, maxLength: 80 }),
+      width: dimension,
+      height: dimension,
+      fit: fc.constantFrom<ImageFit>("contain", "cover", "fill")
+    }).map(({ sourceId, ...props }) => Image({
+      ...props,
+      source: `https://example.com/assets/${sourceId}.png`
+    })),
+    fc.oneof(
+      fc.record({
+        key,
+        value: fc.string({ maxLength: 80 }),
+        placeholder: fc.string({ maxLength: 40 }),
+        label: fc.string({ maxLength: 40 }),
+        secure: fc.constant(true),
+        onChange: intentRef,
+        onSubmit: intentRef
+      }).map(TextField),
+      fc.record({
+        key,
+        value: fc.string({ maxLength: 80 }),
+        placeholder: fc.string({ maxLength: 40 }),
+        label: fc.string({ maxLength: 40 }),
+        secure: fc.constant(false),
+        multiline: fc.boolean(),
+        onChange: intentRef,
+        onSubmit: intentRef
+      }).map(TextField)
+    ),
+    fc.oneof(
+      fc.record({
+        key,
+        size: spacingToken,
+        flex: fc.constant(false)
+      }).map(Spacer),
+      fc.record({
+        key,
+        flex: fc.constant(true)
+      }).map(Spacer)
+    )
+  )
+
+const view = (depth: number): fc.Arbitrary<View> => {
+  if (depth <= 0) {
+    return leafView()
+  }
+
+  return fc.oneof(
+    leafView(),
+    fc.record({
+      key,
+      direction: fc.constantFrom<StackDirection>("row", "column"),
+      gap: spacingToken,
+      align: fc.constantFrom<StackAlign>("start", "center", "end", "stretch"),
+      justify: fc.constantFrom<StackJustify>("start", "center", "end", "between", "around"),
+      padding: spacingToken,
+      children: fc.array(view(depth - 1), { maxLength: 3 })
+    }).map(({ children, ...props }) => Stack(props, children)),
+    fc.record({
+      key,
+      padding: spacingToken,
+      radius: radiusToken,
+      children: fc.array(view(depth - 1), { maxLength: 3 })
+    }).map(({ children, ...props }) => Card(props, children)),
+    fc.record({
+      key,
+      items: fc.array(view(depth - 1), { maxLength: 3 })
+    }).map(({ items, ...props }) => List(props, items as ReadonlyArray<KeyedView>))
+  )
+}
+
+describe("Effect Native catalog v0", () => {
+  test("contains exactly the eight v0 component tags", () => {
+    expect(componentTags).toEqual([
+      "Stack",
+      "Text",
+      "Button",
+      "Image",
+      "TextField",
+      "List",
+      "Card",
+      "Spacer"
+    ])
+    expect(new Set(componentTags).size).toBe(8)
+  })
+
+  test("schema encode/decode round-trips constructed views as JSON data", () => {
+    fc.assert(
+      fc.property(view(2), (tree) => {
+        const encoded = encodeView(tree)
+        const decoded = decodeView(encoded)
+
+        expect(encoded).toEqual(tree)
+        expect(decoded).toEqual(tree)
+      }),
+      { numRuns: 75 }
+    )
+  })
+
+  test("malformed trees fail schema decode with typed schema errors", () => {
+    const decode = Schema.decodeUnknownExit(ViewSchema)
+
+    expect(Exit.isFailure(decode({
+      _tag: "Custom",
+      catalogVersion: CatalogVersion
+    }))).toBe(true)
+
+    expect(Exit.isFailure(decode({
+      _tag: "Stack",
+      catalogVersion: CatalogVersion,
+      direction: "diagonal",
+      children: []
+    }))).toBe(true)
+  })
+
+  test("intent refs keep payload data serializable", () => {
+    const exit = Schema.decodeUnknownExit(ViewSchema)({
+      _tag: "Button",
+      catalogVersion: CatalogVersion,
+      label: "Run",
+      variant: "primary",
+      onPress: {
+        name: "PressedRun",
+        payload: () => "not data"
+      }
+    })
+
+    expect(Exit.isFailure(exit)).toBe(true)
+  })
+
+  test("text fields cannot be both secure and multiline", () => {
+    const exit = Schema.decodeUnknownExit(ViewSchema)({
+      _tag: "TextField",
+      catalogVersion: CatalogVersion,
+      value: "secret",
+      secure: true,
+      multiline: true
+    })
+
+    expect(Exit.isFailure(exit)).toBe(true)
+  })
+
+  test("list items require explicit keys", () => {
+    const exit = Schema.decodeUnknownExit(ViewSchema)({
+      _tag: "List",
+      catalogVersion: CatalogVersion,
+      items: [
+        {
+          _tag: "Text",
+          catalogVersion: CatalogVersion,
+          content: "Unkeyed",
+          variant: "body"
+        }
+      ]
+    })
+
+    expect(Exit.isFailure(exit)).toBe(true)
+  })
+})

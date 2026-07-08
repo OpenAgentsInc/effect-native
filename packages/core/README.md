@@ -2,13 +2,29 @@
 
 Core runtime package for Effect Native.
 
-This package will hold the closed component catalog, typed intent algebra,
-runtime, and renderer adapter contract. Issue #1 only creates the workspace
-scaffold; catalog and runtime behavior land in later Phase 0 issues.
+This package holds the closed v0 component catalog as Effect Schema data.
+The current catalog has exactly eight components: `Stack`, `Text`, `Button`,
+`Image`, `TextField`, `List`, `Card`, and `Spacer`.
 
 ```ts
-import { packageName } from "@effect-native/core"
+import { Button, Stack, Text, encodeView } from "@effect-native/core"
 
-console.log(packageName)
+const view = Stack({ direction: "column", gap: "2" }, [
+  Text({
+    content: "Welcome",
+    variant: "heading",
+    color: "textPrimary"
+  }),
+  Button({
+    label: "Continue",
+    variant: "primary",
+    onPress: { name: "PressedContinue" }
+  })
+])
+
+const data = encodeView(view)
 ```
 
+The view tree is serializable data. Interactions are represented as named
+intent references; the full intent registry and dispatcher land in the next
+Phase 0 issue.
