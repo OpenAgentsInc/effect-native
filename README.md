@@ -148,7 +148,8 @@ typed data, rendered through web and mobile hosts, with a cross-renderer
 oracle checking state, intent logs, and structural snapshots.
 
 Phase 2 catalog growth is governed by [GAPS.md](./GAPS.md). `Link`,
-responsive layout, Schema-backed forms, and Modal/Sheet overlays are complete;
+responsive layout, Schema-backed forms, Modal/Sheet overlays, and virtualized
+`List` / `SectionList` collections are complete;
 additional components enter only when a real screen demands them, through an
 issue that defines the typed props/intents/style contract, implements every
 shipping renderer, bumps the catalog version, and extends the renderer

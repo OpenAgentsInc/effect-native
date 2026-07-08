@@ -3,9 +3,9 @@
 Core runtime package for Effect Native.
 
 This package holds the closed component catalog as Effect Schema data. The
-current catalog is `effect-native/v4` and has exactly eleven components:
-`Stack`, `Text`, `Button`, `Image`, `TextField`, `List`, `Card`, `Spacer`,
-`Link`, `Modal`, and `Sheet`.
+current catalog is `effect-native/v5` and has exactly twelve components:
+`Stack`, `Text`, `Button`, `Image`, `TextField`, `List`, `SectionList`,
+`Card`, `Spacer`, `Link`, `Modal`, and `Sheet`.
 
 ```ts
 import { Button, Stack, Text, encodeView } from "@effect-native/core"
@@ -128,6 +128,40 @@ IntentRef("FormFieldChanged", FormFieldValueBinding(FieldBinding("signup", "emai
 mapped errors plus `focusedField` on failure. `secure: true` fields are
 redacted from form event logs through `makeFormIntentRedactor`, and the
 headless renderer redacts secure `TextField` snapshots.
+
+Collections are data too. `List` keeps the same keyed item array it started
+with, and may opt into renderer-owned windowing with `virtualize: true`,
+`estimatedItemSize`, and an `onEndReached` intent for pagination. Headless
+rendering treats virtualization as a no-op so snapshots stay complete and
+deterministic. `SectionList` adds keyed sections with ordinary view headers
+and keyed item trees, plus `stickyHeaders` for grouped feeds and settings.
+
+```ts
+import { IntentRef, List, SectionList, StaticPayload, Text } from "@effect-native/core"
+
+List({
+  virtualize: true,
+  estimatedItemSize: 48,
+  endReachedThreshold: 0.5,
+  onEndReached: IntentRef("ReachedEnd", StaticPayload({ source: "feed" }))
+}, [
+  Text({ key: "receipt-1", content: "Receipt #1", variant: "body" })
+])
+
+SectionList({
+  stickyHeaders: true,
+  virtualize: true,
+  estimatedItemSize: 40
+}, [
+  {
+    key: "account",
+    header: Text({ key: "account-header", content: "Account", variant: "label" }),
+    items: [
+      Text({ key: "email", content: "Email", variant: "body" })
+    ]
+  }
+])
+```
 
 Overlays are also data. `Modal` and `Sheet` carry an `open` boolean or
 `Binding`, an `onDismiss` intent, and bounded presentation props. Opening is a

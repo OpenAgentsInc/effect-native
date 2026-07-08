@@ -13,6 +13,7 @@ const describeView = Match.type<View>().pipe(
   Match.tag("Image", () => "media"),
   Match.tag("TextField", () => "input"),
   Match.tag("List", () => "collection"),
+  Match.tag("SectionList", () => "collection"),
   Match.tag("Card", () => "surface"),
   Match.tag("Spacer", () => "space"),
   Match.tag("Link", () => "navigation"),

@@ -13,6 +13,7 @@ import {
   Link,
   List,
   Modal,
+  SectionList,
   Spacer,
   Sheet,
   Stack,
@@ -151,6 +152,19 @@ const catalogFixturesByTag = {
   List: List({ key: "list", style: { padding: "1" } }, [
     keyed(Text({ key: "list-item", content: "List item", variant: "body" }))
   ]),
+  SectionList: SectionList({
+    key: "sections",
+    stickyHeaders: true,
+    style: { padding: "1" }
+  }, [
+    {
+      key: "account",
+      header: Text({ key: "section-header", content: "Section header", variant: "label" }),
+      items: [
+        keyed(Text({ key: "section-item", content: "Section item", variant: "body" }))
+      ]
+    }
+  ]),
   Card: Card({
     key: "card",
     padding: "3",
@@ -181,6 +195,7 @@ const fixtureView = (state: FixtureState): View =>
       value: state.field
     }),
     catalogFixturesByTag.List,
+    catalogFixturesByTag.SectionList,
     catalogFixturesByTag.Card,
     catalogFixturesByTag.Spacer
   ])
@@ -198,6 +213,14 @@ const expectedInitialStructure: Structure = {
     { tag: "Image", key: "image" },
     { tag: "TextField", key: "field" },
     { tag: "List", key: "list", children: [{ tag: "Text", key: "list-item", text: "List item" }] },
+    {
+      tag: "SectionList",
+      key: "sections",
+      children: [
+        { tag: "Text", key: "section-header", text: "Section header" },
+        { tag: "Text", key: "section-item", text: "Section item" }
+      ]
+    },
     { tag: "Card", key: "card", children: [{ tag: "Text", key: "card-copy", text: "Card copy" }] },
     { tag: "Spacer", key: "spacer" }
   ]
@@ -232,6 +255,7 @@ const catalogRendererTags = [
   "Image",
   "TextField",
   "List",
+  "SectionList",
   "Card",
   "Spacer",
   "Link",
@@ -310,6 +334,7 @@ const rnDependencies: ReactNativeDependencies = {
     Pressable: "Pressable",
     TextInput: "TextInput",
     FlatList: "FlatList",
+    SectionList: "SectionList",
     Image: "Image",
     Modal: "Modal"
   }
@@ -642,6 +667,119 @@ describe("renderer conformance suite", () => {
     expect(dom.state).toEqual(headless.state)
     expect(rn.state).toEqual(headless.state)
     expect(headless.snapshot?._tag).toBe("Stack")
+  })
+
+  test("virtualized list and section pagination conforms across every renderer", async () => {
+    const ReachedEnd = defineIntent("ReachedEnd", Schema.Struct({
+      surface: Schema.String
+    }))
+    const items: ReadonlyArray<KeyedView> = Array.from({ length: 200 }, (_, index) =>
+      keyed(Text({ key: `row-${index}`, content: `Row ${index}`, variant: "body" }))
+    )
+    const sectionItems: ReadonlyArray<KeyedView> = Array.from({ length: 200 }, (_, index) =>
+      keyed(Text({ key: `section-row-${index}`, content: `Section row ${index}`, variant: "body" }))
+    )
+    const view = Stack({ key: "virtual-root", direction: "column" }, [
+      List({
+        key: "virtual-list",
+        virtualize: true,
+        estimatedItemSize: 20,
+        endReachedThreshold: 1,
+        onEndReached: IntentRef("ReachedEnd", StaticPayload({ surface: "list" }))
+      }, items),
+      SectionList({
+        key: "virtual-sections",
+        virtualize: true,
+        estimatedItemSize: 20,
+        endReachedThreshold: 1,
+        stickyHeaders: true,
+        onEndReached: IntentRef("ReachedEnd", StaticPayload({ surface: "sections" }))
+      }, [
+        {
+          key: "activity",
+          header: Text({ key: "activity-header", content: "Activity", variant: "label" }),
+          items: sectionItems
+        }
+      ])
+    ])
+    const createCollectionsRuntime = Effect.gen(function*() {
+      const hits = yield* Ref.make<ReadonlyArray<string>>([])
+      const registry = yield* makeIntentRegistry([ReachedEnd] as const, {
+        ReachedEnd: (payload) =>
+          Ref.update(hits, (current) => [...current, payload.surface])
+      }, { now: () => 0 })
+      const report: IntentReporter = (ref, runtimeValue) =>
+        registry.dispatch(resolveIntentRef(ref, runtimeValue))
+      return { hits, registry, report }
+    })
+
+    const headless = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
+      const runtime = yield* createCollectionsRuntime
+      const surface = yield* makeHeadlessRenderer().mount(undefined, Stream.make(view), runtime.report)
+      const current = yield* surface.current
+      if (current === undefined) {
+        throw new Error("expected headless view")
+      }
+      return domViewStructure(current)
+    })))
+
+    const window = new Window()
+    const document = window.document as unknown as Document
+    const container = document.createElement("main")
+    document.body.appendChild(container)
+    const dom = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
+      const runtime = yield* createCollectionsRuntime
+      yield* makeDomRenderer({ document }).mount(container, Stream.make(view), runtime.report)
+      const list = container.querySelector('[data-en-key="virtual-list"]') as HTMLElement | null
+      const sections = container.querySelector('[data-en-key="virtual-sections"]') as HTMLElement | null
+      if (list === null || sections === null) {
+        throw new Error("expected DOM virtual collections")
+      }
+
+      list.scrollTop = 20 * 198
+      sections.scrollTop = 20 * 198
+      list.dispatchEvent(new window.Event("scroll", { bubbles: true }) as unknown as Event)
+      sections.dispatchEvent(new window.Event("scroll", { bubbles: true }) as unknown as Event)
+      yield* nextTask
+      return {
+        listRows: list.querySelectorAll('[data-en-role="item"]').length,
+        sectionRows: sections.querySelectorAll('[data-en-role="item"]').length,
+        hits: yield* Ref.get(runtime.hits)
+      }
+    })))
+
+    const rn = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
+      const runtime = yield* createCollectionsRuntime
+      const surface = yield* makeReactNativeRenderer({ dependencies: rnDependencies }).mount(
+        undefined,
+        Stream.make(view),
+        runtime.report
+      )
+      const list = findNativeNode(yield* surface.currentElement, "List", "virtual-list")
+      const sections = findNativeNode(yield* surface.currentElement, "SectionList", "virtual-sections")
+      const listEnd = list?.props.onEndReached
+      const sectionsEnd = sections?.props.onEndReached
+      if (typeof listEnd !== "function" || typeof sectionsEnd !== "function") {
+        throw new Error("expected RN end-reached handlers")
+      }
+      listEnd()
+      sectionsEnd()
+      yield* nextTask
+      return {
+        listThreshold: list.props.onEndReachedThreshold,
+        stickyHeaders: sections.props.stickySectionHeadersEnabled,
+        hits: yield* Ref.get(runtime.hits)
+      }
+    })))
+
+    expect(JSON.stringify(headless)).toContain("Row 199")
+    expect(JSON.stringify(headless)).toContain("Section row 199")
+    expect(dom.listRows).toBeLessThan(40)
+    expect(dom.sectionRows).toBeLessThan(40)
+    expect(dom.hits).toEqual(["list", "sections"])
+    expect(rn.listThreshold).toBe(1)
+    expect(rn.stickyHeaders).toBe(true)
+    expect(rn.hits).toEqual(["list", "sections"])
   })
 
   test("overlay open state and dismiss intents conform across every renderer", async () => {

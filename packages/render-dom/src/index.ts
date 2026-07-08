@@ -18,6 +18,7 @@ import {
   NavigationHandler,
   type NavigationDestination,
   type RendererAdapter,
+  type SectionListView,
   type SheetView,
   type SpacerView,
   type StackView,
@@ -328,12 +329,15 @@ class DomRendererState {
   readonly keyed = new Map<string, HTMLElement>()
   readonly listeners = new WeakMap<EventTarget, Array<EventCleanup>>()
   readonly allListeners = new Set<EventCleanup>()
+  theme: Theme
   focusRequest: HTMLElement | undefined
   overlayOpen = false
   overlayRestoreFocus: HTMLElement | undefined
   overlayBodyOverflow: string | undefined
+  readonly endReachedSignatures = new Map<string, string>()
 
   constructor(container: Element, document: Document, theme: Theme) {
+    this.theme = theme
     this.root = document.createElement("div")
     this.root.setAttribute("data-effect-native-surface", "dom")
     container.appendChild(this.root)
@@ -359,6 +363,11 @@ class DomRendererState {
 
   clearFocusRequest(): void {
     this.focusRequest = undefined
+  }
+
+  setTheme(theme: Theme): void {
+    this.theme = theme
+    this.styles.setTheme(theme)
   }
 
   consumeFocusRequest(): HTMLElement | undefined {
@@ -763,16 +772,253 @@ const renderTextField = (view: TextFieldView, state: DomRendererState, report: I
   return element
 }
 
+const defaultVirtualViewportSize = 400
+const virtualOverscan = 3
+
+const dimensionPixels = (value: Dimension, theme: Theme): number => {
+  if (typeof value === "number") {
+    return value
+  }
+  const resolved = theme.dimension[value as DimensionToken]
+  return typeof resolved === "number" ? resolved : 44
+}
+
+const collectionIdentity = (view: ListView | SectionListView): string =>
+  `${view._tag}:${view.key ?? "unkeyed"}`
+
+const collectionThreshold = (view: ListView | SectionListView): number =>
+  view.endReachedThreshold ?? 0.5
+
+const viewportExtent = (element: HTMLElement): number => {
+  const inlineHeight = Number.parseFloat(element.style.height)
+  return element.clientHeight > 0
+    ? element.clientHeight
+    : Number.isFinite(inlineHeight) && inlineHeight > 0
+      ? inlineHeight
+      : defaultVirtualViewportSize
+}
+
+const maybeReportEndReached = (
+  view: ListView | SectionListView,
+  element: HTMLElement,
+  rowCount: number,
+  itemSize: number,
+  report: IntentReporter,
+  state: DomRendererState
+): void => {
+  if (view.onEndReached === undefined || rowCount === 0) {
+    return
+  }
+
+  const viewport = viewportExtent(element)
+  const total = rowCount * itemSize
+  const remaining = total - (element.scrollTop + viewport)
+  const withinThreshold = remaining <= viewport * collectionThreshold(view)
+  const identity = collectionIdentity(view)
+  const signature = `${rowCount}:${itemSize}:${view.onEndReached.name}`
+
+  if (withinThreshold && state.endReachedSignatures.get(identity) !== signature) {
+    state.endReachedSignatures.set(identity, signature)
+    runReportedIntent(report, view.onEndReached)
+  } else if (!withinThreshold) {
+    state.endReachedSignatures.delete(identity)
+  }
+}
+
+const virtualWindow = (
+  element: HTMLElement,
+  rowCount: number,
+  itemSize: number
+): { readonly start: number; readonly end: number } => {
+  const viewport = viewportExtent(element)
+  const start = Math.max(0, Math.floor(element.scrollTop / itemSize) - virtualOverscan)
+  const visible = Math.ceil(viewport / itemSize) + virtualOverscan * 2
+  return {
+    start,
+    end: Math.min(rowCount, start + visible)
+  }
+}
+
+const virtualSpacer = (document: Document, height: number, tagName: "li" | "div"): HTMLElement => {
+  const spacer = document.createElement(tagName)
+  spacer.setAttribute("data-en-role", "virtual-spacer")
+  spacer.setAttribute("aria-hidden", "true")
+  spacer.style.height = px(height)
+  if (tagName === "li") {
+    spacer.style.listStyle = "none"
+  }
+  return spacer
+}
+
+const renderListItem = (
+  element: HTMLElement,
+  item: View,
+  state: DomRendererState,
+  report: IntentReporter
+): HTMLElement => {
+  const listItem = element.ownerDocument.createElement("li")
+  listItem.setAttribute("data-en-role", "item")
+  listItem.style.listStyle = "none"
+  listItem.appendChild(renderView(item, state, report))
+  return listItem
+}
+
+const prepareVirtualCollection = (
+  element: HTMLElement,
+  view: ListView | SectionListView,
+  state: DomRendererState,
+  rowCount: number,
+  itemSize: number,
+  report: IntentReporter,
+  renderRows: () => void
+): void => {
+  element.setAttribute("data-en-virtualized", "true")
+  element.style.overflowY = "auto"
+  element.style.contain = "content"
+  if (view.style === undefined || !("height" in view.style) && !("maxHeight" in view.style)) {
+    element.style.height = px(Math.min(defaultVirtualViewportSize, Math.max(itemSize, rowCount * itemSize)))
+  }
+  renderRows()
+  maybeReportEndReached(view, element, rowCount, itemSize, report, state)
+  state.addListener(element, "scroll", () => {
+    renderRows()
+    maybeReportEndReached(view, element, rowCount, itemSize, report, state)
+  })
+}
+
+const resetCollectionStyle = (element: HTMLElement): void => {
+  element.removeAttribute("data-en-virtualized")
+  element.style.overflowY = ""
+  element.style.contain = ""
+  element.style.height = ""
+}
+
 const renderList = (view: ListView, state: DomRendererState, report: IntentReporter): HTMLElement => {
   const element = state.keyedElement(view, "ul")
   state.resetListeners(element)
-  const items = view.items.map((item) => {
-    const listItem = element.ownerDocument.createElement("li")
-    listItem.setAttribute("data-en-role", "item")
-    listItem.appendChild(renderView(item, state, report))
-    return listItem
-  })
-  element.replaceChildren(...items)
+  const itemSize = Math.max(
+    1,
+    view.estimatedItemSize === undefined
+      ? 44
+      : dimensionPixels(view.estimatedItemSize, state.theme)
+  )
+
+  if (view.virtualize === true) {
+    prepareVirtualCollection(
+      element,
+      view,
+      state,
+      view.items.length,
+      itemSize,
+      report,
+      () => {
+        const { start, end } = virtualWindow(element, view.items.length, itemSize)
+        const rows = view.items.slice(start, end).map((item) => renderListItem(element, item, state, report))
+        element.replaceChildren(
+          virtualSpacer(element.ownerDocument, start * itemSize, "li"),
+          ...rows,
+          virtualSpacer(element.ownerDocument, (view.items.length - end) * itemSize, "li")
+        )
+      }
+    )
+  } else {
+    resetCollectionStyle(element)
+    element.replaceChildren(...view.items.map((item) => renderListItem(element, item, state, report)))
+  }
+
+  applyBaseStyle(element, view, state)
+  return element
+}
+
+type SectionRow =
+  | {
+      readonly kind: "header"
+      readonly sectionKey: string
+      readonly view: View
+    }
+  | {
+      readonly kind: "item"
+      readonly sectionKey: string
+      readonly view: View
+    }
+
+const sectionRows = (view: SectionListView): ReadonlyArray<SectionRow> =>
+  view.sections.flatMap((section) => [
+    {
+      kind: "header" as const,
+      sectionKey: section.key,
+      view: section.header
+    },
+    ...section.items.map((item) => ({
+      kind: "item" as const,
+      sectionKey: section.key,
+      view: item
+    }))
+  ])
+
+const renderSectionRow = (
+  element: HTMLElement,
+  row: SectionRow,
+  stickyHeaders: boolean,
+  state: DomRendererState,
+  report: IntentReporter
+): HTMLElement => {
+  const rowElement = element.ownerDocument.createElement("div")
+  rowElement.setAttribute("data-en-role", row.kind === "header" ? "section-header" : "item")
+  rowElement.setAttribute("data-en-section-key", row.sectionKey)
+  if (row.kind === "header" && stickyHeaders) {
+    rowElement.style.position = "sticky"
+    rowElement.style.top = "0"
+    rowElement.style.zIndex = "1"
+    rowElement.style.background = "var(--en-color-background)"
+  }
+  rowElement.appendChild(renderView(row.view, state, report))
+  return rowElement
+}
+
+const renderSectionList = (
+  view: SectionListView,
+  state: DomRendererState,
+  report: IntentReporter
+): HTMLElement => {
+  const element = state.keyedElement(view, "section")
+  state.resetListeners(element)
+  const rows = sectionRows(view)
+  const stickyHeaders = view.stickyHeaders === true
+  const itemSize = Math.max(
+    1,
+    view.estimatedItemSize === undefined
+      ? 44
+      : dimensionPixels(view.estimatedItemSize, state.theme)
+  )
+
+  if (view.virtualize === true) {
+    prepareVirtualCollection(
+      element,
+      view,
+      state,
+      rows.length,
+      itemSize,
+      report,
+      () => {
+        const { start, end } = virtualWindow(element, rows.length, itemSize)
+        const renderedRows = rows
+          .slice(start, end)
+          .map((row) => renderSectionRow(element, row, stickyHeaders, state, report))
+        element.replaceChildren(
+          virtualSpacer(element.ownerDocument, start * itemSize, "div"),
+          ...renderedRows,
+          virtualSpacer(element.ownerDocument, (rows.length - end) * itemSize, "div")
+        )
+      }
+    )
+  } else {
+    resetCollectionStyle(element)
+    element.replaceChildren(
+      ...rows.map((row) => renderSectionRow(element, row, stickyHeaders, state, report))
+    )
+  }
+
   applyBaseStyle(element, view, state)
   return element
 }
@@ -824,6 +1070,8 @@ const renderView = (view: View, state: DomRendererState, report: IntentReporter)
       return renderTextField(view, state, report)
     case "List":
       return renderList(view, state, report)
+    case "SectionList":
+      return renderSectionList(view, state, report)
     case "Card":
       return renderCard(view, state, report)
     case "Spacer":
@@ -874,11 +1122,20 @@ const serializeElement = (element: Element): DomStructure | undefined => {
   }
 
   const key = element.getAttribute("data-en-key") ?? undefined
-  const childElements = Array.from(element.children)
-    .filter((child) => child.getAttribute("data-en-role") !== "label")
-  const children = childElements
-    .map((child) => serializeElement(child))
-    .filter((child): child is DomStructure => child !== undefined)
+  const serializeChildren = (root: Element): ReadonlyArray<DomStructure> =>
+    Array.from(root.children)
+      .filter((child) =>
+        child.getAttribute("data-en-role") !== "label" &&
+        child.getAttribute("data-en-role") !== "virtual-spacer"
+      )
+      .flatMap((child) => {
+        if (child.getAttribute("data-en-tag") !== null) {
+          const serialized = serializeElement(child)
+          return serialized === undefined ? [] : [serialized]
+        }
+        return serializeChildren(child)
+      })
+  const children = serializeChildren(element)
 
   return {
     tag,
@@ -933,6 +1190,15 @@ export const viewStructure = (view: View): DomStructure => {
         tag: "List",
         ...(view.key === undefined ? {} : { key: view.key }),
         children: view.items.map(viewStructure)
+      }
+    case "SectionList":
+      return {
+        tag: "SectionList",
+        ...(view.key === undefined ? {} : { key: view.key }),
+        children: view.sections.flatMap((section) => [
+          viewStructure(section.header),
+          ...section.items.map(viewStructure)
+        ])
       }
     case "Card":
       return {
@@ -1005,7 +1271,7 @@ export const makeDomRenderer = (options: DomRendererOptions = {}): RendererAdapt
           unmount: Scope.close(surfaceScope, Exit.void),
           serialize: Effect.sync(() => serializeDomStructure(state.root)),
           stylesheetText: Effect.sync(() => state.styles.element.textContent ?? ""),
-          setTheme: (theme: Theme) => Effect.sync(() => state.styles.setTheme(theme)),
+          setTheme: (theme: Theme) => Effect.sync(() => state.setTheme(theme)),
           currentViewport: viewport.current,
           setViewport: viewport.set
         }

@@ -9,8 +9,10 @@ import {
   Image,
   IntentRef,
   Link,
+  List,
   Modal,
   NavigationHandler,
+  SectionList,
   Sheet,
   Spacer,
   Stack,
@@ -29,6 +31,7 @@ import {
   resolveIntentRef,
   type IntentHandlers,
   type IntentReporter,
+  type KeyedView,
   type NavigationDestination,
   type View
 } from "@effect-native/core"
@@ -42,8 +45,10 @@ const Pressed = defineIntent("Pressed", Schema.Struct({
   amount: Schema.Number
 }))
 const Changed = defineIntent("Changed", Schema.String)
+const EndReached = defineIntent("EndReached", Schema.Struct({}))
 const counterDefinitions = [Pressed] as const
 const textFieldDefinitions = [Changed] as const
+const endReachedDefinitions = [EndReached] as const
 
 const createDom = () => {
   const window = new Window()
@@ -56,6 +61,7 @@ const createDom = () => {
 const nextTask = Effect.promise<void>(() => new Promise((resolve) => setTimeout(resolve, 0)))
 
 const noopReport: IntentReporter = () => Effect.succeed(undefined)
+const keyed = <V extends View>(view: V): V & { readonly key: string } => view as V & { readonly key: string }
 
 const counterView = (state: CounterState): View =>
   Stack({ key: "root", direction: "column", gap: "2" }, [
@@ -247,6 +253,113 @@ describe("DOM renderer", () => {
 
       expect(event.defaultPrevented).toBe(true)
       expect(recorded).toEqual([destination])
+    })))
+  })
+
+  test("virtualized List mounts a bounded window, preserves scroll, and reports end reached", async () => {
+    const { container, document, window } = createDom()
+    const items: ReadonlyArray<KeyedView> = Array.from({ length: 5000 }, (_, index) =>
+      Text({ key: `row-${index}`, content: `Row ${index}`, variant: "body" })
+    ).map(keyed)
+
+    await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
+      const state = yield* SubscriptionRef.make({ revision: 0 })
+      const program = makeViewProgramFromState(state, (current) =>
+        Stack({ key: "root", direction: "column" }, [
+          Text({ key: "revision", content: String(current.revision), variant: "body" }),
+          List({
+            key: "feed",
+            virtualize: true,
+            estimatedItemSize: 20,
+            endReachedThreshold: 1,
+            onEndReached: IntentRef("EndReached", StaticPayload({}))
+          }, items)
+        ]))
+      const handlers: IntentHandlers<typeof endReachedDefinitions> = {
+        EndReached: () => Effect.succeed(undefined)
+      }
+      const registry = yield* makeIntentRegistry(endReachedDefinitions, handlers, { now: () => 0 })
+      const report: IntentReporter = (ref, runtimeValue) =>
+        registry.dispatch(resolveIntentRef(ref, runtimeValue))
+
+      yield* makeDomRenderer({ document }).mount(container, program.viewStream, report)
+      const list = container.querySelector('[data-en-key="feed"]') as HTMLElement | null
+      if (list === null) {
+        throw new Error("expected virtualized list")
+      }
+
+      expect(list.getAttribute("data-en-virtualized")).toBe("true")
+      expect(list.querySelectorAll('[data-en-role="item"]').length).toBeLessThan(40)
+      expect(container.querySelector('[data-en-key="row-0"]')?.textContent).toBe("Row 0")
+
+      list.scrollTop = 20 * 1200
+      list.dispatchEvent(new window.Event("scroll", { bubbles: true }) as unknown as Event)
+      expect(container.querySelector('[data-en-key="row-0"]')).toBeNull()
+      expect(container.querySelector('[data-en-key="row-1200"]')?.textContent).toBe("Row 1200")
+
+      const listBeforeUpdate = list
+      const scrollBeforeUpdate = list.scrollTop
+      yield* program.updateState((current) => ({ revision: current.revision + 1 }))
+      yield* Effect.yieldNow
+
+      const updatedList = container.querySelector('[data-en-key="feed"]') as HTMLElement | null
+      expect(updatedList).toBe(listBeforeUpdate)
+      expect(updatedList?.scrollTop).toBe(scrollBeforeUpdate)
+
+      list.scrollTop = 20 * 4990
+      list.dispatchEvent(new window.Event("scroll", { bubbles: true }) as unknown as Event)
+      yield* nextTask
+
+      const events = yield* registry.events
+      expect(events.map((event) => event.intent.name)).toEqual(["EndReached"])
+    })))
+  })
+
+  test("SectionList renders sticky headers and virtualizes section rows", async () => {
+    const { container, document, window } = createDom()
+    const sections = [
+      {
+        key: "alpha",
+        header: Text({ key: "alpha-header", content: "Alpha", variant: "label" }),
+        items: Array.from({ length: 200 }, (_, index) =>
+          Text({ key: `alpha-${index}`, content: `Alpha ${index}`, variant: "body" })
+        ).map(keyed)
+      },
+      {
+        key: "beta",
+        header: Text({ key: "beta-header", content: "Beta", variant: "label" }),
+        items: Array.from({ length: 200 }, (_, index) =>
+          Text({ key: `beta-${index}`, content: `Beta ${index}`, variant: "body" })
+        ).map(keyed)
+      }
+    ]
+
+    await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
+      yield* makeDomRenderer({ document }).mount(
+        container,
+        Stream.make(SectionList({
+          key: "sections",
+          virtualize: true,
+          estimatedItemSize: 24,
+          stickyHeaders: true
+        }, sections)),
+        noopReport
+      )
+      const sectionList = container.querySelector('[data-en-key="sections"]') as HTMLElement | null
+      const alphaHeader = container.querySelector('[data-en-section-key="alpha"][data-en-role="section-header"]') as HTMLElement | null
+
+      if (sectionList === null || alphaHeader === null) {
+        throw new Error("expected section list and header")
+      }
+
+      expect(sectionList.getAttribute("data-en-virtualized")).toBe("true")
+      expect(sectionList.querySelectorAll('[data-en-role="item"]').length).toBeLessThan(40)
+      expect(alphaHeader.style.position).toBe("sticky")
+      expect(alphaHeader.style.top).toBe("0px")
+
+      sectionList.scrollTop = 24 * 210
+      sectionList.dispatchEvent(new window.Event("scroll", { bubbles: true }) as unknown as Event)
+      expect(container.querySelector('[data-en-key="beta-5"]')?.textContent).toBe("Beta 5")
     })))
   })
 

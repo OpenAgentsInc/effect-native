@@ -59,7 +59,7 @@ typed data, rendered identically on web and mobile.
 renders it through DOM and React Native hosts, and checks headless/DOM/RN
 behavior with a cross-renderer oracle.
 
-## Phase 2 — Catalog growth, driven by real apps (in progress — issues #9–#14)
+## Phase 2 — Catalog growth, driven by real apps (complete — issues #9–#14)
 
 Grow the component set from what actual screens demand. The demand is now
 concrete: the first production consumers of the framework are a
@@ -76,7 +76,7 @@ need, in the order they need it:
   runtime and both renderers (#11 complete)
 - **forms and validation** (typed, Schema-backed) (#12 complete)
 - **overlay surfaces** — modal and sheet (#13 complete)
-- **virtualized lists and section lists** (#14)
+- **virtualized lists and section lists** (#14 complete)
 
 A component enters the catalog when a screen needs it. The gap register
 ([`GAPS.md`](./GAPS.md), established by #9) tracks what's missing rather than
@@ -85,8 +85,8 @@ everything else waits there for a demanding screen. The renderer conformance
 suite is driven by `componentTags`; a new tag fails until it has fixtures and
 headless, DOM, and React Native renderer coverage.
 
-**Exit criterion:** the catalog covers the elements of a complete production
-app on both priority targets.
+**Exit criterion:** complete. The catalog now covers the first production
+web/mobile app surface needs without opening a custom-component escape hatch.
 
 ## Phase 3 — Developer experience (in progress — issues #15–#19)
 
@@ -112,7 +112,8 @@ The leverage that falls out of "views are data, interactions are values":
   never a string contract) stay on the gap register until friction is
   demonstrated.
 
-Runs alongside Phase 2 — DX is built on the substrate, not bolted on later.
+Builds on the completed Phase 2 catalog — DX is built on the substrate, not
+bolted on later.
 
 ## Phase 4 — Desktop and canvas
 
@@ -161,7 +162,7 @@ contained per-component project, not a platform rewrite.
 ```
 Phase 0 (core) ──► Phase 1 (DOM + RN, one screen)
                         │
-                        ├──► Phase 2 (catalog) ∥ Phase 3 (DX)
+                        ├──► Phase 2 (catalog, complete) ─► Phase 3 (DX)
                         │
                         └──► Phase 4 (desktop/canvas)
                                   │

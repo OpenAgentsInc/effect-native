@@ -19,6 +19,7 @@ The current mapping is:
 | `Image` | `Image` |
 | `TextField` | controlled `TextInput` |
 | `List` | `FlatList` |
+| `SectionList` | native `SectionList` |
 | `Card` | `View` |
 | `Spacer` | accessibility-hidden `View` |
 | `Modal` | host `Modal` |
@@ -121,6 +122,12 @@ The React Native renderer does not own routing. `Link` reports the typed
 `Navigate` intent through the same reporter path as every other interaction,
 and the host app provides the `NavigationHandler` that translates the
 destination into its router.
+
+Collections delegate virtualization to native primitives. `List` lowers to
+`FlatList`; `SectionList` lowers to React Native's `SectionList`, including
+`stickySectionHeadersEnabled`, keyed item extraction, optional fixed
+`getItemLayout` from `estimatedItemSize`, and `onEndReached` intent reporting
+for pagination.
 
 `Modal` lowers to the host React Native `Modal` component, with
 `onRequestClose` reporting the overlay's typed `onDismiss` intent when

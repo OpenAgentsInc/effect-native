@@ -64,14 +64,17 @@ export const packageName = "@effect-native/core" as const
 export const LegacyCatalogVersion = "effect-native/v0" as const
 export const LinkCatalogVersion = "effect-native/v1" as const
 export const ResponsiveCatalogVersion = "effect-native/v2" as const
-export const PreviousCatalogVersion = "effect-native/v3" as const
-export const CatalogVersion = "effect-native/v4" as const
+export const FormCatalogVersion = "effect-native/v3" as const
+export const OverlayCatalogVersion = "effect-native/v4" as const
+export const PreviousCatalogVersion = OverlayCatalogVersion
+export const CatalogVersion = "effect-native/v5" as const
 export const CatalogVersionSchema = Schema.Literal(CatalogVersion)
 export type CatalogVersion = typeof CatalogVersion
 export const compatibleCatalogVersions = [
   LegacyCatalogVersion,
   LinkCatalogVersion,
   ResponsiveCatalogVersion,
+  FormCatalogVersion,
   PreviousCatalogVersion,
   CatalogVersion
 ] as const
@@ -85,6 +88,7 @@ export const componentTags = [
   "Image",
   "TextField",
   "List",
+  "SectionList",
   "Card",
   "Spacer",
   "Link",
@@ -1374,7 +1378,28 @@ export type TextFieldView = SecureTextFieldView | PlainTextFieldView
 export interface ListView extends NodeBase {
   readonly _tag: "List"
   readonly style?: ListStyle
+  readonly virtualize?: boolean
+  readonly estimatedItemSize?: Dimension
+  readonly onEndReached?: IntentRef
+  readonly endReachedThreshold?: number
   readonly items: ReadonlyArray<View & { readonly key: NodeKey }>
+}
+
+export interface SectionListSection {
+  readonly key: NodeKey
+  readonly header: View
+  readonly items: ReadonlyArray<View & { readonly key: NodeKey }>
+}
+
+export interface SectionListView extends NodeBase {
+  readonly _tag: "SectionList"
+  readonly style?: ListStyle
+  readonly virtualize?: boolean
+  readonly estimatedItemSize?: Dimension
+  readonly onEndReached?: IntentRef
+  readonly endReachedThreshold?: number
+  readonly stickyHeaders?: boolean
+  readonly sections: ReadonlyArray<SectionListSection>
 }
 
 export interface CardView extends NodeBase {
@@ -1435,6 +1460,7 @@ export type View =
   | ImageView
   | TextFieldView
   | ListView
+  | SectionListView
   | CardView
   | SpacerView
   | LinkView
@@ -1443,20 +1469,33 @@ export type View =
 
 export type KeyedView = View & { readonly key: NodeKey }
 
-const childViews = (view: View): ReadonlyArray<View> => {
+const childViewEntries = (
+  view: View
+): ReadonlyArray<{ readonly path: ReadonlyArray<string | number>; readonly view: View }> => {
   switch (view._tag) {
     case "Stack":
-      return view.children
+      return view.children.map((child, index) => ({ path: ["children", index], view: child }))
     case "List":
-      return view.items
+      return view.items.map((child, index) => ({ path: ["items", index], view: child }))
+    case "SectionList":
+      return view.sections.flatMap((section, sectionIndex) => [
+        {
+          path: ["sections", sectionIndex, "header"],
+          view: section.header
+        },
+        ...section.items.map((child, itemIndex) => ({
+          path: ["sections", sectionIndex, "items", itemIndex],
+          view: child
+        }))
+      ])
     case "Card":
-      return view.children
+      return view.children.map((child, index) => ({ path: ["children", index], view: child }))
     case "Link":
-      return view.children
+      return view.children.map((child, index) => ({ path: ["children", index], view: child }))
     case "Modal":
-      return view.children
+      return view.children.map((child, index) => ({ path: ["children", index], view: child }))
     case "Sheet":
-      return view.children
+      return view.children.map((child, index) => ({ path: ["children", index], view: child }))
     default:
       return []
   }
@@ -1488,12 +1527,11 @@ const findOverlayStackIssue = (
     }
   }
 
-  const children = childViews(view)
-  for (let index = 0; index < children.length; index += 1) {
-    const child = children[index]!
+  const children = childViewEntries(view)
+  for (const child of children) {
     const issue = findOverlayStackIssue(
-      child,
-      [...path, "children", index],
+      child.view,
+      [...path, ...child.path],
       insideOverlay || isOverlay,
       counts
     )
@@ -1517,6 +1555,29 @@ const KeyedViewArraySchema = Schema.Array(ViewSelf).check(
       : { path: [unkeyedIndex, "key"], issue: "List items require explicit keys" }
   })
 ) as Schema.Codec<ReadonlyArray<KeyedView>, ReadonlyArray<KeyedView>>
+
+const EndReachedThresholdSchema = NonNegativeNumberSchema
+
+const VirtualizationFields = {
+  virtualize: Schema.Boolean.pipe(Schema.optionalKey),
+  estimatedItemSize: DimensionSchema.pipe(Schema.optionalKey),
+  onEndReached: IntentRefSchema.pipe(Schema.optionalKey),
+  endReachedThreshold: EndReachedThresholdSchema.pipe(Schema.optionalKey)
+} as const
+
+interface VirtualizationContract {
+  readonly virtualize?: boolean
+  readonly estimatedItemSize?: Dimension
+}
+
+const VirtualizationFilter = Schema.makeFilter<VirtualizationContract>((view) =>
+  view.virtualize === true && view.estimatedItemSize === undefined
+    ? {
+        path: ["estimatedItemSize"],
+        issue: "Virtualized collections require estimatedItemSize"
+      }
+    : undefined
+)
 
 const CommonFields = {
   catalogVersion: CompatibleCatalogVersionSchema,
@@ -1596,8 +1657,25 @@ export const TextFieldSchema: Schema.Codec<TextFieldView, TextFieldView> = Schem
 export const ListSchema: Schema.Codec<ListView, ListView> = Schema.TaggedStruct("List", {
   ...CommonFields,
   style: ListStyleSchema.pipe(Schema.optionalKey),
+  ...VirtualizationFields,
   items: KeyedViewArraySchema
-})
+}).check(VirtualizationFilter)
+
+export const SectionListSectionSchema: Schema.Codec<SectionListSection, SectionListSection> =
+  Schema.Struct({
+    key: NodeKeySchema,
+    header: ViewSelf,
+    items: KeyedViewArraySchema
+  })
+
+export const SectionListSchema: Schema.Codec<SectionListView, SectionListView> =
+  Schema.TaggedStruct("SectionList", {
+    ...CommonFields,
+    style: ListStyleSchema.pipe(Schema.optionalKey),
+    ...VirtualizationFields,
+    stickyHeaders: Schema.Boolean.pipe(Schema.optionalKey),
+    sections: Schema.Array(SectionListSectionSchema)
+  }).check(VirtualizationFilter)
 
 export const CardSchema: Schema.Codec<CardView, CardView> = Schema.TaggedStruct("Card", {
   ...CommonFields,
@@ -1678,6 +1756,7 @@ export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
     ImageSchema,
     TextFieldSchema,
     ListSchema,
+    SectionListSchema,
     CardSchema,
     SpacerSchema,
     LinkSchema,
@@ -1717,7 +1796,26 @@ export const TextField = (props: TextFieldProps): TextFieldView =>
 
 export type ListProps = Omit<WithoutTagAndVersion<ListView>, "items">
 export const List = (props: ListProps, items: ReadonlyArray<KeyedView>): ListView =>
-  ListSchema.make({ _tag: "List", catalogVersion: CatalogVersion, ...props, items })
+  ListSchema.make({
+    _tag: "List",
+    catalogVersion: CatalogVersion,
+    ...props,
+    virtualize: props.virtualize ?? false,
+    items
+  })
+
+export type SectionListProps = Omit<WithoutTagAndVersion<SectionListView>, "sections">
+export const SectionList = (
+  props: SectionListProps,
+  sections: ReadonlyArray<SectionListSection>
+): SectionListView =>
+  SectionListSchema.make({
+    _tag: "SectionList",
+    catalogVersion: CatalogVersion,
+    ...props,
+    virtualize: props.virtualize ?? false,
+    sections
+  })
 
 export type CardProps = Omit<WithoutTagAndVersion<CardView>, "children">
 export const Card = (props: CardProps, children: ReadonlyArray<View> = []): CardView =>
@@ -1838,6 +1936,16 @@ export const resolveView = (view: View, input: ViewResolution = {}): View => {
         ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) }),
         items: view.items.map((item) => resolveView(item, input) as KeyedView)
       }
+    case "SectionList":
+      return {
+        ...view,
+        ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) }),
+        sections: view.sections.map((section) => ({
+          ...section,
+          header: resolveView(section.header, input),
+          items: section.items.map((item) => resolveView(item, input) as KeyedView)
+        }))
+      }
     case "Card":
       return {
         ...view,
@@ -1885,6 +1993,15 @@ export const redactSecureView = (view: View): View => {
       return {
         ...view,
         items: view.items.map((item) => redactSecureView(item) as KeyedView)
+      }
+    case "SectionList":
+      return {
+        ...view,
+        sections: view.sections.map((section) => ({
+          ...section,
+          header: redactSecureView(section.header),
+          items: section.items.map((item) => redactSecureView(item) as KeyedView)
+        }))
       }
     case "Card":
       return {

@@ -10,6 +10,7 @@ import {
   Link,
   List,
   Modal,
+  SectionList,
   Spacer,
   Sheet,
   Stack,
@@ -45,6 +46,7 @@ import {
 
 const nonEmptyString = fc.string({ minLength: 1, maxLength: 24 })
 const key = nonEmptyString
+const keyed = <V extends View>(view: V): V & { readonly key: string } => view as V & { readonly key: string }
 
 const spacingToken = fc.constantFrom<SpacingToken>(...spacingTokens)
 const colorToken = fc.constantFrom<ColorToken>(...colorTokens)
@@ -173,12 +175,23 @@ const view = (depth: number): fc.Arbitrary<View> => {
     fc.record({
       key,
       items: fc.array(view(depth - 1), { maxLength: 3 })
-    }).map(({ items, ...props }) => List(props, items as ReadonlyArray<KeyedView>))
+    }).map(({ items, ...props }) => List(props, items as ReadonlyArray<KeyedView>)),
+    fc.record({
+      key,
+      sectionKey: key,
+      items: fc.array(view(depth - 1), { maxLength: 3 })
+    }).map(({ sectionKey, items, ...props }) =>
+      SectionList(props, [{
+        key: sectionKey,
+        header: Text({ key: `${sectionKey}-header`, content: "Section", variant: "label" }),
+        items: items as ReadonlyArray<KeyedView>
+      }])
+    )
   )
 }
 
 describe("Effect Native catalog", () => {
-  test("contains exactly the eleven current component tags", () => {
+  test("contains exactly the twelve current component tags", () => {
     expect(componentTags).toEqual([
       "Stack",
       "Text",
@@ -186,13 +199,14 @@ describe("Effect Native catalog", () => {
       "Image",
       "TextField",
       "List",
+      "SectionList",
       "Card",
       "Spacer",
       "Link",
       "Modal",
       "Sheet"
     ])
-    expect(new Set(componentTags).size).toBe(11)
+    expect(new Set(componentTags).size).toBe(12)
   })
 
   test("schema encode/decode round-trips constructed views as JSON data", () => {
@@ -266,6 +280,79 @@ describe("Effect Native catalog", () => {
     })
 
     expect(Exit.isFailure(exit)).toBe(true)
+  })
+
+  test("virtualized collections and sections stay serializable and bounded", () => {
+    const more = { name: "ReachedEnd", payload: StaticPayload({ source: "feed" }) }
+    const list = List({
+      key: "feed",
+      virtualize: true,
+      estimatedItemSize: 48,
+      endReachedThreshold: 0.25,
+      onEndReached: more
+    }, [
+      keyed(Text({ key: "first", content: "First", variant: "body" }))
+    ])
+    const sections = SectionList({
+      key: "settings",
+      virtualize: true,
+      estimatedItemSize: "sm",
+      stickyHeaders: true,
+      onEndReached: more
+    }, [
+      {
+        key: "account",
+        header: Text({ key: "account-header", content: "Account", variant: "label" }),
+        items: [
+          keyed(Text({ key: "email", content: "Email", variant: "body" }))
+        ]
+      }
+    ])
+
+    expect(decodeView(encodeView(list))).toEqual(list)
+    expect(decodeView(encodeView(sections))).toEqual(sections)
+
+    const missingEstimate = Schema.decodeUnknownExit(ViewSchema)({
+      _tag: "List",
+      catalogVersion: CatalogVersion,
+      virtualize: true,
+      items: [
+        {
+          _tag: "Text",
+          catalogVersion: CatalogVersion,
+          key: "item",
+          content: "Item",
+          variant: "body"
+        }
+      ]
+    })
+    expect(Exit.isFailure(missingEstimate)).toBe(true)
+
+    const unkeyedSectionItem = Schema.decodeUnknownExit(ViewSchema)({
+      _tag: "SectionList",
+      catalogVersion: CatalogVersion,
+      sections: [
+        {
+          key: "account",
+          header: {
+            _tag: "Text",
+            catalogVersion: CatalogVersion,
+            key: "account-header",
+            content: "Account",
+            variant: "label"
+          },
+          items: [
+            {
+              _tag: "Text",
+              catalogVersion: CatalogVersion,
+              content: "Unkeyed",
+              variant: "body"
+            }
+          ]
+        }
+      ]
+    })
+    expect(Exit.isFailure(unkeyedSectionItem)).toBe(true)
   })
 
   test("overlay components round-trip and reject stacks beyond the v0 bound", () => {

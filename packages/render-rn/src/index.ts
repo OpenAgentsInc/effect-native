@@ -17,6 +17,7 @@ import {
   type MountedSurface,
   type PlatformVariant,
   type RendererAdapter,
+  type SectionListView,
   type SheetView,
   type SpacerView,
   type StackView,
@@ -79,6 +80,7 @@ export interface ReactNativeRuntime {
   readonly Pressable: unknown
   readonly TextInput: unknown
   readonly FlatList: unknown
+  readonly SectionList: unknown
   readonly Image: unknown
   readonly Modal: unknown
   readonly Dimensions?: ReactNativeDimensions
@@ -638,6 +640,42 @@ const renderTextField = (
   )
 }
 
+const estimatedItemLength = (
+  view: ListView | SectionListView,
+  options: ReactNativeRenderOptions
+): number | undefined => {
+  if (view.estimatedItemSize === undefined) {
+    return undefined
+  }
+  const value = dimensionValue(options.theme ?? defaultTheme, view.estimatedItemSize)
+  return typeof value === "number" ? value : undefined
+}
+
+const nativeCollectionProps = (
+  view: ListView | SectionListView,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): Record<string, unknown> => {
+  const itemLength = estimatedItemLength(view, options)
+  return {
+    ...(view.onEndReached === undefined
+      ? {}
+      : {
+          onEndReached: () => runReportedIntent(report, view.onEndReached!),
+          onEndReachedThreshold: view.endReachedThreshold ?? 0.5
+        }),
+    ...(view.virtualize === true && itemLength !== undefined
+      ? {
+          getItemLayout: (_data: unknown, index: number) => ({
+            length: itemLength,
+            offset: itemLength * index,
+            index
+          })
+        }
+      : {})
+  }
+}
+
 const renderList = (
   view: ListView,
   dependencies: ReactNativeDependencies,
@@ -652,7 +690,37 @@ const renderList = (
       data: view.items,
       keyExtractor: (item: View & { readonly key: string }) => item.key,
       renderItem: ({ item }: { readonly item: View }) =>
-        renderResolvedReactNativeView(item, dependencies, report, options)
+        renderResolvedReactNativeView(item, dependencies, report, options),
+      ...nativeCollectionProps(view, report, options)
+    }
+  )
+}
+
+const renderSectionList = (
+  view: SectionListView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const sections = view.sections.map((section) => ({
+    key: section.key,
+    data: section.items,
+    header: section.header
+  }))
+
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.SectionList,
+    {
+      ...baseProps(view, viewStyle(view, options)),
+      sections,
+      keyExtractor: (item: View & { readonly key: string }) => item.key,
+      renderItem: ({ item }: { readonly item: View }) =>
+        renderResolvedReactNativeView(item, dependencies, report, options),
+      renderSectionHeader: ({ section }: { readonly section: { readonly header: View } }) =>
+        renderResolvedReactNativeView(section.header, dependencies, report, options),
+      stickySectionHeadersEnabled: view.stickyHeaders === true,
+      ...nativeCollectionProps(view, report, options)
     }
   )
 }
@@ -730,6 +798,8 @@ const renderResolvedReactNativeView = (
       return renderTextField(view, dependencies, report, options)
     case "List":
       return renderList(view, dependencies, report, options)
+    case "SectionList":
+      return renderSectionList(view, dependencies, report, options)
     case "Card":
       return renderCard(view, dependencies, report, options)
     case "Spacer":
@@ -794,9 +864,28 @@ export const reactNativeStructure = (node: ReactNodeLike): ReactNativeStructure 
             return renderItem === undefined ? undefined : reactNativeStructure(renderItem({ item }))
           })
           .filter((child): child is ReactNativeStructure => child !== undefined)
-      : normalizeChildren(node.props.children)
-          .map((child) => reactNativeStructure(child))
-          .filter((child): child is ReactNativeStructure => child !== undefined)
+      : metadata.tag === "SectionList"
+        ? ((node.props.sections as ReadonlyArray<{
+            readonly header: View
+            readonly data: ReadonlyArray<View>
+          }> | undefined) ?? []).flatMap((section) => {
+            const renderItem = node.props.renderItem as
+              | ((input: { readonly item: View }) => ReactNodeLike)
+              | undefined
+            const renderSectionHeader = node.props.renderSectionHeader as
+              | ((input: { readonly section: { readonly header: View } }) => ReactNodeLike)
+              | undefined
+            const header = renderSectionHeader === undefined
+              ? undefined
+              : reactNativeStructure(renderSectionHeader({ section }))
+            const items = section.data
+              .map((item) => renderItem === undefined ? undefined : reactNativeStructure(renderItem({ item })))
+              .filter((child): child is ReactNativeStructure => child !== undefined)
+            return header === undefined ? items : [header, ...items]
+          })
+        : normalizeChildren(node.props.children)
+            .map((child) => reactNativeStructure(child))
+            .filter((child): child is ReactNativeStructure => child !== undefined)
 
   return {
     tag: metadata.tag,
@@ -849,6 +938,15 @@ export const viewStructure = (view: View): ReactNativeStructure => {
         tag: "List",
         ...(view.key === undefined ? {} : { key: view.key }),
         children: view.items.map(viewStructure)
+      }
+    case "SectionList":
+      return {
+        tag: "SectionList",
+        ...(view.key === undefined ? {} : { key: view.key }),
+        children: view.sections.flatMap((section) => [
+          viewStructure(section.header),
+          ...section.items.map(viewStructure)
+        ])
       }
     case "Card":
       return {

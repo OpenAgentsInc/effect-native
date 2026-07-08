@@ -11,6 +11,7 @@ import {
   Link,
   List,
   Modal,
+  SectionList,
   Spacer,
   Sheet,
   Stack,
@@ -63,6 +64,7 @@ const host = {
   Pressable: "Pressable",
   TextInput: "TextInput",
   FlatList: "FlatList",
+  SectionList: "SectionList",
   Image: "Image",
   Modal: "Modal",
   StyleSheet: {
@@ -556,20 +558,40 @@ describe("React Native renderer", () => {
     }
   })
 
-  test("List uses catalog keys for FlatList identity and renders item subtrees through the same walk", () => {
-    const view = List({ key: "list" }, [
+  test("List uses catalog keys, virtualization hints, and end-reached wiring for FlatList", async () => {
+    const reported: Array<string> = []
+    const report: IntentReporter = (ref) =>
+      Effect.sync(() => {
+        reported.push(ref.name)
+      })
+    const view = List({
+      key: "list",
+      virtualize: true,
+      estimatedItemSize: 32,
+      endReachedThreshold: 0.25,
+      onEndReached: IntentRef("EndReached", StaticPayload({}))
+    }, [
       keyed(Text({ key: "first", content: "First", variant: "body" })),
       keyed(Text({ key: "second", content: "Second", variant: "body" }))
     ])
-    const element = renderReactNativeView(view, dependencies, noopReport)
+    const element = renderReactNativeView(view, dependencies, report)
     const keyExtractor = element.props.keyExtractor
     const renderItem = element.props.renderItem
+    const getItemLayout = element.props.getItemLayout
+    const onEndReached = element.props.onEndReached
 
-    if (typeof keyExtractor !== "function" || typeof renderItem !== "function") {
-      throw new Error("expected FlatList keyExtractor and renderItem")
+    if (
+      typeof keyExtractor !== "function" ||
+      typeof renderItem !== "function" ||
+      typeof getItemLayout !== "function" ||
+      typeof onEndReached !== "function"
+    ) {
+      throw new Error("expected FlatList virtualization props")
     }
 
     expect(keyExtractor(view.items[0])).toBe("first")
+    expect(getItemLayout(undefined, 3)).toEqual({ length: 32, offset: 96, index: 3 })
+    expect(element.props.onEndReachedThreshold).toBe(0.25)
     expect(reactNativeStructure(element)).toEqual({
       tag: "List",
       key: "list",
@@ -578,6 +600,72 @@ describe("React Native renderer", () => {
         { tag: "Text", key: "second", text: "Second" }
       ]
     })
+    onEndReached()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(reported).toEqual(["EndReached"])
+  })
+
+  test("SectionList maps to the native host with sticky headers and renderers", async () => {
+    const reported: Array<string> = []
+    const report: IntentReporter = (ref) =>
+      Effect.sync(() => {
+        reported.push(ref.name)
+      })
+    const view = SectionList({
+      key: "settings",
+      virtualize: true,
+      estimatedItemSize: 40,
+      stickyHeaders: true,
+      onEndReached: IntentRef("EndReached", StaticPayload({}))
+    }, [
+      {
+        key: "account",
+        header: Text({ key: "account-header", content: "Account", variant: "label" }),
+        items: [
+          keyed(Text({ key: "email", content: "Email", variant: "body" }))
+        ]
+      }
+    ])
+    const element = renderReactNativeView(view, dependencies, report)
+    const renderSectionHeader = element.props.renderSectionHeader
+    const renderItem = element.props.renderItem
+    const keyExtractor = element.props.keyExtractor
+    const onEndReached = element.props.onEndReached
+
+    if (
+      typeof renderSectionHeader !== "function" ||
+      typeof renderItem !== "function" ||
+      typeof keyExtractor !== "function" ||
+      typeof onEndReached !== "function"
+    ) {
+      throw new Error("expected SectionList render props")
+    }
+
+    expect(element.type).toBe(host.SectionList)
+    expect(element.props.stickySectionHeadersEnabled).toBe(true)
+    expect(keyExtractor(view.sections[0]!.items[0]!)).toBe("email")
+    const nativeSections = element.props.sections as ReadonlyArray<{ readonly header: View }>
+    expect(reactNativeStructure(renderSectionHeader({ section: nativeSections[0]! }))).toEqual({
+      tag: "Text",
+      key: "account-header",
+      text: "Account"
+    })
+    expect(reactNativeStructure(renderItem({ item: view.sections[0]!.items[0]! }))).toEqual({
+      tag: "Text",
+      key: "email",
+      text: "Email"
+    })
+    expect(reactNativeStructure(element)).toEqual({
+      tag: "SectionList",
+      key: "settings",
+      children: [
+        { tag: "Text", key: "account-header", text: "Account" },
+        { tag: "Text", key: "email", text: "Email" }
+      ]
+    })
+    onEndReached()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(reported).toEqual(["EndReached"])
   })
 
   test("serialized RN structure matches the headless snapshot structure", async () => {

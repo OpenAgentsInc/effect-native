@@ -17,6 +17,7 @@ The current element mapping is deliberately small and semantic:
 | `Image` | `img` with required `alt` |
 | `TextField` | `label` with `input` or `textarea` |
 | `List` | `ul` / `li` |
+| `SectionList` | grouped `section` rows with sticky headers |
 | `Card` | `section` |
 | `Spacer` | `div aria-hidden="true"` |
 | `Modal` | `dialog` with modal semantics |
@@ -98,6 +99,13 @@ and accessible. Clicks also report the typed `Navigate` intent. Hosts may wire
 that intent to their router, or use `makeDomNavigationHandlerLayer()` for the
 default browser behavior: external URLs, history push/replace for paths, and
 hash navigation for anchors.
+
+Virtualized `List` and `SectionList` rendering is a DOM strategy, not a new
+data shape. The renderer keeps a scroll box with top/bottom spacers and mounts
+only the fixed-estimate visible window plus overscan; headless snapshots still
+include every item. `SectionList(stickyHeaders: true)` lowers headers with
+`position: sticky`, and `onEndReached` reports through the normal intent
+pipeline when scrolling enters the configured threshold.
 
 `Modal` and `Sheet` are presence-driven view data. When `open` resolves true,
 the DOM renderer applies scroll lock, moves focus into the overlay, traps Tab

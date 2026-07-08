@@ -3,8 +3,10 @@ import { Exit, Schema } from "effect"
 import {
   CatalogVersion,
   CompatibleViewSchema,
+  FormCatalogVersion,
   LegacyCatalogVersion,
   LinkCatalogVersion,
+  OverlayCatalogVersion,
   PreviousCatalogVersion,
   ResponsiveCatalogVersion,
   Text,
@@ -31,6 +33,10 @@ describe("catalog version compatibility", () => {
     }
     const v3Tree = {
       ...JSON.parse(JSON.stringify(view)),
+      catalogVersion: FormCatalogVersion
+    }
+    const v4Tree = {
+      ...JSON.parse(JSON.stringify(view)),
       catalogVersion: PreviousCatalogVersion
     }
     const v0Tree = {
@@ -42,11 +48,14 @@ describe("catalog version compatibility", () => {
     expect(decodeCompatibleView(v0Tree).catalogVersion).toBe(LegacyCatalogVersion)
     expect(decodeCompatibleView(v1Tree).catalogVersion).toBe(LinkCatalogVersion)
     expect(decodeCompatibleView(v2Tree).catalogVersion).toBe(ResponsiveCatalogVersion)
-    expect(decodeCompatibleView(v3Tree).catalogVersion).toBe(PreviousCatalogVersion)
+    expect(decodeCompatibleView(v3Tree).catalogVersion).toBe(FormCatalogVersion)
+    expect(decodeCompatibleView(v4Tree).catalogVersion).toBe(OverlayCatalogVersion)
+    expect(PreviousCatalogVersion).toBe(OverlayCatalogVersion)
     expect(compatibleCatalogVersions).toEqual([
       LegacyCatalogVersion,
       LinkCatalogVersion,
       ResponsiveCatalogVersion,
+      FormCatalogVersion,
       PreviousCatalogVersion,
       CatalogVersion
     ])

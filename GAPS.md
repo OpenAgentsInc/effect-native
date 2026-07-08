@@ -23,7 +23,7 @@ their reason so pressure is visible without weakening the catalog contract.
 
 ## Catalog Versioning Policy
 
-The current catalog marker is `effect-native/v4`, exposed by
+The current catalog marker is `effect-native/v5`, exposed by
 `CatalogVersion`. `compatibleCatalogVersions` is the decode allow-list, and
 `CompatibleViewSchema` is the schema app authors and renderers should use when
 accepting persisted or externally-authored trees.
@@ -49,7 +49,7 @@ until it has a fixture and every renderer declares and proves support for it.
 | Responsive breakpoint variants | Marketing landing page must reflow across phone and desktop widths | 2026-07-08 | shipped -> #11 |
 | Schema-backed forms | Marketing intake form and dashboard settings forms | 2026-07-08 | shipped -> #12 |
 | Modal + Sheet overlays | Dashboard approvals and confirmation surfaces | 2026-07-08 | shipped -> #13 |
-| Virtualized List + SectionList | Dashboard activity feed and grouped settings/history lists | 2026-07-08 | accepted -> #14 |
+| Virtualized List + SectionList | Dashboard activity feed and grouped settings/history lists | 2026-07-08 | shipped -> #14 |
 | Toast / notification | None yet | 2026-07-08 | waiting |
 | Popover / menu / tooltip | None yet | 2026-07-08 | waiting |
 | Sheet drag-to-dismiss gesture | Gesture demand not yet demonstrated beyond basic sheet presentation | 2026-07-08 | waiting |
