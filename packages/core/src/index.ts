@@ -1,4 +1,16 @@
-import { Context, Effect, Exit, Layer, PubSub, Ref, Schema, Stream } from "effect"
+import {
+  Context,
+  Deferred,
+  Effect,
+  Exit,
+  Layer,
+  PubSub,
+  Ref,
+  Schema,
+  Scope,
+  Stream,
+  SubscriptionRef
+} from "effect"
 
 export const packageName = "@effect-native/core" as const
 
@@ -49,6 +61,17 @@ export type NodeKey = Schema.Schema.Type<typeof NodeKeySchema>
 
 export const JsonPayloadSchema = Schema.Json
 export type JsonPayload = Schema.Schema.Type<typeof JsonPayloadSchema>
+
+export const BindingSchema = Schema.TaggedStruct("Binding", {
+  path: Schema.Array(Schema.NonEmptyString).check(
+    Schema.isMinLength(1, { title: "NonEmptyBindingPath" })
+  )
+})
+export type Binding = Schema.Schema.Type<typeof BindingSchema>
+export type Bound<T> = T | Binding
+
+export const Binding = (path: readonly [string, ...Array<string>]): Binding =>
+  BindingSchema.make({ _tag: "Binding", path })
 
 export const StaticPayloadSchema = Schema.TaggedStruct("StaticPayload", {
   value: JsonPayloadSchema
@@ -341,7 +364,7 @@ export interface StackView extends NodeBase {
 
 export interface TextView extends NodeBase {
   readonly _tag: "Text"
-  readonly content: string
+  readonly content: Bound<string>
   readonly variant: TypeScaleToken
   readonly color?: ColorToken
   readonly weight?: TextWeight
@@ -450,7 +473,7 @@ export const StackSchema: Schema.Codec<StackView, StackView> = Schema.TaggedStru
 
 export const TextSchema: Schema.Codec<TextView, TextView> = Schema.TaggedStruct("Text", {
   ...CommonFields,
-  content: Schema.String,
+  content: Schema.Union([Schema.String, BindingSchema]),
   variant: TypeScaleTokenSchema,
   color: ColorTokenSchema.pipe(Schema.optionalKey),
   weight: TextWeightSchema.pipe(Schema.optionalKey)
@@ -581,3 +604,175 @@ export const Spacer = (props: SpacerProps): SpacerView =>
 
 export const decodeView = Schema.decodeUnknownSync(ViewSchema)
 export const encodeView = Schema.encodeSync(ViewSchema)
+
+export const isBinding = (value: unknown): value is Binding =>
+  typeof value === "object" &&
+  value !== null &&
+  "_tag" in value &&
+  value._tag === "Binding"
+
+const readStatePath = (state: unknown, path: ReadonlyArray<string>): JsonPayload => {
+  let current: unknown = state
+
+  for (const segment of path) {
+    if (typeof current !== "object" || current === null || !(segment in current)) {
+      return null
+    }
+    current = (current as Record<string, unknown>)[segment]
+  }
+
+  const decoded = Schema.decodeUnknownExit(JsonPayloadSchema)(current)
+  return Exit.isSuccess(decoded) ? decoded.value : null
+}
+
+const stringifyBoundText = (value: JsonPayload): string => {
+  if (value === null) {
+    return ""
+  }
+  if (typeof value === "string") {
+    return value
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value)
+  }
+  return JSON.stringify(value)
+}
+
+const resolveBoundText = (value: Bound<string>, state: unknown): string =>
+  isBinding(value) ? stringifyBoundText(readStatePath(state, value.path)) : value
+
+export const resolveBindings = <State>(view: View, state: State): View => {
+  switch (view._tag) {
+    case "Stack":
+      return {
+        ...view,
+        children: view.children.map((child) => resolveBindings(child, state))
+      }
+    case "Text":
+      return {
+        ...view,
+        content: resolveBoundText(view.content, state)
+      }
+    case "Button":
+      return view
+    case "Image":
+      return view
+    case "TextField":
+      return view
+    case "List":
+      return {
+        ...view,
+        items: view.items.map((item) => resolveBindings(item, state) as KeyedView)
+      }
+    case "Card":
+      return {
+        ...view,
+        children: view.children.map((child) => resolveBindings(child, state))
+      }
+    case "Spacer":
+      return view
+  }
+}
+
+export interface ViewProgram<State> {
+  readonly state: SubscriptionRef.SubscriptionRef<State>
+  readonly render: (state: State) => View
+  readonly viewStream: Stream.Stream<View>
+  readonly currentState: Effect.Effect<State>
+  readonly setState: (state: State) => Effect.Effect<void>
+  readonly updateState: (f: (state: State) => State) => Effect.Effect<void>
+  readonly report: (ref: IntentRef, runtimeValue?: JsonPayload) => Effect.Effect<void, IntentError, IntentRegistry>
+}
+
+export const makeViewProgramFromState = <State>(
+  state: SubscriptionRef.SubscriptionRef<State>,
+  render: (state: State) => View
+): ViewProgram<State> => ({
+  state,
+  render,
+  viewStream: SubscriptionRef.changes(state).pipe(
+    Stream.map((value) => resolveBindings(render(value), value))
+  ),
+  currentState: SubscriptionRef.get(state),
+  setState: (value) => SubscriptionRef.set(state, value),
+  updateState: (f) => SubscriptionRef.update(state, f),
+  report: (ref, runtimeValue = null) => dispatchIntent(resolveIntentRef(ref, runtimeValue))
+})
+
+export const makeViewProgram = <State>(
+  initialState: State,
+  render: (state: State) => View
+): Effect.Effect<ViewProgram<State>> =>
+  Effect.gen(function*() {
+    const state = yield* SubscriptionRef.make(initialState)
+    return makeViewProgramFromState(state, render)
+  })
+
+export interface MountedSurface {
+  readonly unmount: Effect.Effect<void>
+}
+
+export type IntentReporter = (
+  ref: IntentRef,
+  runtimeValue?: JsonPayload
+) => Effect.Effect<void, IntentError, IntentRegistry>
+
+export interface RendererAdapter<Container, Surface extends MountedSurface = MountedSurface> {
+  readonly mount: (
+    container: Container,
+    viewStream: Stream.Stream<View>,
+    report: IntentReporter
+  ) => Effect.Effect<Surface, never, Scope.Scope>
+}
+
+export interface HeadlessContainer {
+  readonly onFinalize?: Effect.Effect<void>
+}
+
+export interface HeadlessSurface extends MountedSurface {
+  readonly snapshots: Effect.Effect<ReadonlyArray<View>>
+  readonly current: Effect.Effect<View | undefined>
+  readonly simulate: (ref: IntentRef, runtimeValue?: JsonPayload) => Effect.Effect<void, IntentError, IntentRegistry>
+}
+
+export const makeHeadlessRenderer = (): RendererAdapter<HeadlessContainer | undefined, HeadlessSurface> => ({
+  mount: (container, viewStream, report) =>
+    Effect.gen(function*() {
+      const parentScope = yield* Scope.Scope
+      const surfaceScope = yield* Scope.fork(parentScope)
+
+      return yield* Scope.provide(surfaceScope)(Effect.gen(function*() {
+        const snapshots = yield* Ref.make<ReadonlyArray<View>>([])
+        const ready = yield* Deferred.make<void>()
+
+        yield* Effect.addFinalizer(() =>
+          container?.onFinalize === undefined
+            ? Effect.succeed(undefined)
+            : container.onFinalize
+        )
+
+        yield* viewStream.pipe(
+          Stream.runForEach((view) =>
+            Effect.gen(function*() {
+              yield* Ref.update(snapshots, (views) => [...views, view])
+              yield* Deferred.succeed(ready, undefined)
+            })
+          ),
+          Effect.forkScoped
+        )
+        yield* Deferred.await(ready)
+
+        const current = Ref.get(snapshots).pipe(
+          Effect.map((views) => views[views.length - 1])
+        )
+
+        return {
+          unmount: Scope.close(surfaceScope, Exit.void),
+          snapshots: Ref.get(snapshots),
+          current,
+          simulate: (ref: IntentRef, runtimeValue: JsonPayload = null) =>
+            report(ref, runtimeValue).pipe(Effect.andThen(Effect.yieldNow))
+        }
+      }))
+    })
+})
