@@ -28,6 +28,12 @@ const data = encodeView(view)
 The view tree is serializable data. Interactions are represented as named
 intent references, not callbacks.
 
+The catalog is versioned. Constructors stamp the current `CatalogVersion`;
+external or persisted trees should decode through `CompatibleViewSchema` /
+`decodeCompatibleView`, which accepts the explicit
+`compatibleCatalogVersions` allow-list. Unknown tags remain typed decode
+failures; the catalog has no custom-component extension point.
+
 ```ts
 import { Effect, Schema } from "effect"
 import {
@@ -160,3 +166,8 @@ Spacer({
 
 `Spacer` accepts layout keys, so color keys are rejected at compile time and by
 schema decode. The same contract applies to every catalog component.
+
+Catalog growth is documented in the repository root `GAPS.md`. The renderer
+conformance suite under `scripts/renderer-conformance.test.ts` mounts,
+interacts with, styles, and unmounts fixtures for every `componentTags` entry
+through headless, DOM, and React Native renderers.

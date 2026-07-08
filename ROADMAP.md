@@ -67,8 +67,9 @@ concrete: the first production consumers of the framework are a
 (web + mobile). The Phase 2 issues are scoped to what those two surfaces
 need, in the order they need it:
 
-- the **growth process itself** — the gap register and the catalog
-  versioning rule, so components enter by demand, not speculation (#9)
+- the **growth process itself** — the gap register, catalog versioning rule,
+  and renderer conformance suite, so components enter by demand, not
+  speculation (#9 complete)
 - **`Link` + a typed navigation intent** (routing expressed as data,
   delegating to the platform's router below the adapter line) (#10)
 - **responsive layout** — breakpoint variants resolved end-to-end through
@@ -78,9 +79,11 @@ need, in the order they need it:
 - **virtualized lists and section lists** (#14)
 
 A component enters the catalog when a screen needs it. The gap register
-(`GAPS.md`, established by #9) tracks what's missing rather than
+([`GAPS.md`](./GAPS.md), established by #9) tracks what's missing rather than
 speculatively building it — tabs, icons, media beyond `Image`, and
-everything else waits there for a demanding screen.
+everything else waits there for a demanding screen. The renderer conformance
+suite is driven by `componentTags`; a new tag fails until it has fixtures and
+headless, DOM, and React Native renderer coverage.
 
 **Exit criterion:** the catalog covers the elements of a complete production
 app on both priority targets.

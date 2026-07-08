@@ -141,6 +141,11 @@ The proof is the core receipt: one signup/activity screen, defined once as
 typed data, rendered through web and mobile hosts, with a cross-renderer
 oracle checking state, intent logs, and structural snapshots.
 
+Phase 2 catalog growth is governed by [GAPS.md](./GAPS.md). New components
+enter only when a real screen demands them, through an issue that defines the
+typed props/intents/style contract, implements every shipping renderer, bumps
+the catalog version, and extends the renderer conformance suite.
+
 See the **[roadmap](./ROADMAP.md)** for what we're building and in what
 order — web and mobile are the priority targets.
 

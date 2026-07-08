@@ -1009,6 +1009,16 @@ export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
   ])
 )
 
+export const compatibleCatalogVersions = [CatalogVersion] as const
+export type CompatibleCatalogVersion = (typeof compatibleCatalogVersions)[number]
+export const CompatibleCatalogVersionSchema = Schema.Literals(compatibleCatalogVersions)
+
+// Compatibility policy: the current decoder accepts every catalog version in
+// compatibleCatalogVersions. Future vN+1 bumps add prior-version decoders here
+// before changing CatalogVersion, so vN trees continue to decode while unknown
+// component tags still fail at the schema boundary.
+export const CompatibleViewSchema: Schema.Codec<View, View> = ViewSchema
+
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never
 type WithoutTagAndVersion<T extends NodeBase> = DistributiveOmit<T, "_tag" | "catalogVersion">
 
@@ -1046,6 +1056,7 @@ export const Spacer = (props: SpacerProps): SpacerView =>
 
 export const decodeView = Schema.decodeUnknownSync(ViewSchema)
 export const encodeView = Schema.encodeSync(ViewSchema)
+export const decodeCompatibleView = Schema.decodeUnknownSync(CompatibleViewSchema)
 
 export const isBinding = (value: unknown): value is Binding =>
   typeof value === "object" &&
