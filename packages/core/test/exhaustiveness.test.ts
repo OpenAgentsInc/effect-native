@@ -20,6 +20,7 @@ const describeView = Match.type<View>().pipe(
   Match.tag("Modal", () => "overlay"),
   Match.tag("Sheet", () => "overlay"),
   Match.tag("Host", () => "host"),
+  Match.tag("Icon", () => "icon"),
   Match.exhaustive
 )
 

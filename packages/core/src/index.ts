@@ -72,8 +72,9 @@ export const OverlayCatalogVersion = "effect-native/v4" as const
 export const CollectionCatalogVersion = "effect-native/v5" as const
 export const InteractionCatalogVersion = "effect-native/v6" as const
 export const HostCatalogVersion = "effect-native/v7" as const
-export const PreviousCatalogVersion = InteractionCatalogVersion
-export const CatalogVersion = HostCatalogVersion
+export const IconCatalogVersion = "effect-native/v8" as const
+export const PreviousCatalogVersion = HostCatalogVersion
+export const CatalogVersion = IconCatalogVersion
 export const CatalogVersionSchema = Schema.Literal(CatalogVersion)
 export type CatalogVersion = typeof CatalogVersion
 export const compatibleCatalogVersions = [
@@ -83,6 +84,7 @@ export const compatibleCatalogVersions = [
   FormCatalogVersion,
   OverlayCatalogVersion,
   CollectionCatalogVersion,
+  InteractionCatalogVersion,
   PreviousCatalogVersion,
   CatalogVersion
 ] as const
@@ -102,7 +104,8 @@ export const componentTags = [
   "Link",
   "Modal",
   "Sheet",
-  "Host"
+  "Host",
+  "Icon"
 ] as const
 export type ComponentTag = (typeof componentTags)[number]
 
@@ -1452,6 +1455,32 @@ export const hostKinds = ["code-editor", "terminal", "canvas"] as const
 export const HostKindSchema = Schema.Literals(hostKinds)
 export type HostKind = (typeof hostKinds)[number]
 
+// Closed icon-name set for the Icon catalog component (issue #31). No arbitrary
+// SVG string ever enters the public contract; the name set is the stable
+// contract and per-renderer registries own the concrete assets. Seeded with the
+// glyphs Khala Code actually uses (fleet controls, nav, status, menus). Growing
+// the set is a small, reviewed catalog change — never an escape hatch.
+export const iconNames = [
+  "Plus",
+  "Play",
+  "Pause",
+  "Stop",
+  "Reload",
+  "Circle",
+  "Check",
+  "X",
+  "ChevronUp",
+  "ChevronDown",
+  "ChevronLeft",
+  "ChevronRight"
+] as const
+export const IconNameSchema = Schema.Literals(iconNames)
+export type IconName = (typeof iconNames)[number]
+
+export const iconSizes = ["sm", "md", "lg"] as const
+export const IconSizeSchema = Schema.Literals(iconSizes)
+export type IconSize = (typeof iconSizes)[number]
+
 const copyFlatStyle = <Key extends StyleKey>(style: StyleFor<Key> | FlatStyleFor<Key>): FlatStyleFor<Key> => {
   const flat: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(style)) {
@@ -1779,6 +1808,19 @@ export interface HostView extends NodeBase {
   readonly style?: CardStyle
 }
 
+// Icon catalog component (issue #31). Closed name set only; decorative vs
+// meaningful is typed — a `label` present means meaningful (aria-label), absent
+// means decorative (aria-hidden). Size is a token scale; color is token-driven
+// and defaults to currentColor in renderers.
+export interface IconView extends NodeBase {
+  readonly _tag: "Icon"
+  readonly name: IconName
+  readonly size?: IconSize
+  readonly color?: ColorToken
+  readonly label?: string
+  readonly style?: TextStyle
+}
+
 export type View =
   | StackView
   | TextView
@@ -1793,6 +1835,7 @@ export type View =
   | ModalView
   | SheetView
   | HostView
+  | IconView
 
 export type KeyedView = View & { readonly key: NodeKey }
 
@@ -2089,6 +2132,15 @@ export const HostSchema: Schema.Codec<HostView, HostView> = Schema.TaggedStruct(
   style: CardStyleSchema.pipe(Schema.optionalKey)
 })
 
+export const IconSchema: Schema.Codec<IconView, IconView> = Schema.TaggedStruct("Icon", {
+  ...CommonFields,
+  name: IconNameSchema,
+  size: IconSizeSchema.pipe(Schema.optionalKey),
+  color: ColorTokenSchema.pipe(Schema.optionalKey),
+  label: Schema.String.pipe(Schema.optionalKey),
+  style: TextStyleSchema.pipe(Schema.optionalKey)
+})
+
 export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
   Schema.Union([
     StackSchema,
@@ -2103,7 +2155,8 @@ export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
     LinkSchema,
     ModalSchema,
     SheetSchema,
-    HostSchema
+    HostSchema,
+    IconSchema
   ]).check(OverlayStackFilter)
 )
 
@@ -2182,6 +2235,10 @@ export const Sheet = (props: SheetProps, children: ReadonlyArray<View> = []): Sh
 export type HostProps = WithoutTagAndVersion<HostView>
 export const Host = (props: HostProps): HostView =>
   HostSchema.make({ _tag: "Host", catalogVersion: CatalogVersion, ...props })
+
+export type IconProps = WithoutTagAndVersion<IconView>
+export const Icon = (props: IconProps): IconView =>
+  IconSchema.make({ _tag: "Icon", catalogVersion: CatalogVersion, ...props })
 
 export const decodeView = Schema.decodeUnknownSync(ViewSchema)
 export const encodeView = Schema.encodeSync(ViewSchema)
@@ -2323,6 +2380,7 @@ export const resolveView = (view: View, input: ViewResolution = {}): View => {
         children: view.children.map((child) => resolveView(child, input))
       }
     case "Host":
+    case "Icon":
       return {
         ...view,
         ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) })
@@ -2347,6 +2405,7 @@ export const resolveBindings = <State>(view: View, state: State): View => {
     case "TextField":
     case "Spacer":
     case "Host":
+    case "Icon":
       return view
     case "List":
       return {

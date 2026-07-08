@@ -8,6 +8,9 @@ import {
   FormFieldValueBinding,
   type HostKind,
   type HostView,
+  type IconName,
+  type IconSize,
+  type IconView,
   type ImageView,
   type IntentError,
   IntentRef,
@@ -1292,6 +1295,51 @@ const renderSpacer = (view: SpacerView, state: DomRendererState): HTMLElement =>
   return element
 }
 
+// Inline-SVG icon registry (issue #31). The closed IconName set is the stable
+// contract; this per-renderer map is the DOM asset detail. All glyphs draw on a
+// 24x24 viewBox and inherit `currentColor` so token-driven `color` flows
+// through. No user-supplied SVG ever enters the tree.
+const iconSizePixels: Record<IconSize, number> = { sm: 16, md: 20, lg: 24 }
+
+const iconRegistry: Record<IconName, { readonly body: string; readonly fill: boolean }> = {
+  Plus: { body: '<path d="M12 5v14M5 12h14"/>', fill: false },
+  Play: { body: '<path d="M8 5v14l11-7z"/>', fill: true },
+  Pause: { body: '<path d="M8 5h3v14H8zM13 5h3v14h-3z"/>', fill: true },
+  Stop: { body: '<path d="M6 6h12v12H6z"/>', fill: true },
+  Reload: { body: '<path d="M4.5 12a7.5 7.5 0 1 1 2.2 5.3M4 12V7"/>', fill: false },
+  Circle: { body: '<circle cx="12" cy="12" r="7"/>', fill: false },
+  Check: { body: '<path d="M5 13l4 4L19 7"/>', fill: false },
+  X: { body: '<path d="M6 6l12 12M18 6L6 18"/>', fill: false },
+  ChevronUp: { body: '<path d="M6 15l6-6 6 6"/>', fill: false },
+  ChevronDown: { body: '<path d="M6 9l6 6 6-6"/>', fill: false },
+  ChevronLeft: { body: '<path d="M15 6l-6 6 6 6"/>', fill: false },
+  ChevronRight: { body: '<path d="M9 6l6 6-6 6"/>', fill: false }
+}
+
+const renderIcon = (view: IconView, state: DomRendererState): HTMLElement => {
+  const element = state.keyedElement(view, "span")
+  state.resetListeners(element)
+  element.setAttribute("data-en-icon", view.name)
+  element.style.display = "inline-flex"
+  element.style.color = view.color === undefined ? "" : colorValue(view.color)
+  const px = iconSizePixels[view.size ?? "md"]
+  const glyph = iconRegistry[view.name]
+  const paint = glyph.fill
+    ? 'fill="currentColor"'
+    : 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"'
+  element.innerHTML =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${px}" height="${px}" viewBox="0 0 24 24" ${paint}>${glyph.body}</svg>`
+  if (view.label === undefined) {
+    element.setAttribute("aria-hidden", "true")
+  } else {
+    element.setAttribute("role", "img")
+    element.setAttribute("aria-label", view.label)
+  }
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  return element
+}
+
 const hostInstanceKey = (view: HostView): string => `${view.kind}:${view.key ?? ""}`
 
 const renderHost = (view: HostView, state: DomRendererState, report: IntentReporter): HTMLElement => {
@@ -1376,6 +1424,8 @@ const renderView = (view: View, state: DomRendererState, report: IntentReporter)
       return renderSpacer(view, state)
     case "Host":
       return renderHost(view, state, report)
+    case "Icon":
+      return renderIcon(view, state)
   }
 }
 

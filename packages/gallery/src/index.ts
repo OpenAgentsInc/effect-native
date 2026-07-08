@@ -4,6 +4,7 @@ import {
   Card,
   ComponentValueBinding,
   Host,
+  Icon,
   Image,
   IntentRef,
   IntentSchema,
@@ -23,6 +24,8 @@ import {
   colorTokens,
   defaultTheme,
   hostKinds,
+  iconNames,
+  iconSizes,
   defineIntent,
   makeIntentRegistry,
   makeViewProgramFromState,
@@ -609,7 +612,22 @@ const componentStoryMap = {
         style: { backgroundColor: "surface", borderColor: "border", borderWidth: 1 }
       })
     })
-  )
+  ),
+  Icon: [
+    story({
+      id: "icon-set",
+      component: "Icon",
+      title: "Icon set",
+      description: "Closed icon-name set rendered from the per-renderer registry.",
+      view: Stack({ key: "icon-set-wrap", direction: "row", gap: "2", align: "center" },
+        iconNames.map((name) =>
+          Icon({ key: `icon-${name}`, name, size: "md", color: "textPrimary", label: name }))),
+      controls: [
+        enumControl("icon-name", "Name", ["children", 0, "name"], iconNames[0], iconNames),
+        enumControl("icon-size", "Size", ["children", 0, "size"], "md", iconSizes)
+      ]
+    })
+  ]
 } satisfies { readonly [Tag in ComponentTag]: ReadonlyArray<Story> }
 
 export const generatedStoriesByComponent = componentStoryMap

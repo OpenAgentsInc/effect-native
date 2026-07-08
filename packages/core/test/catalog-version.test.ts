@@ -5,6 +5,7 @@ import {
   CollectionCatalogVersion,
   CompatibleViewSchema,
   FormCatalogVersion,
+  HostCatalogVersion,
   InteractionCatalogVersion,
   LegacyCatalogVersion,
   LinkCatalogVersion,
@@ -47,6 +48,10 @@ describe("catalog version compatibility", () => {
     }
     const v6Tree = {
       ...JSON.parse(JSON.stringify(view)),
+      catalogVersion: InteractionCatalogVersion
+    }
+    const v7Tree = {
+      ...JSON.parse(JSON.stringify(view)),
       catalogVersion: PreviousCatalogVersion
     }
     const v0Tree = {
@@ -62,7 +67,8 @@ describe("catalog version compatibility", () => {
     expect(decodeCompatibleView(v4Tree).catalogVersion).toBe(OverlayCatalogVersion)
     expect(decodeCompatibleView(v5Tree).catalogVersion).toBe(CollectionCatalogVersion)
     expect(decodeCompatibleView(v6Tree).catalogVersion).toBe(InteractionCatalogVersion)
-    expect(PreviousCatalogVersion).toBe(InteractionCatalogVersion)
+    expect(decodeCompatibleView(v7Tree).catalogVersion).toBe(HostCatalogVersion)
+    expect(PreviousCatalogVersion).toBe(HostCatalogVersion)
     expect(compatibleCatalogVersions).toEqual([
       LegacyCatalogVersion,
       LinkCatalogVersion,
@@ -70,6 +76,7 @@ describe("catalog version compatibility", () => {
       FormCatalogVersion,
       OverlayCatalogVersion,
       CollectionCatalogVersion,
+      InteractionCatalogVersion,
       PreviousCatalogVersion,
       CatalogVersion
     ])

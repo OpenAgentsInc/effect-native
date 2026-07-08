@@ -5,6 +5,9 @@ import {
   type CardView,
   type ColorToken,
   type HostView,
+  type IconName,
+  type IconSize,
+  type IconView,
   type Dimension,
   type FlatStyle,
   FormFieldValueBinding,
@@ -829,6 +832,54 @@ const renderHost = (
     }
   )
 
+// Icon on React Native (issue #31). The closed IconName set is the contract;
+// RN renders each glyph from a bounded font-glyph registry (sized from tokens,
+// token-driven color). Decorative vs meaningful is honored via accessibility
+// props. No raw SVG/markup enters the tree.
+const iconGlyphs: Record<IconName, string> = {
+  Plus: "+",
+  Play: "▶",
+  Pause: "❚❚",
+  Stop: "■",
+  Reload: "↻",
+  Circle: "○",
+  Check: "✓",
+  X: "✕",
+  ChevronUp: "⌃",
+  ChevronDown: "⌄",
+  ChevronLeft: "‹",
+  ChevronRight: "›"
+}
+
+const iconFontSize: Record<IconSize, number> = { sm: 16, md: 20, lg: 24 }
+
+const renderIcon = (
+  view: IconView,
+  dependencies: ReactNativeDependencies,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const style = mergeNativeStyles(
+    {
+      fontSize: iconFontSize[view.size ?? "md"],
+      ...(view.color === undefined ? {} : { color: colorValue(options.theme ?? defaultTheme, view.color) })
+    },
+    viewStyle(view, options)
+  )
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.Text,
+    {
+      ...baseProps(view, style),
+      testID: `en-icon:${view.name}`,
+      accessibilityRole: "image",
+      ...(view.label === undefined
+        ? { accessibilityElementsHidden: true, importantForAccessibility: "no-hide-descendants" }
+        : { accessibilityLabel: view.label })
+    },
+    iconGlyphs[view.name]
+  )
+}
+
 const renderResolvedReactNativeView = (
   view: View,
   dependencies: ReactNativeDependencies,
@@ -862,6 +913,8 @@ const renderResolvedReactNativeView = (
       return renderSpacer(view, dependencies, options)
     case "Host":
       return renderHost(view, dependencies, options)
+    case "Icon":
+      return renderIcon(view, dependencies, options)
   }
 }
 

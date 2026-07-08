@@ -9,6 +9,7 @@ import {
   FieldBinding,
   FormFieldValueBinding,
   Host,
+  Icon,
   Image,
   IntentRef,
   Link,
@@ -183,7 +184,8 @@ const catalogFixturesByTag = {
     kind: "canvas",
     props: { placeholder: true },
     style: { backgroundColor: "surface" }
-  })
+  }),
+  Icon: Icon({ key: "icon", name: "Check", size: "md", color: "accent", label: "Done" })
 } satisfies { readonly [Tag in (typeof componentTags)[number]]: View }
 
 const allFixtureTags = Object.keys(catalogFixturesByTag).sort()
@@ -270,7 +272,8 @@ const catalogRendererTags = [
   "Spacer",
   "Link",
   "Modal",
-  "Sheet"
+  "Sheet",
+  "Icon"
 ] as const
 
 // Host (issue #23) is supported by the headless recorder and the DOM renderer

@@ -23,7 +23,7 @@ their reason so pressure is visible without weakening the catalog contract.
 
 ## Catalog Versioning Policy
 
-The current catalog marker is `effect-native/v7`, exposed by
+The current catalog marker is `effect-native/v8`, exposed by
 `CatalogVersion`. `compatibleCatalogVersions` is the decode allow-list, and
 `CompatibleViewSchema` is the schema app authors and renderers should use when
 accepting persisted or externally-authored trees.
@@ -60,7 +60,7 @@ until it has a fixture and every renderer declares and proves support for it.
 | Popover / dropdown menu / context menu / tooltip | Command menus, settings menus, tooltips, and context menus in Khala Code Desktop | 2026-07-08 | accepted -> #28 |
 | Command palette / combobox | Khala command palette and slash-command autocomplete | 2026-07-08 | accepted -> #29 |
 | Tabs | Khala settings, workbench, and panel groups | 2026-07-08 | accepted -> #30 |
-| Icon | Khala nav rail, command buttons, statuses, fleet controls, and menu items | 2026-07-08 | accepted -> #31 |
+| Icon | Khala nav rail, command buttons, statuses, fleet controls, and menu items | 2026-07-08 | shipped -> #31 (v8: closed IconName set + iconSizes, per-renderer registries — DOM inline SVG/currentColor, RN font glyphs — typed decorative vs meaningful a11y) |
 | Rich contenteditable composer | Khala chat composer needs multiline contenteditable text, slash commands, mentions, history, and attachments | 2026-07-08 | accepted -> #32 |
 | CodeEditor host | Khala editor panel needs Monaco under the reviewed Host contract | 2026-07-08 | accepted -> #33 |
 | Terminal host | Khala terminal panel needs a Scope-owned terminal host driver | 2026-07-08 | accepted -> #34 |

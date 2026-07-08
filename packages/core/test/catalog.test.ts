@@ -191,7 +191,7 @@ const view = (depth: number): fc.Arbitrary<View> => {
 }
 
 describe("Effect Native catalog", () => {
-  test("contains exactly the thirteen current component tags", () => {
+  test("contains exactly the fourteen current component tags", () => {
     expect(componentTags).toEqual([
       "Stack",
       "Text",
@@ -205,9 +205,10 @@ describe("Effect Native catalog", () => {
       "Link",
       "Modal",
       "Sheet",
-      "Host"
+      "Host",
+      "Icon"
     ])
-    expect(new Set(componentTags).size).toBe(13)
+    expect(new Set(componentTags).size).toBe(14)
   })
 
   test("schema encode/decode round-trips constructed views as JSON data", () => {
