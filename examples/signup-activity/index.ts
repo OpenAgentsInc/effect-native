@@ -102,7 +102,7 @@ const heroSvg = [
 
 const keyed = <V extends View>(view: V): V & { readonly key: string } => view as V & { readonly key: string }
 
-const submitSignup = (
+export const submitSignup = (
   state: SignupActivityState,
   payload: { readonly name: string; readonly email: string; readonly via: string }
 ): SignupActivityState => {
