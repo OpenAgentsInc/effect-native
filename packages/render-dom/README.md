@@ -19,6 +19,8 @@ The current element mapping is deliberately small and semantic:
 | `List` | `ul` / `li` |
 | `Card` | `section` |
 | `Spacer` | `div aria-hidden="true"` |
+| `Modal` | `dialog` with modal semantics |
+| `Sheet` | edge-anchored `aside` dialog |
 
 Styles are private renderer output. Public views still use typed style objects
 and design tokens; the DOM renderer lowers those to CSS custom properties plus
@@ -96,6 +98,12 @@ and accessible. Clicks also report the typed `Navigate` intent. Hosts may wire
 that intent to their router, or use `makeDomNavigationHandlerLayer()` for the
 default browser behavior: external URLs, history push/replace for paths, and
 hash navigation for anchors.
+
+`Modal` and `Sheet` are presence-driven view data. When `open` resolves true,
+the DOM renderer applies scroll lock, moves focus into the overlay, traps Tab
+within it, and reports `onDismiss` for Escape, dialog cancel, and backdrop
+clicks when `dismissable` is true. When the overlay closes, focus is restored
+to the previously active element.
 
 Responsive layout is resolved through the runtime, not through a second
 CSS-first model. The DOM renderer reads `window.innerWidth` / `innerHeight`

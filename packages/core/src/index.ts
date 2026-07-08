@@ -63,13 +63,15 @@ export const packageName = "@effect-native/core" as const
 
 export const LegacyCatalogVersion = "effect-native/v0" as const
 export const LinkCatalogVersion = "effect-native/v1" as const
-export const PreviousCatalogVersion = "effect-native/v2" as const
-export const CatalogVersion = "effect-native/v3" as const
+export const ResponsiveCatalogVersion = "effect-native/v2" as const
+export const PreviousCatalogVersion = "effect-native/v3" as const
+export const CatalogVersion = "effect-native/v4" as const
 export const CatalogVersionSchema = Schema.Literal(CatalogVersion)
 export type CatalogVersion = typeof CatalogVersion
 export const compatibleCatalogVersions = [
   LegacyCatalogVersion,
   LinkCatalogVersion,
+  ResponsiveCatalogVersion,
   PreviousCatalogVersion,
   CatalogVersion
 ] as const
@@ -85,7 +87,9 @@ export const componentTags = [
   "List",
   "Card",
   "Spacer",
-  "Link"
+  "Link",
+  "Modal",
+  "Sheet"
 ] as const
 export type ComponentTag = (typeof componentTags)[number]
 
@@ -105,6 +109,9 @@ export type Bound<T> = T | Binding
 
 export const Binding = (path: readonly [string, ...Array<string>]): Binding =>
   BindingSchema.make({ _tag: "Binding", path })
+
+export const BoundStringSchema = Schema.Union([Schema.String, BindingSchema])
+export const BoundBooleanSchema = Schema.Union([Schema.Boolean, BindingSchema])
 
 export const StaticPayloadSchema = Schema.TaggedStruct("StaticPayload", {
   value: JsonPayloadSchema
@@ -388,6 +395,7 @@ export const TextWeightSchema = Schema.Literals(["regular", "medium", "semibold"
 export const ButtonVariantSchema = Schema.Literals(["primary", "secondary", "ghost"] as const)
 export const ImageFitSchema = Schema.Literals(["contain", "cover", "fill"] as const)
 export const UrlTargetSchema = Schema.Literals(["self", "blank"] as const)
+export const SheetEdgeSchema = Schema.Literals(["bottom", "side"] as const)
 
 export type StackDirection = Schema.Schema.Type<typeof StackDirectionSchema>
 export type StackAlign = Schema.Schema.Type<typeof StackAlignSchema>
@@ -396,6 +404,7 @@ export type TextWeight = Schema.Schema.Type<typeof TextWeightSchema>
 export type ButtonVariant = Schema.Schema.Type<typeof ButtonVariantSchema>
 export type ImageFit = Schema.Schema.Type<typeof ImageFitSchema>
 export type UrlTarget = Schema.Schema.Type<typeof UrlTargetSchema>
+export type SheetEdge = Schema.Schema.Type<typeof SheetEdgeSchema>
 
 export const UriStringSchema = Schema.String.check(
   Schema.isPattern(/^[a-z][a-z0-9+.-]*:/i, {
@@ -1399,6 +1408,26 @@ export interface LinkView extends NodeBase {
   readonly children: ReadonlyArray<LinkChildView>
 }
 
+export interface ModalView extends NodeBase {
+  readonly _tag: "Modal"
+  readonly title: Bound<string>
+  readonly open: Bound<boolean>
+  readonly dismissable: boolean
+  readonly size: DimensionToken
+  readonly onDismiss: IntentRef
+  readonly children: ReadonlyArray<View>
+}
+
+export interface SheetView extends NodeBase {
+  readonly _tag: "Sheet"
+  readonly open: Bound<boolean>
+  readonly dismissable: boolean
+  readonly edge: SheetEdge
+  readonly detents: ReadonlyArray<DimensionToken>
+  readonly onDismiss: IntentRef
+  readonly children: ReadonlyArray<View>
+}
+
 export type View =
   | StackView
   | TextView
@@ -1409,8 +1438,74 @@ export type View =
   | CardView
   | SpacerView
   | LinkView
+  | ModalView
+  | SheetView
 
 export type KeyedView = View & { readonly key: NodeKey }
+
+const childViews = (view: View): ReadonlyArray<View> => {
+  switch (view._tag) {
+    case "Stack":
+      return view.children
+    case "List":
+      return view.items
+    case "Card":
+      return view.children
+    case "Link":
+      return view.children
+    case "Modal":
+      return view.children
+    case "Sheet":
+      return view.children
+    default:
+      return []
+  }
+}
+
+const findOverlayStackIssue = (
+  view: View,
+  path: ReadonlyArray<string | number> = [],
+  insideOverlay = false,
+  counts: { modal: number; sheet: number } = { modal: 0, sheet: 0 }
+): { readonly path: ReadonlyArray<string | number>; readonly issue: string } | undefined => {
+  const isOverlay = view._tag === "Modal" || view._tag === "Sheet"
+  if (isOverlay && insideOverlay) {
+    return {
+      path,
+      issue: "Overlay nesting beyond one modal over one sheet is not supported"
+    }
+  }
+  if (view._tag === "Modal") {
+    counts.modal += 1
+  }
+  if (view._tag === "Sheet") {
+    counts.sheet += 1
+  }
+  if (counts.modal > 1 || counts.sheet > 1 || counts.modal + counts.sheet > 2) {
+    return {
+      path,
+      issue: "At most one Modal and one Sheet may be present in a view tree"
+    }
+  }
+
+  const children = childViews(view)
+  for (let index = 0; index < children.length; index += 1) {
+    const child = children[index]!
+    const issue = findOverlayStackIssue(
+      child,
+      [...path, "children", index],
+      insideOverlay || isOverlay,
+      counts
+    )
+    if (issue !== undefined) {
+      return issue
+    }
+  }
+
+  return undefined
+}
+
+const OverlayStackFilter = Schema.makeFilter<View>((view) => findOverlayStackIssue(view))
 
 const ViewSelf = Schema.suspend((): Schema.Codec<View, View> => ViewSchema)
 
@@ -1441,7 +1536,7 @@ export const StackSchema: Schema.Codec<StackView, StackView> = Schema.TaggedStru
 
 export const TextSchema: Schema.Codec<TextView, TextView> = Schema.TaggedStruct("Text", {
   ...CommonFields,
-  content: Schema.Union([Schema.String, BindingSchema]),
+  content: BoundStringSchema,
   variant: TypeScaleTokenSchema,
   color: ColorTokenSchema.pipe(Schema.optionalKey),
   weight: TextWeightSchema.pipe(Schema.optionalKey),
@@ -1547,6 +1642,34 @@ export const LinkSchema: Schema.Codec<LinkView, LinkView> = Schema.TaggedStruct(
   )
 })
 
+const SheetDetentsSchema = Schema.Array(DimensionTokenSchema).check(
+  Schema.makeFilter<ReadonlyArray<DimensionToken>>((detents) =>
+    detents.length > 0 && detents.length <= 3
+      ? undefined
+      : { path: [], issue: "Sheet detents require one to three size tokens" }
+  )
+) as Schema.Codec<ReadonlyArray<DimensionToken>, ReadonlyArray<DimensionToken>>
+
+export const ModalSchema: Schema.Codec<ModalView, ModalView> = Schema.TaggedStruct("Modal", {
+  ...CommonFields,
+  title: BoundStringSchema,
+  open: BoundBooleanSchema,
+  dismissable: Schema.Boolean,
+  size: DimensionTokenSchema,
+  onDismiss: IntentRefSchema,
+  children: Schema.Array(ViewSelf)
+})
+
+export const SheetSchema: Schema.Codec<SheetView, SheetView> = Schema.TaggedStruct("Sheet", {
+  ...CommonFields,
+  open: BoundBooleanSchema,
+  dismissable: Schema.Boolean,
+  edge: SheetEdgeSchema,
+  detents: SheetDetentsSchema,
+  onDismiss: IntentRefSchema,
+  children: Schema.Array(ViewSelf)
+})
+
 export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
   Schema.Union([
     StackSchema,
@@ -1557,8 +1680,10 @@ export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
     ListSchema,
     CardSchema,
     SpacerSchema,
-    LinkSchema
-  ])
+    LinkSchema,
+    ModalSchema,
+    SheetSchema
+  ]).check(OverlayStackFilter)
 )
 
 // Compatibility policy: the current decoder accepts every catalog version in
@@ -1606,6 +1731,14 @@ export type LinkProps = Omit<WithoutTagAndVersion<LinkView>, "children">
 export const Link = (props: LinkProps, children: ReadonlyArray<LinkChildView>): LinkView =>
   LinkSchema.make({ _tag: "Link", catalogVersion: CatalogVersion, ...props, children })
 
+export type ModalProps = Omit<WithoutTagAndVersion<ModalView>, "children">
+export const Modal = (props: ModalProps, children: ReadonlyArray<View> = []): ModalView =>
+  ModalSchema.make({ _tag: "Modal", catalogVersion: CatalogVersion, ...props, children })
+
+export type SheetProps = Omit<WithoutTagAndVersion<SheetView>, "children">
+export const Sheet = (props: SheetProps, children: ReadonlyArray<View> = []): SheetView =>
+  SheetSchema.make({ _tag: "Sheet", catalogVersion: CatalogVersion, ...props, children })
+
 export const decodeView = Schema.decodeUnknownSync(ViewSchema)
 export const encodeView = Schema.encodeSync(ViewSchema)
 export const decodeCompatibleView = Schema.decodeUnknownSync(CompatibleViewSchema)
@@ -1645,6 +1778,13 @@ const stringifyBoundText = (value: JsonPayload): string => {
 
 const resolveBoundText = (value: Bound<string>, state: unknown): string =>
   isBinding(value) ? stringifyBoundText(readStatePath(state, value.path)) : value
+
+const resolveBoundBoolean = (value: Bound<boolean>, state: unknown): boolean => {
+  if (!isBinding(value)) {
+    return value
+  }
+  return readStatePath(state, value.path) === true
+}
 
 export interface ViewResolution {
   readonly state?: unknown
@@ -1715,6 +1855,19 @@ export const resolveView = (view: View, input: ViewResolution = {}): View => {
         ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) }),
         children: view.children.map((child) => resolveView(child, input) as LinkChildView)
       }
+    case "Modal":
+      return {
+        ...view,
+        title: input.state === undefined ? view.title : resolveBoundText(view.title, input.state),
+        open: input.state === undefined ? view.open : resolveBoundBoolean(view.open, input.state),
+        children: view.children.map((child) => resolveView(child, input))
+      }
+    case "Sheet":
+      return {
+        ...view,
+        open: input.state === undefined ? view.open : resolveBoundBoolean(view.open, input.state),
+        children: view.children.map((child) => resolveView(child, input))
+      }
   }
 }
 
@@ -1742,6 +1895,16 @@ export const redactSecureView = (view: View): View => {
       return {
         ...view,
         children: view.children.map((child) => redactSecureView(child) as LinkChildView)
+      }
+    case "Modal":
+      return {
+        ...view,
+        children: view.children.map(redactSecureView)
+      }
+    case "Sheet":
+      return {
+        ...view,
+        children: view.children.map(redactSecureView)
       }
     case "TextField":
       return view.secure === true

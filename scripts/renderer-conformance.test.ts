@@ -12,7 +12,9 @@ import {
   IntentRef,
   Link,
   List,
+  Modal,
   Spacer,
+  Sheet,
   Stack,
   StaticPayload,
   Text,
@@ -58,6 +60,7 @@ interface FixtureState {
   readonly field: string
   readonly buttonCount: number
   readonly submitCount: number
+  readonly dismissCount: number
 }
 
 const Pressed = defineIntent("Pressed", Schema.Struct({
@@ -65,7 +68,10 @@ const Pressed = defineIntent("Pressed", Schema.Struct({
 }))
 const Changed = defineIntent("Changed", Schema.String)
 const Submitted = defineIntent("Submitted", Schema.String)
-const definitions = [Pressed, Changed, Submitted] as const
+const Dismissed = defineIntent("Dismissed", Schema.Struct({
+  surface: Schema.String
+}))
+const definitions = [Pressed, Changed, Submitted, Dismissed] as const
 
 const nextTask = Effect.promise<void>(() => new Promise((resolve) => setTimeout(resolve, 0)))
 
@@ -112,6 +118,26 @@ const catalogFixturesByTag = {
   }, [
     Text({ key: "link-label", content: "Docs", variant: "body" })
   ]),
+  Modal: Modal({
+    key: "modal",
+    title: "Confirm action",
+    open: true,
+    dismissable: true,
+    size: "md",
+    onDismiss: IntentRef("Dismissed", StaticPayload({ surface: "modal" }))
+  }, [
+    Text({ key: "modal-copy", content: "Modal copy", variant: "body" })
+  ]),
+  Sheet: Sheet({
+    key: "sheet",
+    open: false,
+    dismissable: true,
+    edge: "bottom",
+    detents: ["sm", "md"],
+    onDismiss: IntentRef("Dismissed", StaticPayload({ surface: "sheet" }))
+  }, [
+    Text({ key: "sheet-copy", content: "Sheet copy", variant: "body" })
+  ]),
   Image: heroImage,
   TextField: TextField({
     key: "field",
@@ -147,6 +173,8 @@ const fixtureView = (state: FixtureState): View =>
       label: `Pressed ${state.buttonCount}`
     }),
     catalogFixturesByTag.Link,
+    catalogFixturesByTag.Modal,
+    catalogFixturesByTag.Sheet,
     catalogFixturesByTag.Image,
     TextField({
       ...catalogFixturesByTag.TextField,
@@ -165,6 +193,8 @@ const expectedInitialStructure: Structure = {
     { tag: "Text", key: "text", text: "Catalog conformance" },
     { tag: "Button", key: "button", text: "Pressed 0" },
     { tag: "Link", key: "link", children: [{ tag: "Text", key: "link-label", text: "Docs" }] },
+    { tag: "Modal", key: "modal", children: [{ tag: "Text", key: "modal-copy", text: "Modal copy" }] },
+    { tag: "Sheet", key: "sheet", children: [{ tag: "Text", key: "sheet-copy", text: "Sheet copy" }] },
     { tag: "Image", key: "image" },
     { tag: "TextField", key: "field" },
     { tag: "List", key: "list", children: [{ tag: "Text", key: "list-item", text: "List item" }] },
@@ -204,7 +234,9 @@ const catalogRendererTags = [
   "List",
   "Card",
   "Spacer",
-  "Link"
+  "Link",
+  "Modal",
+  "Sheet"
 ] as const
 
 const rendererSupport = {
@@ -223,7 +255,8 @@ const createRuntime = Effect.gen(function*() {
     title: "Catalog conformance",
     field: "",
     buttonCount: 0,
-    submitCount: 0
+    submitCount: 0,
+    dismissCount: 0
   })
   const program = makeViewProgramFromState(state, fixtureView)
   const registry = yield* makeIntentRegistry(definitions, {
@@ -241,6 +274,11 @@ const createRuntime = Effect.gen(function*() {
       SubscriptionRef.update(state, (current) => ({
         ...current,
         submitCount: current.submitCount + 1
+      })),
+    Dismissed: () =>
+      SubscriptionRef.update(state, (current) => ({
+        ...current,
+        dismissCount: current.dismissCount + 1
       }))
   }, { now: () => 0 })
   const report: IntentReporter = (ref, runtimeValue) =>
@@ -272,7 +310,8 @@ const rnDependencies: ReactNativeDependencies = {
     Pressable: "Pressable",
     TextInput: "TextInput",
     FlatList: "FlatList",
-    Image: "Image"
+    Image: "Image",
+    Modal: "Modal"
   }
 }
 
@@ -353,7 +392,8 @@ describe("renderer conformance suite", () => {
       title: "Catalog conformance",
       field: "Ada",
       buttonCount: 1,
-      submitCount: 1
+      submitCount: 1,
+      dismissCount: 0
     })
     expect(result.events).toEqual(["success", "success", "success"])
     expect(result.current?._tag).toBe("Stack")
@@ -410,6 +450,7 @@ describe("renderer conformance suite", () => {
     expect(result.state.field).toBe("Ada")
     expect(result.state.buttonCount).toBe(1)
     expect(result.state.submitCount).toBe(1)
+    expect(result.state.dismissCount).toBe(0)
     expect(result.events).toEqual(["success", "success", "success"])
     expect(result.css).toContain("--en-color-accent")
     expect(result.styled).toContain("en-")
@@ -466,6 +507,7 @@ describe("renderer conformance suite", () => {
     expect(result.state.field).toBe("Ada")
     expect(result.state.buttonCount).toBe(1)
     expect(result.state.submitCount).toBe(1)
+    expect(result.state.dismissCount).toBe(0)
     expect(result.events).toEqual(["success", "success", "success"])
     expect(result.cardStyle).toMatchObject({ backgroundColor: "#f8fafc", borderColor: "#cbd5e1" })
     expect(result.lastRender).toBeUndefined()
@@ -600,6 +642,96 @@ describe("renderer conformance suite", () => {
     expect(dom.state).toEqual(headless.state)
     expect(rn.state).toEqual(headless.state)
     expect(headless.snapshot?._tag).toBe("Stack")
+  })
+
+  test("overlay open state and dismiss intents conform across every renderer", async () => {
+    const overlayView = (open: boolean): View =>
+      Modal({
+        key: "confirm",
+        title: "Confirm",
+        open,
+        dismissable: true,
+        size: "sm",
+        onDismiss: IntentRef("Dismissed", StaticPayload({ surface: "modal" }))
+      }, [
+        Text({ key: "copy", content: "Confirm?", variant: "body" })
+      ])
+    const createOverlayRuntime = Effect.gen(function*() {
+      const state = yield* SubscriptionRef.make({ modalOpen: true })
+      const program = makeViewProgramFromState(state, (current) => overlayView(current.modalOpen))
+      const registry = yield* makeIntentRegistry([Dismissed] as const, {
+        Dismissed: () => SubscriptionRef.update(state, () => ({ modalOpen: false }))
+      }, { now: () => 0 })
+      const report: IntentReporter = (ref, runtimeValue) =>
+        registry.dispatch(resolveIntentRef(ref, runtimeValue))
+      return { state, program, registry, report }
+    })
+    const eventNames = (events: ReadonlyArray<{ readonly intent: { readonly name: string } }>) =>
+      events.map((event) => event.intent.name)
+
+    const headless = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
+      const runtime = yield* createOverlayRuntime
+      const surface = yield* makeHeadlessRenderer().mount(undefined, runtime.program.viewStream, runtime.report)
+      const initial = yield* surface.current
+      yield* surface.simulate(IntentRef("Dismissed", StaticPayload({ surface: "modal" })))
+      const dismissed = yield* surface.current
+      return {
+        initial,
+        dismissed,
+        state: yield* runtime.program.currentState,
+        events: yield* runtime.registry.events
+      }
+    })))
+
+    const window = new Window()
+    const document = window.document as unknown as Document
+    const container = document.createElement("main")
+    document.body.appendChild(container)
+    const dom = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
+      const runtime = yield* createOverlayRuntime
+      yield* makeDomRenderer({ document }).mount(container, runtime.program.viewStream, runtime.report)
+      const dialog = container.querySelector('dialog[data-en-key="confirm"]') as HTMLDialogElement | null
+      if (dialog === null) {
+        throw new Error("expected DOM modal")
+      }
+      dialog.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }) as unknown as Event)
+      yield* nextTask
+      yield* Effect.yieldNow
+      return {
+        state: yield* runtime.program.currentState,
+        events: yield* runtime.registry.events
+      }
+    })))
+
+    const rn = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
+      const runtime = yield* createOverlayRuntime
+      const surface = yield* makeReactNativeRenderer({ dependencies: rnDependencies }).mount(
+        undefined,
+        runtime.program.viewStream,
+        runtime.report
+      )
+      const modal = findNativeNode(yield* surface.currentElement, "Modal", "confirm")
+      const onRequestClose = modal?.props.onRequestClose
+      if (typeof onRequestClose !== "function") {
+        throw new Error("expected RN modal onRequestClose")
+      }
+      onRequestClose()
+      yield* nextTask
+      yield* Effect.yieldNow
+      return {
+        state: yield* runtime.program.currentState,
+        events: yield* runtime.registry.events
+      }
+    })))
+
+    expect(headless.initial?._tag === "Modal" && headless.initial.open).toBe(true)
+    expect(headless.dismissed?._tag === "Modal" && headless.dismissed.open).toBe(false)
+    expect(headless.state).toEqual({ modalOpen: false })
+    expect(dom.state).toEqual(headless.state)
+    expect(rn.state).toEqual(headless.state)
+    expect(eventNames(headless.events)).toEqual(["Dismissed"])
+    expect(eventNames(dom.events)).toEqual(["Dismissed"])
+    expect(eventNames(rn.events)).toEqual(["Dismissed"])
   })
 
   test("all renderers re-resolve responsive viewport changes", async () => {

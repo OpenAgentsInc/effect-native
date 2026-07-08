@@ -9,7 +9,9 @@ import {
   Image,
   Link,
   List,
+  Modal,
   Spacer,
+  Sheet,
   Stack,
   StaticPayload,
   Text,
@@ -176,7 +178,7 @@ const view = (depth: number): fc.Arbitrary<View> => {
 }
 
 describe("Effect Native catalog", () => {
-  test("contains exactly the nine current component tags", () => {
+  test("contains exactly the eleven current component tags", () => {
     expect(componentTags).toEqual([
       "Stack",
       "Text",
@@ -186,9 +188,11 @@ describe("Effect Native catalog", () => {
       "List",
       "Card",
       "Spacer",
-      "Link"
+      "Link",
+      "Modal",
+      "Sheet"
     ])
-    expect(new Set(componentTags).size).toBe(9)
+    expect(new Set(componentTags).size).toBe(11)
   })
 
   test("schema encode/decode round-trips constructed views as JSON data", () => {
@@ -262,5 +266,43 @@ describe("Effect Native catalog", () => {
     })
 
     expect(Exit.isFailure(exit)).toBe(true)
+  })
+
+  test("overlay components round-trip and reject stacks beyond the v0 bound", () => {
+    const modal = Modal({
+      key: "confirm",
+      title: "Confirm",
+      open: true,
+      dismissable: true,
+      size: "md",
+      onDismiss: { name: "Dismissed" }
+    }, [
+      Text({ key: "copy", content: "Ready?", variant: "body" })
+    ])
+    const sheet = Sheet({
+      key: "details",
+      open: false,
+      dismissable: true,
+      edge: "bottom",
+      detents: ["sm", "md"],
+      onDismiss: { name: "Dismissed" }
+    }, [
+      Text({ key: "details-copy", content: "Details", variant: "body" })
+    ])
+
+    expect(decodeView(encodeView(modal))).toEqual(modal)
+    expect(decodeView(encodeView(sheet))).toEqual(sheet)
+
+    const nested = Schema.decodeUnknownExit(ViewSchema)({
+      ...JSON.parse(JSON.stringify(modal)),
+      children: [JSON.parse(JSON.stringify(sheet))]
+    })
+    expect(Exit.isFailure(nested)).toBe(true)
+
+    const tooManyDetents = Schema.decodeUnknownExit(ViewSchema)({
+      ...JSON.parse(JSON.stringify(sheet)),
+      detents: ["xs", "sm", "md", "lg"]
+    })
+    expect(Exit.isFailure(tooManyDetents)).toBe(true)
   })
 })

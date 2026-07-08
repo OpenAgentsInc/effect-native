@@ -10,7 +10,9 @@ import {
   IntentRef,
   Link,
   List,
+  Modal,
   Spacer,
+  Sheet,
   Stack,
   StaticPayload,
   Text,
@@ -62,6 +64,7 @@ const host = {
   TextInput: "TextInput",
   FlatList: "FlatList",
   Image: "Image",
+  Modal: "Modal",
   StyleSheet: {
     create: <Styles extends Record<string, unknown>>(styles: Styles): Styles => styles
   }
@@ -347,6 +350,100 @@ describe("React Native renderer", () => {
 
       expect(recorded).toEqual([destination])
     })))
+  })
+
+  test("Modal renders through the RN host component and reports request-close dismissals", () => {
+    const reports: Array<unknown> = []
+    const report: IntentReporter = (ref, runtimeValue) =>
+      Effect.sync(() => {
+        reports.push(resolveIntentRef(ref, runtimeValue))
+      })
+    const element = renderReactNativeView(Modal({
+      key: "confirm",
+      title: "Confirm",
+      open: true,
+      dismissable: true,
+      size: "md",
+      onDismiss: IntentRef("Dismissed", StaticPayload({ surface: "modal" }))
+    }, [
+      Text({ key: "copy", content: "Confirm?", variant: "body" })
+    ]), dependencies, report)
+
+    expect(element.type).toBe(host.Modal)
+    expect(element.props.visible).toBe(true)
+    expect(element.props.accessibilityViewIsModal).toBe(true)
+
+    const onRequestClose = element.props.onRequestClose
+    if (typeof onRequestClose !== "function") {
+      throw new Error("expected Modal onRequestClose")
+    }
+    onRequestClose()
+
+    expect(reports).toEqual([
+      { name: "Dismissed", payload: { surface: "modal" } }
+    ])
+  })
+
+  test("Sheet maps detents to panel size and reports backdrop dismissals", () => {
+    const reports: Array<unknown> = []
+    const report: IntentReporter = (ref, runtimeValue) =>
+      Effect.sync(() => {
+        reports.push(resolveIntentRef(ref, runtimeValue))
+      })
+    const element = renderReactNativeView(Sheet({
+      key: "details",
+      open: true,
+      dismissable: true,
+      edge: "bottom",
+      detents: ["sm", "md"],
+      onDismiss: IntentRef("Dismissed", StaticPayload({ surface: "sheet" }))
+    }, [
+      Text({ key: "copy", content: "Details", variant: "body" })
+    ]), dependencies, report)
+    const [backdrop, panel] = children(element)
+
+    expect(element.props.style).toMatchObject({ display: "flex" })
+    if (!isElement(backdrop) || !isElement(panel)) {
+      throw new Error("expected sheet backdrop and panel")
+    }
+    expect(panel.props.style).toMatchObject({
+      width: "100%",
+      height: 240
+    })
+
+    const onPress = backdrop.props.onPress
+    if (typeof onPress !== "function") {
+      throw new Error("expected sheet backdrop onPress")
+    }
+    onPress()
+
+    expect(reports).toEqual([
+      { name: "Dismissed", payload: { surface: "sheet" } }
+    ])
+
+    reports.length = 0
+    const locked = renderReactNativeView(Sheet({
+      key: "locked",
+      open: true,
+      dismissable: false,
+      edge: "side",
+      detents: ["md"],
+      onDismiss: IntentRef("Dismissed", StaticPayload({ surface: "sheet" }))
+    }), dependencies, report)
+    const [lockedBackdrop, lockedPanel] = children(locked)
+    if (!isElement(lockedBackdrop) || !isElement(lockedPanel)) {
+      throw new Error("expected locked sheet nodes")
+    }
+    expect(lockedPanel.props.style).toMatchObject({
+      width: 320,
+      height: "100%"
+    })
+    const lockedPress = lockedBackdrop.props.onPress
+    if (typeof lockedPress !== "function") {
+      throw new Error("expected locked sheet backdrop onPress")
+    }
+    lockedPress()
+    expect(reports).toEqual([])
   })
 
   test("mocked dimension changes re-resolve responsive layout", async () => {

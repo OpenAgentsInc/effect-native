@@ -75,7 +75,7 @@ need, in the order they need it:
 - **responsive layout** — breakpoint variants resolved end-to-end through
   runtime and both renderers (#11 complete)
 - **forms and validation** (typed, Schema-backed) (#12 complete)
-- **overlay surfaces** — modal and sheet (#13)
+- **overlay surfaces** — modal and sheet (#13 complete)
 - **virtualized lists and section lists** (#14)
 
 A component enters the catalog when a screen needs it. The gap register

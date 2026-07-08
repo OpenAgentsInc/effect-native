@@ -13,9 +13,11 @@ import {
   type JsonPayload,
   type LinkView,
   type ListView,
+  type ModalView,
   type MountedSurface,
   type PlatformVariant,
   type RendererAdapter,
+  type SheetView,
   type SpacerView,
   type StackView,
   type TextFieldView,
@@ -78,6 +80,7 @@ export interface ReactNativeRuntime {
   readonly TextInput: unknown
   readonly FlatList: unknown
   readonly Image: unknown
+  readonly Modal: unknown
   readonly Dimensions?: ReactNativeDimensions
   readonly StyleSheet?: {
     readonly create: <Styles extends Record<string, ReactNativeStyle>>(styles: Styles) => Styles
@@ -432,6 +435,142 @@ const renderLink = (
   )
 }
 
+const dismissOverlay = (view: ModalView | SheetView, report: IntentReporter): void => {
+  if (view.dismissable) {
+    runReportedIntent(report, view.onDismiss)
+  }
+}
+
+const overlayPanelStyle = (
+  options: ReactNativeRenderOptions,
+  extra: ReactNativeStyle = {}
+): ReactNativeStyle =>
+  mergeNativeStyles({
+    backgroundColor: colorValue(options.theme ?? defaultTheme, "background"),
+    borderColor: colorValue(options.theme ?? defaultTheme, "border"),
+    borderWidth: 1,
+    padding: spacingValue(options.theme ?? defaultTheme, "4"),
+    borderRadius: radiusValue(options.theme ?? defaultTheme, "lg")
+  }, extra)
+
+const renderModal = (
+  view: ModalView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const open = view.open === true
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.Modal,
+    {
+      ...baseProps(view, {}),
+      animationType: "fade",
+      transparent: true,
+      visible: open,
+      onRequestClose: () => dismissOverlay(view, report),
+      accessibilityViewIsModal: open
+    },
+    createElement(
+      dependencies,
+      dependencies.ReactNative.View,
+      {
+        style: {
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          padding: spacingValue(options.theme ?? defaultTheme, "4"),
+          backgroundColor: "rgba(15, 23, 42, 0.32)"
+        }
+      },
+      createElement(
+        dependencies,
+        dependencies.ReactNative.View,
+        {
+          style: overlayPanelStyle(options, {
+            width: dimensionValue(options.theme ?? defaultTheme, view.size),
+            maxWidth: "100%"
+          })
+        },
+        createElement(
+          dependencies,
+          dependencies.ReactNative.Text,
+          {
+            style: typeScaleValue(options.theme ?? defaultTheme, "title")
+          },
+          String(view.title)
+        ),
+        ...view.children.map((child) => renderResolvedReactNativeView(child, dependencies, report, options))
+      )
+    )
+  )
+}
+
+const renderSheet = (
+  view: SheetView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const open = view.open === true
+  const size = dimensionValue(options.theme ?? defaultTheme, view.detents[0]!)
+  const panelStyle = view.edge === "bottom"
+    ? overlayPanelStyle(options, {
+        width: "100%",
+        height: size,
+        borderBottomLeftRadius: 0,
+        borderBottomRightRadius: 0
+      })
+    : overlayPanelStyle(options, {
+        width: size,
+        height: "100%",
+        borderTopRightRadius: 0,
+        borderBottomRightRadius: 0
+      })
+
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    {
+      ...baseProps(view, {
+        display: open ? "flex" : "none",
+        position: "absolute",
+        top: 0,
+        right: 0,
+        bottom: 0,
+        left: 0,
+        flexDirection: view.edge === "bottom" ? "column" : "row",
+        alignItems: view.edge === "bottom" ? "stretch" : "stretch",
+        justifyContent: view.edge === "bottom" ? "flex-end" : "flex-end",
+        backgroundColor: "rgba(15, 23, 42, 0.32)"
+      }),
+      accessibilityViewIsModal: open,
+      accessibilityElementsHidden: !open,
+      importantForAccessibility: open ? "yes" : "no-hide-descendants"
+    },
+    createElement(
+      dependencies,
+      dependencies.ReactNative.Pressable,
+      {
+        style: {
+          position: "absolute",
+          top: 0,
+          right: 0,
+          bottom: 0,
+          left: 0
+        },
+        onPress: () => dismissOverlay(view, report)
+      }
+    ),
+    createElement(
+      dependencies,
+      dependencies.ReactNative.View,
+      { style: panelStyle },
+      ...view.children.map((child) => renderResolvedReactNativeView(child, dependencies, report, options))
+    )
+  )
+}
+
 const renderImage = (
   view: ImageView,
   dependencies: ReactNativeDependencies,
@@ -581,6 +720,10 @@ const renderResolvedReactNativeView = (
       return renderButton(view, dependencies, report, options)
     case "Link":
       return renderLink(view, dependencies, report, options)
+    case "Modal":
+      return renderModal(view, dependencies, report, options)
+    case "Sheet":
+      return renderSheet(view, dependencies, report, options)
     case "Image":
       return renderImage(view, dependencies, options)
     case "TextField":
@@ -686,6 +829,18 @@ export const viewStructure = (view: View): ReactNativeStructure => {
     case "Link":
       return {
         tag: "Link",
+        ...(view.key === undefined ? {} : { key: view.key }),
+        children: view.children.map(viewStructure)
+      }
+    case "Modal":
+      return {
+        tag: "Modal",
+        ...(view.key === undefined ? {} : { key: view.key }),
+        children: view.children.map(viewStructure)
+      }
+    case "Sheet":
+      return {
+        tag: "Sheet",
         ...(view.key === undefined ? {} : { key: view.key }),
         children: view.children.map(viewStructure)
       }

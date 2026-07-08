@@ -13,10 +13,12 @@ import {
   type JsonPayload,
   type LinkView,
   type ListView,
+  type ModalView,
   type MountedSurface,
   NavigationHandler,
   type NavigationDestination,
   type RendererAdapter,
+  type SheetView,
   type SpacerView,
   type StackView,
   type TextFieldView,
@@ -163,6 +165,18 @@ const flexKeyword = (value: string): string => {
       return value
   }
 }
+
+const focusableSelector = [
+  "button:not([disabled])",
+  "a[href]",
+  "input:not([disabled])",
+  "textarea:not([disabled])",
+  "select:not([disabled])",
+  '[tabindex]:not([tabindex="-1"])'
+].join(",")
+
+const focusableElements = (root: HTMLElement): ReadonlyArray<HTMLElement> =>
+  Array.from(root.querySelectorAll(focusableSelector)) as ReadonlyArray<HTMLElement>
 
 const readDomViewport = (document: Document): ViewportInput => {
   const window = document.defaultView
@@ -315,6 +329,9 @@ class DomRendererState {
   readonly listeners = new WeakMap<EventTarget, Array<EventCleanup>>()
   readonly allListeners = new Set<EventCleanup>()
   focusRequest: HTMLElement | undefined
+  overlayOpen = false
+  overlayRestoreFocus: HTMLElement | undefined
+  overlayBodyOverflow: string | undefined
 
   constructor(container: Element, document: Document, theme: Theme) {
     this.root = document.createElement("div")
@@ -329,6 +346,9 @@ class DomRendererState {
     }
     this.allListeners.clear()
     this.keyed.clear()
+    if (this.overlayOpen) {
+      this.root.ownerDocument.body.style.overflow = this.overlayBodyOverflow ?? ""
+    }
     this.root.remove()
     this.styles.dispose()
   }
@@ -345,6 +365,29 @@ class DomRendererState {
     const element = this.focusRequest
     this.focusRequest = undefined
     return element
+  }
+
+  syncOverlayLifecycle(hasOpenOverlay: boolean, activeBefore: HTMLElement | null): HTMLElement | undefined {
+    const document = this.root.ownerDocument
+    if (hasOpenOverlay && !this.overlayOpen) {
+      this.overlayOpen = true
+      this.overlayRestoreFocus = activeBefore !== null && activeBefore !== document.body ? activeBefore : undefined
+      this.overlayBodyOverflow = document.body.style.overflow
+      document.body.style.overflow = "hidden"
+      const overlay = this.root.querySelector('[data-en-overlay-open="true"]') as HTMLElement | null
+      return overlay === null ? undefined : focusableElements(overlay)[0] ?? overlay
+    }
+
+    if (!hasOpenOverlay && this.overlayOpen) {
+      this.overlayOpen = false
+      document.body.style.overflow = this.overlayBodyOverflow ?? ""
+      this.overlayBodyOverflow = undefined
+      const restore = this.overlayRestoreFocus
+      this.overlayRestoreFocus = undefined
+      return restore
+    }
+
+    return undefined
   }
 
   resetListeners(target: EventTarget): void {
@@ -490,6 +533,155 @@ const renderLink = (view: LinkView, state: DomRendererState, report: IntentRepor
   return element
 }
 
+const dismissOverlay = (view: ModalView | SheetView, report: IntentReporter): void => {
+  if (view.dismissable) {
+    runReportedIntent(report, view.onDismiss)
+  }
+}
+
+const trapOverlayFocus = (root: HTMLElement, event: KeyboardEvent): void => {
+  if (event.key !== "Tab") {
+    return
+  }
+  const focusables = focusableElements(root)
+  if (focusables.length === 0) {
+    event.preventDefault()
+    root.focus()
+    return
+  }
+
+  const first = focusables[0]!
+  const last = focusables[focusables.length - 1]!
+  const active = root.ownerDocument.activeElement
+  if (event.shiftKey && active === first) {
+    event.preventDefault()
+    last.focus()
+  } else if (!event.shiftKey && active === last) {
+    event.preventDefault()
+    first.focus()
+  }
+}
+
+const renderModal = (view: ModalView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const element = state.keyedElement(view, "dialog") as HTMLDialogElement
+  const open = view.open === true
+  const titleId = `en-modal-title-${cssEscape(view.key ?? "modal")}`
+  state.resetListeners(element)
+  element.setAttribute("role", "dialog")
+  element.setAttribute("aria-modal", "true")
+  element.setAttribute("aria-labelledby", titleId)
+  element.setAttribute("data-en-overlay", "modal")
+  element.setAttribute("data-en-overlay-open", open ? "true" : "false")
+  element.tabIndex = -1
+  element.hidden = !open
+  if (open) {
+    element.setAttribute("open", "")
+  } else {
+    element.removeAttribute("open")
+  }
+  element.style.position = "fixed"
+  element.style.inset = "0"
+  element.style.display = open ? "flex" : "none"
+  element.style.alignItems = "center"
+  element.style.justifyContent = "center"
+  element.style.width = "100%"
+  element.style.height = "100%"
+  element.style.maxWidth = "none"
+  element.style.maxHeight = "none"
+  element.style.padding = "var(--en-spacing-4)"
+  element.style.backgroundColor = "rgba(15, 23, 42, 0.32)"
+  element.style.border = "0"
+
+  const panel = element.ownerDocument.createElement("section")
+  panel.setAttribute("data-en-role", "panel")
+  panel.style.width = dimensionValue(view.size)
+  panel.style.maxWidth = "100%"
+  panel.style.background = "var(--en-color-background)"
+  panel.style.border = "1px solid var(--en-color-border)"
+  panel.style.borderRadius = "var(--en-radius-lg)"
+  panel.style.padding = "var(--en-spacing-4)"
+
+  const title = element.ownerDocument.createElement("h2")
+  title.id = titleId
+  title.textContent = String(view.title)
+  title.style.margin = "0 0 var(--en-spacing-3) 0"
+  panel.appendChild(title)
+  panel.append(...view.children.map((child) => renderView(child, state, report)))
+  element.replaceChildren(panel)
+
+  state.addListener(element, "click", (event) => {
+    if (event.target === element) {
+      dismissOverlay(view, report)
+    }
+  })
+  state.addListener(element, "keydown", (event) => {
+    if ((event as KeyboardEvent).key === "Escape") {
+      dismissOverlay(view, report)
+      return
+    }
+    trapOverlayFocus(element, event as KeyboardEvent)
+  })
+  state.addListener(element, "cancel", (event) => {
+    event.preventDefault()
+    dismissOverlay(view, report)
+  })
+  return element
+}
+
+const renderSheet = (view: SheetView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const element = state.keyedElement(view, "aside")
+  const open = view.open === true
+  state.resetListeners(element)
+  element.setAttribute("role", "dialog")
+  element.setAttribute("aria-modal", "true")
+  element.setAttribute("data-en-overlay", "sheet")
+  element.setAttribute("data-en-overlay-open", open ? "true" : "false")
+  element.setAttribute("data-en-edge", view.edge)
+  element.setAttribute("data-en-detents", view.detents.join(" "))
+  element.tabIndex = -1
+  element.hidden = !open
+  element.style.position = "fixed"
+  element.style.inset = "0"
+  element.style.display = open ? "flex" : "none"
+  element.style.alignItems = view.edge === "bottom" ? "flex-end" : "stretch"
+  element.style.justifyContent = view.edge === "bottom" ? "center" : "flex-end"
+  element.style.backgroundColor = "rgba(15, 23, 42, 0.32)"
+
+  const backdrop = element.ownerDocument.createElement("div")
+  backdrop.setAttribute("data-en-role", "backdrop")
+  backdrop.style.position = "absolute"
+  backdrop.style.inset = "0"
+  state.resetListeners(backdrop)
+  state.addListener(backdrop, "click", () => dismissOverlay(view, report))
+
+  const panel = element.ownerDocument.createElement("section")
+  panel.setAttribute("data-en-role", "panel")
+  panel.style.position = "relative"
+  panel.style.background = "var(--en-color-background)"
+  panel.style.border = "1px solid var(--en-color-border)"
+  panel.style.padding = "var(--en-spacing-4)"
+  panel.style.width = view.edge === "bottom" ? "100%" : dimensionValue(view.detents[0]!)
+  panel.style.height = view.edge === "bottom" ? dimensionValue(view.detents[0]!) : "100%"
+  panel.style.borderRadius = view.edge === "bottom"
+    ? "var(--en-radius-lg) var(--en-radius-lg) 0 0"
+    : "var(--en-radius-lg) 0 0 var(--en-radius-lg)"
+  panel.append(...view.children.map((child) => renderView(child, state, report)))
+  element.replaceChildren(backdrop, panel)
+
+  state.addListener(element, "keydown", (event) => {
+    if ((event as KeyboardEvent).key === "Escape") {
+      dismissOverlay(view, report)
+      return
+    }
+    trapOverlayFocus(element, event as KeyboardEvent)
+  })
+  state.addListener(element, "cancel", (event) => {
+    event.preventDefault()
+    dismissOverlay(view, report)
+  })
+  return element
+}
+
 const renderImage = (view: ImageView, state: DomRendererState): HTMLElement => {
   const element = state.keyedElement(view, "img") as HTMLImageElement
   const width = view.width === undefined ? undefined : resolveResponsiveValue(view.width)
@@ -622,6 +814,10 @@ const renderView = (view: View, state: DomRendererState, report: IntentReporter)
       return renderButton(view, state, report)
     case "Link":
       return renderLink(view, state, report)
+    case "Modal":
+      return renderModal(view, state, report)
+    case "Sheet":
+      return renderSheet(view, state, report)
     case "Image":
       return renderImage(view, state)
     case "TextField":
@@ -642,8 +838,18 @@ const commitView = (view: View, state: DomRendererState, report: IntentReporter)
   const element = renderView(view, state, report)
   state.root.replaceChildren(element)
   const focusRequest = state.consumeFocusRequest()
+  const overlayFocus = state.syncOverlayLifecycle(
+    state.root.querySelector('[data-en-overlay-open="true"]') !== null,
+    activeBefore
+  )
   if (focusRequest !== undefined && state.root.contains(focusRequest)) {
     focusRequest.focus()
+  } else if (
+    overlayFocus !== undefined &&
+    overlayFocus.ownerDocument.body.contains(overlayFocus) &&
+    typeof overlayFocus.focus === "function"
+  ) {
+    overlayFocus.focus()
   } else if (
     activeBefore !== null &&
     activeBefore !== state.root.ownerDocument.body &&
@@ -707,6 +913,18 @@ export const viewStructure = (view: View): DomStructure => {
     case "Link":
       return {
         tag: "Link",
+        ...(view.key === undefined ? {} : { key: view.key }),
+        children: view.children.map(viewStructure)
+      }
+    case "Modal":
+      return {
+        tag: "Modal",
+        ...(view.key === undefined ? {} : { key: view.key }),
+        children: view.children.map(viewStructure)
+      }
+    case "Sheet":
+      return {
+        tag: "Sheet",
         ...(view.key === undefined ? {} : { key: view.key }),
         children: view.children.map(viewStructure)
       }

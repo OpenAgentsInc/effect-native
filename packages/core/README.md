@@ -3,9 +3,9 @@
 Core runtime package for Effect Native.
 
 This package holds the closed component catalog as Effect Schema data. The
-current catalog is `effect-native/v3` and has exactly nine components:
+current catalog is `effect-native/v4` and has exactly eleven components:
 `Stack`, `Text`, `Button`, `Image`, `TextField`, `List`, `Card`, `Spacer`,
-and `Link`.
+`Link`, `Modal`, and `Sheet`.
 
 ```ts
 import { Button, Stack, Text, encodeView } from "@effect-native/core"
@@ -128,6 +128,46 @@ IntentRef("FormFieldChanged", FormFieldValueBinding(FieldBinding("signup", "emai
 mapped errors plus `focusedField` on failure. `secure: true` fields are
 redacted from form event logs through `makeFormIntentRedactor`, and the
 headless renderer redacts secure `TextField` snapshots.
+
+Overlays are also data. `Modal` and `Sheet` carry an `open` boolean or
+`Binding`, an `onDismiss` intent, and bounded presentation props. Opening is a
+normal state change from any handler; closing is an intent reported by the
+renderer. There is no imperative `open()` API.
+
+```ts
+import {
+  Binding,
+  IntentRef,
+  Modal,
+  Sheet,
+  StaticPayload,
+  Text
+} from "@effect-native/core"
+
+Modal({
+  title: "Approve change",
+  open: Binding(["approvalOpen"]),
+  dismissable: true,
+  size: "md",
+  onDismiss: IntentRef("DismissedOverlay", StaticPayload({ surface: "approval" }))
+}, [
+  Text({ content: "Approve this request?", variant: "body" })
+])
+
+Sheet({
+  open: Binding(["detailsOpen"]),
+  dismissable: true,
+  edge: "bottom",
+  detents: ["sm", "md"],
+  onDismiss: IntentRef("DismissedOverlay", StaticPayload({ surface: "details" }))
+}, [
+  Text({ content: "Details", variant: "body" })
+])
+```
+
+The v0 overlay stack is deliberately bounded: a view tree may contain at most
+one `Modal` and one `Sheet`, and overlays may not be nested. The schema rejects
+deeper stacks rather than exposing portal or z-index escape hatches.
 
 `ViewProgram` makes a view live. State is held in an Effect `SubscriptionRef`,
 `viewStream` emits the current resolved tree and every state change after that,

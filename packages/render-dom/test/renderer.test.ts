@@ -9,7 +9,9 @@ import {
   Image,
   IntentRef,
   Link,
+  Modal,
   NavigationHandler,
+  Sheet,
   Spacer,
   Stack,
   StaticPayload,
@@ -246,6 +248,140 @@ describe("DOM renderer", () => {
       expect(event.defaultPrevented).toBe(true)
       expect(recorded).toEqual([destination])
     })))
+  })
+
+  test("Modal traps focus, dismisses accessibly, restores focus, and locks scroll", async () => {
+    const { container, document, window } = createDom()
+    const opener = document.createElement("button")
+    opener.textContent = "Open"
+    document.body.appendChild(opener)
+    opener.focus()
+
+    await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
+      const Dismissed = defineIntent("Dismissed", Schema.Struct({
+        surface: Schema.String
+      }))
+      const state = yield* SubscriptionRef.make({ modalOpen: true })
+      const program = makeViewProgramFromState(state, (current) =>
+        Modal({
+          key: "confirm",
+          title: "Confirm",
+          open: Binding(["modalOpen"]),
+          dismissable: true,
+          size: "sm",
+          onDismiss: IntentRef("Dismissed", StaticPayload({ surface: "modal" }))
+        }, [
+          Button({
+            key: "first",
+            label: "First",
+            variant: "secondary",
+            onPress: IntentRef("Dismissed", StaticPayload({ surface: "modal" }))
+          }),
+          Button({
+            key: "last",
+            label: "Last",
+            variant: "secondary",
+            onPress: IntentRef("Dismissed", StaticPayload({ surface: "modal" }))
+          })
+        ]))
+      const registry = yield* makeIntentRegistry([Dismissed] as const, {
+        Dismissed: () => SubscriptionRef.update(state, () => ({ modalOpen: false }))
+      }, { now: () => 0 })
+      const report: IntentReporter = (ref, runtimeValue) =>
+        registry.dispatch(resolveIntentRef(ref, runtimeValue))
+
+      yield* makeDomRenderer({ document }).mount(container, program.viewStream, report)
+      const dialog = container.querySelector('dialog[data-en-key="confirm"]') as HTMLDialogElement | null
+      const first = container.querySelector('[data-en-key="first"]') as HTMLButtonElement | null
+      const last = container.querySelector('[data-en-key="last"]') as HTMLButtonElement | null
+      if (dialog === null || first === null || last === null) {
+        throw new Error("expected modal controls")
+      }
+
+      expect(document.body.style.overflow).toBe("hidden")
+      expect(document.activeElement).toBe(first)
+
+      dialog.dispatchEvent(new window.KeyboardEvent("keydown", {
+        key: "Tab",
+        shiftKey: true,
+        bubbles: true,
+        cancelable: true
+      }) as unknown as Event)
+      expect(document.activeElement).toBe(last)
+
+      dialog.dispatchEvent(new window.KeyboardEvent("keydown", {
+        key: "Escape",
+        bubbles: true,
+        cancelable: true
+      }) as unknown as Event)
+      yield* nextTask
+      yield* Effect.yieldNow
+
+      expect(yield* program.currentState).toEqual({ modalOpen: false })
+      expect(document.body.style.overflow).toBe("")
+      expect(document.activeElement).toBe(opener)
+      expect((yield* registry.events).map((event) => event.intent.payload)).toEqual([
+        { surface: "modal" }
+      ])
+    })))
+  })
+
+  test("Modal backdrop and cancel dismiss only when dismissable", async () => {
+    const runCase = (dismissable: boolean, eventName: "click" | "cancel") =>
+      Effect.scoped(Effect.gen(function*() {
+        const { container, document, window } = createDom()
+        const Dismissed = defineIntent("Dismissed", Schema.Struct({
+          surface: Schema.String
+        }))
+        const state = yield* SubscriptionRef.make({ modalOpen: true })
+        const program = makeViewProgramFromState(state, (current) =>
+          Modal({
+            key: "confirm",
+            title: "Confirm",
+            open: Binding(["modalOpen"]),
+            dismissable,
+            size: "sm",
+            onDismiss: IntentRef("Dismissed", StaticPayload({ surface: "modal" }))
+          }, [
+            Text({ key: "copy", content: "Confirm?", variant: "body" })
+          ]))
+        const registry = yield* makeIntentRegistry([Dismissed] as const, {
+          Dismissed: () => SubscriptionRef.update(state, () => ({ modalOpen: false }))
+        }, { now: () => 0 })
+        const report: IntentReporter = (ref, runtimeValue) =>
+          registry.dispatch(resolveIntentRef(ref, runtimeValue))
+
+        yield* makeDomRenderer({ document }).mount(container, program.viewStream, report)
+        const dialog = container.querySelector('dialog[data-en-key="confirm"]') as HTMLDialogElement | null
+        if (dialog === null) {
+          throw new Error("expected modal")
+        }
+
+        dialog.dispatchEvent(eventName === "click"
+          ? new window.MouseEvent("click", { bubbles: true, cancelable: true }) as unknown as Event
+          : new window.Event("cancel", { bubbles: true, cancelable: true }) as unknown as Event)
+        yield* nextTask
+        yield* Effect.yieldNow
+
+        return {
+          state: yield* program.currentState,
+          events: yield* registry.events
+        }
+      }))
+
+    const dismissableClick = await Effect.runPromise(runCase(true, "click"))
+    const lockedClick = await Effect.runPromise(runCase(false, "click"))
+    const dismissableCancel = await Effect.runPromise(runCase(true, "cancel"))
+    const lockedCancel = await Effect.runPromise(runCase(false, "cancel"))
+
+    expect(dismissableClick.state).toEqual({ modalOpen: false })
+    expect(dismissableCancel.state).toEqual({ modalOpen: false })
+    expect(lockedClick.state).toEqual({ modalOpen: true })
+    expect(lockedCancel.state).toEqual({ modalOpen: true })
+    expect(dismissableClick.events).toHaveLength(1)
+    expect(dismissableCancel.events).toHaveLength(1)
+    expect(lockedClick.events).toHaveLength(0)
+    expect(lockedCancel.events).toHaveLength(0)
   })
 
   test("default DOM navigation handler applies browser navigation operations", async () => {

@@ -6,6 +6,7 @@ import {
   LegacyCatalogVersion,
   LinkCatalogVersion,
   PreviousCatalogVersion,
+  ResponsiveCatalogVersion,
   Text,
   compatibleCatalogVersions,
   decodeCompatibleView
@@ -26,6 +27,10 @@ describe("catalog version compatibility", () => {
     }
     const v2Tree = {
       ...JSON.parse(JSON.stringify(view)),
+      catalogVersion: ResponsiveCatalogVersion
+    }
+    const v3Tree = {
+      ...JSON.parse(JSON.stringify(view)),
       catalogVersion: PreviousCatalogVersion
     }
     const v0Tree = {
@@ -36,10 +41,12 @@ describe("catalog version compatibility", () => {
     expect(decodeCompatibleView(JSON.parse(JSON.stringify(view)))).toEqual(view)
     expect(decodeCompatibleView(v0Tree).catalogVersion).toBe(LegacyCatalogVersion)
     expect(decodeCompatibleView(v1Tree).catalogVersion).toBe(LinkCatalogVersion)
-    expect(decodeCompatibleView(v2Tree).catalogVersion).toBe(PreviousCatalogVersion)
+    expect(decodeCompatibleView(v2Tree).catalogVersion).toBe(ResponsiveCatalogVersion)
+    expect(decodeCompatibleView(v3Tree).catalogVersion).toBe(PreviousCatalogVersion)
     expect(compatibleCatalogVersions).toEqual([
       LegacyCatalogVersion,
       LinkCatalogVersion,
+      ResponsiveCatalogVersion,
       PreviousCatalogVersion,
       CatalogVersion
     ])

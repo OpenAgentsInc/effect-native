@@ -16,6 +16,8 @@ const describeView = Match.type<View>().pipe(
   Match.tag("Card", () => "surface"),
   Match.tag("Spacer", () => "space"),
   Match.tag("Link", () => "navigation"),
+  Match.tag("Modal", () => "overlay"),
+  Match.tag("Sheet", () => "overlay"),
   Match.exhaustive
 )
 

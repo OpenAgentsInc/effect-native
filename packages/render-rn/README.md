@@ -21,6 +21,8 @@ The current mapping is:
 | `List` | `FlatList` |
 | `Card` | `View` |
 | `Spacer` | accessibility-hidden `View` |
+| `Modal` | host `Modal` |
+| `Sheet` | absolute overlay with `View` / `Pressable` primitives |
 
 Styles are lowered from typed Effect Native style objects to React Native
 style objects. Spacing, radii, dimensions, colors, and type scale values are
@@ -119,6 +121,13 @@ The React Native renderer does not own routing. `Link` reports the typed
 `Navigate` intent through the same reporter path as every other interaction,
 and the host app provides the `NavigationHandler` that translates the
 destination into its router.
+
+`Modal` lowers to the host React Native `Modal` component, with
+`onRequestClose` reporting the overlay's typed `onDismiss` intent when
+`dismissable` is true. `Sheet` stays dependency-free in v0: it renders an
+absolute overlay with a `Pressable` backdrop, maps the first detent token to
+the panel height or width, and reports the same dismiss intent through the
+shared reporter path.
 
 Responsive layout is fed by the host `Dimensions` API when available. Window
 metric changes update the renderer viewport, the shared runtime resolver

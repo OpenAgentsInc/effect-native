@@ -58,7 +58,8 @@ const rnDependencies: ReactNativeDependencies = {
     Pressable: "Pressable",
     TextInput: "TextInput",
     FlatList: "FlatList",
-    Image: "Image"
+    Image: "Image",
+    Modal: "Modal"
   }
 }
 
