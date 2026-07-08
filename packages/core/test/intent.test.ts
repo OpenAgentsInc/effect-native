@@ -21,11 +21,14 @@ import {
 } from "../src/index"
 
 const nonEmptyString = fc.string({ minLength: 1, maxLength: 32 })
+const canonicalJsonValue = fc.jsonValue().map((value) =>
+  JSON.parse(JSON.stringify(value)) as JsonPayload
+)
 
 const intentArbitrary = fc.record({
   name: nonEmptyString,
-  payload: fc.jsonValue()
-}).map(({ name, payload }) => makeIntent(name, payload as JsonPayload))
+  payload: canonicalJsonValue
+}).map(({ name, payload }) => makeIntent(name, payload))
 
 const CounterIncremented = defineIntent("CounterIncremented", Schema.Struct({
   amount: Schema.Number

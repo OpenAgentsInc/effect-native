@@ -1,2 +1,704 @@
+import { Deferred, Effect, Exit, Fiber, Ref, Scope, Stream } from "effect"
+import {
+  type ButtonView,
+  type CardView,
+  type ColorToken,
+  type Dimension,
+  type FlatStyle,
+  type ImageView,
+  type IntentError,
+  type IntentRef,
+  type IntentReporter,
+  type JsonPayload,
+  type ListView,
+  type MountedSurface,
+  type PlatformVariant,
+  type RendererAdapter,
+  type SpacerView,
+  type StackView,
+  type TextFieldView,
+  type TextView,
+  type View,
+  defaultTheme,
+  resolveStyle
+} from "@effect-native/core"
+import {
+  type DimensionToken,
+  type RadiusToken,
+  type SpacingToken,
+  type Theme,
+  type TypeScaleToken
+} from "@effect-native/tokens"
+
 export const packageName = "@effect-native/render-rn" as const
 
+export type ReactNativePlatform = Extract<PlatformVariant, "ios" | "android">
+
+export type ReactNativeStyleValue = string | number | boolean | undefined
+export type ReactNativeStyle = Record<string, ReactNativeStyleValue>
+
+export interface ReactElementLike {
+  readonly type: unknown
+  readonly key?: string | null
+  readonly props: Record<string, unknown>
+}
+
+export type ReactNodeLike = ReactElementLike | string | number | boolean | null | undefined
+
+export interface ReactRuntime {
+  readonly createElement: (
+    type: unknown,
+    props?: Record<string, unknown> | null,
+    ...children: ReadonlyArray<ReactNodeLike>
+  ) => ReactElementLike
+  readonly useEffect?: (
+    effect: () => void | (() => void),
+    dependencies?: ReadonlyArray<unknown>
+  ) => void
+  readonly useState?: <State>(
+    initial: State | (() => State)
+  ) => readonly [State, (value: State | ((current: State) => State)) => void]
+}
+
+export interface ReactNativeRuntime {
+  readonly View: unknown
+  readonly Text: unknown
+  readonly Pressable: unknown
+  readonly TextInput: unknown
+  readonly FlatList: unknown
+  readonly Image: unknown
+  readonly StyleSheet?: {
+    readonly create: <Styles extends Record<string, ReactNativeStyle>>(styles: Styles) => Styles
+  }
+}
+
+export interface ReactNativeDependencies {
+  readonly React: ReactRuntime
+  readonly ReactNative: ReactNativeRuntime
+}
+
+export interface ReactNativeRenderOptions {
+  readonly theme?: Theme
+  readonly platform?: ReactNativePlatform
+}
+
+export interface EffectNativeSurfaceProps extends ReactNativeRenderOptions {
+  readonly viewStream: Stream.Stream<View>
+  readonly report: IntentReporter
+  readonly initialView?: View
+}
+
+export interface ReactNativeContainer {
+  readonly render?: (element: ReactNodeLike | undefined) => void
+}
+
+export interface ReactNativeRendererOptions extends ReactNativeRenderOptions {
+  readonly dependencies?: ReactNativeDependencies
+}
+
+export interface ReactNativeMountedSurface extends MountedSurface {
+  readonly current: Effect.Effect<View | undefined>
+  readonly currentElement: Effect.Effect<ReactNodeLike | undefined>
+  readonly serialize: Effect.Effect<ReactNativeStructure | undefined>
+}
+
+export interface ReactNativeStructure {
+  readonly tag: View["_tag"]
+  readonly key?: string
+  readonly text?: string
+  readonly children?: ReadonlyArray<ReactNativeStructure>
+}
+
+const loadPeerDependencies = (): ReactNativeDependencies => {
+  if (typeof require !== "function") {
+    throw new Error("EffectNativeSurface requires react and react-native to be available from the host app")
+  }
+
+  return {
+    React: require("react") as ReactRuntime,
+    ReactNative: require("react-native") as ReactNativeRuntime
+  }
+}
+
+const fontWeightValue = (weight: string): number | string => {
+  switch (weight) {
+    case "regular":
+      return 400
+    case "medium":
+      return 500
+    case "semibold":
+      return 600
+    case "bold":
+      return 700
+    default:
+      return weight
+  }
+}
+
+const flexKeyword = (value: string): string => {
+  switch (value) {
+    case "start":
+      return "flex-start"
+    case "end":
+      return "flex-end"
+    case "between":
+      return "space-between"
+    case "around":
+      return "space-around"
+    default:
+      return value
+  }
+}
+
+const spacingValue = (theme: Theme, token: SpacingToken): number => theme.spacing[token]
+const colorValue = (theme: Theme, token: ColorToken): string => theme.color[token]
+const radiusValue = (theme: Theme, token: RadiusToken): number => theme.radius[token]
+const dimensionValue = (theme: Theme, value: Dimension): number | string =>
+  typeof value === "number" ? value : theme.dimension[value as DimensionToken]
+const typeScaleValue = (theme: Theme, token: TypeScaleToken): ReactNativeStyle => {
+  const value = theme.typeScale[token]
+  return {
+    fontSize: value.fontSize,
+    lineHeight: value.lineHeight,
+    fontWeight: value.fontWeight
+  }
+}
+
+const styleDeclarations = (
+  theme: Theme,
+  key: string,
+  value: unknown
+): ReadonlyArray<readonly [string, ReactNativeStyleValue]> => {
+  switch (key) {
+    case "margin":
+    case "marginTop":
+    case "marginRight":
+    case "marginBottom":
+    case "marginLeft":
+    case "padding":
+    case "paddingTop":
+    case "paddingRight":
+    case "paddingBottom":
+    case "paddingLeft":
+    case "gap":
+      return [[key, spacingValue(theme, value as SpacingToken)]]
+    case "width":
+    case "height":
+    case "minWidth":
+    case "minHeight":
+    case "maxWidth":
+    case "maxHeight":
+      return [[key, dimensionValue(theme, value as Dimension)]]
+    case "flex":
+    case "opacity":
+    case "borderWidth":
+      return [[key, value as number]]
+    case "alignSelf":
+      return [["alignSelf", flexKeyword(String(value))]]
+    case "backgroundColor":
+    case "borderColor":
+    case "color":
+      return [[key, colorValue(theme, value as ColorToken)]]
+    case "borderRadius":
+      return [["borderRadius", radiusValue(theme, value as RadiusToken)]]
+    case "fontWeight":
+      return [["fontWeight", fontWeightValue(String(value))]]
+    case "textAlign":
+      return [["textAlign", String(value)]]
+    case "typeScale":
+      return Object.entries(typeScaleValue(theme, value as TypeScaleToken))
+    default:
+      return []
+  }
+}
+
+export const lowerStyle = (
+  style: FlatStyle | undefined,
+  options: ReactNativeRenderOptions = {}
+): ReactNativeStyle => {
+  const theme = options.theme ?? defaultTheme
+  const lowered = new Map<string, ReactNativeStyleValue>()
+
+  if (style !== undefined) {
+    for (const [key, value] of Object.entries(style)) {
+      for (const [property, nativeValue] of styleDeclarations(theme, key, value)) {
+        lowered.set(property, nativeValue)
+      }
+    }
+  }
+
+  return Object.fromEntries(lowered)
+}
+
+const viewStyle = (view: View, options: ReactNativeRenderOptions): ReactNativeStyle => {
+  if (!("style" in view) || view.style === undefined) {
+    return {}
+  }
+
+  return lowerStyle(resolveStyle(view.style, { platform: options.platform ?? "ios" }), options)
+}
+
+const mergeNativeStyles = (...styles: ReadonlyArray<ReactNativeStyle | undefined>): ReactNativeStyle =>
+  Object.assign({}, ...styles.filter((style): style is ReactNativeStyle => style !== undefined))
+
+const nativeId = (view: View): string =>
+  `effect-native:${view._tag}:${view.key === undefined ? "" : encodeURIComponent(view.key)}`
+
+const parseNativeId = (value: unknown): { readonly tag: View["_tag"]; readonly key?: string } | undefined => {
+  if (typeof value !== "string" || !value.startsWith("effect-native:")) {
+    return undefined
+  }
+
+  const [, tag, encodedKey = ""] = value.split(":")
+  if (tag === undefined || tag.length === 0) {
+    return undefined
+  }
+
+  return {
+    tag: tag as View["_tag"],
+    ...(encodedKey.length === 0 ? {} : { key: decodeURIComponent(encodedKey) })
+  }
+}
+
+const createElement = (
+  dependencies: ReactNativeDependencies,
+  type: unknown,
+  props: Record<string, unknown>,
+  ...children: ReadonlyArray<ReactNodeLike>
+): ReactElementLike => dependencies.React.createElement(type, props, ...children)
+
+const runReportedIntent = (
+  report: IntentReporter,
+  ref: IntentRef,
+  runtimeValue: JsonPayload = null
+): void => {
+  void Effect.runPromise(report(ref, runtimeValue) as Effect.Effect<void, IntentError>).catch(() => {
+    // Intent failures are recorded by the registry; host event handlers stay total.
+  })
+}
+
+const baseProps = (view: View, style: ReactNativeStyle): Record<string, unknown> => ({
+  key: view.key,
+  nativeID: nativeId(view),
+  style
+})
+
+const renderStack = (
+  view: StackView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const style = mergeNativeStyles({
+    display: "flex",
+    flexDirection: view.direction,
+    ...(view.gap === undefined ? {} : { gap: spacingValue(options.theme ?? defaultTheme, view.gap) }),
+    ...(view.align === undefined ? {} : { alignItems: flexKeyword(view.align) }),
+    ...(view.justify === undefined ? {} : { justifyContent: flexKeyword(view.justify) }),
+    ...(view.padding === undefined ? {} : { padding: spacingValue(options.theme ?? defaultTheme, view.padding) })
+  }, viewStyle(view, options))
+
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    baseProps(view, style),
+    ...view.children.map((child) => renderReactNativeView(child, dependencies, report, options))
+  )
+}
+
+const renderText = (
+  view: TextView,
+  dependencies: ReactNativeDependencies,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const style = mergeNativeStyles(
+    typeScaleValue(options.theme ?? defaultTheme, view.variant),
+    view.color === undefined ? undefined : { color: colorValue(options.theme ?? defaultTheme, view.color) },
+    view.weight === undefined ? undefined : { fontWeight: fontWeightValue(view.weight) },
+    viewStyle(view, options)
+  )
+
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.Text,
+    {
+      ...baseProps(view, style),
+      accessibilityRole: view.variant === "heading" || view.variant === "title" ? "header" : "text"
+    },
+    String(view.content)
+  )
+}
+
+const renderButton = (
+  view: ButtonView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const style = mergeNativeStyles(
+    { opacity: view.disabled === true ? 0.5 : 1 },
+    viewStyle(view, options)
+  )
+
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.Pressable,
+    {
+      ...baseProps(view, style),
+      accessibilityRole: "button",
+      accessibilityState: { disabled: view.disabled === true },
+      disabled: view.disabled === true,
+      onPress: () => {
+        if (view.disabled !== true) {
+          runReportedIntent(report, view.onPress)
+        }
+      }
+    },
+    createElement(
+      dependencies,
+      dependencies.ReactNative.Text,
+      {
+        style: typeScaleValue(options.theme ?? defaultTheme, "label")
+      },
+      view.label
+    )
+  )
+}
+
+const renderImage = (
+  view: ImageView,
+  dependencies: ReactNativeDependencies,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const style = mergeNativeStyles(
+    {
+      ...(view.width === undefined ? {} : { width: dimensionValue(options.theme ?? defaultTheme, view.width) }),
+      ...(view.height === undefined ? {} : { height: dimensionValue(options.theme ?? defaultTheme, view.height) })
+    },
+    viewStyle(view, options)
+  )
+
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.Image,
+    {
+      ...baseProps(view, style),
+      accessibilityLabel: view.alt,
+      alt: view.alt,
+      resizeMode: view.fit,
+      source: { uri: view.source }
+    }
+  )
+}
+
+const renderTextField = (
+  view: TextFieldView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.TextInput,
+    {
+      ...baseProps(view, viewStyle(view, options)),
+      accessibilityLabel: view.label,
+      multiline: view.multiline === true,
+      onChangeText: (value: string) => {
+        if (view.onChange !== undefined) {
+          runReportedIntent(report, view.onChange, value)
+        }
+      },
+      onSubmitEditing: (event: { readonly nativeEvent?: { readonly text?: string } }) => {
+        if (view.onSubmit !== undefined) {
+          runReportedIntent(report, view.onSubmit, event.nativeEvent?.text ?? view.value)
+        }
+      },
+      placeholder: view.placeholder,
+      secureTextEntry: view.secure === true,
+      value: view.value
+    }
+  )
+}
+
+const renderList = (
+  view: ListView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.FlatList,
+    {
+      ...baseProps(view, viewStyle(view, options)),
+      data: view.items,
+      keyExtractor: (item: View & { readonly key: string }) => item.key,
+      renderItem: ({ item }: { readonly item: View }) =>
+        renderReactNativeView(item, dependencies, report, options)
+    }
+  )
+}
+
+const renderCard = (
+  view: CardView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const style = mergeNativeStyles(
+    {
+      ...(view.padding === undefined ? {} : { padding: spacingValue(options.theme ?? defaultTheme, view.padding) }),
+      ...(view.radius === undefined ? {} : { borderRadius: radiusValue(options.theme ?? defaultTheme, view.radius) })
+    },
+    viewStyle(view, options)
+  )
+
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    baseProps(view, style),
+    ...view.children.map((child) => renderReactNativeView(child, dependencies, report, options))
+  )
+}
+
+const renderSpacer = (
+  view: SpacerView,
+  dependencies: ReactNativeDependencies,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const style = mergeNativeStyles(
+    view.flex === true
+      ? { flex: 1 }
+      : {
+          width: spacingValue(options.theme ?? defaultTheme, view.size),
+          height: spacingValue(options.theme ?? defaultTheme, view.size)
+        },
+    viewStyle(view, options)
+  )
+
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    {
+      ...baseProps(view, style),
+      accessibilityElementsHidden: true,
+      importantForAccessibility: "no-hide-descendants"
+    }
+  )
+}
+
+export const renderReactNativeView = (
+  view: View,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions = {}
+): ReactElementLike => {
+  switch (view._tag) {
+    case "Stack":
+      return renderStack(view, dependencies, report, options)
+    case "Text":
+      return renderText(view, dependencies, options)
+    case "Button":
+      return renderButton(view, dependencies, report, options)
+    case "Image":
+      return renderImage(view, dependencies, options)
+    case "TextField":
+      return renderTextField(view, dependencies, report, options)
+    case "List":
+      return renderList(view, dependencies, report, options)
+    case "Card":
+      return renderCard(view, dependencies, report, options)
+    case "Spacer":
+      return renderSpacer(view, dependencies, options)
+  }
+}
+
+const normalizeChildren = (children: unknown): ReadonlyArray<ReactNodeLike> => {
+  if (children === undefined || children === null) {
+    return []
+  }
+  return Array.isArray(children) ? children as ReadonlyArray<ReactNodeLike> : [children as ReactNodeLike]
+}
+
+const textContent = (node: ReactNodeLike): string => {
+  if (node === undefined || node === null || typeof node === "boolean") {
+    return ""
+  }
+  if (typeof node === "string" || typeof node === "number") {
+    return String(node)
+  }
+  return normalizeChildren(node.props.children).map(textContent).join("")
+}
+
+export const reactNativeStructure = (node: ReactNodeLike): ReactNativeStructure | undefined => {
+  if (node === undefined || node === null || typeof node !== "object" || !("props" in node)) {
+    return undefined
+  }
+
+  const metadata = parseNativeId(node.props.nativeID)
+  if (metadata === undefined) {
+    for (const child of normalizeChildren(node.props.children)) {
+      const found = reactNativeStructure(child)
+      if (found !== undefined) {
+        return found
+      }
+    }
+    return undefined
+  }
+
+  const children =
+    metadata.tag === "List"
+      ? ((node.props.data as ReadonlyArray<View> | undefined) ?? [])
+          .map((item) => {
+            const renderItem = node.props.renderItem as ((input: { readonly item: View }) => ReactNodeLike) | undefined
+            return renderItem === undefined ? undefined : reactNativeStructure(renderItem({ item }))
+          })
+          .filter((child): child is ReactNativeStructure => child !== undefined)
+      : normalizeChildren(node.props.children)
+          .map((child) => reactNativeStructure(child))
+          .filter((child): child is ReactNativeStructure => child !== undefined)
+
+  return {
+    tag: metadata.tag,
+    ...(metadata.key === undefined ? {} : { key: metadata.key }),
+    ...(metadata.tag === "Text" || metadata.tag === "Button" ? { text: textContent(node) } : {}),
+    ...(children.length === 0 ? {} : { children })
+  }
+}
+
+export const viewStructure = (view: View): ReactNativeStructure => {
+  switch (view._tag) {
+    case "Stack":
+      return {
+        tag: "Stack",
+        ...(view.key === undefined ? {} : { key: view.key }),
+        children: view.children.map(viewStructure)
+      }
+    case "Text":
+      return {
+        tag: "Text",
+        ...(view.key === undefined ? {} : { key: view.key }),
+        text: String(view.content)
+      }
+    case "Button":
+      return {
+        tag: "Button",
+        ...(view.key === undefined ? {} : { key: view.key }),
+        text: view.label
+      }
+    case "List":
+      return {
+        tag: "List",
+        ...(view.key === undefined ? {} : { key: view.key }),
+        children: view.items.map(viewStructure)
+      }
+    case "Card":
+      return {
+        tag: "Card",
+        ...(view.key === undefined ? {} : { key: view.key }),
+        children: view.children.map(viewStructure)
+      }
+    default:
+      return {
+        tag: view._tag,
+        ...(view.key === undefined ? {} : { key: view.key })
+      }
+  }
+}
+
+export const createEffectNativeSurface = (
+  dependencies: ReactNativeDependencies
+): ((props: EffectNativeSurfaceProps) => ReactNodeLike) => {
+  const { React } = dependencies
+  const useEffect = React.useEffect
+  const useState = React.useState
+  if (useEffect === undefined || useState === undefined) {
+    throw new Error("EffectNativeSurface requires React useEffect and useState")
+  }
+
+  return function EffectNativeSurfaceWithDependencies(props: EffectNativeSurfaceProps): ReactNodeLike {
+    const [view, setView] = useState<View | undefined>(() => props.initialView)
+
+    useEffect(() => {
+      const fiber = Effect.runFork(
+        props.viewStream.pipe(
+          Stream.runForEach((nextView) =>
+            Effect.sync(() => {
+              setView(nextView)
+            })
+          )
+        )
+      )
+
+      return () => {
+        void Effect.runPromise(Fiber.interrupt(fiber)).catch(() => {
+          // React unmount cleanup must stay total.
+        })
+      }
+    }, [props.viewStream])
+
+    const renderOptions: ReactNativeRenderOptions = {
+      ...(props.theme === undefined ? {} : { theme: props.theme }),
+      ...(props.platform === undefined ? {} : { platform: props.platform })
+    }
+
+    return view === undefined
+      ? null
+      : renderReactNativeView(view, dependencies, props.report, renderOptions)
+  }
+}
+
+export const EffectNativeSurface = (props: EffectNativeSurfaceProps): ReactNodeLike => {
+  const dependencies = loadPeerDependencies()
+  return dependencies.React.createElement(
+    createEffectNativeSurface(dependencies),
+    props as unknown as Record<string, unknown>
+  )
+}
+
+export const makeReactNativeRenderer = (
+  options: ReactNativeRendererOptions = {}
+): RendererAdapter<ReactNativeContainer | undefined, ReactNativeMountedSurface> => ({
+  mount: (container, viewStream, report) =>
+    Effect.gen(function*() {
+      const parentScope = yield* Scope.Scope
+      const surfaceScope = yield* Scope.fork(parentScope)
+
+      return yield* Scope.provide(surfaceScope)(Effect.gen(function*() {
+        const dependencies = options.dependencies ?? loadPeerDependencies()
+        const current = yield* Ref.make<View | undefined>(undefined)
+        const currentElement = yield* Ref.make<ReactNodeLike | undefined>(undefined)
+        const ready = yield* Deferred.make<void>()
+
+        yield* Effect.addFinalizer(() =>
+          Effect.sync(() => {
+            container?.render?.(undefined)
+          })
+        )
+
+        yield* viewStream.pipe(
+          Stream.runForEach((view) =>
+            Effect.gen(function*() {
+              const element = renderReactNativeView(view, dependencies, report, options)
+              yield* Ref.set(current, view)
+              yield* Ref.set(currentElement, element)
+              yield* Effect.sync(() => {
+                container?.render?.(element)
+              })
+              yield* Deferred.succeed(ready, undefined)
+            })
+          ),
+          Effect.forkScoped
+        )
+        yield* Deferred.await(ready)
+
+        return {
+          unmount: Scope.close(surfaceScope, Exit.void),
+          current: Ref.get(current),
+          currentElement: Ref.get(currentElement),
+          serialize: Ref.get(currentElement).pipe(Effect.map((element) => reactNativeStructure(element)))
+        }
+      }))
+    })
+})
