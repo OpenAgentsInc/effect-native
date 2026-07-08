@@ -160,10 +160,14 @@ provides local recording, JSON replay, prefix time-travel, and an Effect
 Native-authored browser panel for the proof web and mobile examples. The
 [component gallery](./docs/gallery.md) adds serializable catalog stories,
 generated controls, a web/mobile story browser, and a relative-path-safe static
-build. [**The guide**](./docs/guide/README.md) is a buildable tutorial plus
-full catalog reference for building an app on Effect Native from outside this
-repository — every code block in it is extracted and type-checked against the
-real packages by `bun run check:doc-snippets`. The
+build. `@effect-native/testkit` is the app-author test harness —
+[**testing an Effect Native app**](./docs/testing.md) covers unit, `TestApp`
+interaction, stable snapshots, `Recording` replay regression tests, and
+per-renderer visual baselines, with runnable examples. [**The guide**](./docs/guide/README.md)
+is a buildable tutorial plus full catalog reference for building an app on
+Effect Native from outside this repository — every code block in it is
+extracted and type-checked against the real packages by
+`bun run check:doc-snippets`. The
 [effectnative.org source](./docs/website.md) -- the framework's own website,
 home page through component library, built and statically prerendered
 entirely with Effect Native itself -- is in this repository too; hosting is
