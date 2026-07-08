@@ -1,91 +1,156 @@
 # Proof Screenshot Runbook
 
-This runbook documents how the Phase 1 proof screenshots in
-`docs/assets/proof-web.svg` and `docs/assets/proof-mobile.svg` were produced,
-so future agents can update them with the same level of evidence.
+This runbook documents how to update the Phase 1 proof screenshots in
+`docs/assets/proof-web.png` and `docs/assets/proof-mobile.png`.
 
-The committed screenshots are deterministic SVG proof receipts. They are not
-opaque browser or simulator bitmap captures. The oracle is the source of truth
-for behavior and structure; the SVGs are lightweight visual receipts that show
-the verified final proof state in web and mobile frames.
+The committed PNGs are actual captures from the live web host and an iOS
+Simulator running the Expo mobile host. The SVG files in this directory are
+deprecated backup receipts only; use them only when live bitmap capture is
+impossible and call that out in the proof comment.
 
-## Current Method
+## Verify First
 
-1. Verify the proof state.
+Run the oracle before taking screenshots:
+
+```sh
+bun install
+bun run check
+```
+
+The key test is `scripts/proof-oracle.test.ts`. It replays the scripted proof
+steps through the headless, DOM, and React Native renderers, then asserts the
+same final state, intent log, and structural snapshots. The screenshots are
+visual evidence from the hosts; the oracle is the behavioral receipt.
+
+## Web PNG
+
+1. Start the web host from the repository root:
 
    ```sh
+   bun run example:web
+   ```
+
+2. In another terminal, drive Chromium and capture the page.
+
+   The current committed `proof-web.png` was captured at `1280x900` after
+   entering `Agassi` and `Dfasf23f@sdf.com`, then pressing `Submit #1`.
+
+   If Playwright is already available, run this from the repository root:
+
+   ```sh
+   node - <<'NODE'
+   const { chromium } = require("playwright")
+
+   ;(async () => {
+     const browser = await chromium.launch()
+     const page = await browser.newPage({
+       viewport: { width: 1280, height: 900 },
+       deviceScaleFactor: 1
+     })
+
+     await page.goto("http://localhost:4173", { waitUntil: "networkidle" })
+     await page.locator("input").nth(0).fill("Agassi")
+     await page.locator("input").nth(1).fill("Dfasf23f@sdf.com")
+     await page.getByRole("button", { name: /Submit #1/ }).click()
+     await page.waitForTimeout(250)
+     await page.screenshot({ path: "docs/assets/proof-web.png", fullPage: true })
+     await browser.close()
+   })().catch((error) => {
+     console.error(error)
+     process.exit(1)
+   })
+   NODE
+   ```
+
+   If `require("playwright")` is unavailable, install Playwright into a
+   temporary directory instead of adding it to this repo:
+
+   ```sh
+   tmpdir=$(mktemp -d)
+   npm --prefix "$tmpdir" install playwright@1.61.1
+   "$tmpdir/node_modules/.bin/playwright" install chromium
+   NODE_PATH="$tmpdir/node_modules" node - <<'NODE'
+   const { chromium } = require("playwright")
+
+   ;(async () => {
+     const browser = await chromium.launch()
+     const page = await browser.newPage({
+       viewport: { width: 1280, height: 900 },
+       deviceScaleFactor: 1
+     })
+
+     await page.goto("http://localhost:4173", { waitUntil: "networkidle" })
+     await page.locator("input").nth(0).fill("Agassi")
+     await page.locator("input").nth(1).fill("Dfasf23f@sdf.com")
+     await page.getByRole("button", { name: /Submit #1/ }).click()
+     await page.waitForTimeout(250)
+     await page.screenshot({ path: "docs/assets/proof-web.png", fullPage: true })
+     await browser.close()
+   })().catch((error) => {
+     console.error(error)
+     process.exit(1)
+   })
+   NODE
+   rm -rf "$tmpdir"
+   ```
+
+3. Stop the web host and remove the generated web bundle:
+
+   ```sh
+   rm -f examples/web/public/app.js
+   ```
+
+## Mobile PNG
+
+1. Install the mobile host dependencies:
+
+   ```sh
+   cd examples/mobile
    bun install
-   bun run check
    ```
 
-   The key test is `scripts/proof-oracle.test.ts`. It replays the scripted
-   proof steps through the headless, DOM, and React Native renderers, then
-   asserts identical final state, intent logs, and structural snapshots.
+   Do not commit `examples/mobile/node_modules`, `.expo`, or `bun.lock` unless
+   the package-management policy changes.
 
-2. Confirm the visual state to depict.
+2. Start the standard Expo iOS flow:
 
-   The current screenshot state is the final scripted proof state:
-
-   - name: `Ada Lovelace`
-   - email: `ada@example.com`
-   - message: `Added Ada Lovelace via button.`
-   - count: `2 entries`
-   - activity entries: keyboard submit and button submit
-
-3. Update the SVG receipts if the proof screen changes.
-
-   Edit:
-
-   - `docs/assets/proof-web.svg`
-   - `docs/assets/proof-mobile.svg`
-
-   Keep them simple and deterministic:
-
-   - use the same text and final state proven by `scripts/proof-oracle.test.ts`,
-   - use the token palette from `@effect-native/tokens`,
-   - keep the web frame and phone frame recognizable,
-   - avoid external image references or generated binary files,
-   - keep dimensions stable so `docs/proof.md` renders consistently.
-
-4. Preview the SVGs locally.
-
-   Open `docs/proof.md` in a Markdown preview, or open each SVG directly in a
-   browser. The files should render without network access.
-
-5. Post the committed screenshots to issue #8.
-
-   After the assets are pushed to `main`, use raw GitHub URLs:
-
-   ```md
-   ![Effect Native proof web](https://raw.githubusercontent.com/OpenAgentsInc/effect-native/main/docs/assets/proof-web.svg)
-   ![Effect Native proof mobile](https://raw.githubusercontent.com/OpenAgentsInc/effect-native/main/docs/assets/proof-mobile.svg)
+   ```sh
+   bun run ios
    ```
 
-## Optional Live Capture
+   Accept Expo's alternate port prompt if `8081` is already occupied. The Metro
+   config aliases `react` and `react-native` to `examples/mobile/node_modules`
+   so workspace source under `packages/` resolves against the Expo host's React
+   Native install.
 
-If future work wants real bitmap captures instead of SVG receipts, keep the
-oracle as the behavioral source of truth and capture only after it passes.
+3. In the iOS Simulator, dismiss any Expo dev overlay, enter the same proof
+   values, and submit the form. The current committed mobile PNG was captured
+   after entering `Agassi` and `Dfasf23f@sdf.com`, then tapping `Submit #1`.
 
-Web:
+4. Capture the simulator framebuffer from the repository root:
 
-```sh
-bun run example:web
-```
+   ```sh
+   xcrun simctl io booted screenshot docs/assets/proof-mobile.png
+   ```
 
-Open `http://localhost:4173`, run through the scripted proof steps manually,
-and capture the page at the final state.
+5. Stop Expo and remove generated mobile artifacts that should not be committed:
 
-Mobile:
+   ```sh
+   rm -rf examples/mobile/.expo examples/mobile/node_modules
+   rm -f examples/mobile/bun.lock
+   ```
 
-```sh
-cd examples/mobile
-bun install
-bun run ios
-```
+## Deprecated SVG Backup
 
-Run through the same scripted proof steps in the simulator and capture the
-final state. If bitmap screenshots are committed, update `docs/proof.md` and
-this runbook with exact device, viewport, and capture command details.
+The older deterministic receipts remain at:
+
+- `docs/assets/proof-web.svg`
+- `docs/assets/proof-mobile.svg`
+
+They are retained only as a fallback when a browser or simulator cannot be
+used. If you update them, keep them deterministic, label them as fallback proof,
+and do not replace the PNG references in `docs/proof.md` while live PNG captures
+are available.
 
 ## Checklist Before Pushing
 
@@ -93,7 +158,8 @@ this runbook with exact device, viewport, and capture command details.
 bun run check
 bun build ./examples/web/main.ts --outfile ./examples/web/public/app.js --format esm
 rm -f ./examples/web/public/app.js
+git status --short
 ```
 
-Then verify `git status` contains only intentional documentation or screenshot
-asset changes before committing.
+Commit only intentional docs, screenshot asset, and capture-enabling config
+changes.

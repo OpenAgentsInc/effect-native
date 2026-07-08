@@ -9,7 +9,9 @@ config.resolver.extraNodeModules = {
   "@effect-native/core": path.join(workspaceRoot, "packages/core"),
   "@effect-native/render-rn": path.join(workspaceRoot, "packages/render-rn"),
   "@effect-native/tokens": path.join(workspaceRoot, "packages/tokens"),
-  effect: path.join(workspaceRoot, "node_modules/effect")
+  effect: path.join(workspaceRoot, "node_modules/effect"),
+  react: path.join(__dirname, "node_modules/react"),
+  "react-native": path.join(__dirname, "node_modules/react-native")
 }
 
 module.exports = config

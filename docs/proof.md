@@ -5,10 +5,12 @@ One screen is defined once as typed Effect Native data in
 
 | Web | Mobile |
 |---|---|
-| ![Web proof screenshot](./assets/proof-web.svg) | ![Mobile proof screenshot](./assets/proof-mobile.svg) |
+| ![Web proof screenshot](./assets/proof-web.png) | ![Mobile proof screenshot](./assets/proof-mobile.png) |
 
 See [Proof Screenshot Runbook](./screenshot-runbook.md) for the methodology
-used to produce and update these images.
+used to produce and update these images. The committed PNGs are actual browser
+and iOS simulator captures. The older SVG receipts remain in `docs/assets/` as
+a deprecated backup option when live bitmap capture is unavailable.
 
 The shared module owns the state schema, view function, intent definitions,
 handlers, and scripted proof steps. It imports `effect` and
