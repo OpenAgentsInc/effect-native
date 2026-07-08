@@ -7,6 +7,9 @@ One screen is defined once as typed Effect Native data in
 |---|---|
 | ![Web proof screenshot](./assets/proof-web.svg) | ![Mobile proof screenshot](./assets/proof-mobile.svg) |
 
+See [Proof Screenshot Runbook](./screenshot-runbook.md) for the methodology
+used to produce and update these images.
+
 The shared module owns the state schema, view function, intent definitions,
 handlers, and scripted proof steps. It imports `effect` and
 `@effect-native/core` only; it has no DOM, React, React Native, or Expo
