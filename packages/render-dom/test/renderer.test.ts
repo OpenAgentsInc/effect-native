@@ -35,6 +35,7 @@ import {
   type NavigationDestination,
   type View
 } from "@effect-native/core"
+import { khalaTheme } from "@effect-native/tokens"
 import { makeDomNavigationHandlerLayer, makeDomRenderer, viewStructure } from "../src/index"
 
 interface CounterState {
@@ -621,6 +622,93 @@ describe("DOM renderer", () => {
       yield* surface.setTheme(changedTheme)
 
       expect(yield* surface.stylesheetText).toContain("--en-color-accent:#123456;")
+    })))
+  })
+
+  test("khalaTheme atomic CSS lowering: a sample screen renders through the DOM renderer and the lowered theme CSS variables are pinned", async () => {
+    // This is the DOM-renderer half of issue #25's acceptance criteria: a
+    // sample screen renders with the Khala blue system through the DOM
+    // renderer, and the atomic-CSS lowering of the theme is pinned so
+    // palette drift shows up as an explicit diff in review. The raw palette
+    // itself is pinned separately in
+    // packages/tokens/test/khala-theme.test.ts.
+    const { container, document } = createDom()
+    const view = Card({
+      key: "transcript",
+      padding: "4",
+      radius: "lg",
+      style: {
+        backgroundColor: "surface",
+        borderColor: "border",
+        borderWidth: 1
+      }
+    }, [
+      Text({
+        key: "heading",
+        content: "Khala",
+        variant: "heading",
+        style: { color: "textPrimary" }
+      }),
+      Text({
+        key: "body",
+        content: "Uniform Protoss-blue, no light mode.",
+        variant: "body",
+        style: { color: "textMuted" }
+      }),
+      Button({
+        key: "primary-action",
+        label: "Continue",
+        variant: "primary",
+        onPress: IntentRef("Continue"),
+        style: { backgroundColor: "accent", color: "textPrimary" }
+      })
+    ])
+
+    await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
+      const surface = yield* makeDomRenderer({ document, theme: khalaTheme }).mount(
+        container,
+        Stream.make(view),
+        noopReport
+      )
+
+      expect(container.querySelector('[data-en-key="heading"]')?.textContent).toBe("Khala")
+      expect(container.querySelector('[data-en-key="primary-action"]')?.textContent).toBe("Continue")
+
+      const css = yield* surface.stylesheetText
+      const rootRule = css.slice(0, css.indexOf("}") + 1)
+
+      // Pin every `--en-color-*` custom property the theme lowers into
+      // `:root`. A palette change in @effect-native/tokens `khalaTheme`
+      // must show up here.
+      expect(rootRule).toContain("--en-color-background:#05070d;")
+      expect(rootRule).toContain("--en-color-surface:#0b1220;")
+      expect(rootRule).toContain("--en-color-surfaceRaised:#141f36;")
+      expect(rootRule).toContain("--en-color-textPrimary:#eef3ff;")
+      expect(rootRule).toContain("--en-color-textMuted:#93a4c3;")
+      expect(rootRule).toContain("--en-color-accent:#3b82f6;")
+      expect(rootRule).toContain("--en-color-danger:#f87171;")
+      expect(rootRule).toContain("--en-color-border:#1f2b45;")
+      expect(rootRule).toContain("--en-color-focus:#60a5fa;")
+      expect(rootRule).toContain("--en-color-info:#38bdf8;")
+      expect(rootRule).toContain("--en-color-success:#22c55e;")
+      expect(rootRule).toContain("--en-color-warning:#f59e0b;")
+      expect(rootRule).toContain("--en-color-codeBackground:#0a0f1c;")
+      expect(rootRule).toContain("--en-color-diffAdd:#4ade80;")
+      expect(rootRule).toContain("--en-color-diffRemove:#f87171;")
+      expect(rootRule).toContain("--en-color-syntaxKeyword:#60a5fa;")
+      expect(rootRule).toContain("--en-color-syntaxString:#4ade80;")
+      expect(rootRule).toContain("--en-color-syntaxComment:#5b6b8c;")
+      expect(rootRule).toContain("--en-color-syntaxFunction:#c084fc;")
+      expect(rootRule).toContain("--en-color-syntaxNumber:#fbbf24;")
+      expect(rootRule).toContain("--en-color-syntaxOperator:#93a4c3;")
+
+      // The card/text/button atomic declarations resolve through the same
+      // theme (no hardcoded colors, no light/dark branch).
+      expect(css).toContain("background-color:var(--en-color-surface);")
+      expect(css).toContain("color:var(--en-color-textPrimary);")
+      expect(css).toContain("color:var(--en-color-textMuted);")
+      expect(css).toContain("background-color:var(--en-color-accent);")
+      expect(css).not.toMatch(/#(?:fff|ffffff)\b/i)
     })))
   })
 

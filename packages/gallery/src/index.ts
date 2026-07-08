@@ -38,7 +38,7 @@ import {
   type ViewProgram,
   type ViewportInput
 } from "@effect-native/core"
-import { ThemeSchema, defineTheme } from "@effect-native/tokens"
+import { ThemeSchema, khalaTheme } from "@effect-native/tokens"
 
 export const packageName = "@effect-native/gallery" as const
 
@@ -61,30 +61,10 @@ const genericSvg = [
   "%3C/svg%3E"
 ].join("")
 
-const darkTheme: Theme = defineTheme({
-  spacing: defaultTheme.spacing,
-  color: {
-    background: "#030712",
-    surface: "#0b1220",
-    textPrimary: "#f8fafc",
-    textMuted: "#94a3b8",
-    accent: "#38bdf8",
-    danger: "#fb7185",
-    border: "#1e293b",
-    focus: "#7dd3fc"
-  },
-  radius: {
-    none: 0,
-    sm: 2,
-    md: 6,
-    lg: 8,
-    xl: 12,
-    full: 9999
-  },
-  typeScale: defaultTheme.typeScale,
-  breakpoint: defaultTheme.breakpoint,
-  dimension: defaultTheme.dimension
-})
+// "Dark" is the one canonical Khala Protoss-blue theme (see @effect-native/tokens
+// `khalaTheme` and issue #25) — the gallery previews it here rather than hand-
+// rolling a second, drifting dark palette.
+const darkTheme: Theme = khalaTheme
 
 export const galleryThemes = [
   { id: "default", label: "Default", theme: defaultTheme },

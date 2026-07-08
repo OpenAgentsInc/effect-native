@@ -12,7 +12,6 @@ import {
   Text,
   TextField,
   defineIntent,
-  defineTheme,
   makeIntentRegistry,
   makeViewProgramFromState,
   resolveIntentRef,
@@ -27,72 +26,13 @@ import {
   type View,
   type ViewProgram
 } from "@effect-native/core"
+import { khalaTheme } from "@effect-native/tokens"
 
-export const khalaDesktopTheme: Theme = defineTheme({
-  spacing: {
-    "0": 0,
-    "0.5": 2,
-    "1": 4,
-    "1.5": 6,
-    "2": 8,
-    "2.5": 10,
-    "3": 12,
-    "3.5": 14,
-    "4": 16,
-    "5": 20,
-    "6": 24,
-    "8": 32,
-    "10": 40,
-    "12": 48,
-    "16": 64,
-    "20": 80,
-    "24": 96,
-    "32": 128,
-    "40": 160,
-    "48": 192,
-    "56": 224,
-    "64": 256
-  },
-  color: {
-    background: "#000000",
-    surface: "#05080e",
-    textPrimary: "#f1efe8",
-    textMuted: "#b7c8dc",
-    accent: "#4fd0ff",
-    danger: "#f85149",
-    border: "#1d2a44",
-    focus: "#cdeeff"
-  },
-  radius: {
-    none: 0,
-    sm: 2,
-    md: 4,
-    lg: 6,
-    xl: 8,
-    full: 9999
-  },
-  typeScale: {
-    caption: { fontSize: 12, lineHeight: 16, fontWeight: 500 },
-    body: { fontSize: 14, lineHeight: 21, fontWeight: 400 },
-    label: { fontSize: 13, lineHeight: 18, fontWeight: 600 },
-    title: { fontSize: 18, lineHeight: 24, fontWeight: 600 },
-    heading: { fontSize: 24, lineHeight: 30, fontWeight: 600 }
-  },
-  breakpoint: {
-    sm: 640,
-    md: 768,
-    lg: 1024,
-    xl: 1280
-  },
-  dimension: {
-    xs: 160,
-    sm: 240,
-    md: 320,
-    lg: 480,
-    xl: 640,
-    full: "100%"
-  }
-})
+// The Khala Code Desktop chat proof mounts the one canonical Khala
+// Protoss-blue theme (see `@effect-native/tokens` `khalaTheme`/
+// `khalaThemeLayer` and issue #25) rather than a bespoke local palette, so
+// this proof reflects the same token values every other consumer picks up.
+export const khalaDesktopTheme: Theme = khalaTheme
 
 const keyed = <V extends View>(view: V): V & { readonly key: string } =>
   view as V & { readonly key: string }
