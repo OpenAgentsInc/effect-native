@@ -416,3 +416,27 @@ export {
   SnapshotFormatVersion,
   type Snapshot
 } from "./snapshot"
+
+// ---------------------------------------------------------------------------
+// Recording-based regression tests -- see ./replay. Builds on
+// @effect-native/devtools's Recording/replayRecording (#15); reused here,
+// not duplicated.
+// ---------------------------------------------------------------------------
+
+export {
+  expectReplay,
+  makeRecordingSink,
+  parseRecording,
+  recordingIntents,
+  replayRecording,
+  replayStateAtIntentStep,
+  serializeRecording,
+  stateAtTimelineStep,
+  viewAtTimelineStep,
+  RecordingSchema,
+  type ExpectReplayOptions,
+  type Recording,
+  type RecordingSink,
+  type ReplayResult,
+  type ReplayRuntime
+} from "./replay"

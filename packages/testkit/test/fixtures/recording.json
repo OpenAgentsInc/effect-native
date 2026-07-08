@@ -1,0 +1,359 @@
+{
+  "version": "effect-native/devtools-recording/v0",
+  "initialState": {
+    "count": 0,
+    "name": "",
+    "navigations": []
+  },
+  "timeline": [
+    {
+      "_tag": "StateSnapshot",
+      "timestamp": 1,
+      "state": {
+        "count": 0,
+        "name": "",
+        "navigations": []
+      }
+    },
+    {
+      "_tag": "ViewEmitted",
+      "timestamp": 1,
+      "view": {
+        "_tag": "Stack",
+        "catalogVersion": "effect-native/v5",
+        "direction": "column",
+        "gap": "2",
+        "children": [
+          {
+            "_tag": "Text",
+            "catalogVersion": "effect-native/v5",
+            "key": "count",
+            "content": "0",
+            "variant": "heading"
+          },
+          {
+            "_tag": "Button",
+            "catalogVersion": "effect-native/v5",
+            "key": "increment",
+            "label": "Increment (0)",
+            "variant": "primary",
+            "onPress": {
+              "name": "Increment",
+              "payload": {
+                "_tag": "StaticPayload",
+                "value": {
+                  "amount": 1
+                }
+              }
+            }
+          },
+          {
+            "_tag": "TextField",
+            "catalogVersion": "effect-native/v5",
+            "key": "name",
+            "value": "",
+            "label": "Name",
+            "field": {
+              "form": "signup",
+              "field": "name"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "_tag": "StateSnapshot",
+      "timestamp": 2,
+      "state": {
+        "count": 1,
+        "name": "",
+        "navigations": []
+      }
+    },
+    {
+      "_tag": "ViewEmitted",
+      "timestamp": 2,
+      "view": {
+        "_tag": "Stack",
+        "catalogVersion": "effect-native/v5",
+        "direction": "column",
+        "gap": "2",
+        "children": [
+          {
+            "_tag": "Text",
+            "catalogVersion": "effect-native/v5",
+            "key": "count",
+            "content": "1",
+            "variant": "heading"
+          },
+          {
+            "_tag": "Button",
+            "catalogVersion": "effect-native/v5",
+            "key": "increment",
+            "label": "Increment (1)",
+            "variant": "primary",
+            "onPress": {
+              "name": "Increment",
+              "payload": {
+                "_tag": "StaticPayload",
+                "value": {
+                  "amount": 1
+                }
+              }
+            }
+          },
+          {
+            "_tag": "TextField",
+            "catalogVersion": "effect-native/v5",
+            "key": "name",
+            "value": "",
+            "label": "Name",
+            "field": {
+              "form": "signup",
+              "field": "name"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "_tag": "IntentDispatched",
+      "timestamp": 3,
+      "event": {
+        "timestamp": 3,
+        "intent": {
+          "name": "Increment",
+          "payload": {
+            "amount": 1
+          }
+        },
+        "result": {
+          "_tag": "Success"
+        }
+      }
+    },
+    {
+      "_tag": "StateSnapshot",
+      "timestamp": 4,
+      "state": {
+        "count": 2,
+        "name": "",
+        "navigations": []
+      }
+    },
+    {
+      "_tag": "ViewEmitted",
+      "timestamp": 4,
+      "view": {
+        "_tag": "Stack",
+        "catalogVersion": "effect-native/v5",
+        "direction": "column",
+        "gap": "2",
+        "children": [
+          {
+            "_tag": "Text",
+            "catalogVersion": "effect-native/v5",
+            "key": "count",
+            "content": "2",
+            "variant": "heading"
+          },
+          {
+            "_tag": "Button",
+            "catalogVersion": "effect-native/v5",
+            "key": "increment",
+            "label": "Increment (2)",
+            "variant": "primary",
+            "onPress": {
+              "name": "Increment",
+              "payload": {
+                "_tag": "StaticPayload",
+                "value": {
+                  "amount": 1
+                }
+              }
+            }
+          },
+          {
+            "_tag": "TextField",
+            "catalogVersion": "effect-native/v5",
+            "key": "name",
+            "value": "",
+            "label": "Name",
+            "field": {
+              "form": "signup",
+              "field": "name"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "_tag": "IntentDispatched",
+      "timestamp": 5,
+      "event": {
+        "timestamp": 5,
+        "intent": {
+          "name": "Increment",
+          "payload": {
+            "amount": 1
+          }
+        },
+        "result": {
+          "_tag": "Success"
+        }
+      }
+    },
+    {
+      "_tag": "StateSnapshot",
+      "timestamp": 6,
+      "state": {
+        "count": 2,
+        "name": "Ada",
+        "navigations": []
+      }
+    },
+    {
+      "_tag": "ViewEmitted",
+      "timestamp": 6,
+      "view": {
+        "_tag": "Stack",
+        "catalogVersion": "effect-native/v5",
+        "direction": "column",
+        "gap": "2",
+        "children": [
+          {
+            "_tag": "Text",
+            "catalogVersion": "effect-native/v5",
+            "key": "count",
+            "content": "2",
+            "variant": "heading"
+          },
+          {
+            "_tag": "Button",
+            "catalogVersion": "effect-native/v5",
+            "key": "increment",
+            "label": "Increment (2)",
+            "variant": "primary",
+            "onPress": {
+              "name": "Increment",
+              "payload": {
+                "_tag": "StaticPayload",
+                "value": {
+                  "amount": 1
+                }
+              }
+            }
+          },
+          {
+            "_tag": "TextField",
+            "catalogVersion": "effect-native/v5",
+            "key": "name",
+            "value": "Ada",
+            "label": "Name",
+            "field": {
+              "form": "signup",
+              "field": "name"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "_tag": "IntentDispatched",
+      "timestamp": 7,
+      "event": {
+        "timestamp": 7,
+        "intent": {
+          "name": "FormFieldChanged",
+          "payload": {
+            "form": "signup",
+            "field": "name",
+            "value": "Ada"
+          }
+        },
+        "result": {
+          "_tag": "Success"
+        }
+      }
+    },
+    {
+      "_tag": "StateSnapshot",
+      "timestamp": 8,
+      "state": {
+        "count": 2,
+        "name": "Ada",
+        "navigations": [
+          {
+            "kind": "path",
+            "path": "/docs",
+            "replace": false
+          }
+        ]
+      }
+    },
+    {
+      "_tag": "ViewEmitted",
+      "timestamp": 8,
+      "view": {
+        "_tag": "Stack",
+        "catalogVersion": "effect-native/v5",
+        "direction": "column",
+        "gap": "2",
+        "children": [
+          {
+            "_tag": "Text",
+            "catalogVersion": "effect-native/v5",
+            "key": "count",
+            "content": "2",
+            "variant": "heading"
+          },
+          {
+            "_tag": "Button",
+            "catalogVersion": "effect-native/v5",
+            "key": "increment",
+            "label": "Increment (2)",
+            "variant": "primary",
+            "onPress": {
+              "name": "Increment",
+              "payload": {
+                "_tag": "StaticPayload",
+                "value": {
+                  "amount": 1
+                }
+              }
+            }
+          },
+          {
+            "_tag": "TextField",
+            "catalogVersion": "effect-native/v5",
+            "key": "name",
+            "value": "Ada",
+            "label": "Name",
+            "field": {
+              "form": "signup",
+              "field": "name"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "_tag": "IntentDispatched",
+      "timestamp": 9,
+      "event": {
+        "timestamp": 9,
+        "intent": {
+          "name": "Navigate",
+          "payload": {
+            "kind": "path",
+            "path": "/docs",
+            "replace": false
+          }
+        },
+        "result": {
+          "_tag": "Success"
+        }
+      }
+    }
+  ]
+}

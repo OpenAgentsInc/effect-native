@@ -9,7 +9,8 @@
   },
   "references": [
     { "path": "../core" },
+    { "path": "../devtools" },
     { "path": "../tokens" }
   ],
-  "include": ["src/**/*.ts", "test/**/*.ts"]
+  "include": ["src/**/*.ts", "test/**/*.ts", "scripts/**/*.ts", "test/fixtures/*.json"]
 }
