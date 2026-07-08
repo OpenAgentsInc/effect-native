@@ -59,37 +59,47 @@ typed data, rendered identically on web and mobile.
 renders it through DOM and React Native hosts, and checks headless/DOM/RN
 behavior with a cross-renderer oracle.
 
-## Phase 2 — Catalog growth, driven by real apps
+## Phase 2 — Catalog growth, driven by real apps (in progress — issues #9–#14)
 
-Grow the component set from what actual screens demand:
+Grow the component set from what actual screens demand. The demand is now
+concrete: the first production consumers of the framework are a
+**marketing/landing page** (web) and an **application dashboard**
+(web + mobile). The Phase 2 issues are scoped to what those two surfaces
+need, in the order they need it:
 
-- forms and validation (typed, Schema-backed)
-- virtualized lists and section lists
-- images and media
-- modals, sheets, and tabs
-- a **typed navigation intent** (routing expressed as data, delegating to
-  the platform's router below the adapter line)
-- typed variants for platform, interaction state (pressed/focused/disabled),
-  and breakpoint — resolved by the runtime, never a cascade
+- the **growth process itself** — the gap register and the catalog
+  versioning rule, so components enter by demand, not speculation (#9)
+- **`Link` + a typed navigation intent** (routing expressed as data,
+  delegating to the platform's router below the adapter line) (#10)
+- **responsive layout** — breakpoint variants resolved end-to-end through
+  runtime and both renderers (#11)
+- **forms and validation** (typed, Schema-backed) (#12)
+- **overlay surfaces** — modal and sheet (#13)
+- **virtualized lists and section lists** (#14)
 
-A component enters the catalog when a screen needs it. A gap register
-tracks what's missing rather than speculatively building it.
+A component enters the catalog when a screen needs it. The gap register
+(`GAPS.md`, established by #9) tracks what's missing rather than
+speculatively building it — tabs, icons, media beyond `Image`, and
+everything else waits there for a demanding screen.
 
 **Exit criterion:** the catalog covers the elements of a complete production
 app on both priority targets.
 
-## Phase 3 — Developer experience
+## Phase 3 — Developer experience (in progress — issues #15–#17)
 
 The leverage that falls out of "views are data, interactions are values":
 
-- **DevTools**: inspect the live view tree, log and replay intents,
-  time-travel state.
-- **Testing story**: deterministic view snapshots, intent-driven interaction
-  tests, visual baselines per renderer.
-- **Authoring ergonomics**: helpers and (possibly) typed utility aliases for
-  styles, without ever making a string the contract.
-- Documentation and examples good enough for someone outside the project to
-  build an app.
+- **DevTools v0**: inspect the live view tree, log and replay intents,
+  time-travel state — built on the intent event log that has existed since
+  Phase 0 (#15)
+- **Testing story**: an app-author-facing test harness — deterministic view
+  snapshots, intent-driven interaction tests, visual baselines per
+  renderer (#16)
+- **Documentation**: a guide good enough for someone outside the project to
+  build an app (#17)
+- Authoring ergonomics (helpers, possibly typed utility aliases for styles —
+  never a string contract) stay on the gap register until friction is
+  demonstrated.
 
 Runs alongside Phase 2 — DX is built on the substrate, not bolted on later.
 
