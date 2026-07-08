@@ -1,4 +1,4 @@
-import { Schema } from "effect"
+import { Context, Effect, Exit, Layer, PubSub, Ref, Schema, Stream } from "effect"
 
 export const packageName = "@effect-native/core" as const
 
@@ -50,11 +50,247 @@ export type NodeKey = Schema.Schema.Type<typeof NodeKeySchema>
 export const JsonPayloadSchema = Schema.Json
 export type JsonPayload = Schema.Schema.Type<typeof JsonPayloadSchema>
 
+export const StaticPayloadSchema = Schema.TaggedStruct("StaticPayload", {
+  value: JsonPayloadSchema
+})
+export const ComponentValueBindingSchema = Schema.TaggedStruct("ComponentValueBinding", {
+  path: Schema.NonEmptyString.pipe(Schema.optionalKey)
+})
+export const IntentPayloadTemplateSchema = Schema.Union([
+  StaticPayloadSchema,
+  ComponentValueBindingSchema
+])
+export type StaticPayload = Schema.Schema.Type<typeof StaticPayloadSchema>
+export type ComponentValueBinding = Schema.Schema.Type<typeof ComponentValueBindingSchema>
+export type IntentPayloadTemplate = Schema.Schema.Type<typeof IntentPayloadTemplateSchema>
+
 export const IntentRefSchema = Schema.Struct({
   name: Schema.NonEmptyString,
-  payload: JsonPayloadSchema.pipe(Schema.optionalKey)
+  payload: IntentPayloadTemplateSchema.pipe(Schema.optionalKey)
 })
 export type IntentRef = Schema.Schema.Type<typeof IntentRefSchema>
+
+export const StaticPayload = (value: JsonPayload): StaticPayload =>
+  StaticPayloadSchema.make({ _tag: "StaticPayload", value })
+
+export const ComponentValueBinding = (path?: string): ComponentValueBinding =>
+  path === undefined
+    ? ComponentValueBindingSchema.make({ _tag: "ComponentValueBinding" })
+    : ComponentValueBindingSchema.make({ _tag: "ComponentValueBinding", path })
+
+export const IntentRef = (name: string, payload?: IntentPayloadTemplate): IntentRef =>
+  payload === undefined ? IntentRefSchema.make({ name }) : IntentRefSchema.make({ name, payload })
+
+export interface Intent<Name extends string = string, Payload = JsonPayload> {
+  readonly name: Name
+  readonly payload: Payload
+}
+
+export const IntentSchema: Schema.Codec<Intent<string, JsonPayload>, Intent<string, JsonPayload>> =
+  Schema.Struct({
+    name: Schema.NonEmptyString,
+    payload: JsonPayloadSchema
+  })
+
+export const makeIntent = <const Name extends string, Payload extends JsonPayload>(
+  name: Name,
+  payload: Payload
+): Intent<Name, Payload> => IntentSchema.make({ name, payload }) as Intent<Name, Payload>
+
+export const encodeIntent = Schema.encodeSync(IntentSchema)
+export const decodeIntent = Schema.decodeUnknownSync(IntentSchema)
+
+export const resolveIntentRef = (
+  ref: IntentRef,
+  componentValue: JsonPayload = null
+): Intent<string, JsonPayload> => {
+  if (ref.payload === undefined) {
+    return makeIntent(ref.name, null)
+  }
+
+  if (ref.payload._tag === "StaticPayload") {
+    return makeIntent(ref.name, ref.payload.value)
+  }
+
+  return makeIntent(ref.name, componentValue)
+}
+
+export interface IntentDefinition<
+  Name extends string = string,
+  PayloadSchema extends Schema.ConstraintDecoder<any, never> = Schema.ConstraintDecoder<any, never>
+> {
+  readonly name: Name
+  readonly payloadSchema: PayloadSchema
+}
+
+export const defineIntent = <
+  const Name extends string,
+  const S extends Schema.ConstraintDecoder<any, never>
+>(
+  name: Name,
+  payloadSchema: S
+): { readonly name: Name; readonly payloadSchema: S } => ({ name, payloadSchema })
+
+export type IntentPayloadOf<D extends IntentDefinition> = Schema.Schema.Type<D["payloadSchema"]>
+export type IntentEncodedPayloadOf<D extends IntentDefinition> = Schema.Codec.Encoded<D["payloadSchema"]>
+export type IntentFor<D extends IntentDefinition> = Intent<D["name"], IntentPayloadOf<D>>
+
+export type IntentHandler<D extends IntentDefinition> = (
+  payload: IntentPayloadOf<D>,
+  intent: IntentFor<D>
+) => Effect.Effect<void, unknown>
+
+export type IntentHandlers<Definitions extends ReadonlyArray<IntentDefinition>> = {
+  readonly [D in Definitions[number] as D["name"]]: IntentHandler<D>
+}
+
+export class UnknownIntentError extends Schema.TaggedErrorClass<UnknownIntentError>()(
+  "UnknownIntentError",
+  {
+    name: Schema.String
+  }
+) {}
+
+export class IntentPayloadDecodeError extends Schema.TaggedErrorClass<IntentPayloadDecodeError>()(
+  "IntentPayloadDecodeError",
+  {
+    name: Schema.String,
+    message: Schema.String
+  }
+) {}
+
+export class IntentHandlerError extends Schema.TaggedErrorClass<IntentHandlerError>()(
+  "IntentHandlerError",
+  {
+    name: Schema.String,
+    message: Schema.String
+  }
+) {}
+
+export type IntentError = UnknownIntentError | IntentPayloadDecodeError | IntentHandlerError
+
+export interface IntentEvent {
+  readonly timestamp: number
+  readonly intent: Intent<string, JsonPayload>
+  readonly result: Exit.Exit<void, IntentError>
+}
+
+export interface IntentRegistry {
+  readonly dispatch: (intent: Intent<string, JsonPayload>) => Effect.Effect<void, IntentError>
+  readonly events: Effect.Effect<ReadonlyArray<IntentEvent>>
+  readonly stream: Stream.Stream<IntentEvent>
+}
+
+export const IntentRegistry = Context.Service<IntentRegistry>("@effect-native/core/IntentRegistry")
+
+export interface IntentRegistryOptions {
+  readonly now?: () => number
+}
+
+const formatUnknown = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error)
+
+export const makeIntentRegistry = <const Definitions extends ReadonlyArray<IntentDefinition>>(
+  definitions: Definitions,
+  handlers: IntentHandlers<Definitions>,
+  options: IntentRegistryOptions = {}
+): Effect.Effect<IntentRegistry> =>
+  Effect.gen(function*() {
+    const eventsRef = yield* Ref.make<ReadonlyArray<IntentEvent>>([])
+    const eventsPubSub = yield* PubSub.unbounded<IntentEvent>({ replay: 1024 })
+    const now = options.now ?? Date.now
+    const definitionsByName = new Map<string, IntentDefinition>(
+      definitions.map((definition) => [definition.name, definition])
+    )
+
+    const appendEvent = (event: IntentEvent) =>
+      Effect.gen(function*() {
+        yield* Ref.update(eventsRef, (events) => [...events, event])
+        yield* PubSub.publish(eventsPubSub, event)
+      })
+
+    const failWith = (intent: Intent<string, JsonPayload>, error: IntentError) =>
+      Effect.gen(function*() {
+        const result = Exit.fail(error)
+        yield* appendEvent({ timestamp: now(), intent, result })
+        return yield* Effect.fail(error)
+      })
+
+    const dispatch = (intent: Intent<string, JsonPayload>): Effect.Effect<void, IntentError> =>
+      Effect.gen(function*() {
+        const definition = definitionsByName.get(intent.name)
+        if (definition === undefined) {
+          return yield* failWith(intent, new UnknownIntentError({ name: intent.name }))
+        }
+
+        const decoded = Schema.decodeUnknownExit(definition.payloadSchema)(intent.payload)
+        if (Exit.isFailure(decoded)) {
+          return yield* failWith(
+            intent,
+            new IntentPayloadDecodeError({
+              name: intent.name,
+              message: String(decoded.cause)
+            })
+          )
+        }
+
+        const handler = handlers[intent.name as keyof typeof handlers] as IntentHandler<typeof definition>
+        const typedIntent = {
+          name: definition.name,
+          payload: decoded.value
+        } as IntentFor<typeof definition>
+        const handlerExit = yield* Effect.exit(handler(decoded.value, typedIntent))
+
+        if (Exit.isFailure(handlerExit)) {
+          const error = new IntentHandlerError({
+            name: intent.name,
+            message: String(handlerExit.cause)
+          })
+          yield* appendEvent({
+            timestamp: now(),
+            intent,
+            result: Exit.fail(error)
+          })
+          return yield* Effect.fail(error)
+        }
+
+        yield* appendEvent({
+          timestamp: now(),
+          intent,
+          result: Exit.succeed(undefined)
+        })
+      })
+
+    return {
+      dispatch,
+      events: Ref.get(eventsRef),
+      stream: Stream.fromPubSub(eventsPubSub)
+    }
+  })
+
+export const makeIntentRegistryLayer = <const Definitions extends ReadonlyArray<IntentDefinition>>(
+  definitions: Definitions,
+  handlers: IntentHandlers<Definitions>,
+  options?: IntentRegistryOptions
+) => Layer.effect(IntentRegistry, makeIntentRegistry(definitions, handlers, options))
+
+export const dispatchIntent = (intent: Intent<string, JsonPayload>): Effect.Effect<void, IntentError, IntentRegistry> =>
+  Effect.gen(function*() {
+    const registry = yield* IntentRegistry
+    yield* registry.dispatch(intent)
+  })
+
+export const getIntentEvents: Effect.Effect<ReadonlyArray<IntentEvent>, never, IntentRegistry> =
+  Effect.gen(function*() {
+    const registry = yield* IntentRegistry
+    return yield* registry.events
+  })
+
+export const getIntentEventStream: Effect.Effect<Stream.Stream<IntentEvent>, never, IntentRegistry> =
+  Effect.gen(function*() {
+    const registry = yield* IntentRegistry
+    return registry.stream
+  })
 
 export const StackDirectionSchema = Schema.Literals(["row", "column"] as const)
 export const StackAlignSchema = Schema.Literals(["start", "center", "end", "stretch"] as const)

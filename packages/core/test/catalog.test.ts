@@ -5,10 +5,12 @@ import {
   Button,
   Card,
   CatalogVersion,
+  ComponentValueBinding,
   Image,
   List,
   Spacer,
   Stack,
+  StaticPayload,
   Text,
   TextField,
   ViewSchema,
@@ -23,7 +25,9 @@ import {
   type ColorToken,
   type Dimension,
   type ImageFit,
+  type IntentPayloadTemplate,
   type IntentRef,
+  type JsonPayload,
   type KeyedView,
   type RadiusToken,
   type SpacingToken,
@@ -47,7 +51,13 @@ const dimensionToken = fc.constantFrom<Extract<Dimension, string>>(...dimensionT
 
 const intentRef = fc.record({
   name: nonEmptyString,
-  payload: fc.option(fc.jsonValue(), { nil: undefined })
+  payload: fc.option(
+    fc.oneof(
+      fc.jsonValue().map((value): IntentPayloadTemplate => StaticPayload(value as JsonPayload)),
+      nonEmptyString.map((path): IntentPayloadTemplate => ComponentValueBinding(path))
+    ),
+    { nil: undefined }
+  )
 }).map(({ name, payload }): IntentRef => (
   payload === undefined ? { name } : { name, payload: payload as Exclude<IntentRef["payload"], undefined> }
 ))

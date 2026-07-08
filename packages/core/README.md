@@ -26,5 +26,36 @@ const data = encodeView(view)
 ```
 
 The view tree is serializable data. Interactions are represented as named
-intent references; the full intent registry and dispatcher land in the next
-Phase 0 issue.
+intent references, not callbacks.
+
+```ts
+import { Effect, Schema } from "effect"
+import {
+  defineIntent,
+  dispatchIntent,
+  makeIntent,
+  makeIntentRegistryLayer
+} from "@effect-native/core"
+
+const SubmittedForm = defineIntent("SubmittedForm", Schema.Struct({
+  email: Schema.String
+}))
+
+const IntentLive = makeIntentRegistryLayer([SubmittedForm] as const, {
+  SubmittedForm: (payload) =>
+    Effect.sync(() => {
+      console.log(payload.email)
+    })
+})
+
+await Effect.runPromise(
+  Effect.provide(
+    dispatchIntent(makeIntent("SubmittedForm", { email: "person@example.com" })),
+    IntentLive
+  )
+)
+```
+
+The registry decodes payloads against each intent schema, runs handlers on the
+Effect runtime, and records every dispatch in an event log for replay and
+DevTools.
