@@ -2122,8 +2122,62 @@ export const resolveView = (view: View, input: ViewResolution = {}): View => {
   }
 }
 
-export const resolveBindings = <State>(view: View, state: State): View =>
-  resolveView(view, { state })
+export const resolveBindings = <State>(view: View, state: State): View => {
+  switch (view._tag) {
+    case "Stack":
+      return {
+        ...view,
+        children: view.children.map((child) => resolveBindings(child, state))
+      }
+    case "Text":
+      return {
+        ...view,
+        content: resolveBoundText(view.content, state)
+      }
+    case "Button":
+    case "Image":
+    case "TextField":
+    case "Spacer":
+      return view
+    case "List":
+      return {
+        ...view,
+        items: view.items.map((item) => resolveBindings(item, state) as KeyedView)
+      }
+    case "SectionList":
+      return {
+        ...view,
+        sections: view.sections.map((section) => ({
+          ...section,
+          header: resolveBindings(section.header, state),
+          items: section.items.map((item) => resolveBindings(item, state) as KeyedView)
+        }))
+      }
+    case "Card":
+      return {
+        ...view,
+        children: view.children.map((child) => resolveBindings(child, state))
+      }
+    case "Link":
+      return {
+        ...view,
+        children: view.children.map((child) => resolveBindings(child, state) as LinkChildView)
+      }
+    case "Modal":
+      return {
+        ...view,
+        title: resolveBoundText(view.title, state),
+        open: resolveBoundBoolean(view.open, state),
+        children: view.children.map((child) => resolveBindings(child, state))
+      }
+    case "Sheet":
+      return {
+        ...view,
+        open: resolveBoundBoolean(view.open, state),
+        children: view.children.map((child) => resolveBindings(child, state))
+      }
+  }
+}
 
 export const redactSecureView = (view: View): View => {
   switch (view._tag) {
@@ -2213,7 +2267,7 @@ export const makeViewProgramFromState = <State>(
     render,
     viewStream: SubscriptionRef.changes(state).pipe(
       Stream.map((value) => {
-        const resolved = resolveView(render(value), { state: value })
+        const resolved = resolveBindings(render(value), value)
         if (devtoolsSink !== undefined) {
           const timestamp = now()
           devtoolsSink.emit({

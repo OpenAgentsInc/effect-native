@@ -16,12 +16,15 @@
     "test": "bun test ./packages/*/test ./scripts",
     "check": "bun run typecheck && bun run test",
     "example:web": "bun build ./examples/web/main.ts --outfile ./examples/web/public/app.js --format esm && bun ./examples/web/server.ts",
+    "gallery": "bun build ./examples/gallery/main.ts --outfile ./examples/gallery/public/app.js --format esm && bun ./examples/gallery/server.ts",
+    "gallery:build": "bun ./scripts/build-gallery.ts",
     "example:desktop-khala-chat": "bun build ./examples/desktop-khala-chat/main.ts --outfile ./examples/desktop-khala-chat/public/app.js --format esm && bun ./examples/desktop-khala-chat/server.ts",
     "devtools": "bun build ./packages/devtools/src/panel-main.ts --outfile ./packages/devtools/public/panel.js --format esm && bun ./packages/devtools/src/server.ts"
   },
   "dependencies": {
     "@effect-native/core": "workspace:*",
     "@effect-native/devtools": "workspace:*",
+    "@effect-native/gallery": "workspace:*",
     "@effect-native/platform-desktop": "workspace:*",
     "@effect-native/render-dom": "workspace:*",
     "@effect-native/render-rn": "workspace:*",

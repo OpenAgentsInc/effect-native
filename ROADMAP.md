@@ -104,7 +104,7 @@ The leverage that falls out of "views are data, interactions are values":
   supported renderer — open it on the web, open it on a phone — with
   stories as serializable data, prop knobs generated from the schemas, and
   a fully static web build any team can deploy to their own
-  infrastructure (#18)
+  infrastructure (#18 complete; see [`docs/gallery.md`](./docs/gallery.md))
 - **effectnative.org**: the framework's website — home, explainers, and
   the component library — built entirely with Effect Native itself and
   statically prerendered by its own DOM renderer (#19)

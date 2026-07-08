@@ -7,6 +7,8 @@ const config = getDefaultConfig(__dirname)
 config.watchFolders = [workspaceRoot]
 config.resolver.extraNodeModules = {
   "@effect-native/core": path.join(workspaceRoot, "packages/core"),
+  "@effect-native/devtools": path.join(workspaceRoot, "packages/devtools"),
+  "@effect-native/gallery": path.join(workspaceRoot, "packages/gallery"),
   "@effect-native/render-rn": path.join(workspaceRoot, "packages/render-rn"),
   "@effect-native/tokens": path.join(workspaceRoot, "packages/tokens"),
   effect: path.join(workspaceRoot, "node_modules/effect"),

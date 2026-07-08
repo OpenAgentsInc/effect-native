@@ -6,6 +6,7 @@
     { "path": "./packages/render-dom" },
     { "path": "./packages/render-rn" },
     { "path": "./packages/platform-desktop" },
+    { "path": "./packages/gallery" },
     { "path": "./packages/devtools" }
   ]
 }

@@ -155,9 +155,12 @@ issue that defines the typed props/intents/style contract, implements every
 shipping renderer, bumps the catalog version, and extends the renderer
 conformance suite.
 
-Phase 3 has started with [DevTools v0](./docs/devtools.md): local recording,
-JSON replay, prefix time-travel, and an Effect Native-authored browser panel
-for the proof web and mobile examples.
+Phase 3 developer experience is now underway. [DevTools v0](./docs/devtools.md)
+provides local recording, JSON replay, prefix time-travel, and an Effect
+Native-authored browser panel for the proof web and mobile examples. The
+[component gallery](./docs/gallery.md) adds serializable catalog stories,
+generated controls, a web/mobile story browser, and a relative-path-safe static
+build.
 
 See the **[roadmap](./ROADMAP.md)** for what we're building and in what
 order — web and mobile are the priority targets.
