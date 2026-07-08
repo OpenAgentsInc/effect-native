@@ -14,7 +14,8 @@
   "scripts": {
     "typecheck": "tsc -b",
     "test": "bun test ./packages/*/test ./scripts",
-    "check": "bun run typecheck && bun run test",
+    "check:doc-snippets": "bun run scripts/check-doc-snippets.ts",
+    "check": "bun run typecheck && bun run test && bun run check:doc-snippets",
     "example:web": "bun build ./examples/web/main.ts --outfile ./examples/web/public/app.js --format esm && bun ./examples/web/server.ts",
     "gallery": "bun build ./examples/gallery/main.ts --outfile ./examples/gallery/public/app.js --format esm && bun ./examples/gallery/server.ts",
     "gallery:build": "bun ./scripts/build-gallery.ts",

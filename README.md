@@ -160,7 +160,10 @@ provides local recording, JSON replay, prefix time-travel, and an Effect
 Native-authored browser panel for the proof web and mobile examples. The
 [component gallery](./docs/gallery.md) adds serializable catalog stories,
 generated controls, a web/mobile story browser, and a relative-path-safe static
-build.
+build. [**The guide**](./docs/guide/README.md) is a buildable tutorial plus
+full catalog reference for building an app on Effect Native from outside this
+repository — every code block in it is extracted and type-checked against the
+real packages by `bun run check:doc-snippets`.
 
 See the **[roadmap](./ROADMAP.md)** for what we're building and in what
 order — web and mobile are the priority targets.

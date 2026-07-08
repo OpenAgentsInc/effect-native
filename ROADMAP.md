@@ -99,7 +99,7 @@ The leverage that falls out of "views are data, interactions are values":
   snapshots, intent-driven interaction tests, visual baselines per
   renderer (#16)
 - **Documentation**: a guide good enough for someone outside the project to
-  build an app (#17)
+  build an app (#17 complete; see [`docs/guide/README.md`](./docs/guide/README.md))
 - **Component gallery**: every catalog component browsable in every
   supported renderer — open it on the web, open it on a phone — with
   stories as serializable data, prop knobs generated from the schemas, and
