@@ -55,7 +55,7 @@ until it has a fixture and every renderer declares and proves support for it.
 | Foreign `Host` node | Monaco editor and terminal surfaces need one reviewed, typed escape hatch | 2026-07-08 | accepted -> #23 |
 | Desktop interaction expansion | Composer, palette, transcript, drag/drop, focus, and scroll need typed keyboard/pointer/paste/drop/view-effect intents | 2026-07-08 | shipped -> #24 (v6: typed onKey/focus/pointer/paste/drag-drop intents, pinToEnd view effect, bounded a11y/roving-focus) |
 | Protoss-blue dark theme | Khala Code Desktop is dark-only and pins the OpenAgents Khala CSS variable palette | 2026-07-08 | accepted -> #25; proof theme maps exact hex values onto current token roles |
-| Streaming live binding | Transcript and fleet/gym state append/patch from recorded or live streams | 2026-07-08 | accepted -> #26; recorded chat stream proof shipped in Phase 4 chat milestone |
+| Streaming live binding | Transcript and fleet/gym state append/patch from recorded or live streams | 2026-07-08 | shipped -> #26 (runtime `makeStreamRegion`: keyed append reconciliation, frame-cadence coalescing via groupedWithin, Scope interruption, recorded patch sequence; no catalog bump) |
 | App shell / split panes / nav rail | Khala Code Desktop chat shell needs sidebar, thread list, resizable workbench, and active pane switching | 2026-07-08 | accepted -> #27 |
 | Popover / dropdown menu / context menu / tooltip | Command menus, settings menus, tooltips, and context menus in Khala Code Desktop | 2026-07-08 | accepted -> #28 |
 | Command palette / combobox | Khala command palette and slash-command autocomplete | 2026-07-08 | accepted -> #29 |

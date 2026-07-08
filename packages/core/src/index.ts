@@ -2,6 +2,7 @@ import {
   Cause,
   Context,
   Deferred,
+  Duration,
   Effect,
   Exit,
   Layer,
@@ -2555,3 +2556,129 @@ export const makeHeadlessRenderer = (
       }))
     })
 })
+
+// ── Streaming / live data binding (issue #26) ────────────────────────────────
+//
+// A coding-agent desktop surface is fundamentally streaming: transcript items
+// append token-by-token, counters tick, fleet/gym status updates continuously.
+// This runtime binds an Effect `Stream` of typed patches to a keyed region and
+// applies incremental updates:
+//
+//   - keyed reconciliation so appends are O(new), not O(all);
+//   - coalescing to frame cadence via `Stream.groupedWithin` (not ad-hoc
+//     throttling), so high-frequency streams collapse to one update per frame;
+//   - Scope-based interruption/cleanup — closing the region's scope interrupts
+//     the source stream and releases resources;
+//   - a recorded patch sequence so streaming is snapshot/replay testable.
+//
+// This is the update mechanism beneath the view tree, not a transport layer:
+// the app supplies the streams (desktop bridge, khala-sync, polling, etc.).
+
+export interface KeyedItem<A> {
+  readonly key: string
+  readonly value: A
+}
+
+export type RegionPatch<A> =
+  | { readonly _tag: "Append"; readonly items: ReadonlyArray<KeyedItem<A>> }
+  | { readonly _tag: "Update"; readonly key: string; readonly value: A }
+  | { readonly _tag: "Remove"; readonly key: string }
+  | { readonly _tag: "Replace"; readonly items: ReadonlyArray<KeyedItem<A>> }
+
+// Apply a single patch to a keyed list. Append is O(new); Update/Remove touch
+// only the matching key; Replace resets the region. Appending an existing key
+// updates in place so duplicate stream deliveries stay idempotent.
+export const applyRegionPatch = <A>(
+  current: ReadonlyArray<KeyedItem<A>>,
+  patch: RegionPatch<A>
+): ReadonlyArray<KeyedItem<A>> => {
+  switch (patch._tag) {
+    case "Append": {
+      if (patch.items.length === 0) return current
+      const index = new Map(current.map((item, position) => [item.key, position] as const))
+      const next = current.slice()
+      for (const item of patch.items) {
+        const existing = index.get(item.key)
+        if (existing === undefined) {
+          index.set(item.key, next.length)
+          next.push(item)
+        } else {
+          next[existing] = item
+        }
+      }
+      return next
+    }
+    case "Update":
+      return current.map((item) => (item.key === patch.key ? { key: item.key, value: patch.value } : item))
+    case "Remove":
+      return current.filter((item) => item.key !== patch.key)
+    case "Replace":
+      return patch.items.slice()
+  }
+}
+
+export interface StreamRegionOptions<A> {
+  // Coalescing window; buffered patches within one window are applied together
+  // in a single region update. Defaults to 16ms (~one animation frame).
+  readonly frameMillis?: number
+  // Seed items for the region before any patch arrives.
+  readonly initial?: ReadonlyArray<KeyedItem<A>>
+  // Optional monotonic clock for deterministic tests.
+  readonly recordPatches?: boolean
+}
+
+export interface StreamRegion<A> {
+  readonly items: SubscriptionRef.SubscriptionRef<ReadonlyArray<KeyedItem<A>>>
+  readonly changes: Stream.Stream<ReadonlyArray<KeyedItem<A>>>
+  // The recorded, applied patch sequence (in order) for snapshot/replay tests.
+  readonly patches: Effect.Effect<ReadonlyArray<RegionPatch<A>>>
+  // Number of coalesced frames committed (one per non-empty window).
+  readonly frames: Effect.Effect<number>
+}
+
+// Bind a `Stream` of region patches to a keyed region. The consumer fiber is
+// forked into the current `Scope`, so closing that scope interrupts the source
+// stream and releases resources.
+export const makeStreamRegion = <A, E, R>(
+  source: Stream.Stream<RegionPatch<A>, E, R>,
+  options: StreamRegionOptions<A> = {}
+): Effect.Effect<StreamRegion<A>, never, R | Scope.Scope> =>
+  Effect.gen(function*() {
+    const frameMillis = options.frameMillis ?? 16
+    const items = yield* SubscriptionRef.make<ReadonlyArray<KeyedItem<A>>>(options.initial ?? [])
+    const recorded = yield* Ref.make<ReadonlyArray<RegionPatch<A>>>([])
+    const frameCount = yield* Ref.make(0)
+    const record = options.recordPatches !== false
+
+    yield* source.pipe(
+      // Coalesce every patch that arrives within the frame window into one
+      // batch. `Number.MAX_SAFE_INTEGER` disables the size trigger so batching
+      // is purely time-based (frame cadence).
+      Stream.groupedWithin(Number.MAX_SAFE_INTEGER, Duration.millis(frameMillis)),
+      Stream.runForEach((batch) =>
+        batch.length === 0
+          ? Effect.void
+          : Effect.gen(function*() {
+              yield* SubscriptionRef.update(items, (current) => {
+                let next = current
+                for (const patch of batch) {
+                  next = applyRegionPatch(next, patch)
+                }
+                return next
+              })
+              if (record) {
+                yield* Ref.update(recorded, (all) => [...all, ...batch])
+              }
+              yield* Ref.update(frameCount, (count) => count + 1)
+            })
+      ),
+      Effect.forkScoped
+    )
+
+    return {
+      items,
+      changes: SubscriptionRef.changes(items),
+      patches: Ref.get(recorded),
+      frames: Ref.get(frameCount)
+    }
+  })
