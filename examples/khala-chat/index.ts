@@ -226,7 +226,7 @@ const initialThreads: ReadonlyArray<KhalaChatThread> = [
   {
     id: "thread-fleet-qa",
     title: "Fleet QA harness",
-    subtitle: "Worker smoke evidence",
+    subtitle: "deploy proof evidence",
     status: "idle"
   },
   {
