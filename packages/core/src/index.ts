@@ -71,8 +71,9 @@ export const FormCatalogVersion = "effect-native/v3" as const
 export const OverlayCatalogVersion = "effect-native/v4" as const
 export const CollectionCatalogVersion = "effect-native/v5" as const
 export const InteractionCatalogVersion = "effect-native/v6" as const
-export const PreviousCatalogVersion = CollectionCatalogVersion
-export const CatalogVersion = InteractionCatalogVersion
+export const HostCatalogVersion = "effect-native/v7" as const
+export const PreviousCatalogVersion = InteractionCatalogVersion
+export const CatalogVersion = HostCatalogVersion
 export const CatalogVersionSchema = Schema.Literal(CatalogVersion)
 export type CatalogVersion = typeof CatalogVersion
 export const compatibleCatalogVersions = [
@@ -81,6 +82,7 @@ export const compatibleCatalogVersions = [
   ResponsiveCatalogVersion,
   FormCatalogVersion,
   OverlayCatalogVersion,
+  CollectionCatalogVersion,
   PreviousCatalogVersion,
   CatalogVersion
 ] as const
@@ -99,7 +101,8 @@ export const componentTags = [
   "Spacer",
   "Link",
   "Modal",
-  "Sheet"
+  "Sheet",
+  "Host"
 ] as const
 export type ComponentTag = (typeof componentTags)[number]
 
@@ -1442,6 +1445,13 @@ export const DropPayloadSchema = Schema.Struct({
 })
 export type DropPayload = Schema.Schema.Type<typeof DropPayloadSchema>
 
+// Closed host-kind registry for the foreign-host escape hatch (issue #23). A
+// new host kind is a reviewed catalog change with the same growth-rule bar as
+// a component — never an open plugin point.
+export const hostKinds = ["code-editor", "terminal", "canvas"] as const
+export const HostKindSchema = Schema.Literals(hostKinds)
+export type HostKind = (typeof hostKinds)[number]
+
 const copyFlatStyle = <Key extends StyleKey>(style: StyleFor<Key> | FlatStyleFor<Key>): FlatStyleFor<Key> => {
   const flat: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(style)) {
@@ -1753,6 +1763,22 @@ export interface SheetView extends NodeBase {
   readonly children: ReadonlyArray<View>
 }
 
+// Foreign-host escape hatch (issue #23). The single, catalog-blessed way to
+// embed a large third-party imperative widget (Monaco, an xterm terminal, a
+// raw canvas) while keeping the surrounding tree serializable. The tree carries
+// only the closed host-kind tag and a serializable props payload; the widget's
+// internal state is never serialized and no closures appear in the tree. The
+// widget's imperative code lives only in a per-renderer host driver whose
+// lifecycle is bound to an Effect Scope. Events out flow through a named typed
+// intent (`onEvent`); intents in are expressed as declarative prop updates.
+export interface HostView extends NodeBase {
+  readonly _tag: "Host"
+  readonly kind: HostKind
+  readonly props: JsonPayload
+  readonly onEvent?: IntentRef
+  readonly style?: CardStyle
+}
+
 export type View =
   | StackView
   | TextView
@@ -1766,6 +1792,7 @@ export type View =
   | LinkView
   | ModalView
   | SheetView
+  | HostView
 
 export type KeyedView = View & { readonly key: NodeKey }
 
@@ -2054,6 +2081,14 @@ export const SheetSchema: Schema.Codec<SheetView, SheetView> = Schema.TaggedStru
   children: Schema.Array(ViewSelf)
 })
 
+export const HostSchema: Schema.Codec<HostView, HostView> = Schema.TaggedStruct("Host", {
+  ...CommonFields,
+  kind: HostKindSchema,
+  props: JsonPayloadSchema,
+  onEvent: IntentRefSchema.pipe(Schema.optionalKey),
+  style: CardStyleSchema.pipe(Schema.optionalKey)
+})
+
 export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
   Schema.Union([
     StackSchema,
@@ -2067,7 +2102,8 @@ export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
     SpacerSchema,
     LinkSchema,
     ModalSchema,
-    SheetSchema
+    SheetSchema,
+    HostSchema
   ]).check(OverlayStackFilter)
 )
 
@@ -2142,6 +2178,10 @@ export const Modal = (props: ModalProps, children: ReadonlyArray<View> = []): Mo
 export type SheetProps = Omit<WithoutTagAndVersion<SheetView>, "children">
 export const Sheet = (props: SheetProps, children: ReadonlyArray<View> = []): SheetView =>
   SheetSchema.make({ _tag: "Sheet", catalogVersion: CatalogVersion, ...props, children })
+
+export type HostProps = WithoutTagAndVersion<HostView>
+export const Host = (props: HostProps): HostView =>
+  HostSchema.make({ _tag: "Host", catalogVersion: CatalogVersion, ...props })
 
 export const decodeView = Schema.decodeUnknownSync(ViewSchema)
 export const encodeView = Schema.encodeSync(ViewSchema)
@@ -2282,6 +2322,11 @@ export const resolveView = (view: View, input: ViewResolution = {}): View => {
         open: input.state === undefined ? view.open : resolveBoundBoolean(view.open, input.state),
         children: view.children.map((child) => resolveView(child, input))
       }
+    case "Host":
+      return {
+        ...view,
+        ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) })
+      }
   }
 }
 
@@ -2301,6 +2346,7 @@ export const resolveBindings = <State>(view: View, state: State): View => {
     case "Image":
     case "TextField":
     case "Spacer":
+    case "Host":
       return view
     case "List":
       return {

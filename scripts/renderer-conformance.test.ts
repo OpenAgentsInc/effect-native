@@ -8,6 +8,7 @@ import {
   ComponentValueBinding,
   FieldBinding,
   FormFieldValueBinding,
+  Host,
   Image,
   IntentRef,
   Link,
@@ -173,7 +174,16 @@ const catalogFixturesByTag = {
   }, [
     Text({ key: "card-copy", content: "Card copy", variant: "body" })
   ]),
-  Spacer: Spacer({ key: "spacer", size: "4", style: { marginTop: "1" } })
+  Spacer: Spacer({ key: "spacer", size: "4", style: { marginTop: "1" } }),
+  // Foreign-host escape hatch fixture (issue #23). Kept out of the shared
+  // fixtureView (its lifecycle is driver-owned and renderer-specific); Host is
+  // exercised by dedicated per-renderer tests in the render packages.
+  Host: Host({
+    key: "host",
+    kind: "canvas",
+    props: { placeholder: true },
+    style: { backgroundColor: "surface" }
+  })
 } satisfies { readonly [Tag in (typeof componentTags)[number]]: View }
 
 const allFixtureTags = Object.keys(catalogFixturesByTag).sort()
@@ -263,9 +273,13 @@ const catalogRendererTags = [
   "Sheet"
 ] as const
 
+// Host (issue #23) is supported by the headless recorder and the DOM renderer
+// (which owns the host-driver registry), but has no faithful React Native host
+// mapping — RN declares it unsupported and renders a loud marker. The support
+// sets model that split explicitly rather than letting RN silently no-op.
 const rendererSupport = {
-  headless: new Set<string>(catalogRendererTags),
-  dom: new Set<string>(catalogRendererTags),
+  headless: new Set<string>([...catalogRendererTags, "Host"]),
+  dom: new Set<string>([...catalogRendererTags, "Host"]),
   reactNative: new Set<string>(catalogRendererTags)
 } as const
 
@@ -484,7 +498,9 @@ describe("renderer conformance suite", () => {
   })
 
   test("React Native renderer mounts every catalog component, wires events, lowers styles, and unmounts", async () => {
-    expect(missingRendererSupport(componentTags, rendererSupport.reactNative)).toEqual([])
+    // Host has no React Native driver; the conformance suite records the gap
+    // loudly rather than pretending the renderer covers it.
+    expect(missingRendererSupport(componentTags, rendererSupport.reactNative)).toEqual(["Host"])
 
     const renders: Array<ReactNodeLike | undefined> = []
     const result = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {

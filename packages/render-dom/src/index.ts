@@ -6,6 +6,8 @@ import {
   type Dimension,
   type FlatStyle,
   FormFieldValueBinding,
+  type HostKind,
+  type HostView,
   type ImageView,
   type IntentError,
   IntentRef,
@@ -49,10 +51,39 @@ import {
 
 export const packageName = "@effect-native/render-dom" as const
 
+// Foreign-host escape hatch driver contract (issue #23). A driver is the only
+// place imperative/third-party widget code (Monaco, xterm, canvas) lives. Its
+// lifecycle is owned by the renderer and bound to the surface Scope: mount when
+// the Host node first appears, update on typed prop changes, unmount on scope
+// exit. Drivers communicate outward only through the runtime `report` (named
+// typed intents), keeping the embed observable at its boundary.
+export interface DomHostContext {
+  readonly document: Document
+  readonly report: IntentReporter
+  // Emit a typed host event outward as the Host node's `onEvent` intent.
+  readonly emit: (payload: JsonPayload) => void
+}
+
+export interface DomHostInstance {
+  readonly update: (props: unknown) => void
+  readonly unmount: () => void
+}
+
+export interface DomHostDriver {
+  readonly kind: HostKind
+  // Decode/validate the opaque props payload for this host kind. Throwing here
+  // surfaces as a loud host error marker, never a silent no-op.
+  readonly decodeProps: (props: JsonPayload) => unknown
+  readonly mount: (container: HTMLElement, props: unknown, context: DomHostContext) => DomHostInstance
+}
+
 export interface DomRendererOptions {
   readonly document?: Document
   readonly theme?: Theme
   readonly viewport?: ViewportInput
+  // Registered host drivers, one per supported host kind. A Host node whose
+  // kind has no registered driver renders a loud error marker.
+  readonly hostDrivers?: ReadonlyArray<DomHostDriver>
 }
 
 export interface DomMountedSurface extends MountedSurface {
@@ -339,16 +370,28 @@ class DomRendererState {
   overlayBodyOverflow: string | undefined
   readonly endReachedSignatures = new Map<string, string>()
   readonly pinnedSignatures = new Map<string, boolean>()
+  readonly hostDrivers: Map<HostKind, DomHostDriver>
+  readonly hostInstances = new Map<string, { readonly kind: HostKind; readonly instance: DomHostInstance }>()
 
-  constructor(container: Element, document: Document, theme: Theme) {
+  constructor(
+    container: Element,
+    document: Document,
+    theme: Theme,
+    hostDrivers: ReadonlyArray<DomHostDriver> = []
+  ) {
     this.theme = theme
     this.root = document.createElement("div")
     this.root.setAttribute("data-effect-native-surface", "dom")
     container.appendChild(this.root)
     this.styles = new AtomicStyleSheet(document, theme)
+    this.hostDrivers = new Map(hostDrivers.map((driver) => [driver.kind, driver] as const))
   }
 
   dispose(): void {
+    for (const { instance } of this.hostInstances.values()) {
+      instance.unmount()
+    }
+    this.hostInstances.clear()
     for (const cleanup of this.allListeners) {
       cleanup()
     }
@@ -1249,6 +1292,62 @@ const renderSpacer = (view: SpacerView, state: DomRendererState): HTMLElement =>
   return element
 }
 
+const hostInstanceKey = (view: HostView): string => `${view.kind}:${view.key ?? ""}`
+
+const renderHost = (view: HostView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const element = state.keyedElement(view, "div")
+  state.resetListeners(element)
+  element.setAttribute("data-en-host-kind", view.kind)
+  element.removeAttribute("data-en-host-error")
+
+  const driver = state.hostDrivers.get(view.kind)
+  if (driver === undefined) {
+    // Loud, not silent: the host kind is in the closed catalog but this
+    // renderer has no driver for it. The marker fails the conformance suite.
+    element.setAttribute("data-en-host-error", `unsupported-host:${view.kind}`)
+    applyBaseStyle(element, view, state)
+    applyA11y(element, view)
+    return element
+  }
+
+  const instanceKey = hostInstanceKey(view)
+  let decoded: unknown
+  try {
+    decoded = driver.decodeProps(view.props)
+  } catch (error) {
+    element.setAttribute("data-en-host-error", `invalid-host-props:${view.kind}`)
+    element.setAttribute("data-en-host-error-detail", String(error))
+    applyBaseStyle(element, view, state)
+    applyA11y(element, view)
+    return element
+  }
+
+  const existing = state.hostInstances.get(instanceKey)
+  if (existing !== undefined && existing.kind === view.kind) {
+    existing.instance.update(decoded)
+  } else {
+    if (existing !== undefined) {
+      existing.instance.unmount()
+    }
+    const context: DomHostContext = {
+      document: element.ownerDocument,
+      report,
+      emit: (payload) => {
+        if (view.onEvent !== undefined) {
+          runReportedIntent(report, view.onEvent, payload)
+        }
+      }
+    }
+    const instance = driver.mount(element, decoded, context)
+    state.hostInstances.set(instanceKey, { kind: view.kind, instance })
+  }
+
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  applyInteractions(element, view, state, report)
+  return element
+}
+
 const renderView = (view: View, state: DomRendererState, report: IntentReporter): HTMLElement => {
   switch (view._tag) {
     case "Stack":
@@ -1275,6 +1374,8 @@ const renderView = (view: View, state: DomRendererState, report: IntentReporter)
       return renderCard(view, state, report)
     case "Spacer":
       return renderSpacer(view, state)
+    case "Host":
+      return renderHost(view, state, report)
   }
 }
 
@@ -1423,7 +1524,7 @@ export const makeDomRenderer = (options: DomRendererOptions = {}): RendererAdapt
         const document = options.document ?? container.ownerDocument ?? globalThis.document
         const theme = options.theme ?? defaultTheme
         const viewport = yield* makeViewportService(options.viewport ?? readDomViewport(document), { theme })
-        const state = new DomRendererState(container, document, theme)
+        const state = new DomRendererState(container, document, theme, options.hostDrivers ?? [])
         const ready = yield* Deferred.make<void>()
         const window = document.defaultView
         const resolvedViewStream = viewStream.pipe(

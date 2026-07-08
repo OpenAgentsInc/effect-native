@@ -19,6 +19,7 @@ const describeView = Match.type<View>().pipe(
   Match.tag("Link", () => "navigation"),
   Match.tag("Modal", () => "overlay"),
   Match.tag("Sheet", () => "overlay"),
+  Match.tag("Host", () => "host"),
   Match.exhaustive
 )
 

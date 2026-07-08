@@ -4,6 +4,7 @@ import {
   type ButtonView,
   type CardView,
   type ColorToken,
+  type HostView,
   type Dimension,
   type FlatStyle,
   FormFieldValueBinding,
@@ -808,6 +809,26 @@ const renderSpacer = (
   )
 }
 
+// Foreign-host escape hatch on React Native (issue #23). The React Native
+// renderer ships no host drivers: Monaco, xterm, and canvas are DOM/webview
+// widgets with no faithful RN host mapping. Rather than silently no-op, every
+// Host kind renders a loud unsupported marker (testID + accessibilityLabel) so
+// the conformance suite fails visibly for any host kind on this renderer.
+const renderHost = (
+  view: HostView,
+  dependencies: ReactNativeDependencies,
+  options: ReactNativeRenderOptions
+): ReactElementLike =>
+  createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    {
+      ...baseProps(view, viewStyle(view, options)),
+      testID: `en-host-unsupported:${view.kind}`,
+      accessibilityLabel: `Unsupported host kind on React Native: ${view.kind}`
+    }
+  )
+
 const renderResolvedReactNativeView = (
   view: View,
   dependencies: ReactNativeDependencies,
@@ -839,6 +860,8 @@ const renderResolvedReactNativeView = (
       return renderCard(view, dependencies, report, options)
     case "Spacer":
       return renderSpacer(view, dependencies, options)
+    case "Host":
+      return renderHost(view, dependencies, options)
   }
 }
 

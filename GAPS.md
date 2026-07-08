@@ -23,7 +23,7 @@ their reason so pressure is visible without weakening the catalog contract.
 
 ## Catalog Versioning Policy
 
-The current catalog marker is `effect-native/v6`, exposed by
+The current catalog marker is `effect-native/v7`, exposed by
 `CatalogVersion`. `compatibleCatalogVersions` is the decode allow-list, and
 `CompatibleViewSchema` is the schema app authors and renderers should use when
 accepting persisted or externally-authored trees.
@@ -52,7 +52,7 @@ until it has a fixture and every renderer declares and proves support for it.
 | Virtualized List + SectionList | Dashboard activity feed and grouped settings/history lists | 2026-07-08 | shipped -> #14 |
 | Desktop host adapter | Khala Code Desktop needs the DOM renderer mounted inside an Electrobun webview with typed bridge/native services | 2026-07-08 | accepted -> #21; first test host shipped in Phase 4 chat milestone |
 | Canvas scene renderer | Khala fleet board and gym panes need typed graph/timeline scenes over three-effect | 2026-07-08 | accepted -> #22 |
-| Foreign `Host` node | Monaco editor and terminal surfaces need one reviewed, typed escape hatch | 2026-07-08 | accepted -> #23 |
+| Foreign `Host` node | Monaco editor and terminal surfaces need one reviewed, typed escape hatch | 2026-07-08 | shipped -> #23 (v7: `Host` component with closed host-kind registry {code-editor, terminal, canvas}, serializable props, `onEvent` intent; DOM host-driver registry with Scope-bound mount/update/unmount; RN declares unsupported loudly) |
 | Desktop interaction expansion | Composer, palette, transcript, drag/drop, focus, and scroll need typed keyboard/pointer/paste/drop/view-effect intents | 2026-07-08 | shipped -> #24 (v6: typed onKey/focus/pointer/paste/drag-drop intents, pinToEnd view effect, bounded a11y/roving-focus) |
 | Protoss-blue dark theme | Khala Code Desktop is dark-only and pins the OpenAgents Khala CSS variable palette | 2026-07-08 | accepted -> #25; proof theme maps exact hex values onto current token roles |
 | Streaming live binding | Transcript and fleet/gym state append/patch from recorded or live streams | 2026-07-08 | shipped -> #26 (runtime `makeStreamRegion`: keyed append reconciliation, frame-cadence coalescing via groupedWithin, Scope interruption, recorded patch sequence; no catalog bump) |

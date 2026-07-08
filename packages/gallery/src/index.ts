@@ -3,6 +3,7 @@ import {
   Button,
   Card,
   ComponentValueBinding,
+  Host,
   Image,
   IntentRef,
   IntentSchema,
@@ -21,6 +22,7 @@ import {
   componentTags,
   colorTokens,
   defaultTheme,
+  hostKinds,
   defineIntent,
   makeIntentRegistry,
   makeViewProgramFromState,
@@ -591,6 +593,21 @@ const componentStoryMap = {
       interactions: [
         { label: "Dismiss", intent: { name: "GalleryStory.Dismissed", payload: { surface: "sheet" } } }
       ]
+    })
+  ),
+  Host: hostKinds.map((kind) =>
+    story({
+      id: `host-${kind}`,
+      component: "Host",
+      title: `${kind} host`,
+      description: "Foreign-host escape hatch: serializable kind + props, driver-owned widget.",
+      view: Host({
+        key: `host-${kind}`,
+        kind,
+        props: { placeholder: `${kind} host props` },
+        onEvent: IntentRef("GalleryStory.HostEvent", ComponentValueBinding()),
+        style: { backgroundColor: "surface", borderColor: "border", borderWidth: 1 }
+      })
     })
   )
 } satisfies { readonly [Tag in ComponentTag]: ReadonlyArray<Story> }
