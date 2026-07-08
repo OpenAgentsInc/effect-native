@@ -77,3 +77,4 @@ until it has a fixture and every renderer declares and proves support for it.
 | Media beyond `Image` | None yet | 2026-07-08 | waiting |
 | Utility style aliases | Authoring friction not yet demonstrated by a real screen | 2026-07-08 | waiting |
 | Monospace / whitespace-preserving text style | effectnative.org's home-page and doc code samples (#19) need indentation-preserving display; worked around today with one `Text` per source line in a `Stack` instead of a single multi-line string | 2026-07-08 | waiting -> related to #36 CodeBlock |
+| React Native pixel visual-baseline capture | Testkit visual baselines (#16) ship a typed `VisualCapture` contract plus a structural-snapshot default and a real DOM-renderer capture (`@effect-native/testkit/visual`); a native RN pixel-capture harness (e.g. a detox/maestro-style screenshot rig) is undemonstrated | 2026-07-08 | waiting |

@@ -440,3 +440,10 @@ export {
   type ReplayResult,
   type ReplayRuntime
 } from "./replay"
+
+// ---------------------------------------------------------------------------
+// Visual baselines, per renderer, live at "@effect-native/testkit/visual"
+// (a separate entry point, not re-exported here): the DOM baseline capture
+// pulls in @effect-native/render-dom and happy-dom, which most TestApp-only
+// consumers (React Native apps in particular) should never bundle.
+// ---------------------------------------------------------------------------

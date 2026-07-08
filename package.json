@@ -23,7 +23,8 @@
     "devtools": "bun build ./packages/devtools/src/panel-main.ts --outfile ./packages/devtools/public/panel.js --format esm && bun ./packages/devtools/src/server.ts",
     "site:content": "bun ./scripts/generate-site-content.ts",
     "site": "bun run site:content && bun build ./examples/site/main.ts --outfile ./examples/site/public/app.js --format esm && bun ./examples/site/server.ts",
-    "site:build": "bun ./scripts/build-site.ts"
+    "site:build": "bun ./scripts/build-site.ts",
+    "baselines:bless": "bun packages/testkit/scripts/bless-baselines.ts"
   },
   "dependencies": {
     "@effect-native/core": "workspace:*",
