@@ -727,6 +727,8 @@ const renderTextField = (view: TextFieldView, state: DomRendererState, report: I
   ) as HTMLInputElement | HTMLTextAreaElement | undefined
   const fieldWasActive = existingField !== undefined && document.activeElement === existingField
   element.replaceChildren()
+  element.style.display = "grid"
+  element.style.gap = "var(--en-spacing-1)"
   const id = `en-field-${cssEscape(view.key ?? view.label ?? "field")}`
   if (view.label !== undefined) {
     const caption = document.createElement("span")
@@ -745,6 +747,17 @@ const renderTextField = (view: TextFieldView, state: DomRendererState, report: I
   }
   if (!fieldWasActive) {
     field.value = view.value
+  }
+  field.style.boxSizing = "border-box"
+  field.style.width = "100%"
+  field.style.minWidth = "0"
+  field.style.font = "inherit"
+  field.style.color = "inherit"
+  field.style.background = "transparent"
+  field.style.border = "0"
+  field.style.outline = "0"
+  if (field.localName === "textarea") {
+    field.style.resize = "vertical"
   }
   const onChange = view.field === undefined
     ? view.onChange

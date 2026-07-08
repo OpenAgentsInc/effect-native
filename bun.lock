@@ -6,6 +6,8 @@
       "name": "effect-native",
       "dependencies": {
         "@effect-native/core": "workspace:*",
+        "@effect-native/devtools": "workspace:*",
+        "@effect-native/platform-desktop": "workspace:*",
         "@effect-native/render-dom": "workspace:*",
         "@effect-native/render-rn": "workspace:*",
         "effect": "4.0.0-beta.94",
@@ -22,6 +24,24 @@
       "version": "0.0.0",
       "dependencies": {
         "@effect-native/tokens": "workspace:*",
+        "effect": "4.0.0-beta.94",
+      },
+    },
+    "packages/devtools": {
+      "name": "@effect-native/devtools",
+      "version": "0.0.0",
+      "dependencies": {
+        "@effect-native/core": "workspace:*",
+        "@effect-native/render-dom": "workspace:*",
+        "effect": "4.0.0-beta.94",
+      },
+    },
+    "packages/platform-desktop": {
+      "name": "@effect-native/platform-desktop",
+      "version": "0.0.0",
+      "dependencies": {
+        "@effect-native/core": "workspace:*",
+        "@effect-native/render-dom": "workspace:*",
         "effect": "4.0.0-beta.94",
       },
     },
@@ -59,6 +79,10 @@
   },
   "packages": {
     "@effect-native/core": ["@effect-native/core@workspace:packages/core"],
+
+    "@effect-native/devtools": ["@effect-native/devtools@workspace:packages/devtools"],
+
+    "@effect-native/platform-desktop": ["@effect-native/platform-desktop@workspace:packages/platform-desktop"],
 
     "@effect-native/render-dom": ["@effect-native/render-dom@workspace:packages/render-dom"],
 

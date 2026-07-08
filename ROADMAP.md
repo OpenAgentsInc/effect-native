@@ -115,15 +115,51 @@ The leverage that falls out of "views are data, interactions are values":
 Builds on the completed Phase 2 catalog — DX is built on the substrate, not
 bolted on later.
 
-## Phase 4 — Desktop and canvas
+## Phase 4 — Desktop and canvas (in progress — epic #20)
 
-- **Desktop**: any webview-based desktop shell (Electron and friends)
-  consumes the DOM renderer directly — desktop is largely free once web is
-  solid. A dedicated desktop adapter only if a real need appears.
-- **Canvas renderer** (`@effect-native/render-canvas`): a reconciler for
-  typed scene-descriptor trees (WebGL/Three.js), with frame scheduling and
-  resource lifetimes on Effect `Scope`/`Stream` — so 3D and data-viz
-  surfaces sit under the same component contract as everything else.
+Phase 4 is pulled by a real production consumer: **Khala Code Desktop** in the
+OpenAgents monorepo. The port is a migration of the UI substrate, not a
+backend rewrite: Codex, Pylon, khala-sync, approvals, and local services stay
+owned by the Khala app. Effect Native supplies the typed screen data, runtime,
+renderers, and platform host.
+
+The first milestone is a faithful chat vertical slice:
+
+- the app shell shape — sidebar/navigation rail, thread list, and main chat
+  pane — is authored once as typed Effect Native data
+- a recorded assistant turn appends transcript patches deterministically
+- the transcript includes role-styled messages, a tool-call card, code block,
+  unified diff, and status transitions
+- the composer and command palette are represented through typed intents using
+  the current catalog while richer `Composer`/`Combobox` catalog components are
+  tracked in GAPS
+- `@effect-native/platform-desktop` provides `runMainDesktop`, a typed
+  main/renderer bridge, and headless Layer/test harnesses for menu, window,
+  deep-link, and single-instance services
+
+The milestone proof lives in [`docs/proof-desktop.md`](./docs/proof-desktop.md)
+and is checked by `scripts/khala-chat-proof-oracle.test.ts`.
+
+The remaining Phase 4 work is split into issue-backed lanes:
+
+- **Framework pillars**: desktop adapter (#21), canvas renderer (#22),
+  foreign `Host` node (#23), desktop interaction expansion (#24), the
+  single Protoss-blue theme (#25), streaming/live data binding (#26), and the
+  hotkey/focus registry (#41).
+- **Catalog growth**: app shell (#27), anchored overlays (#28), command
+  palette/combobox (#29), tabs (#30), icon (#31), rich composer (#32),
+  CodeEditor (#33), Terminal (#34), transcript/markdown (#35), code block/diff
+  (#36), graph figure (#37), settings controls (#38), data display (#39), and
+  feedback/recovery surfaces (#40).
+- **Exit receipt**: the full proof (#42) composes chat plus fleet/gym canvas,
+  records screenshots, checks headless/DOM/RN/canvas behavior, and writes the
+  exact owner-gated cutover steps. Replacing the live Khala shell remains an
+  owner product decision.
+
+The foreign `Host` node is the only planned exception to the closed-catalog
+rule. It is not an arbitrary custom component escape hatch: each host kind is a
+typed registry entry with bounded props, a Scope-owned lifecycle, renderer
+drivers, and a review bar recorded in GAPS/docs before use.
 
 ## Phase 5 — True native renderers (the fidelity upgrade)
 

@@ -50,13 +50,29 @@ until it has a fixture and every renderer declares and proves support for it.
 | Schema-backed forms | Marketing intake form and dashboard settings forms | 2026-07-08 | shipped -> #12 |
 | Modal + Sheet overlays | Dashboard approvals and confirmation surfaces | 2026-07-08 | shipped -> #13 |
 | Virtualized List + SectionList | Dashboard activity feed and grouped settings/history lists | 2026-07-08 | shipped -> #14 |
-| Toast / notification | None yet | 2026-07-08 | waiting |
-| Popover / menu / tooltip | None yet | 2026-07-08 | waiting |
+| Desktop host adapter | Khala Code Desktop needs the DOM renderer mounted inside an Electrobun webview with typed bridge/native services | 2026-07-08 | accepted -> #21; first test host shipped in Phase 4 chat milestone |
+| Canvas scene renderer | Khala fleet board and gym panes need typed graph/timeline scenes over three-effect | 2026-07-08 | accepted -> #22 |
+| Foreign `Host` node | Monaco editor and terminal surfaces need one reviewed, typed escape hatch | 2026-07-08 | accepted -> #23 |
+| Desktop interaction expansion | Composer, palette, transcript, drag/drop, focus, and scroll need typed keyboard/pointer/paste/drop/view-effect intents | 2026-07-08 | accepted -> #24 |
+| Protoss-blue dark theme | Khala Code Desktop is dark-only and pins the OpenAgents Khala CSS variable palette | 2026-07-08 | accepted -> #25; proof theme maps exact hex values onto current token roles |
+| Streaming live binding | Transcript and fleet/gym state append/patch from recorded or live streams | 2026-07-08 | accepted -> #26; recorded chat stream proof shipped in Phase 4 chat milestone |
+| App shell / split panes / nav rail | Khala Code Desktop chat shell needs sidebar, thread list, resizable workbench, and active pane switching | 2026-07-08 | accepted -> #27 |
+| Popover / dropdown menu / context menu / tooltip | Command menus, settings menus, tooltips, and context menus in Khala Code Desktop | 2026-07-08 | accepted -> #28 |
+| Command palette / combobox | Khala command palette and slash-command autocomplete | 2026-07-08 | accepted -> #29 |
+| Tabs | Khala settings, workbench, and panel groups | 2026-07-08 | accepted -> #30 |
+| Icon | Khala nav rail, command buttons, statuses, fleet controls, and menu items | 2026-07-08 | accepted -> #31 |
+| Rich contenteditable composer | Khala chat composer needs multiline contenteditable text, slash commands, mentions, history, and attachments | 2026-07-08 | accepted -> #32 |
+| CodeEditor host | Khala editor panel needs Monaco under the reviewed Host contract | 2026-07-08 | accepted -> #33 |
+| Terminal host | Khala terminal panel needs a Scope-owned terminal host driver | 2026-07-08 | accepted -> #34 |
+| Transcript / Markdown | Khala transcript needs typed pre-parsed markdown, roles, tool cards, status indicators, and auto-pin behavior | 2026-07-08 | accepted -> #35 |
+| CodeBlock / unified diff | Khala transcript and review surfaces need pre-tokenized code and unified diff rows | 2026-07-08 | accepted -> #36 |
+| GraphFigure | Fleet board and gym arbiter graphs need canvas plus DOM/SVG fallback | 2026-07-08 | accepted -> #37 |
+| Settings form controls | Khala settings require toggle, select, checkbox, radio, slider, and number controls beyond the base FormSpec | 2026-07-08 | accepted -> #38 |
+| Data display | Khala settings, fleet, usage, and review panes require table, chip/badge, meter/progress, divider, and stat tile | 2026-07-08 | accepted -> #39 |
+| Toast / status banner / recovery overlay | Khala boot-degraded, update, recovery, and notification states | 2026-07-08 | accepted -> #40 |
+| Hotkey registry / focus management | Khala global commands, palette scope, composer scope, recent-thread hints, and focus return | 2026-07-08 | accepted -> #41 |
 | Sheet drag-to-dismiss gesture | Gesture demand not yet demonstrated beyond basic sheet presentation | 2026-07-08 | waiting |
 | Overlay animation polish | Basic presentation shipped; richer transitions need a demanding screen | 2026-07-08 | waiting |
-| Tabs | None yet | 2026-07-08 | waiting |
-| Icon | None yet | 2026-07-08 | waiting |
-| Divider / separator | None yet | 2026-07-08 | waiting |
 | Avatar | None yet | 2026-07-08 | waiting |
 | Media beyond `Image` | None yet | 2026-07-08 | waiting |
 | Utility style aliases | Authoring friction not yet demonstrated by a real screen | 2026-07-08 | waiting |
