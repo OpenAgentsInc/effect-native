@@ -1,9 +1,11 @@
 import {
+  Cause,
   Context,
   Deferred,
   Effect,
   Exit,
   Layer,
+  Option,
   PubSub,
   Ref,
   Schema,
@@ -267,6 +269,126 @@ export interface IntentEvent {
   readonly result: Exit.Exit<void, IntentError>
 }
 
+const DevtoolsTimestampSchema = Schema.Number.check(
+  Schema.isFinite({ title: "FiniteTimestamp" }),
+  Schema.isGreaterThanOrEqualTo(0, { title: "NonNegativeTimestamp" })
+)
+
+export const SerializableIntentErrorSchema = Schema.Union([
+  Schema.TaggedStruct("UnknownIntentError", {
+    name: Schema.String
+  }),
+  Schema.TaggedStruct("IntentPayloadDecodeError", {
+    name: Schema.String,
+    message: Schema.String
+  }),
+  Schema.TaggedStruct("IntentHandlerError", {
+    name: Schema.String,
+    message: Schema.String
+  })
+])
+export type SerializableIntentError = Schema.Schema.Type<typeof SerializableIntentErrorSchema>
+
+export const SerializableIntentResultSchema = Schema.Union([
+  Schema.TaggedStruct("Success", {}),
+  Schema.TaggedStruct("Failure", {
+    error: SerializableIntentErrorSchema
+  })
+])
+export type SerializableIntentResult = Schema.Schema.Type<typeof SerializableIntentResultSchema>
+
+export const SerializableIntentEventSchema = Schema.Struct({
+  timestamp: DevtoolsTimestampSchema,
+  intent: IntentSchema,
+  result: SerializableIntentResultSchema
+})
+export type SerializableIntentEvent = Schema.Schema.Type<typeof SerializableIntentEventSchema>
+
+const serializeIntentError = (error: IntentError): SerializableIntentError => {
+  switch (error._tag) {
+    case "UnknownIntentError":
+      return SerializableIntentErrorSchema.make({ _tag: "UnknownIntentError", name: error.name })
+    case "IntentPayloadDecodeError":
+      return SerializableIntentErrorSchema.make({
+        _tag: "IntentPayloadDecodeError",
+        name: error.name,
+        message: error.message
+      })
+    case "IntentHandlerError":
+      return SerializableIntentErrorSchema.make({
+        _tag: "IntentHandlerError",
+        name: error.name,
+        message: error.message
+      })
+  }
+}
+
+const isIntentError = (value: unknown): value is IntentError =>
+  typeof value === "object" &&
+  value !== null &&
+  "_tag" in value &&
+  (
+    value._tag === "UnknownIntentError" ||
+    value._tag === "IntentPayloadDecodeError" ||
+    value._tag === "IntentHandlerError"
+  )
+
+export const serializeIntentEvent = (event: IntentEvent): SerializableIntentEvent => {
+  if (Exit.isSuccess(event.result)) {
+    return SerializableIntentEventSchema.make({
+      timestamp: event.timestamp,
+      intent: event.intent,
+      result: { _tag: "Success" }
+    })
+  }
+
+  const error = Cause.findErrorOption(event.result.cause)
+  return SerializableIntentEventSchema.make({
+    timestamp: event.timestamp,
+    intent: event.intent,
+    result: {
+      _tag: "Failure",
+      error: Option.isSome(error) && isIntentError(error.value)
+        ? serializeIntentError(error.value)
+        : {
+            _tag: "IntentHandlerError",
+            name: event.intent.name,
+            message: String(event.result.cause)
+          }
+    }
+  })
+}
+
+export const DevtoolsEventSchema = Schema.Union([
+  Schema.TaggedStruct("StateSnapshot", {
+    timestamp: DevtoolsTimestampSchema,
+    state: JsonPayloadSchema
+  }),
+  Schema.TaggedStruct("ViewEmitted", {
+    timestamp: DevtoolsTimestampSchema,
+    view: Schema.suspend(() => ViewSchema)
+  }),
+  Schema.TaggedStruct("IntentDispatched", {
+    timestamp: DevtoolsTimestampSchema,
+    event: SerializableIntentEventSchema
+  })
+])
+export type DevtoolsEvent = Schema.Schema.Type<typeof DevtoolsEventSchema>
+
+export interface DevtoolsSink {
+  readonly emit: (event: DevtoolsEvent) => void
+}
+
+export const noopDevtoolsSink: DevtoolsSink = {
+  emit: () => {
+    // Intentionally empty: the default runtime path does not allocate events.
+  }
+}
+
+export const DevtoolsSink = Context.Service<DevtoolsSink>("@effect-native/core/DevtoolsSink")
+
+export const makeDevtoolsSinkLayer = (sink: DevtoolsSink) => Layer.succeed(DevtoolsSink, sink)
+
 export interface IntentRegistry {
   readonly dispatch: (intent: Intent<string, JsonPayload>) => Effect.Effect<void, IntentError>
   readonly events: Effect.Effect<ReadonlyArray<IntentEvent>>
@@ -278,6 +400,7 @@ export const IntentRegistry = Context.Service<IntentRegistry>("@effect-native/co
 export interface IntentRegistryOptions {
   readonly now?: () => number
   readonly redactIntent?: (intent: Intent<string, JsonPayload>) => Intent<string, JsonPayload>
+  readonly devtoolsSink?: DevtoolsSink
 }
 
 const formatUnknown = (error: unknown): string =>
@@ -293,6 +416,7 @@ export const makeIntentRegistry = <const Definitions extends ReadonlyArray<Inten
     const eventsPubSub = yield* PubSub.unbounded<IntentEvent>({ replay: 1024 })
     const now = options.now ?? Date.now
     const redactIntent = options.redactIntent ?? ((intent: Intent<string, JsonPayload>) => intent)
+    const devtoolsSink = options.devtoolsSink
     const definitionsByName = new Map<string, IntentDefinition>(
       definitions.map((definition) => [definition.name, definition])
     )
@@ -301,6 +425,13 @@ export const makeIntentRegistry = <const Definitions extends ReadonlyArray<Inten
       Effect.gen(function*() {
         yield* Ref.update(eventsRef, (events) => [...events, event])
         yield* PubSub.publish(eventsPubSub, event)
+        if (devtoolsSink !== undefined) {
+          devtoolsSink.emit({
+            _tag: "IntentDispatched",
+            timestamp: event.timestamp,
+            event: serializeIntentEvent(event)
+          })
+        }
       })
 
     const failWith = (intent: Intent<string, JsonPayload>, error: IntentError) =>
@@ -771,6 +902,18 @@ export const makeFormIntentRedactor = (
     return makeIntent(intent.name, payload)
   }
 }
+
+export const redactFormState = (form: FormState): FormState => FormStateSchema.make({
+  id: form.id,
+  fields: Object.fromEntries(Object.entries(form.fields).map(([field, state]) => [
+    field,
+    {
+      ...state,
+      value: state.secure === true ? redactedValue : state.value
+    }
+  ])),
+  ...(form.focusedField === undefined ? {} : { focusedField: form.focusedField })
+})
 
 export const NonNegativeNumberSchema = Schema.Number.check(
   Schema.isFinite({ title: "FiniteNumber" }),
@@ -2045,28 +2188,63 @@ export interface ViewProgram<State> {
   readonly report: (ref: IntentRef, runtimeValue?: JsonPayload) => Effect.Effect<void, IntentError, IntentRegistry>
 }
 
+export interface ViewProgramOptions<State> {
+  readonly now?: () => number
+  readonly devtoolsSink?: DevtoolsSink
+  readonly redactState?: (state: State) => JsonPayload
+}
+
+const jsonPayloadOrNull = (value: unknown): JsonPayload => {
+  const decoded = Schema.decodeUnknownExit(JsonPayloadSchema)(value)
+  return Exit.isSuccess(decoded) ? decoded.value : null
+}
+
 export const makeViewProgramFromState = <State>(
   state: SubscriptionRef.SubscriptionRef<State>,
-  render: (state: State) => View
-): ViewProgram<State> => ({
-  state,
-  render,
-  viewStream: SubscriptionRef.changes(state).pipe(
-    Stream.map((value) => resolveView(render(value), { state: value }))
-  ),
-  currentState: SubscriptionRef.get(state),
-  setState: (value) => SubscriptionRef.set(state, value),
-  updateState: (f) => SubscriptionRef.update(state, f),
-  report: (ref, runtimeValue = null) => dispatchIntent(resolveIntentRef(ref, runtimeValue))
-})
+  render: (state: State) => View,
+  options: ViewProgramOptions<State> = {}
+): ViewProgram<State> => {
+  const devtoolsSink = options.devtoolsSink
+  const now = options.now ?? Date.now
+  const redactState = options.redactState ?? jsonPayloadOrNull
+
+  return {
+    state,
+    render,
+    viewStream: SubscriptionRef.changes(state).pipe(
+      Stream.map((value) => {
+        const resolved = resolveView(render(value), { state: value })
+        if (devtoolsSink !== undefined) {
+          const timestamp = now()
+          devtoolsSink.emit({
+            _tag: "StateSnapshot",
+            timestamp,
+            state: redactState(value)
+          })
+          devtoolsSink.emit({
+            _tag: "ViewEmitted",
+            timestamp,
+            view: redactSecureView(resolved)
+          })
+        }
+        return resolved
+      })
+    ),
+    currentState: SubscriptionRef.get(state),
+    setState: (value) => SubscriptionRef.set(state, value),
+    updateState: (f) => SubscriptionRef.update(state, f),
+    report: (ref, runtimeValue = null) => dispatchIntent(resolveIntentRef(ref, runtimeValue))
+  }
+}
 
 export const makeViewProgram = <State>(
   initialState: State,
-  render: (state: State) => View
+  render: (state: State) => View,
+  options?: ViewProgramOptions<State>
 ): Effect.Effect<ViewProgram<State>> =>
   Effect.gen(function*() {
     const state = yield* SubscriptionRef.make(initialState)
-    return makeViewProgramFromState(state, render)
+    return makeViewProgramFromState(state, render, options)
   })
 
 export interface MountedSurface {

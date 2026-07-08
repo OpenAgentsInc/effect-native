@@ -88,13 +88,13 @@ headless, DOM, and React Native renderer coverage.
 **Exit criterion:** complete. The catalog now covers the first production
 web/mobile app surface needs without opening a custom-component escape hatch.
 
-## Phase 3 — Developer experience (in progress — issues #15–#19)
+## Phase 3 — Developer experience (in progress — issues #16–#19)
 
 The leverage that falls out of "views are data, interactions are values":
 
 - **DevTools v0**: inspect the live view tree, log and replay intents,
   time-travel state — built on the intent event log that has existed since
-  Phase 0 (#15)
+  Phase 0 (#15 complete; see [`docs/devtools.md`](./docs/devtools.md))
 - **Testing story**: an app-author-facing test harness — deterministic view
   snapshots, intent-driven interaction tests, visual baselines per
   renderer (#16)

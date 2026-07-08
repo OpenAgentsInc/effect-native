@@ -1,4 +1,5 @@
 import { Effect, Exit, Scope } from "effect"
+import { makeWebSocketDevtoolsSink } from "@effect-native/devtools"
 import { makeDomRenderer } from "@effect-native/render-dom"
 import { makeSignupActivityRuntime } from "../signup-activity/index"
 
@@ -8,7 +9,11 @@ const boot = Effect.gen(function*() {
     throw new Error("Missing #app root")
   }
 
-  const runtime = yield* makeSignupActivityRuntime()
+  const devtoolsUrl = new URLSearchParams(globalThis.location.search).get("devtools")
+  const runtime = yield* makeSignupActivityRuntime(
+    undefined,
+    devtoolsUrl === null ? {} : { devtoolsSink: makeWebSocketDevtoolsSink(devtoolsUrl) }
+  )
   const scope = yield* Scope.make()
   yield* Scope.provide(scope)(
     makeDomRenderer().mount(root, runtime.program.viewStream, runtime.report)

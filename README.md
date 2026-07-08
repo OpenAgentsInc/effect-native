@@ -155,6 +155,10 @@ issue that defines the typed props/intents/style contract, implements every
 shipping renderer, bumps the catalog version, and extends the renderer
 conformance suite.
 
+Phase 3 has started with [DevTools v0](./docs/devtools.md): local recording,
+JSON replay, prefix time-travel, and an Effect Native-authored browser panel
+for the proof web and mobile examples.
+
 See the **[roadmap](./ROADMAP.md)** for what we're building and in what
 order — web and mobile are the priority targets.
 

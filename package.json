@@ -15,10 +15,12 @@
     "typecheck": "tsc -b",
     "test": "bun test ./packages/*/test ./scripts",
     "check": "bun run typecheck && bun run test",
-    "example:web": "bun build ./examples/web/main.ts --outfile ./examples/web/public/app.js --format esm && bun ./examples/web/server.ts"
+    "example:web": "bun build ./examples/web/main.ts --outfile ./examples/web/public/app.js --format esm && bun ./examples/web/server.ts",
+    "devtools": "bun build ./packages/devtools/src/panel-main.ts --outfile ./packages/devtools/public/panel.js --format esm && bun ./packages/devtools/src/server.ts"
   },
   "dependencies": {
     "@effect-native/core": "workspace:*",
+    "@effect-native/devtools": "workspace:*",
     "@effect-native/render-dom": "workspace:*",
     "@effect-native/render-rn": "workspace:*",
     "effect": "4.0.0-beta.94"

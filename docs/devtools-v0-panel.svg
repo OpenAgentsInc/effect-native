@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="760" viewBox="0 0 1280 760" role="img" aria-labelledby="title desc">
+  <title id="title">Effect Native DevTools v0 panel</title>
+  <desc id="desc">A screenshot-style rendering of the DevTools panel with timeline, view tree, state, and history controls.</desc>
+  <rect width="1280" height="760" fill="#f8fafc"/>
+  <rect x="40" y="32" width="1200" height="696" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="72" y="82" font-family="Inter, ui-sans-serif, system-ui" font-size="30" font-weight="700" fill="#0f172a">Effect Native DevTools</text>
+  <rect x="386" y="54" width="116" height="34" rx="17" fill="#fee2e2"/>
+  <text x="410" y="77" font-family="Inter, ui-sans-serif, system-ui" font-size="14" font-weight="600" fill="#b91c1c">Viewing history</text>
+  <rect x="72" y="112" width="112" height="42" rx="6" fill="#e2e8f0"/>
+  <text x="98" y="139" font-family="Inter, ui-sans-serif, system-ui" font-size="15" fill="#0f172a">Previous</text>
+  <rect x="196" y="112" width="88" height="42" rx="6" fill="#e2e8f0"/>
+  <text x="224" y="139" font-family="Inter, ui-sans-serif, system-ui" font-size="15" fill="#0f172a">Next</text>
+  <rect x="296" y="112" width="76" height="42" rx="6" fill="#eff6ff"/>
+  <text x="321" y="139" font-family="Inter, ui-sans-serif, system-ui" font-size="15" fill="#2563eb">Live</text>
+  <g transform="translate(72 190)">
+    <rect width="340" height="470" rx="8" fill="#f8fafc" stroke="#cbd5e1"/>
+    <text x="24" y="40" font-family="Inter, ui-sans-serif, system-ui" font-size="18" font-weight="700" fill="#0f172a">Timeline</text>
+    <text x="24" y="84" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" fill="#2563eb">&gt; 0. state snapshot</text>
+    <text x="24" y="116" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" fill="#0f172a">  1. view emitted</text>
+    <text x="24" y="148" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" fill="#0f172a">  2. intent FormFieldChanged success</text>
+    <text x="24" y="180" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" fill="#0f172a">  3. state snapshot</text>
+    <text x="24" y="212" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" fill="#0f172a">  4. view emitted</text>
+  </g>
+  <g transform="translate(470 190)">
+    <rect width="340" height="470" rx="8" fill="#f8fafc" stroke="#cbd5e1"/>
+    <text x="24" y="40" font-family="Inter, ui-sans-serif, system-ui" font-size="18" font-weight="700" fill="#0f172a">View tree</text>
+    <text x="24" y="84" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" fill="#0f172a">Stack#proof-root</text>
+    <text x="24" y="116" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" fill="#0f172a">  Image#hero</text>
+    <text x="24" y="148" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" fill="#0f172a">  Card#signup-card</text>
+    <text x="24" y="180" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" fill="#0f172a">    TextField#email</text>
+    <text x="24" y="212" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" fill="#0f172a">  List#activity-list</text>
+  </g>
+  <g transform="translate(868 190)">
+    <rect width="340" height="470" rx="8" fill="#f8fafc" stroke="#cbd5e1"/>
+    <text x="24" y="40" font-family="Inter, ui-sans-serif, system-ui" font-size="18" font-weight="700" fill="#0f172a">State</text>
+    <text x="24" y="84" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" fill="#0f172a">{</text>
+    <text x="40" y="116" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" fill="#0f172a">"message": "Added Ada",</text>
+    <text x="40" y="148" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" fill="#0f172a">"submitCount": 1,</text>
+    <text x="40" y="180" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" fill="#0f172a">"form": { "password": "[redacted]" }</text>
+    <text x="24" y="212" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" fill="#0f172a">}</text>
+  </g>
+</svg>

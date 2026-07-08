@@ -1,0 +1,17 @@
+{
+  "name": "@effect-native/devtools",
+  "version": "0.0.0",
+  "type": "module",
+  "license": "MIT",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./panel": "./src/panel.ts",
+    "./server": "./src/server.ts"
+  },
+  "dependencies": {
+    "@effect-native/core": "workspace:*",
+    "@effect-native/render-dom": "workspace:*",
+    "effect": "4.0.0-beta.94"
+  }
+}

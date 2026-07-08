@@ -23,14 +23,17 @@ import {
   makeFormState,
   makeIntentRegistry,
   makeViewProgramFromState,
+  redactFormState,
   resolveIntentRef,
   setFormFieldValue,
   submitForm,
   FormStateSchema,
+  type DevtoolsSink,
   type IntentHandlers,
   type IntentRef as IntentRefData,
   type IntentRegistry,
   type IntentReporter,
+  type JsonPayload,
   type View,
   type ViewProgram
 } from "@effect-native/core"
@@ -334,12 +337,28 @@ export interface SignupActivityRuntime {
   readonly report: IntentReporter
 }
 
+export interface SignupActivityRuntimeOptions {
+  readonly devtoolsSink?: DevtoolsSink
+  readonly now?: () => number
+}
+
+export const redactSignupActivityState = (state: SignupActivityState): JsonPayload =>
+  SignupActivityStateSchema.make({
+    ...state,
+    form: redactFormState(state.form)
+  }) as JsonPayload
+
 export const makeSignupActivityRuntime = (
-  initialState: SignupActivityState = initialSignupActivityState
+  initialState: SignupActivityState = initialSignupActivityState,
+  options: SignupActivityRuntimeOptions = {}
 ): Effect.Effect<SignupActivityRuntime> =>
   Effect.gen(function*() {
     const state = yield* SubscriptionRef.make(initialState)
-    const program = makeViewProgramFromState(state, signupActivityView)
+    const program = makeViewProgramFromState(state, signupActivityView, {
+      ...(options.devtoolsSink === undefined ? {} : { devtoolsSink: options.devtoolsSink }),
+      ...(options.now === undefined ? {} : { now: options.now }),
+      redactState: redactSignupActivityState
+    })
     const handlers: IntentHandlers<typeof signupActivityIntents> = {
       FormFieldChanged: (payload) =>
         SubscriptionRef.update(state, (current) => ({
@@ -370,16 +389,18 @@ export const makeSignupActivityRuntime = (
             }
           })
           if (submitted !== undefined) {
+            const submittedValue = submitted as { readonly name: string; readonly email: string }
             yield* SubscriptionRef.update(state, (current) => submitSignup(current, {
-              ...submitted,
+              ...submittedValue,
               via: payload.via ?? "button"
             }))
           }
         })
     }
     const registry = yield* makeIntentRegistry(signupActivityIntents, handlers, {
-      now: () => 0,
-      redactIntent: makeFormIntentRedactor([signupFormSpec])
+      now: options.now ?? (() => 0),
+      redactIntent: makeFormIntentRedactor([signupFormSpec]),
+      ...(options.devtoolsSink === undefined ? {} : { devtoolsSink: options.devtoolsSink })
     })
     const report: IntentReporter = (ref, runtimeValue) =>
       registry.dispatch(resolveIntentRef(ref, runtimeValue))
