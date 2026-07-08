@@ -68,8 +68,10 @@ export const LinkCatalogVersion = "effect-native/v1" as const
 export const ResponsiveCatalogVersion = "effect-native/v2" as const
 export const FormCatalogVersion = "effect-native/v3" as const
 export const OverlayCatalogVersion = "effect-native/v4" as const
-export const PreviousCatalogVersion = OverlayCatalogVersion
-export const CatalogVersion = "effect-native/v5" as const
+export const CollectionCatalogVersion = "effect-native/v5" as const
+export const InteractionCatalogVersion = "effect-native/v6" as const
+export const PreviousCatalogVersion = CollectionCatalogVersion
+export const CatalogVersion = InteractionCatalogVersion
 export const CatalogVersionSchema = Schema.Literal(CatalogVersion)
 export type CatalogVersion = typeof CatalogVersion
 export const compatibleCatalogVersions = [
@@ -77,6 +79,7 @@ export const compatibleCatalogVersions = [
   LinkCatalogVersion,
   ResponsiveCatalogVersion,
   FormCatalogVersion,
+  OverlayCatalogVersion,
   PreviousCatalogVersion,
   CatalogVersion
 ] as const
@@ -1300,6 +1303,144 @@ export const ResponsiveStackDirectionSchema = makeResponsiveValueSchema(StackDir
 export const ResponsiveSpacingTokenSchema = makeResponsiveValueSchema(SpacingTokenSchema)
 export const ResponsiveDimensionSchema = makeResponsiveValueSchema(DimensionSchema)
 
+// ── Interaction algebra expansion (issue #24) ────────────────────────────────
+// Named, typed, closure-free interaction bindings for desktop-class surfaces.
+// Every event is projected to a bounded descriptor; no raw DOM event object
+// ever appears in the serializable view tree. Keyboard uses a closed key-name
+// set plus modifier booleans (never a raw KeyboardEvent). Imperative view
+// effects (focus, auto-pin-to-end) are expressed declaratively on the tree so
+// the headless renderer records them and app code never reaches for the DOM.
+
+export const keyNames = [
+  "Enter",
+  "Escape",
+  "Tab",
+  "Backspace",
+  "Delete",
+  "Space",
+  "ArrowUp",
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+  "Home",
+  "End",
+  "PageUp",
+  "PageDown"
+] as const
+export const KeyNameSchema = Schema.Literals(keyNames)
+export type KeyName = (typeof keyNames)[number]
+
+export interface KeyBinding {
+  readonly key: KeyName
+  readonly alt?: boolean
+  readonly ctrl?: boolean
+  readonly meta?: boolean
+  readonly shift?: boolean
+  // When omitted the binding is skipped while an IME composition is active,
+  // matching composer submit-vs-newline semantics. Set true to fire regardless.
+  readonly whenComposing?: boolean
+  readonly preventDefault?: boolean
+  readonly stopPropagation?: boolean
+  readonly intent: IntentRef
+}
+export const KeyBindingSchema: Schema.Codec<KeyBinding, KeyBinding> = exactStruct({
+  key: KeyNameSchema,
+  alt: Schema.Boolean.pipe(Schema.optionalKey),
+  ctrl: Schema.Boolean.pipe(Schema.optionalKey),
+  meta: Schema.Boolean.pipe(Schema.optionalKey),
+  shift: Schema.Boolean.pipe(Schema.optionalKey),
+  whenComposing: Schema.Boolean.pipe(Schema.optionalKey),
+  preventDefault: Schema.Boolean.pipe(Schema.optionalKey),
+  stopPropagation: Schema.Boolean.pipe(Schema.optionalKey),
+  intent: IntentRefSchema
+}) as unknown as Schema.Codec<KeyBinding, KeyBinding>
+
+export interface Interactions {
+  readonly onKey?: ReadonlyArray<KeyBinding>
+  readonly onFocus?: IntentRef
+  readonly onBlur?: IntentRef
+  readonly onPointerEnter?: IntentRef
+  readonly onPointerLeave?: IntentRef
+  readonly onPaste?: IntentRef
+  readonly onDragEnter?: IntentRef
+  readonly onDragLeave?: IntentRef
+  readonly onDrop?: IntentRef
+}
+export const InteractionsSchema: Schema.Codec<Interactions, Interactions> = exactStruct({
+  onKey: Schema.Array(KeyBindingSchema).pipe(Schema.optionalKey),
+  onFocus: IntentRefSchema.pipe(Schema.optionalKey),
+  onBlur: IntentRefSchema.pipe(Schema.optionalKey),
+  onPointerEnter: IntentRefSchema.pipe(Schema.optionalKey),
+  onPointerLeave: IntentRefSchema.pipe(Schema.optionalKey),
+  onPaste: IntentRefSchema.pipe(Schema.optionalKey),
+  onDragEnter: IntentRefSchema.pipe(Schema.optionalKey),
+  onDragLeave: IntentRefSchema.pipe(Schema.optionalKey),
+  onDrop: IntentRefSchema.pipe(Schema.optionalKey)
+}) as unknown as Schema.Codec<Interactions, Interactions>
+
+// Bounded ARIA roles the renderers honor for roving-focus / combobox patterns.
+export const ariaRoles = [
+  "listbox",
+  "option",
+  "combobox",
+  "menu",
+  "menuitem",
+  "dialog",
+  "group",
+  "list",
+  "listitem",
+  "region",
+  "tablist",
+  "tab",
+  "tabpanel",
+  "none",
+  "presentation"
+] as const
+export const AriaRoleSchema = Schema.Literals(ariaRoles)
+export type AriaRole = (typeof ariaRoles)[number]
+
+export interface A11y {
+  readonly role?: AriaRole
+  readonly label?: string
+  // References another node's `key`; the renderer maps it to that node's id.
+  readonly activeDescendant?: string
+  readonly selected?: boolean
+  readonly expanded?: boolean
+  readonly disabled?: boolean
+  readonly hidden?: boolean
+  readonly tabIndex?: -1 | 0
+}
+export const A11ySchema: Schema.Codec<A11y, A11y> = exactStruct({
+  role: AriaRoleSchema.pipe(Schema.optionalKey),
+  label: Schema.String.pipe(Schema.optionalKey),
+  activeDescendant: Schema.String.pipe(Schema.optionalKey),
+  selected: Schema.Boolean.pipe(Schema.optionalKey),
+  expanded: Schema.Boolean.pipe(Schema.optionalKey),
+  disabled: Schema.Boolean.pipe(Schema.optionalKey),
+  hidden: Schema.Boolean.pipe(Schema.optionalKey),
+  tabIndex: Schema.Literals([-1, 0]).pipe(Schema.optionalKey)
+}) as unknown as Schema.Codec<A11y, A11y>
+
+// Typed dropped-item descriptor produced by drag-and-drop drops. Only bounded
+// file metadata is projected into the intent payload — never the raw
+// File/DataTransfer object.
+export interface DroppedItem {
+  readonly name: string
+  readonly kind: "file" | "string"
+  readonly mimeType: string
+  readonly size: number
+}
+export const DroppedItemSchema: Schema.Codec<DroppedItem, DroppedItem> = Schema.Struct({
+  name: Schema.String,
+  kind: Schema.Literals(["file", "string"]),
+  mimeType: Schema.String,
+  size: NonNegativeNumberSchema
+}) as unknown as Schema.Codec<DroppedItem, DroppedItem>
+export const DropPayloadSchema = Schema.Struct({
+  items: Schema.Array(DroppedItemSchema)
+})
+export type DropPayload = Schema.Schema.Type<typeof DropPayloadSchema>
+
 const copyFlatStyle = <Key extends StyleKey>(style: StyleFor<Key> | FlatStyleFor<Key>): FlatStyleFor<Key> => {
   const flat: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(style)) {
@@ -1458,6 +1599,8 @@ export const resolveStyle = <Key extends StyleKey>(
 export interface NodeBase {
   readonly catalogVersion: CompatibleCatalogVersion
   readonly key?: NodeKey
+  readonly interactions?: Interactions
+  readonly a11y?: A11y
 }
 
 export interface StackView extends NodeBase {
@@ -1468,6 +1611,12 @@ export interface StackView extends NodeBase {
   readonly justify?: StackJustify
   readonly padding?: ResponsiveValue<SpacingToken>
   readonly style?: StackStyle
+  // Scroll-region auto-pin (imperative view effect as data): when true the
+  // renderer keeps the region scrolled to its end as content grows; the
+  // renderer reports `onPinnedChange` with a boolean when the user scrolls
+  // away from / back to the end (reproduces transcript auto-pin behavior).
+  readonly pinToEnd?: boolean
+  readonly onPinnedChange?: IntentRef
   readonly children: ReadonlyArray<View>
 }
 
@@ -1530,6 +1679,8 @@ export interface ListView extends NodeBase {
   readonly estimatedItemSize?: Dimension
   readonly onEndReached?: IntentRef
   readonly endReachedThreshold?: number
+  readonly pinToEnd?: boolean
+  readonly onPinnedChange?: IntentRef
   readonly items: ReadonlyArray<View & { readonly key: NodeKey }>
 }
 
@@ -1729,7 +1880,9 @@ const VirtualizationFilter = Schema.makeFilter<VirtualizationContract>((view) =>
 
 const CommonFields = {
   catalogVersion: CompatibleCatalogVersionSchema,
-  key: NodeKeySchema.pipe(Schema.optionalKey)
+  key: NodeKeySchema.pipe(Schema.optionalKey),
+  interactions: InteractionsSchema.pipe(Schema.optionalKey),
+  a11y: A11ySchema.pipe(Schema.optionalKey)
 } as const
 
 export const StackSchema: Schema.Codec<StackView, StackView> = Schema.TaggedStruct("Stack", {
@@ -1740,6 +1893,8 @@ export const StackSchema: Schema.Codec<StackView, StackView> = Schema.TaggedStru
   justify: StackJustifySchema.pipe(Schema.optionalKey),
   padding: ResponsiveSpacingTokenSchema.pipe(Schema.optionalKey),
   style: StackStyleSchema.pipe(Schema.optionalKey),
+  pinToEnd: Schema.Boolean.pipe(Schema.optionalKey),
+  onPinnedChange: IntentRefSchema.pipe(Schema.optionalKey),
   children: Schema.Array(ViewSelf)
 })
 
@@ -1806,6 +1961,8 @@ export const ListSchema: Schema.Codec<ListView, ListView> = Schema.TaggedStruct(
   ...CommonFields,
   style: ListStyleSchema.pipe(Schema.optionalKey),
   ...VirtualizationFields,
+  pinToEnd: Schema.Boolean.pipe(Schema.optionalKey),
+  onPinnedChange: IntentRefSchema.pipe(Schema.optionalKey),
   items: KeyedViewArraySchema
 }).check(VirtualizationFilter)
 

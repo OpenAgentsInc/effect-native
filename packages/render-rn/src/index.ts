@@ -1,5 +1,6 @@
 import { Deferred, Effect, Exit, Fiber, Ref, Scope, Stream } from "effect"
 import {
+  type AriaRole,
   type ButtonView,
   type CardView,
   type ColorToken,
@@ -316,9 +317,43 @@ const runReportedIntent = (
   })
 }
 
+// Map the bounded ARIA role contract to the RN accessibilityRole values that
+// actually exist on the platform. Roles with no faithful RN equivalent are
+// omitted rather than approximated. Keyboard/paste/pointer/drag-drop intents
+// from the interaction algebra (issue #24) have no React Native host mapping;
+// the RN renderer declares them unsupported by not wiring them (the headless
+// renderer still records them in the serialized tree for cross-renderer tests).
+const rnAccessibilityRole: Partial<Record<AriaRole, string>> = {
+  combobox: "combobox",
+  menu: "menu",
+  menuitem: "menuitem",
+  list: "list",
+  tablist: "tablist",
+  tab: "tab",
+  none: "none",
+  presentation: "none"
+}
+
+const accessibilityProps = (view: View): Record<string, unknown> => {
+  const a11y = view.a11y
+  if (a11y === undefined) return {}
+  const props: Record<string, unknown> = {}
+  if (a11y.role !== undefined && rnAccessibilityRole[a11y.role] !== undefined) {
+    props["accessibilityRole"] = rnAccessibilityRole[a11y.role]
+  }
+  if (a11y.label !== undefined) props["accessibilityLabel"] = a11y.label
+  const stateEntries: Record<string, boolean> = {}
+  if (a11y.selected !== undefined) stateEntries["selected"] = a11y.selected
+  if (a11y.expanded !== undefined) stateEntries["expanded"] = a11y.expanded
+  if (a11y.disabled !== undefined) stateEntries["disabled"] = a11y.disabled
+  if (Object.keys(stateEntries).length > 0) props["accessibilityState"] = stateEntries
+  return props
+}
+
 const baseProps = (view: View, style: ReactNativeStyle): Record<string, unknown> => ({
   key: view.key,
   nativeID: nativeId(view),
+  ...accessibilityProps(view),
   style
 })
 

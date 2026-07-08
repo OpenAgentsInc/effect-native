@@ -11,6 +11,9 @@ import {
   IntentRef,
   type IntentReporter,
   type JsonPayload,
+  type KeyBinding,
+  keyNames,
+  type KeyName,
   type LinkView,
   type ListView,
   type ModalView,
@@ -335,6 +338,7 @@ class DomRendererState {
   overlayRestoreFocus: HTMLElement | undefined
   overlayBodyOverflow: string | undefined
   readonly endReachedSignatures = new Map<string, string>()
+  readonly pinnedSignatures = new Map<string, boolean>()
 
   constructor(container: Element, document: Document, theme: Theme) {
     this.theme = theme
@@ -460,6 +464,175 @@ const applyBaseStyle = (element: HTMLElement, view: View, state: DomRendererStat
   }
 }
 
+// Stable element id derived from a node key, used for aria-activedescendant
+// wiring (roving focus) and imperative focus targeting.
+const nodeElementId = (view: View): string | undefined =>
+  view.key === undefined ? undefined : `en-${view.key}`
+
+// DOM KeyboardEvent.key -> bounded catalog KeyName (issue #24). Returns
+// undefined for keys outside the closed set so unmapped keys never dispatch.
+const keyNameFromEvent = (key: string): KeyName | undefined => {
+  if (key === " " || key === "Spacebar") return "Space"
+  return (keyNames as ReadonlyArray<string>).includes(key) ? (key as KeyName) : undefined
+}
+
+const modifiersMatch = (binding: KeyBinding, event: KeyboardEvent): boolean =>
+  (binding.alt === true) === event.altKey &&
+  (binding.ctrl === true) === event.ctrlKey &&
+  (binding.meta === true) === event.metaKey &&
+  (binding.shift === true) === event.shiftKey
+
+// Bounded ARIA attributes the DOM renderer honors for roving-focus / combobox
+// patterns. Only the closed A11y contract is projected — no arbitrary aria-*.
+const applyA11y = (element: HTMLElement, view: View): void => {
+  const id = nodeElementId(view)
+  if (id !== undefined && element.id === "") {
+    element.id = id
+  }
+  const a11y = view.a11y
+  if (a11y === undefined) return
+  if (a11y.role !== undefined) element.setAttribute("role", a11y.role)
+  if (a11y.label !== undefined) element.setAttribute("aria-label", a11y.label)
+  if (a11y.activeDescendant !== undefined) {
+    element.setAttribute("aria-activedescendant", `en-${a11y.activeDescendant}`)
+  }
+  if (a11y.selected !== undefined) element.setAttribute("aria-selected", String(a11y.selected))
+  if (a11y.expanded !== undefined) element.setAttribute("aria-expanded", String(a11y.expanded))
+  if (a11y.disabled !== undefined) element.setAttribute("aria-disabled", String(a11y.disabled))
+  if (a11y.hidden === true) element.setAttribute("aria-hidden", "true")
+  if (a11y.tabIndex !== undefined) element.tabIndex = a11y.tabIndex
+}
+
+// Wire the named, typed, closure-free interaction bindings (issue #24). Every
+// DOM event is projected to a bounded descriptor before an intent is reported.
+const applyInteractions = (
+  element: HTMLElement,
+  view: View,
+  state: DomRendererState,
+  report: IntentReporter
+): void => {
+  const interactions = view.interactions
+  if (interactions === undefined) return
+
+  if (interactions.onKey !== undefined && interactions.onKey.length > 0) {
+    const bindings = interactions.onKey
+    state.addListener(element, "keydown", (event) => {
+      const name = keyNameFromEvent(event.key)
+      if (name === undefined) return
+      for (const binding of bindings) {
+        if (binding.key !== name) continue
+        if (event.isComposing && binding.whenComposing !== true) continue
+        if (!modifiersMatch(binding, event)) continue
+        if (binding.preventDefault === true) event.preventDefault()
+        if (binding.stopPropagation === true) event.stopPropagation()
+        runReportedIntent(report, binding.intent, {
+          key: name,
+          alt: event.altKey,
+          ctrl: event.ctrlKey,
+          meta: event.metaKey,
+          shift: event.shiftKey
+        })
+        return
+      }
+    })
+  }
+
+  if (interactions.onFocus !== undefined) {
+    const ref = interactions.onFocus
+    state.addListener(element, "focusin", () => runReportedIntent(report, ref))
+  }
+  if (interactions.onBlur !== undefined) {
+    const ref = interactions.onBlur
+    state.addListener(element, "focusout", () => runReportedIntent(report, ref))
+  }
+  if (interactions.onPointerEnter !== undefined) {
+    const ref = interactions.onPointerEnter
+    state.addListener(element, "pointerenter", () => runReportedIntent(report, ref))
+  }
+  if (interactions.onPointerLeave !== undefined) {
+    const ref = interactions.onPointerLeave
+    state.addListener(element, "pointerleave", () => runReportedIntent(report, ref))
+  }
+  if (interactions.onPaste !== undefined) {
+    const ref = interactions.onPaste
+    state.addListener(element, "paste", (event) => {
+      const text = event.clipboardData?.getData("text/plain") ?? ""
+      runReportedIntent(report, ref, text)
+    })
+  }
+
+  const hasDrop =
+    interactions.onDrop !== undefined ||
+    interactions.onDragEnter !== undefined ||
+    interactions.onDragLeave !== undefined
+  if (hasDrop) {
+    // Allow drops by cancelling dragover; drop payloads project only bounded
+    // file metadata, never the raw File/DataTransfer object.
+    state.addListener(element, "dragover", (event) => event.preventDefault())
+  }
+  if (interactions.onDragEnter !== undefined) {
+    const ref = interactions.onDragEnter
+    state.addListener(element, "dragenter", (event) => {
+      event.preventDefault()
+      runReportedIntent(report, ref)
+    })
+  }
+  if (interactions.onDragLeave !== undefined) {
+    const ref = interactions.onDragLeave
+    state.addListener(element, "dragleave", () => runReportedIntent(report, ref))
+  }
+  if (interactions.onDrop !== undefined) {
+    const ref = interactions.onDrop
+    state.addListener(element, "drop", (event) => {
+      event.preventDefault()
+      const items = describeDroppedItems(event)
+      runReportedIntent(report, ref, { items })
+    })
+  }
+}
+
+const describeDroppedItems = (event: DragEvent): ReadonlyArray<JsonPayload> => {
+  const transfer = event.dataTransfer
+  if (transfer === null || transfer === undefined) return []
+  const files = Array.from(transfer.files ?? [])
+  return files.map((file) => ({
+    name: file.name,
+    kind: "file" as const,
+    mimeType: file.type,
+    size: file.size
+  }))
+}
+
+// Declarative scroll auto-pin (imperative view effect as data, issue #24).
+// When pinToEnd is true the region is kept scrolled to its end after each
+// commit; onPinnedChange fires with the current pinned boolean whenever the
+// user scrolls away from / back to the end.
+const applyScrollRegion = (
+  element: HTMLElement,
+  view: StackView | ListView,
+  state: DomRendererState,
+  report: IntentReporter
+): void => {
+  if (view.pinToEnd !== true) return
+  element.style.overflowY = "auto"
+  const onPinnedChange = view.onPinnedChange
+  if (onPinnedChange !== undefined) {
+    const signatureKey = `${view._tag}:${view.key ?? ""}`
+    state.addListener(element, "scroll", () => {
+      const atEnd = element.scrollHeight - (element.scrollTop + element.clientHeight) <= 1
+      const previous = state.pinnedSignatures.get(signatureKey)
+      if (previous !== atEnd) {
+        state.pinnedSignatures.set(signatureKey, atEnd)
+        runReportedIntent(report, onPinnedChange, atEnd)
+      }
+    })
+  }
+  // Defer the scroll so it runs after children are committed into the DOM.
+  queueMicrotask(() => {
+    element.scrollTop = element.scrollHeight
+  })
+}
+
 const renderChildren = (
   element: HTMLElement,
   children: ReadonlyArray<View>,
@@ -483,11 +656,14 @@ const renderStack = (view: StackView, state: DomRendererState, report: IntentRep
   element.style.justifyContent = view.justify === undefined ? "" : flexKeyword(view.justify)
   element.style.padding = padding === undefined ? "" : `var(--en-spacing-${cssEscape(padding)})`
   applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  applyInteractions(element, view, state, report)
   renderChildren(element, view.children, state, report)
+  applyScrollRegion(element, view, state, report)
   return element
 }
 
-const renderText = (view: TextView, state: DomRendererState): HTMLElement => {
+const renderText = (view: TextView, state: DomRendererState, report: IntentReporter): HTMLElement => {
   const tagName = view.variant === "heading" || view.variant === "title" ? "p" : "span"
   const element = state.keyedElement(view, tagName)
   state.resetListeners(element)
@@ -496,6 +672,8 @@ const renderText = (view: TextView, state: DomRendererState): HTMLElement => {
   element.style.color = view.color === undefined ? "" : colorValue(view.color)
   element.style.fontWeight = view.weight === undefined ? "" : fontWeightValue(view.weight)
   applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  applyInteractions(element, view, state, report)
   return element
 }
 
@@ -508,6 +686,8 @@ const renderButton = (view: ButtonView, state: DomRendererState, report: IntentR
   element.setAttribute("data-en-variant", view.variant)
   state.addListener(element, "click", () => runReportedIntent(report, view.onPress))
   applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  applyInteractions(element, view, state, report)
   return element
 }
 
@@ -778,6 +958,9 @@ const renderTextField = (view: TextFieldView, state: DomRendererState, report: I
     })
   }
   element.appendChild(field)
+  // Interaction/a11y bindings attach to the focusable control, not the wrapper.
+  applyA11y(field, view)
+  applyInteractions(field, view, state, report)
   if (fieldWasActive || view.focused === true) {
     state.requestFocus(field)
   }
@@ -940,6 +1123,9 @@ const renderList = (view: ListView, state: DomRendererState, report: IntentRepor
   }
 
   applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  applyInteractions(element, view, state, report)
+  applyScrollRegion(element, view, state, report)
   return element
 }
 
@@ -1068,7 +1254,7 @@ const renderView = (view: View, state: DomRendererState, report: IntentReporter)
     case "Stack":
       return renderStack(view, state, report)
     case "Text":
-      return renderText(view, state)
+      return renderText(view, state, report)
     case "Button":
       return renderButton(view, state, report)
     case "Link":

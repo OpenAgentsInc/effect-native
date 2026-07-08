@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test"
 import { Exit, Schema } from "effect"
 import {
   CatalogVersion,
+  CollectionCatalogVersion,
   CompatibleViewSchema,
   FormCatalogVersion,
   LegacyCatalogVersion,
@@ -37,6 +38,10 @@ describe("catalog version compatibility", () => {
     }
     const v4Tree = {
       ...JSON.parse(JSON.stringify(view)),
+      catalogVersion: OverlayCatalogVersion
+    }
+    const v5Tree = {
+      ...JSON.parse(JSON.stringify(view)),
       catalogVersion: PreviousCatalogVersion
     }
     const v0Tree = {
@@ -50,12 +55,14 @@ describe("catalog version compatibility", () => {
     expect(decodeCompatibleView(v2Tree).catalogVersion).toBe(ResponsiveCatalogVersion)
     expect(decodeCompatibleView(v3Tree).catalogVersion).toBe(FormCatalogVersion)
     expect(decodeCompatibleView(v4Tree).catalogVersion).toBe(OverlayCatalogVersion)
-    expect(PreviousCatalogVersion).toBe(OverlayCatalogVersion)
+    expect(decodeCompatibleView(v5Tree).catalogVersion).toBe(CollectionCatalogVersion)
+    expect(PreviousCatalogVersion).toBe(CollectionCatalogVersion)
     expect(compatibleCatalogVersions).toEqual([
       LegacyCatalogVersion,
       LinkCatalogVersion,
       ResponsiveCatalogVersion,
       FormCatalogVersion,
+      OverlayCatalogVersion,
       PreviousCatalogVersion,
       CatalogVersion
     ])
