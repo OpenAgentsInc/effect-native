@@ -85,7 +85,7 @@ everything else waits there for a demanding screen.
 **Exit criterion:** the catalog covers the elements of a complete production
 app on both priority targets.
 
-## Phase 3 — Developer experience (in progress — issues #15–#17)
+## Phase 3 — Developer experience (in progress — issues #15–#18)
 
 The leverage that falls out of "views are data, interactions are values":
 
@@ -97,6 +97,11 @@ The leverage that falls out of "views are data, interactions are values":
   renderer (#16)
 - **Documentation**: a guide good enough for someone outside the project to
   build an app (#17)
+- **Component gallery**: every catalog component browsable in every
+  supported renderer — open it on the web, open it on a phone — with
+  stories as serializable data, prop knobs generated from the schemas, and
+  a fully static web build any team can deploy to their own
+  infrastructure (#18)
 - Authoring ergonomics (helpers, possibly typed utility aliases for styles —
   never a string contract) stay on the gap register until friction is
   demonstrated.
