@@ -8,13 +8,14 @@ app code authored against the typed Effect Native contract. React and React
 Native are optional peers supplied by the host app; they are renderer
 internals, not the public authoring model.
 
-The v0 mapping is:
+The current mapping is:
 
 | View | React Native |
 |---|---|
 | `Stack` | `View` with Yoga flexbox style |
 | `Text` | `Text` |
 | `Button` | `Pressable` with a `Text` child |
+| `Link` | accessible `Pressable` reporting `Navigate` |
 | `Image` | `Image` |
 | `TextField` | controlled `TextInput` |
 | `List` | `FlatList` |
@@ -107,3 +108,8 @@ adding `react-test-renderer` or React Native Testing Library to this
 workspace. That preserves the dependency boundary: this package declares
 `react` and `react-native` only as optional peers, and host apps provide the
 real packages.
+
+The React Native renderer does not own routing. `Link` reports the typed
+`Navigate` intent through the same reporter path as every other interaction,
+and the host app provides the `NavigationHandler` that translates the
+destination into its router.

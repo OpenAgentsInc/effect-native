@@ -2,9 +2,10 @@
 
 Core runtime package for Effect Native.
 
-This package holds the closed v0 component catalog as Effect Schema data.
-The current catalog has exactly eight components: `Stack`, `Text`, `Button`,
-`Image`, `TextField`, `List`, `Card`, and `Spacer`.
+This package holds the closed component catalog as Effect Schema data. The
+current catalog is `effect-native/v1` and has exactly nine components:
+`Stack`, `Text`, `Button`, `Image`, `TextField`, `List`, `Card`, `Spacer`,
+and `Link`.
 
 ```ts
 import { Button, Stack, Text, encodeView } from "@effect-native/core"
@@ -26,7 +27,8 @@ const data = encodeView(view)
 ```
 
 The view tree is serializable data. Interactions are represented as named
-intent references, not callbacks.
+intent references, not callbacks. `Link` uses the built-in `Navigate` intent
+with typed destinations for external URLs, app paths, and in-page anchors.
 
 The catalog is versioned. Constructors stamp the current `CatalogVersion`;
 external or persisted trees should decode through `CompatibleViewSchema` /
@@ -65,6 +67,10 @@ await Effect.runPromise(
 The registry decodes payloads against each intent schema, runs handlers on the
 Effect runtime, and records every dispatch in an event log for replay and
 DevTools.
+
+Navigation is host-owned. Apps can provide `NavigationHandler` directly or
+compose `makeNavigationIntentRegistryLayer` to install the built-in `Navigate`
+intent registry over a platform router.
 
 `ViewProgram` makes a view live. State is held in an Effect `SubscriptionRef`,
 `viewStream` emits the current resolved tree and every state change after that,
@@ -121,7 +127,7 @@ await Effect.runPromise(Effect.gen(function*() {
 }))
 ```
 
-Bindings are serializable direct state paths. The v0 binding language has no
+Bindings are serializable direct state paths. The binding language has no
 expressions: a bound `Text.content` such as `Binding(["count"])` resolves
 against the runtime state before a renderer sees the tree. The headless
 renderer records plain view-data snapshots and is intended for deterministic

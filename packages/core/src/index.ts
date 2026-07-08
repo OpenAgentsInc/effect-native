@@ -58,9 +58,13 @@ export {
 
 export const packageName = "@effect-native/core" as const
 
-export const CatalogVersion = "effect-native/v0" as const
+export const PreviousCatalogVersion = "effect-native/v0" as const
+export const CatalogVersion = "effect-native/v1" as const
 export const CatalogVersionSchema = Schema.Literal(CatalogVersion)
 export type CatalogVersion = typeof CatalogVersion
+export const compatibleCatalogVersions = [PreviousCatalogVersion, CatalogVersion] as const
+export type CompatibleCatalogVersion = (typeof compatibleCatalogVersions)[number]
+export const CompatibleCatalogVersionSchema = Schema.Literals(compatibleCatalogVersions)
 
 export const componentTags = [
   "Stack",
@@ -70,7 +74,8 @@ export const componentTags = [
   "TextField",
   "List",
   "Card",
-  "Spacer"
+  "Spacer",
+  "Link"
 ] as const
 export type ComponentTag = (typeof componentTags)[number]
 
@@ -345,6 +350,7 @@ export const StackJustifySchema = Schema.Literals([
 export const TextWeightSchema = Schema.Literals(["regular", "medium", "semibold", "bold"] as const)
 export const ButtonVariantSchema = Schema.Literals(["primary", "secondary", "ghost"] as const)
 export const ImageFitSchema = Schema.Literals(["contain", "cover", "fill"] as const)
+export const UrlTargetSchema = Schema.Literals(["self", "blank"] as const)
 
 export type StackDirection = Schema.Schema.Type<typeof StackDirectionSchema>
 export type StackAlign = Schema.Schema.Type<typeof StackAlignSchema>
@@ -352,12 +358,75 @@ export type StackJustify = Schema.Schema.Type<typeof StackJustifySchema>
 export type TextWeight = Schema.Schema.Type<typeof TextWeightSchema>
 export type ButtonVariant = Schema.Schema.Type<typeof ButtonVariantSchema>
 export type ImageFit = Schema.Schema.Type<typeof ImageFitSchema>
+export type UrlTarget = Schema.Schema.Type<typeof UrlTargetSchema>
 
 export const UriStringSchema = Schema.String.check(
   Schema.isPattern(/^[a-z][a-z0-9+.-]*:/i, {
     title: "URI"
   })
 )
+export const PathStringSchema = Schema.String.check(
+  Schema.isPattern(/^\/(?:[^?#\s]*)?(?:\?[^#\s]*)?(?:#[^\s]*)?$/, {
+    title: "AbsolutePath"
+  })
+)
+export const AnchorIdSchema = Schema.NonEmptyString.check(
+  Schema.isPattern(/^[A-Za-z][A-Za-z0-9_.:-]*$/, {
+    title: "AnchorId"
+  })
+)
+export const UrlDestinationSchema = Schema.Struct({
+  kind: Schema.Literal("url"),
+  href: UriStringSchema,
+  target: UrlTargetSchema.pipe(Schema.optionalKey)
+})
+export const PathDestinationSchema = Schema.Struct({
+  kind: Schema.Literal("path"),
+  path: PathStringSchema,
+  replace: Schema.Boolean.pipe(Schema.optionalKey)
+})
+export const AnchorDestinationSchema = Schema.Struct({
+  kind: Schema.Literal("anchor"),
+  id: AnchorIdSchema
+})
+export const NavigationDestinationSchema = Schema.Union([
+  UrlDestinationSchema,
+  PathDestinationSchema,
+  AnchorDestinationSchema
+])
+export type UrlDestination = Schema.Schema.Type<typeof UrlDestinationSchema>
+export type PathDestination = Schema.Schema.Type<typeof PathDestinationSchema>
+export type AnchorDestination = Schema.Schema.Type<typeof AnchorDestinationSchema>
+export type NavigationDestination = Schema.Schema.Type<typeof NavigationDestinationSchema>
+
+export interface NavigationHandler {
+  readonly navigate: (destination: NavigationDestination) => Effect.Effect<void, unknown>
+}
+
+export const NavigationHandler = Context.Service<NavigationHandler>("@effect-native/core/NavigationHandler")
+export const Navigate = defineIntent("Navigate", NavigationDestinationSchema)
+export const navigationIntentDefinitions = [Navigate] as const
+export const makeNavigationIntentHandlers = (
+  handler: NavigationHandler
+): IntentHandlers<typeof navigationIntentDefinitions> => ({
+  Navigate: (destination) =>
+    handler.navigate(destination)
+})
+export const makeNavigateIntent = (destination: NavigationDestination): IntentRef =>
+  IntentRef("Navigate", StaticPayload(destination))
+export const makeNavigationIntentRegistryLayer = (options?: IntentRegistryOptions) =>
+  Layer.effect(
+    IntentRegistry,
+    Effect.gen(function*() {
+      const handler = yield* NavigationHandler
+      return yield* makeIntentRegistry(
+        navigationIntentDefinitions,
+        makeNavigationIntentHandlers(handler),
+        options
+      )
+    })
+  )
+
 export const NonNegativeNumberSchema = Schema.Number.check(
   Schema.isFinite({ title: "FiniteNumber" }),
   Schema.isGreaterThanOrEqualTo(0, { title: "NonNegativeNumber" })
@@ -518,6 +587,7 @@ export const buttonStyleKeys = [
   "fontWeight",
   "textAlign"
 ] as const satisfies ReadonlyArray<StyleKey>
+export const linkStyleKeys = buttonStyleKeys
 export const imageStyleKeys = [
   "margin",
   "marginTop",
@@ -558,6 +628,7 @@ export const spacerStyleKeys = [
 export type StackStyle = StyleFor<(typeof stackStyleKeys)[number]>
 export type TextStyle = StyleFor<(typeof textStyleKeys)[number]>
 export type ButtonStyle = StyleFor<(typeof buttonStyleKeys)[number]>
+export type LinkStyle = StyleFor<(typeof linkStyleKeys)[number]>
 export type ImageStyle = StyleFor<(typeof imageStyleKeys)[number]>
 export type TextFieldStyle = StyleFor<(typeof textFieldStyleKeys)[number]>
 export type ListStyle = StyleFor<(typeof listStyleKeys)[number]>
@@ -641,6 +712,7 @@ export const StyleSchema = makeStyleSchema(styleKeys)
 export const StackStyleSchema = makeStyleSchema(stackStyleKeys)
 export const TextStyleSchema = makeStyleSchema(textStyleKeys)
 export const ButtonStyleSchema = makeStyleSchema(buttonStyleKeys)
+export const LinkStyleSchema = makeStyleSchema(linkStyleKeys)
 export const ImageStyleSchema = makeStyleSchema(imageStyleKeys)
 export const TextFieldStyleSchema = makeStyleSchema(textFieldStyleKeys)
 export const ListStyleSchema = makeStyleSchema(listStyleKeys)
@@ -772,7 +844,7 @@ export const resolveStyle = <Key extends StyleKey>(
 }
 
 export interface NodeBase {
-  readonly catalogVersion: CatalogVersion
+  readonly catalogVersion: CompatibleCatalogVersion
   readonly key?: NodeKey
 }
 
@@ -865,6 +937,14 @@ export interface SpacerFlexView extends NodeBase {
 }
 
 export type SpacerView = SpacerSizeView | SpacerFlexView
+export type LinkChildView = TextView | ImageView | SpacerView
+
+export interface LinkView extends NodeBase {
+  readonly _tag: "Link"
+  readonly destination: NavigationDestination
+  readonly style?: LinkStyle
+  readonly children: ReadonlyArray<LinkChildView>
+}
 
 export type View =
   | StackView
@@ -875,6 +955,7 @@ export type View =
   | ListView
   | CardView
   | SpacerView
+  | LinkView
 
 export type KeyedView = View & { readonly key: NodeKey }
 
@@ -890,7 +971,7 @@ const KeyedViewArraySchema = Schema.Array(ViewSelf).check(
 ) as Schema.Codec<ReadonlyArray<KeyedView>, ReadonlyArray<KeyedView>>
 
 const CommonFields = {
-  catalogVersion: CatalogVersionSchema,
+  catalogVersion: CompatibleCatalogVersionSchema,
   key: NodeKeySchema.pipe(Schema.optionalKey)
 } as const
 
@@ -996,6 +1077,21 @@ export const SpacerSchema: Schema.Codec<SpacerView, SpacerView> = Schema.Union([
   SpacerFlexSchema
 ])
 
+export const LinkChildSchema: Schema.Codec<LinkChildView, LinkChildView> = Schema.Union([
+  TextSchema,
+  ImageSchema,
+  SpacerSchema
+])
+
+export const LinkSchema: Schema.Codec<LinkView, LinkView> = Schema.TaggedStruct("Link", {
+  ...CommonFields,
+  destination: NavigationDestinationSchema,
+  style: LinkStyleSchema.pipe(Schema.optionalKey),
+  children: Schema.Array(LinkChildSchema).check(
+    Schema.isMinLength(1, { title: "NonEmptyLinkChildren" })
+  )
+})
+
 export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
   Schema.Union([
     StackSchema,
@@ -1005,13 +1101,10 @@ export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
     TextFieldSchema,
     ListSchema,
     CardSchema,
-    SpacerSchema
+    SpacerSchema,
+    LinkSchema
   ])
 )
-
-export const compatibleCatalogVersions = [CatalogVersion] as const
-export type CompatibleCatalogVersion = (typeof compatibleCatalogVersions)[number]
-export const CompatibleCatalogVersionSchema = Schema.Literals(compatibleCatalogVersions)
 
 // Compatibility policy: the current decoder accepts every catalog version in
 // compatibleCatalogVersions. Future vN+1 bumps add prior-version decoders here
@@ -1053,6 +1146,10 @@ export const Card = (props: CardProps, children: ReadonlyArray<View> = []): Card
 export type SpacerProps = WithoutTagAndVersion<SpacerView>
 export const Spacer = (props: SpacerProps): SpacerView =>
   SpacerSchema.make({ _tag: "Spacer", catalogVersion: CatalogVersion, ...props })
+
+export type LinkProps = Omit<WithoutTagAndVersion<LinkView>, "children">
+export const Link = (props: LinkProps, children: ReadonlyArray<LinkChildView>): LinkView =>
+  LinkSchema.make({ _tag: "Link", catalogVersion: CatalogVersion, ...props, children })
 
 export const decodeView = Schema.decodeUnknownSync(ViewSchema)
 export const encodeView = Schema.encodeSync(ViewSchema)
@@ -1124,6 +1221,11 @@ export const resolveBindings = <State>(view: View, state: State): View => {
       }
     case "Spacer":
       return view
+    case "Link":
+      return {
+        ...view,
+        children: view.children.map((child) => resolveBindings(child, state) as LinkChildView)
+      }
   }
 }
 

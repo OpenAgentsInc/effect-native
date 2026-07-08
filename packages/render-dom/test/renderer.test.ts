@@ -6,6 +6,8 @@ import {
   Button,
   Card,
   IntentRef,
+  Link,
+  NavigationHandler,
   Spacer,
   Stack,
   StaticPayload,
@@ -16,13 +18,16 @@ import {
   defineTheme,
   makeHeadlessRenderer,
   makeIntentRegistry,
+  makeNavigationIntentHandlers,
   makeViewProgramFromState,
+  navigationIntentDefinitions,
   resolveIntentRef,
   type IntentHandlers,
   type IntentReporter,
+  type NavigationDestination,
   type View
 } from "@effect-native/core"
-import { makeDomRenderer, viewStructure } from "../src/index"
+import { makeDomNavigationHandlerLayer, makeDomRenderer, viewStructure } from "../src/index"
 
 interface CounterState {
   readonly count: number
@@ -139,6 +144,90 @@ describe("DOM renderer", () => {
       expect(textInput.value).toBe("Ada")
       expect(container.querySelector('[data-en-key="count"]')?.textContent).toBe("1")
     })))
+  })
+
+  test("Link renders a real anchor and reports a typed navigation intent", async () => {
+    const { container, document, window } = createDom()
+    const destination = {
+      kind: "url",
+      href: "https://example.com/docs",
+      target: "blank"
+    } as const satisfies NavigationDestination
+    const view = Link({
+      key: "docs",
+      destination,
+      style: { color: "accent", padding: "1" }
+    }, [
+      Text({ key: "docs-label", content: "Docs", variant: "body" })
+    ])
+    const recorded: Array<NavigationDestination> = []
+
+    await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
+      const registry = yield* makeIntentRegistry(
+        navigationIntentDefinitions,
+        makeNavigationIntentHandlers({
+          navigate: (next) => Effect.sync(() => {
+            recorded.push(next)
+          })
+        })
+      )
+      const report: IntentReporter = (ref, runtimeValue) =>
+        registry.dispatch(resolveIntentRef(ref, runtimeValue))
+      const surface = yield* makeDomRenderer({ document }).mount(container, Stream.make(view), report)
+      const anchor = container.querySelector("a")
+      if (anchor === null) {
+        throw new Error("expected anchor")
+      }
+
+      expect(anchor.getAttribute("href")).toBe(destination.href)
+      expect(anchor.getAttribute("target")).toBe("_blank")
+      expect(anchor.getAttribute("rel")).toBe("noopener noreferrer")
+      expect(yield* surface.serialize).toEqual({
+        tag: "Link",
+        key: "docs",
+        children: [{ tag: "Text", key: "docs-label", text: "Docs" }]
+      })
+
+      const event = new window.MouseEvent("click", { bubbles: true, cancelable: true }) as unknown as MouseEvent
+      anchor.dispatchEvent(event)
+      yield* nextTask
+
+      expect(event.defaultPrevented).toBe(true)
+      expect(recorded).toEqual([destination])
+    })))
+  })
+
+  test("default DOM navigation handler applies browser navigation operations", async () => {
+    const window = new Window({ url: "https://example.com/start" })
+    const document = window.document as unknown as Document
+    const anchorTarget = document.createElement("section")
+    let scrolled = false
+
+    anchorTarget.id = "intro"
+    Object.defineProperty(anchorTarget, "scrollIntoView", {
+      configurable: true,
+      value: () => {
+        scrolled = true
+      }
+    })
+    document.body.appendChild(anchorTarget)
+
+    await Effect.runPromise(Effect.provide(
+      Effect.gen(function*() {
+        const handler = yield* NavigationHandler
+        yield* handler.navigate({ kind: "path", path: "/docs" })
+        expect(window.location.pathname).toBe("/docs")
+
+        yield* handler.navigate({ kind: "path", path: "/replace", replace: true })
+        expect(window.location.pathname).toBe("/replace")
+
+        yield* handler.navigate({ kind: "anchor", id: "intro" })
+        expect(window.location.hash).toBe("#intro")
+      }),
+      makeDomNavigationHandlerLayer({ document })
+    ))
+
+    expect(scrolled).toBe(true)
   })
 
   test("atomic CSS rules are deduped and theme swaps update custom properties", async () => {

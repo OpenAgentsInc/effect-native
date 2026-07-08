@@ -71,7 +71,7 @@ need, in the order they need it:
   and renderer conformance suite, so components enter by demand, not
   speculation (#9 complete)
 - **`Link` + a typed navigation intent** (routing expressed as data,
-  delegating to the platform's router below the adapter line) (#10)
+  delegating to the platform's router below the adapter line) (#10 complete)
 - **responsive layout** — breakpoint variants resolved end-to-end through
   runtime and both renderers (#11)
 - **forms and validation** (typed, Schema-backed) (#12)

@@ -15,6 +15,7 @@ const describeView = Match.type<View>().pipe(
   Match.tag("List", () => "collection"),
   Match.tag("Card", () => "surface"),
   Match.tag("Spacer", () => "space"),
+  Match.tag("Link", () => "navigation"),
   Match.exhaustive
 )
 
@@ -40,4 +41,3 @@ test("View supports exhaustive Match over the closed catalog", () => {
     onPress: { name: "PressedSave" }
   }))).toBe("action")
 })
-

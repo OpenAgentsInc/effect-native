@@ -3,6 +3,7 @@ import { Exit, Schema } from "effect"
 import {
   CatalogVersion,
   CompatibleViewSchema,
+  PreviousCatalogVersion,
   Text,
   compatibleCatalogVersions,
   decodeCompatibleView
@@ -17,8 +18,14 @@ describe("catalog version compatibility", () => {
       color: "textPrimary"
     })
 
+    const v0Tree = {
+      ...JSON.parse(JSON.stringify(view)),
+      catalogVersion: PreviousCatalogVersion
+    }
+
     expect(decodeCompatibleView(JSON.parse(JSON.stringify(view)))).toEqual(view)
-    expect(compatibleCatalogVersions).toEqual([CatalogVersion])
+    expect(decodeCompatibleView(v0Tree).catalogVersion).toBe(PreviousCatalogVersion)
+    expect(compatibleCatalogVersions).toEqual([PreviousCatalogVersion, CatalogVersion])
   })
 
   test("unknown component tags remain typed decode failures", () => {

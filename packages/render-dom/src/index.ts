@@ -1,4 +1,4 @@
-import { Deferred, Effect, Exit, Scope, Stream } from "effect"
+import { Deferred, Effect, Exit, Layer, Scope, Stream } from "effect"
 import {
   type ButtonView,
   type CardView,
@@ -10,8 +10,11 @@ import {
   type IntentRef,
   type IntentReporter,
   type JsonPayload,
+  type LinkView,
   type ListView,
   type MountedSurface,
+  NavigationHandler,
+  type NavigationDestination,
   type RendererAdapter,
   type SpacerView,
   type StackView,
@@ -19,6 +22,7 @@ import {
   type TextView,
   type View,
   defaultTheme,
+  makeNavigateIntent,
   resolveStyle
 } from "@effect-native/core"
 import {
@@ -50,6 +54,53 @@ export interface DomStructure {
   readonly text?: string
   readonly children?: ReadonlyArray<DomStructure>
 }
+
+export interface DomNavigationHandlerOptions {
+  readonly document?: Document
+}
+
+const navigationDocument = (options: DomNavigationHandlerOptions = {}): Document =>
+  options.document ?? globalThis.document
+
+export const makeDomNavigationHandler = (
+  options: DomNavigationHandlerOptions = {}
+): NavigationHandler => ({
+  navigate: (destination: NavigationDestination) =>
+    Effect.sync(() => {
+      const document = navigationDocument(options)
+      const window = document.defaultView ?? globalThis.window
+      switch (destination.kind) {
+        case "url": {
+          if (destination.target === "blank") {
+            window.open(destination.href, "_blank", "noopener,noreferrer")
+          } else {
+            window.location.assign(destination.href)
+          }
+          return
+        }
+        case "path": {
+          if (destination.replace === true) {
+            window.history.replaceState(null, "", destination.path)
+          } else {
+            window.history.pushState(null, "", destination.path)
+          }
+          return
+        }
+        case "anchor": {
+          window.location.hash = destination.id
+          const target = document.getElementById(destination.id)
+          if (target !== null && typeof target.scrollIntoView === "function") {
+            target.scrollIntoView()
+          }
+          return
+        }
+      }
+    })
+})
+
+export const makeDomNavigationHandlerLayer = (
+  options: DomNavigationHandlerOptions = {}
+) => Layer.succeed(NavigationHandler, makeDomNavigationHandler(options))
 
 type EventCleanup = () => void
 
@@ -371,6 +422,37 @@ const renderButton = (view: ButtonView, state: DomRendererState, report: IntentR
   return element
 }
 
+const destinationHref = (destination: NavigationDestination): string => {
+  switch (destination.kind) {
+    case "url":
+      return destination.href
+    case "path":
+      return destination.path
+    case "anchor":
+      return `#${destination.id}`
+  }
+}
+
+const renderLink = (view: LinkView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const element = state.keyedElement(view, "a") as HTMLAnchorElement
+  state.resetListeners(element)
+  element.href = destinationHref(view.destination)
+  if (view.destination.kind === "url" && view.destination.target === "blank") {
+    element.target = "_blank"
+    element.rel = "noopener noreferrer"
+  } else {
+    element.removeAttribute("target")
+    element.removeAttribute("rel")
+  }
+  state.addListener(element, "click", (event) => {
+    event.preventDefault()
+    runReportedIntent(report, makeNavigateIntent(view.destination))
+  })
+  applyBaseStyle(element, view, state)
+  renderChildren(element, view.children, state, report)
+  return element
+}
+
 const renderImage = (view: ImageView, state: DomRendererState): HTMLElement => {
   const element = state.keyedElement(view, "img") as HTMLImageElement
   state.resetListeners(element)
@@ -485,6 +567,8 @@ const renderView = (view: View, state: DomRendererState, report: IntentReporter)
       return renderText(view, state)
     case "Button":
       return renderButton(view, state, report)
+    case "Link":
+      return renderLink(view, state, report)
     case "Image":
       return renderImage(view, state)
     case "TextField":
@@ -562,6 +646,12 @@ export const viewStructure = (view: View): DomStructure => {
         tag: "Button",
         ...(view.key === undefined ? {} : { key: view.key }),
         text: view.label
+      }
+    case "Link":
+      return {
+        tag: "Link",
+        ...(view.key === undefined ? {} : { key: view.key }),
+        children: view.children.map(viewStructure)
       }
     case "List":
       return {

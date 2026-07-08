@@ -7,6 +7,7 @@ import {
   ComponentValueBinding,
   Image,
   IntentRef,
+  Link,
   List,
   Spacer,
   Stack,
@@ -16,10 +17,13 @@ import {
   defineIntent,
   makeHeadlessRenderer,
   makeIntentRegistry,
+  makeNavigationIntentHandlers,
   makeViewProgramFromState,
+  navigationIntentDefinitions,
   resolveIntentRef,
   type IntentHandlers,
   type IntentReporter,
+  type NavigationDestination,
   type View
 } from "@effect-native/core"
 import {
@@ -224,6 +228,54 @@ describe("React Native renderer", () => {
     })))
   })
 
+  test("Link renders as an accessible Pressable and reports typed navigation intents", async () => {
+    const destination = {
+      kind: "path",
+      path: "/docs"
+    } as const satisfies NavigationDestination
+    const view = Link({
+      key: "docs",
+      destination,
+      style: { marginTop: "2", opacity: 0.9 }
+    }, [
+      Text({ key: "docs-label", content: "Docs", variant: "body" })
+    ])
+    const recorded: Array<NavigationDestination> = []
+
+    await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
+      const registry = yield* makeIntentRegistry(
+        navigationIntentDefinitions,
+        makeNavigationIntentHandlers({
+          navigate: (next) => Effect.sync(() => {
+            recorded.push(next)
+          })
+        })
+      )
+      const report: IntentReporter = (ref, runtimeValue) =>
+        registry.dispatch(resolveIntentRef(ref, runtimeValue))
+      const surface = yield* makeReactNativeRenderer({ dependencies }).mount(undefined, Stream.make(view), report)
+      const current = yield* surface.currentElement
+      const link = findByNativeId(current, nativeId("Link", "docs"))
+
+      expect(link?.type).toBe(host.Pressable)
+      expect(link?.props.accessibilityRole).toBe("link")
+      expect(reactNativeStructure(current)).toEqual({
+        tag: "Link",
+        key: "docs",
+        children: [{ tag: "Text", key: "docs-label", text: "Docs" }]
+      })
+
+      const onPress = link?.props.onPress
+      if (typeof onPress !== "function") {
+        throw new Error("expected Link Pressable onPress")
+      }
+      onPress()
+      yield* nextTask
+
+      expect(recorded).toEqual([destination])
+    })))
+  })
+
   test("typed styles lower to RN style objects across all catalog components", () => {
     expect(lowerStyle({
       padding: "4",
@@ -248,6 +300,9 @@ describe("React Native renderer", () => {
       Text({ key: "text", content: "Text", variant: "body", style: sharedStyle }),
       Button({ key: "button", label: "Button", variant: "primary", onPress: IntentRef("Pressed"), style: sharedStyle }),
       Image({ key: "image", source: "https://example.com/image.png", alt: "Example", style: sharedStyle }),
+      Link({ key: "link", destination: { kind: "path", path: "/docs" }, style: sharedStyle }, [
+        Text({ key: "link-label", content: "Link", variant: "body" })
+      ]),
       TextField({ key: "field", value: "", style: sharedStyle }),
       List({ key: "list", style: sharedStyle }, [
         keyed(Text({ key: "item", content: "Item", variant: "body" }))

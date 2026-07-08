@@ -10,6 +10,7 @@ import {
   type IntentRef,
   type IntentReporter,
   type JsonPayload,
+  type LinkView,
   type ListView,
   type MountedSurface,
   type PlatformVariant,
@@ -20,6 +21,7 @@ import {
   type TextView,
   type View,
   defaultTheme,
+  makeNavigateIntent,
   resolveStyle
 } from "@effect-native/core"
 import {
@@ -365,6 +367,24 @@ const renderButton = (
   )
 }
 
+const renderLink = (
+  view: LinkView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.Pressable,
+    {
+      ...baseProps(view, viewStyle(view, options)),
+      accessibilityRole: "link",
+      onPress: () => runReportedIntent(report, makeNavigateIntent(view.destination))
+    },
+    ...view.children.map((child) => renderReactNativeView(child, dependencies, report, options))
+  )
+}
+
 const renderImage = (
   view: ImageView,
   dependencies: ReactNativeDependencies,
@@ -501,6 +521,8 @@ export const renderReactNativeView = (
       return renderText(view, dependencies, options)
     case "Button":
       return renderButton(view, dependencies, report, options)
+    case "Link":
+      return renderLink(view, dependencies, report, options)
     case "Image":
       return renderImage(view, dependencies, options)
     case "TextField":
@@ -586,6 +608,12 @@ export const viewStructure = (view: View): ReactNativeStructure => {
         tag: "Button",
         ...(view.key === undefined ? {} : { key: view.key }),
         text: view.label
+      }
+    case "Link":
+      return {
+        tag: "Link",
+        ...(view.key === undefined ? {} : { key: view.key }),
+        children: view.children.map(viewStructure)
       }
     case "List":
       return {

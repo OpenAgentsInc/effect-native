@@ -8,6 +8,7 @@ import {
   ComponentValueBinding,
   Image,
   IntentRef,
+  Link,
   List,
   Spacer,
   Stack,
@@ -92,6 +93,13 @@ const catalogFixturesByTag = {
     onPress: IntentRef("Pressed", StaticPayload({ amount: 1 })),
     style: { backgroundColor: "accent", padding: "2", borderRadius: "md" }
   }),
+  Link: Link({
+    key: "link",
+    destination: { kind: "path", path: "/docs" },
+    style: { color: "accent", padding: "1" }
+  }, [
+    Text({ key: "link-label", content: "Docs", variant: "body" })
+  ]),
   Image: heroImage,
   TextField: TextField({
     key: "field",
@@ -126,6 +134,7 @@ const fixtureView = (state: FixtureState): View =>
       ...catalogFixturesByTag.Button,
       label: `Pressed ${state.buttonCount}`
     }),
+    catalogFixturesByTag.Link,
     catalogFixturesByTag.Image,
     TextField({
       ...catalogFixturesByTag.TextField,
@@ -143,6 +152,7 @@ const expectedInitialStructure: Structure = {
     { tag: "Stack", key: "stack", children: [{ tag: "Text", key: "stack-child", text: "Stack child" }] },
     { tag: "Text", key: "text", text: "Catalog conformance" },
     { tag: "Button", key: "button", text: "Pressed 0" },
+    { tag: "Link", key: "link", children: [{ tag: "Text", key: "link-label", text: "Docs" }] },
     { tag: "Image", key: "image" },
     { tag: "TextField", key: "field" },
     { tag: "List", key: "list", children: [{ tag: "Text", key: "list-item", text: "List item" }] },
@@ -151,7 +161,7 @@ const expectedInitialStructure: Structure = {
   ]
 }
 
-const v0RendererTags = [
+const catalogRendererTags = [
   "Stack",
   "Text",
   "Button",
@@ -159,13 +169,14 @@ const v0RendererTags = [
   "TextField",
   "List",
   "Card",
-  "Spacer"
+  "Spacer",
+  "Link"
 ] as const
 
 const rendererSupport = {
-  headless: new Set<string>(v0RendererTags),
-  dom: new Set<string>(v0RendererTags),
-  reactNative: new Set<string>(v0RendererTags)
+  headless: new Set<string>(catalogRendererTags),
+  dom: new Set<string>(catalogRendererTags),
+  reactNative: new Set<string>(catalogRendererTags)
 } as const
 
 const missingRendererSupport = (
@@ -266,7 +277,7 @@ describe("renderer conformance suite", () => {
     expect(allFixtureTags).toEqual([...componentTags].sort())
   })
 
-  test("a fixture-only ninth tag is detected as missing renderer support", () => {
+  test("a fixture-only next tag is detected as missing renderer support", () => {
     expect(missingRendererSupport([...componentTags, "FixtureOnly"], rendererSupport.dom)).toEqual(["FixtureOnly"])
   })
 
@@ -315,7 +326,7 @@ describe("renderer conformance suite", () => {
     expect(result.finalized).toBe(true)
   })
 
-  test("DOM renderer mounts every v0 component, wires events, lowers styles, and unmounts", async () => {
+  test("DOM renderer mounts every catalog component, wires events, lowers styles, and unmounts", async () => {
     expect(missingRendererSupport(componentTags, rendererSupport.dom)).toEqual([])
 
     const window = new Window()
@@ -372,7 +383,7 @@ describe("renderer conformance suite", () => {
     expect(result.stylesheetGone).toBe(true)
   })
 
-  test("React Native renderer mounts every v0 component, wires events, lowers styles, and unmounts", async () => {
+  test("React Native renderer mounts every catalog component, wires events, lowers styles, and unmounts", async () => {
     expect(missingRendererSupport(componentTags, rendererSupport.reactNative)).toEqual([])
 
     const renders: Array<ReactNodeLike | undefined> = []

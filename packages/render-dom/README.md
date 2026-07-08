@@ -6,13 +6,14 @@ This package lowers Effect Native view streams to direct DOM output. It is
 intentionally React-free: app code emits the shared typed view catalog, and
 this renderer maps that data to browser elements.
 
-The v0 element mapping is deliberately small and semantic:
+The current element mapping is deliberately small and semantic:
 
 | View | DOM |
 |---|---|
 | `Stack` | `div` with flex layout |
 | `Text` | `span`, or `p` for title/heading variants |
 | `Button` | real `button` |
+| `Link` | real `a` with `href` |
 | `Image` | `img` with required `alt` |
 | `TextField` | `label` with `input` or `textarea` |
 | `List` | `ul` / `li` |
@@ -83,3 +84,9 @@ event listeners, and the managed stylesheet. DOM events only report
 `IntentRef` plus the current component value; application behavior still lives
 in Effect intent handlers. If a reporter depends on services, provide those
 services before passing the reporter into the DOM renderer.
+
+`Link` renders a plain anchor so no-JavaScript navigation remains inspectable
+and accessible. Clicks also report the typed `Navigate` intent. Hosts may wire
+that intent to their router, or use `makeDomNavigationHandlerLayer()` for the
+default browser behavior: external URLs, history push/replace for paths, and
+hash navigation for anchors.

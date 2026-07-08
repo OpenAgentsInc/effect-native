@@ -7,6 +7,7 @@ import {
   CatalogVersion,
   ComponentValueBinding,
   Image,
+  Link,
   List,
   Spacer,
   Stack,
@@ -125,7 +126,24 @@ const leafView = (): fc.Arbitrary<View> =>
         key,
         flex: fc.constant(true)
       }).map(Spacer)
-    )
+    ),
+    fc.record({
+      key,
+      destinationId: fc.integer({ min: 1, max: 100000 }),
+      label: fc.string({ minLength: 1, maxLength: 40 })
+    }).map(({ destinationId, label, ...props }) => Link({
+      ...props,
+      destination: {
+        kind: "url",
+        href: `https://example.com/${destinationId}`
+      }
+    }, [
+      Text({
+        key: `${props.key}-label`,
+        content: label,
+        variant: "body"
+      })
+    ]))
   )
 
 const view = (depth: number): fc.Arbitrary<View> => {
@@ -157,8 +175,8 @@ const view = (depth: number): fc.Arbitrary<View> => {
   )
 }
 
-describe("Effect Native catalog v0", () => {
-  test("contains exactly the eight v0 component tags", () => {
+describe("Effect Native catalog", () => {
+  test("contains exactly the nine current component tags", () => {
     expect(componentTags).toEqual([
       "Stack",
       "Text",
@@ -167,9 +185,10 @@ describe("Effect Native catalog v0", () => {
       "TextField",
       "List",
       "Card",
-      "Spacer"
+      "Spacer",
+      "Link"
     ])
-    expect(new Set(componentTags).size).toBe(8)
+    expect(new Set(componentTags).size).toBe(9)
   })
 
   test("schema encode/decode round-trips constructed views as JSON data", () => {
