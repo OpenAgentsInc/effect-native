@@ -12,6 +12,7 @@
         "@effect-native/render-canvas": "workspace:*",
         "@effect-native/render-dom": "workspace:*",
         "@effect-native/render-rn": "workspace:*",
+        "@effect-native/testkit": "workspace:*",
         "@effect-native/tokens": "workspace:*",
         "effect": "4.0.0-beta.94",
       },
@@ -89,6 +90,15 @@
         "react-native",
       ],
     },
+    "packages/testkit": {
+      "name": "@effect-native/testkit",
+      "version": "0.0.0",
+      "dependencies": {
+        "@effect-native/core": "workspace:*",
+        "@effect-native/tokens": "workspace:*",
+        "effect": "4.0.0-beta.94",
+      },
+    },
     "packages/tokens": {
       "name": "@effect-native/tokens",
       "version": "0.0.0",
@@ -111,6 +121,8 @@
     "@effect-native/render-dom": ["@effect-native/render-dom@workspace:packages/render-dom"],
 
     "@effect-native/render-rn": ["@effect-native/render-rn@workspace:packages/render-rn"],
+
+    "@effect-native/testkit": ["@effect-native/testkit@workspace:packages/testkit"],
 
     "@effect-native/tokens": ["@effect-native/tokens@workspace:packages/tokens"],
 
