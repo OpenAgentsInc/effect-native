@@ -404,3 +404,15 @@ export const make = <State, const Definitions extends ReadonlyArray<IntentDefini
   })
 
 export const TestApp = { make } as const
+
+// ---------------------------------------------------------------------------
+// Snapshot format (stable, versioned, human-readable) -- see ./snapshot
+// ---------------------------------------------------------------------------
+
+export {
+  makeSnapshot,
+  stableStringify,
+  stringifySnapshot,
+  SnapshotFormatVersion,
+  type Snapshot
+} from "./snapshot"
