@@ -26,6 +26,7 @@
     "@effect-native/devtools": "workspace:*",
     "@effect-native/gallery": "workspace:*",
     "@effect-native/platform-desktop": "workspace:*",
+    "@effect-native/render-canvas": "workspace:*",
     "@effect-native/render-dom": "workspace:*",
     "@effect-native/render-rn": "workspace:*",
     "@effect-native/tokens": "workspace:*",

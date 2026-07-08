@@ -9,6 +9,7 @@
         "@effect-native/devtools": "workspace:*",
         "@effect-native/gallery": "workspace:*",
         "@effect-native/platform-desktop": "workspace:*",
+        "@effect-native/render-canvas": "workspace:*",
         "@effect-native/render-dom": "workspace:*",
         "@effect-native/render-rn": "workspace:*",
         "@effect-native/tokens": "workspace:*",
@@ -56,6 +57,14 @@
         "effect": "4.0.0-beta.94",
       },
     },
+    "packages/render-canvas": {
+      "name": "@effect-native/render-canvas",
+      "version": "0.0.0",
+      "dependencies": {
+        "@effect-native/core": "workspace:*",
+        "effect": "4.0.0-beta.94",
+      },
+    },
     "packages/render-dom": {
       "name": "@effect-native/render-dom",
       "version": "0.0.0",
@@ -96,6 +105,8 @@
     "@effect-native/gallery": ["@effect-native/gallery@workspace:packages/gallery"],
 
     "@effect-native/platform-desktop": ["@effect-native/platform-desktop@workspace:packages/platform-desktop"],
+
+    "@effect-native/render-canvas": ["@effect-native/render-canvas@workspace:packages/render-canvas"],
 
     "@effect-native/render-dom": ["@effect-native/render-dom@workspace:packages/render-dom"],
 

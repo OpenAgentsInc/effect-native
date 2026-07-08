@@ -1,0 +1,118 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`headless canvas backend renders a typed graph scene and records the reconciled tree (snapshot) 1`] = `
+{
+  "background": "#0a0e14",
+  "camera": {
+    "_tag": "Perspective",
+    "far": 100,
+    "fov": 60,
+    "near": 0.1,
+    "position": [
+      0,
+      0,
+      8,
+    ],
+    "target": [
+      0,
+      0,
+      0,
+    ],
+  },
+  "disposed": false,
+  "frames": 1,
+  "nodes": [
+    {
+      "children": [
+        {
+          "children": [],
+          "id": "n1",
+          "node": {
+            "_tag": "Mesh",
+            "geometry": {
+              "_tag": "Sphere",
+              "radius": 1,
+            },
+            "key": "n1",
+            "material": {
+              "_tag": "Basic",
+              "color": "#4cc2ff",
+            },
+            "position": [
+              -2,
+              0,
+              0,
+            ],
+          },
+        },
+        {
+          "children": [],
+          "id": "n2",
+          "node": {
+            "_tag": "Mesh",
+            "geometry": {
+              "_tag": "Box",
+              "depth": 1,
+              "height": 1,
+              "width": 1,
+            },
+            "key": "n2",
+            "material": {
+              "_tag": "Basic",
+              "color": "#4cc2ff",
+            },
+            "position": [
+              2,
+              0,
+              0,
+            ],
+          },
+        },
+      ],
+      "id": "nodes",
+      "node": {
+        "_tag": "Group",
+        "key": "nodes",
+      },
+    },
+    {
+      "children": [],
+      "id": "e1",
+      "node": {
+        "_tag": "Line",
+        "color": "#89b4fa",
+        "key": "e1",
+        "points": [
+          [
+            -2,
+            0,
+            0,
+          ],
+          [
+            2,
+            0,
+            0,
+          ],
+        ],
+        "width": 2,
+      },
+    },
+    {
+      "children": [],
+      "id": "l1",
+      "node": {
+        "_tag": "Label",
+        "color": "#ffffff",
+        "fontSize": 12,
+        "key": "l1",
+        "position": [
+          0,
+          0.5,
+          0,
+        ],
+        "text": "edge",
+      },
+    },
+  ],
+}
+`;
