@@ -1,0 +1,21 @@
+{
+  "name": "effect-native-proof-mobile",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "App.tsx",
+  "scripts": {
+    "start": "expo start",
+    "ios": "expo start --ios",
+    "android": "expo start --android"
+  },
+  "dependencies": {
+    "expo": "latest",
+    "react": "latest",
+    "react-native": "latest"
+  },
+  "devDependencies": {
+    "@types/react": "latest",
+    "typescript": "5.8.3"
+  }
+}

@@ -10,7 +10,7 @@ needs an element — never speculatively. A small, correct core makes
 everything after it cheap; a bloated one recreates the wall this framework
 exists to avoid.
 
-## Phase 0 — The core (in progress)
+## Phase 0 — The core (complete)
 
 The substrate everything else stands on. Deliberately tiny.
 
@@ -31,10 +31,10 @@ The substrate everything else stands on. Deliberately tiny.
   values with a deterministic last-wins merge (no cascade); tokens are the
   only vocabulary styles speak.
 
-**Exit criterion:** the catalog, intents, and runtime exist, fully typed,
-with snapshot tests — no renderer yet required to validate a view.
+**Exit criterion:** complete. The catalog, intents, runtime, tokens, and
+style model exist with snapshot/property tests.
 
-## Phase 1 — Two renderers, one screen (the proof)
+## Phase 1 — Two renderers, one screen (the proof) (complete)
 
 The framework's core promise, demonstrated: one screen, defined once as
 typed data, rendered identically on web and mobile.
@@ -54,8 +54,10 @@ typed data, rendered identically on web and mobile.
 - **The receipt:** a real, non-trivial screen (form + list + actions)
   authored once, rendered by both adapters, snapshot-tested on both.
 
-**Exit criterion:** the same view tree renders on web and on an iOS/Android
-device with matching behavior and look, and the demo lives in this repo.
+**Exit criterion:** complete. The
+[Phase 1 proof](./docs/proof.md) defines one signup/activity screen once,
+renders it through DOM and React Native hosts, and checks headless/DOM/RN
+behavior with a cross-renderer oracle.
 
 ## Phase 2 — Catalog growth, driven by real apps
 

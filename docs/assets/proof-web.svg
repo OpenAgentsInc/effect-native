@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="780" viewBox="0 0 1120 780" role="img" aria-label="Effect Native proof screen rendered on web">
+  <rect width="1120" height="780" fill="#e2e8f0"/>
+  <rect x="160" y="44" width="800" height="692" rx="10" fill="#ffffff"/>
+  <rect x="160" y="44" width="800" height="42" rx="10" fill="#f8fafc"/>
+  <circle cx="188" cy="65" r="6" fill="#dc2626"/>
+  <circle cx="210" cy="65" r="6" fill="#f59e0b"/>
+  <circle cx="232" cy="65" r="6" fill="#16a34a"/>
+  <rect x="194" y="116" width="732" height="170" rx="10" fill="#2563eb"/>
+  <circle cx="822" cy="164" r="58" fill="#93c5fd" opacity=".55"/>
+  <path d="M194 248 C350 184 482 294 640 232 S812 194 926 226 V286 H194 Z" fill="#f8fafc"/>
+  <text x="232" y="174" font-family="Arial, sans-serif" font-size="42" font-weight="700" fill="#ffffff">Effect Native</text>
+  <text x="234" y="218" font-family="Arial, sans-serif" font-size="21" fill="#ffffff">One typed screen, two renderers</text>
+  <rect x="194" y="312" width="732" height="222" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="226" y="358" font-family="Arial, sans-serif" font-size="28" font-weight="700" fill="#0f172a">Signup + activity</text>
+  <text x="226" y="392" font-family="Arial, sans-serif" font-size="17" fill="#2563eb">Added Ada Lovelace via button.</text>
+  <rect x="226" y="414" width="316" height="50" rx="6" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="244" y="445" font-family="Arial, sans-serif" font-size="16" fill="#0f172a">Ada Lovelace</text>
+  <rect x="562" y="414" width="332" height="50" rx="6" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="580" y="445" font-family="Arial, sans-serif" font-size="16" fill="#0f172a">ada@example.com</text>
+  <rect x="226" y="486" width="136" height="40" rx="6" fill="#2563eb"/>
+  <text x="252" y="512" font-family="Arial, sans-serif" font-size="15" font-weight="700" fill="#ffffff">Submit #3</text>
+  <text x="802" y="512" font-family="Arial, sans-serif" font-size="15" fill="#64748b">2 entries</text>
+  <rect x="194" y="558" width="732" height="150" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="226" y="604" font-family="Arial, sans-serif" font-size="24" font-weight="700" fill="#0f172a">Activity</text>
+  <rect x="226" y="626" width="668" height="56" rx="6" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="246" y="650" font-family="Arial, sans-serif" font-size="15" font-weight="700" fill="#0f172a">Ada Lovelace</text>
+  <text x="246" y="671" font-family="Arial, sans-serif" font-size="13" fill="#64748b">ada@example.com - button</text>
+</svg>

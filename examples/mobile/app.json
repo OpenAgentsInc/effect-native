@@ -1,0 +1,11 @@
+{
+  "expo": {
+    "name": "Effect Native Proof",
+    "slug": "effect-native-proof",
+    "scheme": "effectnativeproof",
+    "version": "0.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true
+  }
+}

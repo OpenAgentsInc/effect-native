@@ -14,9 +14,13 @@
   "scripts": {
     "typecheck": "tsc -b",
     "test": "bun test ./packages/*/test ./scripts",
-    "check": "bun run typecheck && bun run test"
+    "check": "bun run typecheck && bun run test",
+    "example:web": "bun build ./examples/web/main.ts --outfile ./examples/web/public/app.js --format esm && bun ./examples/web/server.ts"
   },
   "dependencies": {
+    "@effect-native/core": "workspace:*",
+    "@effect-native/render-dom": "workspace:*",
+    "@effect-native/render-rn": "workspace:*",
     "effect": "4.0.0-beta.94"
   },
   "devDependencies": {

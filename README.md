@@ -133,10 +133,13 @@ service layers, and the renderers that paint the view.
 ## Status
 
 **Early — pre-alpha, under active development.** The architecture is
-settled; the code is being built in the open, starting deliberately small:
-a handful of components, the Effect runtime, and two renderers (DOM and
-React Native) proving the core promise — one screen, defined once as typed
-data, rendered identically on both.
+settled; the code is being built in the open. Phase 0 and Phase 1 are now
+complete: the closed catalog, runtime, tokens, DOM renderer, React Native
+renderer, and the [Phase 1 proof](./docs/proof.md) are in this repo.
+
+The proof is the core receipt: one signup/activity screen, defined once as
+typed data, rendered through web and mobile hosts, with a cross-renderer
+oracle checking state, intent logs, and structural snapshots.
 
 See the **[roadmap](./ROADMAP.md)** for what we're building and in what
 order — web and mobile are the priority targets.

@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "paths": {
+      "@effect-native/core": ["../../packages/core/src/index.ts"],
+      "@effect-native/render-rn": ["../../packages/render-rn/src/index.ts"],
+      "@effect-native/tokens": ["../../packages/tokens/src/index.ts"]
+    }
+  },
+  "include": ["App.tsx"]
+}
