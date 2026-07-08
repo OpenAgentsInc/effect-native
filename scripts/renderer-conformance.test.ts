@@ -6,6 +6,8 @@ import {
   Button,
   Card,
   ComponentValueBinding,
+  FieldBinding,
+  FormFieldValueBinding,
   Image,
   IntentRef,
   Link,
@@ -16,11 +18,21 @@ import {
   Text,
   TextField,
   componentTags,
+  blurFormField,
+  defineFormSpec,
   defineIntent,
+  formFieldError,
+  formFieldFocused,
+  formFieldValue,
+  formIntentDefinitions,
   makeHeadlessRenderer,
+  makeFormState,
   makeIntentRegistry,
   makeViewProgramFromState,
   resolveIntentRef,
+  setFormFieldValue,
+  submitForm,
+  type FormState,
   type IntentReporter,
   type KeyedView,
   type View
@@ -457,6 +469,137 @@ describe("renderer conformance suite", () => {
     expect(result.events).toEqual(["success", "success", "success"])
     expect(result.cardStyle).toMatchObject({ backgroundColor: "#f8fafc", borderColor: "#cbd5e1" })
     expect(result.lastRender).toBeUndefined()
+  })
+
+  test("form field bindings validate consistently across every renderer", async () => {
+    const field = FieldBinding("signup", "email")
+    const spec = defineFormSpec({
+      id: "signup",
+      fields: [
+        {
+          name: "email",
+          schema: Schema.String.check(Schema.isPattern(/^[^@\s]+@[^@\s]+\.[^@\s]+$/, { title: "Email" })),
+          initialValue: "",
+          validateOn: "blur",
+          invalidMessage: "Enter a valid email."
+        }
+      ]
+    } as const)
+    const formView = (form: FormState): View =>
+      Stack({ key: "form", direction: "column", gap: "2" }, [
+        TextField({
+          key: "email",
+          value: formFieldValue(form, "email"),
+          field,
+          focused: formFieldFocused(form, "email"),
+          onSubmit: IntentRef("FormSubmitRequested", StaticPayload({ form: "signup", via: "keyboard" }))
+        }),
+        Text({
+          key: "email-error",
+          content: formFieldError(form, "email"),
+          variant: "caption",
+          color: "danger"
+        }),
+        Button({
+          key: "submit",
+          label: "Submit",
+          variant: "primary",
+          onPress: IntentRef("FormSubmitRequested", StaticPayload({ form: "signup", via: "button" }))
+        })
+      ])
+    const createFormRuntime = Effect.gen(function*() {
+      const state = yield* SubscriptionRef.make(makeFormState(spec))
+      const program = makeViewProgramFromState(state, formView)
+      const registry = yield* makeIntentRegistry(formIntentDefinitions, {
+        FormFieldChanged: (payload) =>
+          SubscriptionRef.update(state, (current) => setFormFieldValue(spec, current, payload.field, payload.value)),
+        FormFieldBlurred: (payload) =>
+          SubscriptionRef.update(state, (current) => blurFormField(spec, current, payload.field)),
+        FormSubmitRequested: () =>
+          SubscriptionRef.update(state, (current) => submitForm(spec, current).state)
+      }, { now: () => 0 })
+      const report: IntentReporter = (ref, runtimeValue) =>
+        registry.dispatch(resolveIntentRef(ref, runtimeValue))
+      return { state, program, registry, report }
+    })
+    const names = (events: ReadonlyArray<{ readonly intent: { readonly name: string } }>) =>
+      events.map((event) => event.intent.name)
+
+    const headless = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
+      const runtime = yield* createFormRuntime
+      const surface = yield* makeHeadlessRenderer().mount(undefined, runtime.program.viewStream, runtime.report)
+      yield* surface.simulate(IntentRef("FormFieldChanged", FormFieldValueBinding(field)), "bad")
+      yield* surface.simulate(IntentRef("FormFieldBlurred", StaticPayload(field)))
+      yield* surface.simulate(IntentRef("FormSubmitRequested", StaticPayload({ form: "signup", via: "button" })))
+      return {
+        state: yield* runtime.program.currentState,
+        events: yield* runtime.registry.events,
+        snapshot: yield* surface.current
+      }
+    })))
+
+    const window = new Window()
+    const document = window.document as unknown as Document
+    const container = document.createElement("main")
+    document.body.appendChild(container)
+    const dom = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
+      const runtime = yield* createFormRuntime
+      const surface = yield* makeDomRenderer({ document }).mount(container, runtime.program.viewStream, runtime.report)
+      const input = container.querySelector('[data-en-key="email"] [data-en-role="control"]') as HTMLInputElement | null
+      const button = container.querySelector('[data-en-key="submit"]')
+      if (input === null || button === null) {
+        throw new Error("expected DOM form controls")
+      }
+      input.value = "bad"
+      input.dispatchEvent(new window.Event("input", { bubbles: true }) as unknown as Event)
+      input.dispatchEvent(new window.Event("blur") as unknown as Event)
+      button.dispatchEvent(new window.MouseEvent("click", { bubbles: true }) as unknown as Event)
+      yield* nextTask
+      yield* Effect.yieldNow
+      return {
+        state: yield* runtime.program.currentState,
+        events: yield* runtime.registry.events,
+        structure: yield* surface.serialize
+      }
+    })))
+
+    const rn = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
+      const runtime = yield* createFormRuntime
+      const surface = yield* makeReactNativeRenderer({ dependencies: rnDependencies }).mount(
+        undefined,
+        runtime.program.viewStream,
+        runtime.report
+      )
+      const input = findNativeNode(yield* surface.currentElement, "TextField", "email")
+      const button = findNativeNode(yield* surface.currentElement, "Button", "submit")
+      const onChangeText = input?.props.onChangeText
+      const onBlur = input?.props.onBlur
+      const onPress = button?.props.onPress
+      if (typeof onChangeText !== "function" || typeof onBlur !== "function" || typeof onPress !== "function") {
+        throw new Error("expected RN form controls")
+      }
+      onChangeText("bad")
+      onBlur()
+      onPress()
+      yield* nextTask
+      yield* Effect.yieldNow
+      return {
+        state: yield* runtime.program.currentState,
+        events: yield* runtime.registry.events,
+        structure: yield* surface.serialize
+      }
+    })))
+
+    expect(formFieldError(headless.state, "email")).toBe("Enter a valid email.")
+    expect(headless.state.focusedField).toBe("email")
+    expect(JSON.stringify(dom.structure)).toContain("Enter a valid email.")
+    expect(JSON.stringify(rn.structure)).toContain("Enter a valid email.")
+    expect(names(headless.events)).toEqual(["FormFieldChanged", "FormFieldBlurred", "FormSubmitRequested"])
+    expect(names(dom.events)).toEqual(names(headless.events))
+    expect(names(rn.events)).toEqual(names(headless.events))
+    expect(dom.state).toEqual(headless.state)
+    expect(rn.state).toEqual(headless.state)
+    expect(headless.snapshot?._tag).toBe("Stack")
   })
 
   test("all renderers re-resolve responsive viewport changes", async () => {

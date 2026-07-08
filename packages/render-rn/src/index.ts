@@ -5,9 +5,10 @@ import {
   type ColorToken,
   type Dimension,
   type FlatStyle,
+  FormFieldValueBinding,
   type ImageView,
   type IntentError,
-  type IntentRef,
+  IntentRef,
   type IntentReporter,
   type JsonPayload,
   type LinkView,
@@ -22,6 +23,7 @@ import {
   type View,
   type Viewport,
   type ViewportInput,
+  StaticPayload,
   defaultViewportInput,
   defaultTheme,
   makeViewport,
@@ -464,16 +466,25 @@ const renderTextField = (
   report: IntentReporter,
   options: ReactNativeRenderOptions
 ): ReactElementLike => {
+  const onChange = view.field === undefined
+    ? view.onChange
+    : IntentRef("FormFieldChanged", FormFieldValueBinding(view.field))
   return createElement(
     dependencies,
     dependencies.ReactNative.TextInput,
     {
       ...baseProps(view, viewStyle(view, options)),
       accessibilityLabel: view.label,
+      autoFocus: view.focused === true,
       multiline: view.multiline === true,
       onChangeText: (value: string) => {
-        if (view.onChange !== undefined) {
-          runReportedIntent(report, view.onChange, value)
+        if (onChange !== undefined) {
+          runReportedIntent(report, onChange, value)
+        }
+      },
+      onBlur: () => {
+        if (view.field !== undefined) {
+          runReportedIntent(report, IntentRef("FormFieldBlurred", StaticPayload(view.field)))
         }
       },
       onSubmitEditing: (event: { readonly nativeEvent?: { readonly text?: string } }) => {

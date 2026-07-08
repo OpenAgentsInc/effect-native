@@ -3,7 +3,7 @@
 Core runtime package for Effect Native.
 
 This package holds the closed component catalog as Effect Schema data. The
-current catalog is `effect-native/v2` and has exactly nine components:
+current catalog is `effect-native/v3` and has exactly nine components:
 `Stack`, `Text`, `Button`, `Image`, `TextField`, `List`, `Card`, `Spacer`,
 and `Link`.
 
@@ -71,6 +71,63 @@ DevTools.
 Navigation is host-owned. Apps can provide `NavigationHandler` directly or
 compose `makeNavigationIntentRegistryLayer` to install the built-in `Navigate`
 intent registry over a platform router.
+
+Forms are Schema-backed runtime state, not component-local state. A
+`FormSpec` names fields, their `Schema` decoders, initial values, validation
+timing, and mapped user-facing messages. `TextField.field` wires a field to
+the built-in `FormFieldChanged` / `FormFieldBlurred` intents; submit buttons
+report `FormSubmitRequested`, and the handler gates the app action with
+`submitForm`.
+
+```ts
+import { Schema } from "effect"
+import {
+  FieldBinding,
+  FormFieldValueBinding,
+  IntentRef,
+  StaticPayload,
+  Text,
+  TextField,
+  defineFormSpec,
+  formFieldError,
+  formFieldFocused,
+  formFieldValue,
+  makeFormState,
+  setFormFieldValue,
+  submitForm
+} from "@effect-native/core"
+
+const Signup = defineFormSpec({
+  id: "signup",
+  fields: [
+    {
+      name: "email",
+      schema: Schema.String.check(Schema.isPattern(/^[^@\s]+@[^@\s]+\.[^@\s]+$/)),
+      initialValue: "",
+      validateOn: "blur",
+      invalidMessage: "Enter a valid email."
+    }
+  ]
+} as const)
+
+let form = makeFormState(Signup)
+form = setFormFieldValue(Signup, form, "email", "person@example.com")
+const result = submitForm(Signup, form)
+
+TextField({
+  value: formFieldValue(form, "email"),
+  field: FieldBinding("signup", "email"),
+  focused: formFieldFocused(form, "email"),
+  onSubmit: IntentRef("FormSubmitRequested", StaticPayload({ form: "signup" }))
+})
+Text({ content: formFieldError(form, "email"), variant: "caption", color: "danger" })
+IntentRef("FormFieldChanged", FormFieldValueBinding(FieldBinding("signup", "email")))
+```
+
+`submitForm` returns decoded typed values on success and a form state with
+mapped errors plus `focusedField` on failure. `secure: true` fields are
+redacted from form event logs through `makeFormIntentRedactor`, and the
+headless renderer redacts secure `TextField` snapshots.
 
 `ViewProgram` makes a view live. State is held in an Effect `SubscriptionRef`,
 `viewStream` emits the current resolved tree and every state change after that,

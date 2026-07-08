@@ -103,6 +103,12 @@ export default function App() {
 Native app. For non-React tests and tools, `makeReactNativeRenderer` consumes
 the same `RendererAdapter` contract as the headless and DOM renderers.
 
+When a `TextField` has a `field` binding, the RN `TextInput` reports the
+built-in `FormFieldChanged` intent from `onChangeText` and
+`FormFieldBlurred` from `onBlur`. A view-level `focused: true` request lowers
+to `autoFocus`, giving the shared form state machine a renderer-owned way to
+focus the first invalid field.
+
 Renderer tests use a tiny in-memory React/React Native host shim instead of
 adding `react-test-renderer` or React Native Testing Library to this
 workspace. That preserves the dependency boundary: this package declares

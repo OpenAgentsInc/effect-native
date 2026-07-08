@@ -74,7 +74,7 @@ need, in the order they need it:
   delegating to the platform's router below the adapter line) (#10 complete)
 - **responsive layout** — breakpoint variants resolved end-to-end through
   runtime and both renderers (#11 complete)
-- **forms and validation** (typed, Schema-backed) (#12)
+- **forms and validation** (typed, Schema-backed) (#12 complete)
 - **overlay surfaces** — modal and sheet (#13)
 - **virtualized lists and section lists** (#14)
 

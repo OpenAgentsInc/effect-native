@@ -12,8 +12,9 @@ used to produce and update these images. The committed PNGs are actual browser
 and iOS simulator captures. The older SVG receipts remain in `docs/assets/` as
 a deprecated backup option when live bitmap capture is unavailable.
 
-The shared module owns the state schema, view function, intent definitions,
-handlers, and scripted proof steps. It imports `effect` and
+The shared module owns the state schema, Schema-backed `FormSpec`, view
+function, intent definitions, handlers, and scripted proof steps. It imports
+`effect` and
 `@effect-native/core` only; it has no DOM, React, React Native, or Expo
 imports. The web and mobile hosts are thin shells around that module.
 
@@ -55,6 +56,9 @@ Metro, and embeds `EffectNativeSurface`.
 - the React Native renderer with an in-memory RN host shim.
 
 For each renderer it asserts the same resulting state, the same intent log,
-and structurally equivalent view snapshots after every step. This is the
-Phase 1 receipt: behavior and component structure match across web and
-mobile because both hosts consume the same typed data.
+and structurally equivalent view snapshots after every step. The sequence
+first attempts an invalid submit, proving mapped form errors and first-invalid
+focus, then submits valid data through the same typed form state machine on
+headless, DOM, and React Native. This is the Phase 1 receipt: behavior and
+component structure match across web and mobile because both hosts consume the
+same typed data.

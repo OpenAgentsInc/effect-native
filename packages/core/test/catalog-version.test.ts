@@ -4,6 +4,7 @@ import {
   CatalogVersion,
   CompatibleViewSchema,
   LegacyCatalogVersion,
+  LinkCatalogVersion,
   PreviousCatalogVersion,
   Text,
   compatibleCatalogVersions,
@@ -21,6 +22,10 @@ describe("catalog version compatibility", () => {
 
     const v1Tree = {
       ...JSON.parse(JSON.stringify(view)),
+      catalogVersion: LinkCatalogVersion
+    }
+    const v2Tree = {
+      ...JSON.parse(JSON.stringify(view)),
       catalogVersion: PreviousCatalogVersion
     }
     const v0Tree = {
@@ -30,8 +35,14 @@ describe("catalog version compatibility", () => {
 
     expect(decodeCompatibleView(JSON.parse(JSON.stringify(view)))).toEqual(view)
     expect(decodeCompatibleView(v0Tree).catalogVersion).toBe(LegacyCatalogVersion)
-    expect(decodeCompatibleView(v1Tree).catalogVersion).toBe(PreviousCatalogVersion)
-    expect(compatibleCatalogVersions).toEqual([LegacyCatalogVersion, PreviousCatalogVersion, CatalogVersion])
+    expect(decodeCompatibleView(v1Tree).catalogVersion).toBe(LinkCatalogVersion)
+    expect(decodeCompatibleView(v2Tree).catalogVersion).toBe(PreviousCatalogVersion)
+    expect(compatibleCatalogVersions).toEqual([
+      LegacyCatalogVersion,
+      LinkCatalogVersion,
+      PreviousCatalogVersion,
+      CatalogVersion
+    ])
   })
 
   test("unknown component tags remain typed decode failures", () => {

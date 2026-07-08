@@ -5,6 +5,7 @@ import {
   Binding,
   Button,
   Card,
+  FieldBinding,
   Image,
   IntentRef,
   Link,
@@ -17,6 +18,7 @@ import {
   defaultTheme,
   defineIntent,
   defineTheme,
+  formIntentDefinitions,
   makeHeadlessRenderer,
   makeIntentRegistry,
   makeNavigationIntentHandlers,
@@ -144,6 +146,54 @@ describe("DOM renderer", () => {
       expect(document.activeElement === textInput).toBe(true)
       expect(textInput.value).toBe("Ada")
       expect(container.querySelector('[data-en-key="count"]')?.textContent).toBe("1")
+    })))
+  })
+
+  test("field-bound TextField reports form field changes, blur, and focus requests", async () => {
+    const { container, document, window } = createDom()
+
+    await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
+      const handlers: IntentHandlers<typeof formIntentDefinitions> = {
+        FormFieldChanged: () => Effect.succeed(undefined),
+        FormFieldBlurred: () => Effect.succeed(undefined),
+        FormSubmitRequested: () => Effect.succeed(undefined)
+      }
+      const registry = yield* makeIntentRegistry(formIntentDefinitions, handlers, { now: () => 0 })
+      const report: IntentReporter = (ref, runtimeValue) =>
+        registry.dispatch(resolveIntentRef(ref, runtimeValue))
+
+      yield* makeDomRenderer({ document }).mount(
+        container,
+        Stream.make(TextField({
+          key: "email",
+          value: "",
+          label: "Email",
+          field: FieldBinding("signup", "email"),
+          focused: true
+        })),
+        report
+      )
+
+      const input = container.querySelector("input") as HTMLInputElement | null
+      if (input === null) {
+        throw new Error("expected input")
+      }
+
+      expect(document.activeElement).toBe(input)
+      input.value = "ada@example.com"
+      input.dispatchEvent(new window.Event("input", { bubbles: true }) as unknown as Event)
+      input.dispatchEvent(new window.Event("blur", { bubbles: true }) as unknown as Event)
+      yield* nextTask
+
+      const events = yield* registry.events
+      expect(events.map((event) => event.intent.name)).toEqual([
+        "FormFieldChanged",
+        "FormFieldBlurred"
+      ])
+      expect(events.map((event) => event.intent.payload)).toEqual([
+        { form: "signup", field: "email", value: "ada@example.com" },
+        { form: "signup", field: "email" }
+      ])
     })))
   })
 

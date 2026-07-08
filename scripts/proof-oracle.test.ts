@@ -222,11 +222,14 @@ describe("Phase 1 proof oracle", () => {
     expect(dom.snapshots).toEqual(headless.snapshots)
     expect(reactNative.snapshots).toEqual(headless.snapshots)
     expect(headless.state.entries).toHaveLength(2)
+    expect(JSON.stringify(headless.snapshots[1])).toContain("Enter a name.")
+    expect(JSON.stringify(headless.snapshots[1])).toContain("Enter a valid email.")
     expect(headless.events.map((event) => event.name)).toEqual([
-      "NameChanged",
-      "EmailChanged",
-      "EmailSubmitted",
-      "FormSubmitted"
+      "FormSubmitRequested",
+      "FormFieldChanged",
+      "FormFieldChanged",
+      "FormSubmitRequested",
+      "FormSubmitRequested"
     ])
   })
 })

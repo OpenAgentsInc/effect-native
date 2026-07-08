@@ -5,6 +5,7 @@ import {
   Button,
   Card,
   ComponentValueBinding,
+  FieldBinding,
   Image,
   IntentRef,
   Link,
@@ -15,6 +16,7 @@ import {
   Text,
   TextField,
   defineIntent,
+  formIntentDefinitions,
   makeHeadlessRenderer,
   makeIntentRegistry,
   makeNavigationIntentHandlers,
@@ -250,6 +252,52 @@ describe("React Native renderer", () => {
       yield* Effect.yieldNow
 
       expect(findByNativeId(yield* surface.currentElement, nativeId("TextField", "name"))?.props.value).toBe("Grace")
+    })))
+  })
+
+  test("field-bound TextField reports form field changes, blur, and autoFocus", async () => {
+    await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
+      const handlers: IntentHandlers<typeof formIntentDefinitions> = {
+        FormFieldChanged: () => Effect.succeed(undefined),
+        FormFieldBlurred: () => Effect.succeed(undefined),
+        FormSubmitRequested: () => Effect.succeed(undefined)
+      }
+      const registry = yield* makeIntentRegistry(formIntentDefinitions, handlers, { now: () => 0 })
+      const report: IntentReporter = (ref, runtimeValue) =>
+        registry.dispatch(resolveIntentRef(ref, runtimeValue))
+      const surface = yield* makeReactNativeRenderer({ dependencies }).mount(
+        undefined,
+        Stream.make(TextField({
+          key: "email",
+          value: "",
+          label: "Email",
+          field: FieldBinding("signup", "email"),
+          focused: true
+        })),
+        report
+      )
+
+      const input = findByNativeId(yield* surface.currentElement, nativeId("TextField", "email"))
+      expect(input?.props.autoFocus).toBe(true)
+      const onChangeText = input?.props.onChangeText
+      const onBlur = input?.props.onBlur
+      if (typeof onChangeText !== "function" || typeof onBlur !== "function") {
+        throw new Error("expected TextInput form handlers")
+      }
+
+      onChangeText("ada@example.com")
+      onBlur()
+      yield* nextTask
+
+      const events = yield* registry.events
+      expect(events.map((event) => event.intent.name)).toEqual([
+        "FormFieldChanged",
+        "FormFieldBlurred"
+      ])
+      expect(events.map((event) => event.intent.payload)).toEqual([
+        { form: "signup", field: "email", value: "ada@example.com" },
+        { form: "signup", field: "email" }
+      ])
     })))
   })
 

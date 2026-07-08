@@ -85,6 +85,12 @@ event listeners, and the managed stylesheet. DOM events only report
 in Effect intent handlers. If a reporter depends on services, provide those
 services before passing the reporter into the DOM renderer.
 
+When a `TextField` has a `field` binding, the DOM input reports the built-in
+`FormFieldChanged` intent on input and `FormFieldBlurred` on blur instead of a
+raw `onChange` intent. A view-level `focused: true` request is applied after
+the DOM commit, so invalid submit flows can move focus to the first invalid
+field without app code reaching into the browser.
+
 `Link` renders a plain anchor so no-JavaScript navigation remains inspectable
 and accessible. Clicks also report the typed `Navigate` intent. Hosts may wire
 that intent to their router, or use `makeDomNavigationHandlerLayer()` for the

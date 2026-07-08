@@ -62,11 +62,17 @@ export {
 export const packageName = "@effect-native/core" as const
 
 export const LegacyCatalogVersion = "effect-native/v0" as const
-export const PreviousCatalogVersion = "effect-native/v1" as const
-export const CatalogVersion = "effect-native/v2" as const
+export const LinkCatalogVersion = "effect-native/v1" as const
+export const PreviousCatalogVersion = "effect-native/v2" as const
+export const CatalogVersion = "effect-native/v3" as const
 export const CatalogVersionSchema = Schema.Literal(CatalogVersion)
 export type CatalogVersion = typeof CatalogVersion
-export const compatibleCatalogVersions = [LegacyCatalogVersion, PreviousCatalogVersion, CatalogVersion] as const
+export const compatibleCatalogVersions = [
+  LegacyCatalogVersion,
+  LinkCatalogVersion,
+  PreviousCatalogVersion,
+  CatalogVersion
+] as const
 export type CompatibleCatalogVersion = (typeof compatibleCatalogVersions)[number]
 export const CompatibleCatalogVersionSchema = Schema.Literals(compatibleCatalogVersions)
 
@@ -106,12 +112,23 @@ export const StaticPayloadSchema = Schema.TaggedStruct("StaticPayload", {
 export const ComponentValueBindingSchema = Schema.TaggedStruct("ComponentValueBinding", {
   path: Schema.NonEmptyString.pipe(Schema.optionalKey)
 })
+export const FieldBindingSchema = Schema.Struct({
+  form: Schema.NonEmptyString,
+  field: Schema.NonEmptyString
+})
+export const FormFieldValueBindingSchema = Schema.TaggedStruct("FormFieldValueBinding", {
+  form: Schema.NonEmptyString,
+  field: Schema.NonEmptyString
+})
 export const IntentPayloadTemplateSchema = Schema.Union([
   StaticPayloadSchema,
-  ComponentValueBindingSchema
+  ComponentValueBindingSchema,
+  FormFieldValueBindingSchema
 ])
 export type StaticPayload = Schema.Schema.Type<typeof StaticPayloadSchema>
 export type ComponentValueBinding = Schema.Schema.Type<typeof ComponentValueBindingSchema>
+export type FieldBinding = Schema.Schema.Type<typeof FieldBindingSchema>
+export type FormFieldValueBinding = Schema.Schema.Type<typeof FormFieldValueBindingSchema>
 export type IntentPayloadTemplate = Schema.Schema.Type<typeof IntentPayloadTemplateSchema>
 
 export const IntentRefSchema = Schema.Struct({
@@ -127,6 +144,12 @@ export const ComponentValueBinding = (path?: string): ComponentValueBinding =>
   path === undefined
     ? ComponentValueBindingSchema.make({ _tag: "ComponentValueBinding" })
     : ComponentValueBindingSchema.make({ _tag: "ComponentValueBinding", path })
+
+export const FieldBinding = (form: string, field: string): FieldBinding =>
+  FieldBindingSchema.make({ form, field })
+
+export const FormFieldValueBinding = (binding: FieldBinding): FormFieldValueBinding =>
+  FormFieldValueBindingSchema.make({ _tag: "FormFieldValueBinding", ...binding })
 
 export const IntentRef = (name: string, payload?: IntentPayloadTemplate): IntentRef =>
   payload === undefined ? IntentRefSchema.make({ name }) : IntentRefSchema.make({ name, payload })
@@ -162,7 +185,15 @@ export const resolveIntentRef = (
     return makeIntent(ref.name, ref.payload.value)
   }
 
-  return makeIntent(ref.name, componentValue)
+  if (ref.payload._tag === "ComponentValueBinding") {
+    return makeIntent(ref.name, componentValue)
+  }
+
+  return makeIntent(ref.name, {
+    form: ref.payload.form,
+    field: ref.payload.field,
+    value: componentValue
+  })
 }
 
 export interface IntentDefinition<
@@ -235,6 +266,7 @@ export const IntentRegistry = Context.Service<IntentRegistry>("@effect-native/co
 
 export interface IntentRegistryOptions {
   readonly now?: () => number
+  readonly redactIntent?: (intent: Intent<string, JsonPayload>) => Intent<string, JsonPayload>
 }
 
 const formatUnknown = (error: unknown): string =>
@@ -249,6 +281,7 @@ export const makeIntentRegistry = <const Definitions extends ReadonlyArray<Inten
     const eventsRef = yield* Ref.make<ReadonlyArray<IntentEvent>>([])
     const eventsPubSub = yield* PubSub.unbounded<IntentEvent>({ replay: 1024 })
     const now = options.now ?? Date.now
+    const redactIntent = options.redactIntent ?? ((intent: Intent<string, JsonPayload>) => intent)
     const definitionsByName = new Map<string, IntentDefinition>(
       definitions.map((definition) => [definition.name, definition])
     )
@@ -262,7 +295,7 @@ export const makeIntentRegistry = <const Definitions extends ReadonlyArray<Inten
     const failWith = (intent: Intent<string, JsonPayload>, error: IntentError) =>
       Effect.gen(function*() {
         const result = Exit.fail(error)
-        yield* appendEvent({ timestamp: now(), intent, result })
+        yield* appendEvent({ timestamp: now(), intent: redactIntent(intent), result })
         return yield* Effect.fail(error)
       })
 
@@ -298,7 +331,7 @@ export const makeIntentRegistry = <const Definitions extends ReadonlyArray<Inten
           })
           yield* appendEvent({
             timestamp: now(),
-            intent,
+            intent: redactIntent(intent),
             result: Exit.fail(error)
           })
           return yield* Effect.fail(error)
@@ -306,7 +339,7 @@ export const makeIntentRegistry = <const Definitions extends ReadonlyArray<Inten
 
         yield* appendEvent({
           timestamp: now(),
-          intent,
+          intent: redactIntent(intent),
           result: Exit.succeed(undefined)
         })
       })
@@ -430,6 +463,301 @@ export const makeNavigationIntentRegistryLayer = (options?: IntentRegistryOption
       )
     })
   )
+
+export const ValidateOnSchema = Schema.Literals(["change", "blur", "submit"] as const)
+export type ValidateOn = Schema.Schema.Type<typeof ValidateOnSchema>
+
+export const FormFieldChangedPayloadSchema = Schema.Struct({
+  form: Schema.NonEmptyString,
+  field: Schema.NonEmptyString,
+  value: JsonPayloadSchema
+})
+export const FormFieldBlurredPayloadSchema = Schema.Struct({
+  form: Schema.NonEmptyString,
+  field: Schema.NonEmptyString
+})
+export const FormSubmitRequestedPayloadSchema = Schema.Struct({
+  form: Schema.NonEmptyString,
+  via: Schema.String.pipe(Schema.optionalKey)
+})
+export type FormFieldChangedPayload = Schema.Schema.Type<typeof FormFieldChangedPayloadSchema>
+export type FormFieldBlurredPayload = Schema.Schema.Type<typeof FormFieldBlurredPayloadSchema>
+export type FormSubmitRequestedPayload = Schema.Schema.Type<typeof FormSubmitRequestedPayloadSchema>
+
+export const FormFieldChanged = defineIntent("FormFieldChanged", FormFieldChangedPayloadSchema)
+export const FormFieldBlurred = defineIntent("FormFieldBlurred", FormFieldBlurredPayloadSchema)
+export const FormSubmitRequested = defineIntent("FormSubmitRequested", FormSubmitRequestedPayloadSchema)
+export const formIntentDefinitions = [FormFieldChanged, FormFieldBlurred, FormSubmitRequested] as const
+
+export const FormFieldStateSchema = Schema.Struct({
+  value: JsonPayloadSchema,
+  touched: Schema.Boolean,
+  error: Schema.String.pipe(Schema.optionalKey),
+  secure: Schema.Boolean.pipe(Schema.optionalKey)
+})
+export const FormStateSchema = Schema.Struct({
+  id: Schema.NonEmptyString,
+  fields: Schema.Record(Schema.String, FormFieldStateSchema),
+  focusedField: Schema.String.pipe(Schema.optionalKey)
+})
+export type FormFieldState = Schema.Schema.Type<typeof FormFieldStateSchema>
+export type FormState = Schema.Schema.Type<typeof FormStateSchema>
+
+export interface FormFieldSpec<
+  Name extends string = string,
+  S extends Schema.ConstraintDecoder<any, never> = Schema.ConstraintDecoder<any, never>
+> {
+  readonly name: Name
+  readonly schema: S
+  readonly initialValue: JsonPayload
+  readonly validateOn?: ValidateOn
+  readonly invalidMessage?: string
+  readonly secure?: boolean
+}
+
+export interface FormSpec<Fields extends ReadonlyArray<FormFieldSpec> = ReadonlyArray<FormFieldSpec>> {
+  readonly id: string
+  readonly fields: Fields
+}
+
+export type FormDecodedValue<Spec extends FormSpec> = {
+  readonly [Field in Spec["fields"][number] as Field["name"]]: Schema.Schema.Type<Field["schema"]>
+}
+
+export const defineFormSpec = <const Fields extends ReadonlyArray<FormFieldSpec>>(
+  spec: FormSpec<Fields>
+): FormSpec<Fields> => spec
+
+const fieldState = (
+  value: JsonPayload,
+  input: {
+    readonly touched: boolean
+    readonly error?: string | undefined
+    readonly secure?: boolean | undefined
+  }
+): FormFieldState => FormFieldStateSchema.make({
+  value,
+  touched: input.touched,
+  ...(input.error === undefined ? {} : { error: input.error }),
+  ...(input.secure === undefined ? {} : { secure: input.secure })
+})
+
+const findFormFieldSpec = (spec: FormSpec, field: string): FormFieldSpec => {
+  const found = spec.fields.find((candidate) => candidate.name === field)
+  if (found === undefined) {
+    throw new Error(`Unknown form field: ${field}`)
+  }
+  return found
+}
+
+const fieldMessage = (field: FormFieldSpec): string => field.invalidMessage ?? "Invalid value."
+
+const validateFieldState = (
+  field: FormFieldSpec,
+  state: FormFieldState
+): { readonly state: FormFieldState; readonly value?: JsonPayload } => {
+  const decoded = Schema.decodeUnknownExit(field.schema)(state.value)
+  if (Exit.isSuccess(decoded)) {
+    const json = Schema.decodeUnknownExit(JsonPayloadSchema)(decoded.value)
+    return {
+      state: fieldState(Exit.isSuccess(json) ? json.value : state.value, {
+        touched: state.touched,
+        secure: state.secure
+      }),
+      value: Exit.isSuccess(json) ? json.value : state.value
+    }
+  }
+
+  return {
+    state: fieldState(state.value, {
+      touched: state.touched,
+      secure: state.secure,
+      error: fieldMessage(field)
+    })
+  }
+}
+
+export const makeFormState = (spec: FormSpec): FormState => FormStateSchema.make({
+  id: spec.id,
+  fields: Object.fromEntries(spec.fields.map((field) => [
+    field.name,
+    fieldState(field.initialValue, {
+      touched: false,
+      secure: field.secure
+    })
+  ]))
+})
+
+const shouldValidateField = (field: FormFieldSpec, trigger: ValidateOn): boolean =>
+  (field.validateOn ?? "submit") === trigger
+
+const updateFormField = (
+  spec: FormSpec,
+  form: FormState,
+  field: string,
+  f: (field: FormFieldSpec, state: FormFieldState) => FormFieldState
+): FormState => {
+  const fieldSpec = findFormFieldSpec(spec, field)
+  const current = form.fields[field] ?? fieldState(fieldSpec.initialValue, {
+    touched: false,
+    secure: fieldSpec.secure
+  })
+  const updated = f(fieldSpec, current)
+  return FormStateSchema.make({
+    id: form.id,
+    fields: {
+      ...form.fields,
+      [field]: updated
+    },
+    ...(form.focusedField === undefined ? {} : { focusedField: form.focusedField })
+  })
+}
+
+export const setFormFieldValue = (
+  spec: FormSpec,
+  form: FormState,
+  field: string,
+  value: JsonPayload
+): FormState =>
+  updateFormField(spec, form, field, (fieldSpec, current) => {
+    const next = fieldState(value, {
+      touched: true,
+      secure: current.secure
+    })
+    return shouldValidateField(fieldSpec, "change") ? validateFieldState(fieldSpec, next).state : next
+  })
+
+export const blurFormField = (
+  spec: FormSpec,
+  form: FormState,
+  field: string
+): FormState =>
+  updateFormField(spec, form, field, (fieldSpec, current) => {
+    const next = fieldState(current.value, {
+      touched: true,
+      secure: current.secure,
+      error: current.error
+    })
+    return shouldValidateField(fieldSpec, "blur") ? validateFieldState(fieldSpec, next).state : next
+  })
+
+export type FormSubmitResult<Spec extends FormSpec = FormSpec> =
+  | {
+      readonly valid: true
+      readonly state: FormState
+      readonly value: FormDecodedValue<Spec>
+    }
+  | {
+      readonly valid: false
+      readonly state: FormState
+      readonly firstInvalid?: string
+    }
+
+export const submitForm = <Spec extends FormSpec>(
+  spec: Spec,
+  form: FormState
+): FormSubmitResult<Spec> => {
+  const fields: Record<string, FormFieldState> = { ...form.fields }
+  const value: Record<string, JsonPayload> = {}
+  let firstInvalid: string | undefined
+
+  for (const field of spec.fields) {
+    const current = fields[field.name] ?? fieldState(field.initialValue, {
+      touched: false,
+      secure: field.secure
+    })
+    const checked = validateFieldState(field, fieldState(current.value, {
+      touched: true,
+      secure: current.secure
+    }))
+    fields[field.name] = checked.state
+    if (checked.value === undefined) {
+      firstInvalid ??= field.name
+    } else {
+      value[field.name] = checked.value
+    }
+  }
+
+  const state = FormStateSchema.make({
+    id: form.id,
+    fields,
+    ...(firstInvalid === undefined ? {} : { focusedField: firstInvalid })
+  })
+
+  if (firstInvalid !== undefined) {
+    return { valid: false, state, firstInvalid }
+  }
+
+  return {
+    valid: true,
+    state,
+    value: value as FormDecodedValue<Spec>
+  }
+}
+
+export const formFieldValue = (form: FormState, field: string): string => {
+  const value = form.fields[field]?.value
+  return typeof value === "string" ? value : value === undefined || value === null ? "" : String(value)
+}
+
+export const formFieldError = (form: FormState, field: string): string =>
+  form.fields[field]?.error ?? ""
+
+export const formFieldFocused = (form: FormState, field: string): boolean =>
+  form.focusedField === field
+
+export const redactedValue = "[redacted]" as const
+
+const redactPayloadFields = (
+  spec: FormSpec,
+  payload: JsonPayload
+): JsonPayload => {
+  if (typeof payload !== "object" || payload === null || Array.isArray(payload)) {
+    return payload
+  }
+  const secure = new Set(spec.fields.filter((field) => field.secure === true).map((field) => field.name))
+  if (secure.size === 0) {
+    return payload
+  }
+  const next: Record<string, JsonPayload> = { ...(payload as Record<string, JsonPayload>) }
+  for (const field of secure) {
+    if (field in next) {
+      next[field] = redactedValue
+    }
+  }
+  if (
+    next.form === spec.id &&
+    typeof next.field === "string" &&
+    secure.has(next.field) &&
+    "value" in next
+  ) {
+    next.value = redactedValue
+  }
+  return next
+}
+
+export const makeFormIntentRedactor = (
+  specs: ReadonlyArray<FormSpec>
+): ((intent: Intent<string, JsonPayload>) => Intent<string, JsonPayload>) => {
+  const byId = new Map(specs.map((spec) => [spec.id, spec]))
+  return (intent) => {
+    let payload = intent.payload
+    if (typeof payload === "object" && payload !== null && !Array.isArray(payload)) {
+      const formId = (payload as Record<string, JsonPayload>).form
+      if (typeof formId === "string") {
+        const spec = byId.get(formId)
+        if (spec !== undefined) {
+          payload = redactPayloadFields(spec, payload)
+        }
+      } else {
+        for (const spec of specs) {
+          payload = redactPayloadFields(spec, payload)
+        }
+      }
+    }
+    return makeIntent(intent.name, payload)
+  }
+}
 
 export const NonNegativeNumberSchema = Schema.Number.check(
   Schema.isFinite({ title: "FiniteNumber" }),
@@ -1015,6 +1343,8 @@ export interface BaseTextFieldView extends NodeBase {
   readonly value: string
   readonly placeholder?: string
   readonly label?: string
+  readonly field?: FieldBinding
+  readonly focused?: boolean
   readonly onChange?: IntentRef
   readonly onSubmit?: IntentRef
   readonly style?: TextFieldStyle
@@ -1142,6 +1472,8 @@ const BaseTextFieldFields = {
   value: Schema.String,
   placeholder: Schema.String.pipe(Schema.optionalKey),
   label: Schema.String.pipe(Schema.optionalKey),
+  field: FieldBindingSchema.pipe(Schema.optionalKey),
+  focused: Schema.Boolean.pipe(Schema.optionalKey),
   onChange: IntentRefSchema.pipe(Schema.optionalKey),
   onSubmit: IntentRefSchema.pipe(Schema.optionalKey),
   style: TextFieldStyleSchema.pipe(Schema.optionalKey)
@@ -1389,6 +1721,40 @@ export const resolveView = (view: View, input: ViewResolution = {}): View => {
 export const resolveBindings = <State>(view: View, state: State): View =>
   resolveView(view, { state })
 
+export const redactSecureView = (view: View): View => {
+  switch (view._tag) {
+    case "Stack":
+      return {
+        ...view,
+        children: view.children.map(redactSecureView)
+      }
+    case "List":
+      return {
+        ...view,
+        items: view.items.map((item) => redactSecureView(item) as KeyedView)
+      }
+    case "Card":
+      return {
+        ...view,
+        children: view.children.map(redactSecureView)
+      }
+    case "Link":
+      return {
+        ...view,
+        children: view.children.map((child) => redactSecureView(child) as LinkChildView)
+      }
+    case "TextField":
+      return view.secure === true
+        ? {
+            ...view,
+            value: redactedValue
+          }
+        : view
+    default:
+      return view
+  }
+}
+
 export interface ViewProgram<State> {
   readonly state: SubscriptionRef.SubscriptionRef<State>
   readonly render: (state: State) => View
@@ -1491,7 +1857,7 @@ export const makeHeadlessRenderer = (
         yield* resolvedViewStream.pipe(
           Stream.runForEach((view) =>
             Effect.gen(function*() {
-              yield* Ref.update(snapshots, (views) => [...views, view])
+              yield* Ref.update(snapshots, (views) => [...views, redactSecureView(view)])
               yield* Deferred.succeed(ready, undefined)
             })
           ),

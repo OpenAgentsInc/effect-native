@@ -3,7 +3,8 @@ import {
   Binding,
   Button,
   Card,
-  ComponentValueBinding,
+  FieldBinding,
+  FormFieldValueBinding,
   Image,
   IntentRef,
   List,
@@ -12,10 +13,20 @@ import {
   StaticPayload,
   Text,
   TextField,
-  defineIntent,
+  defineFormSpec,
+  blurFormField,
+  formFieldError,
+  formFieldFocused,
+  formFieldValue,
+  formIntentDefinitions,
+  makeFormIntentRedactor,
+  makeFormState,
   makeIntentRegistry,
   makeViewProgramFromState,
   resolveIntentRef,
+  setFormFieldValue,
+  submitForm,
+  FormStateSchema,
   type IntentHandlers,
   type IntentRef as IntentRefData,
   type IntentRegistry,
@@ -33,31 +44,44 @@ export const ActivityEntrySchema = Schema.Struct({
 export type ActivityEntry = Schema.Schema.Type<typeof ActivityEntrySchema>
 
 export const SignupActivityStateSchema = Schema.Struct({
-  name: Schema.String,
-  email: Schema.String,
+  form: FormStateSchema,
   message: Schema.String,
   submitCount: Schema.Number,
   entries: Schema.Array(ActivityEntrySchema)
 })
 export type SignupActivityState = Schema.Schema.Type<typeof SignupActivityStateSchema>
 
-export const NameChanged = defineIntent("NameChanged", Schema.String)
-export const EmailChanged = defineIntent("EmailChanged", Schema.String)
-export const EmailSubmitted = defineIntent("EmailSubmitted", Schema.String)
-export const FormSubmitted = defineIntent("FormSubmitted", Schema.Struct({
-  via: Schema.String
-}))
+const EmailSchema = Schema.String.check(
+  Schema.isPattern(/^[^@\s]+@[^@\s]+\.[^@\s]+$/, { title: "Email" })
+)
+const NameSchema = Schema.String.check(
+  Schema.isPattern(/\S/, { title: "NonBlank" })
+)
 
-export const signupActivityIntents = [
-  NameChanged,
-  EmailChanged,
-  EmailSubmitted,
-  FormSubmitted
-] as const
+export const signupFormSpec = defineFormSpec({
+  id: "signup",
+  fields: [
+    {
+      name: "name",
+      schema: NameSchema,
+      initialValue: "",
+      validateOn: "submit",
+      invalidMessage: "Enter a name."
+    },
+    {
+      name: "email",
+      schema: EmailSchema,
+      initialValue: "",
+      validateOn: "blur",
+      invalidMessage: "Enter a valid email."
+    }
+  ]
+} as const)
+
+export const signupActivityIntents = formIntentDefinitions
 
 export const initialSignupActivityState: SignupActivityState = SignupActivityStateSchema.make({
-  name: "",
-  email: "",
+  form: makeFormState(signupFormSpec),
   message: "Join the proof list.",
   submitCount: 0,
   entries: []
@@ -75,29 +99,22 @@ const heroSvg = [
 
 const keyed = <V extends View>(view: V): V & { readonly key: string } => view as V & { readonly key: string }
 
-const isValidSignup = (state: SignupActivityState): boolean =>
-  state.name.trim().length > 0 && state.email.includes("@")
-
-const submitSignup = (state: SignupActivityState, via: string): SignupActivityState => {
-  if (!isValidSignup(state)) {
-    return {
-      ...state,
-      message: "Enter a name and valid email."
-    }
-  }
-
+const submitSignup = (
+  state: SignupActivityState,
+  payload: { readonly name: string; readonly email: string; readonly via: string }
+): SignupActivityState => {
   const submitCount = state.submitCount + 1
   const entry = ActivityEntrySchema.make({
     id: `entry-${submitCount}`,
-    name: state.name.trim(),
-    email: state.email.trim(),
-    via
+    name: payload.name.trim(),
+    email: payload.email.trim(),
+    via: payload.via
   })
 
   return {
     ...state,
     submitCount,
-    message: `Added ${entry.name} via ${via}.`,
+    message: `Added ${entry.name} via ${payload.via}.`,
     entries: [entry, ...state.entries]
   }
 }
@@ -181,14 +198,15 @@ export const signupActivityView = (state: SignupActivityState): View =>
           key: "message",
           content: Binding(["message"]),
           variant: "body",
-          color: isValidSignup(state) ? "accent" : "textMuted"
+          color: state.entries.length > 0 ? "accent" : "textMuted"
         }),
         TextField({
           key: "name",
-          value: state.name,
+          value: formFieldValue(state.form, "name"),
           label: "Name",
           placeholder: "Ada Lovelace",
-          onChange: IntentRef("NameChanged", ComponentValueBinding()),
+          field: FieldBinding("signup", "name"),
+          focused: formFieldFocused(state.form, "name"),
           style: {
             borderColor: "border",
             borderWidth: 1,
@@ -196,26 +214,39 @@ export const signupActivityView = (state: SignupActivityState): View =>
             padding: "3"
           }
         }),
+        Text({
+          key: "name-error",
+          content: formFieldError(state.form, "name"),
+          variant: "caption",
+          color: "danger"
+        }),
         TextField({
           key: "email",
-          value: state.email,
+          value: formFieldValue(state.form, "email"),
           label: "Email",
           placeholder: "ada@example.com",
-          onChange: IntentRef("EmailChanged", ComponentValueBinding()),
-          onSubmit: IntentRef("EmailSubmitted", ComponentValueBinding()),
+          field: FieldBinding("signup", "email"),
+          focused: formFieldFocused(state.form, "email"),
+          onSubmit: IntentRef("FormSubmitRequested", StaticPayload({ form: "signup", via: "keyboard" })),
           style: {
             borderColor: "border",
             borderWidth: 1,
             borderRadius: "md",
             padding: "3"
           }
+        }),
+        Text({
+          key: "email-error",
+          content: formFieldError(state.form, "email"),
+          variant: "caption",
+          color: "danger"
         }),
         Stack({ key: "actions", direction: "row", align: "center", gap: "2" }, [
           Button({
             key: "submit",
             label: `Submit #${state.submitCount + 1}`,
             variant: "primary",
-            onPress: IntentRef("FormSubmitted", StaticPayload({ via: "button" })),
+            onPress: IntentRef("FormSubmitRequested", StaticPayload({ form: "signup", via: "button" })),
             style: {
               backgroundColor: "accent",
               borderRadius: "md",
@@ -265,30 +296,34 @@ export interface ScriptedProofStep {
 
 export const scriptedProofSteps: ReadonlyArray<ScriptedProofStep> = [
   {
+    kind: "press",
+    key: "submit",
+    ref: IntentRef("FormSubmitRequested", StaticPayload({ form: "signup", via: "button" }))
+  },
+  {
     kind: "change",
     key: "name",
     value: "Ada Lovelace",
-    ref: IntentRef("NameChanged", ComponentValueBinding()),
+    ref: IntentRef("FormFieldChanged", FormFieldValueBinding(FieldBinding("signup", "name"))),
     runtimeValue: "Ada Lovelace"
   },
   {
     kind: "change",
     key: "email",
     value: "ada@example.com",
-    ref: IntentRef("EmailChanged", ComponentValueBinding()),
+    ref: IntentRef("FormFieldChanged", FormFieldValueBinding(FieldBinding("signup", "email"))),
     runtimeValue: "ada@example.com"
   },
   {
     kind: "submit",
     key: "email",
     value: "ada@example.com",
-    ref: IntentRef("EmailSubmitted", ComponentValueBinding()),
-    runtimeValue: "ada@example.com"
+    ref: IntentRef("FormSubmitRequested", StaticPayload({ form: "signup", via: "keyboard" }))
   },
   {
     kind: "press",
     key: "submit",
-    ref: IntentRef("FormSubmitted", StaticPayload({ via: "button" }))
+    ref: IntentRef("FormSubmitRequested", StaticPayload({ form: "signup", via: "button" }))
   }
 ]
 
@@ -306,16 +341,46 @@ export const makeSignupActivityRuntime = (
     const state = yield* SubscriptionRef.make(initialState)
     const program = makeViewProgramFromState(state, signupActivityView)
     const handlers: IntentHandlers<typeof signupActivityIntents> = {
-      NameChanged: (name) => SubscriptionRef.update(state, (current) => ({ ...current, name })),
-      EmailChanged: (email) => SubscriptionRef.update(state, (current) => ({ ...current, email })),
-      EmailSubmitted: (email) =>
-        SubscriptionRef.update(state, (current) =>
-          submitSignup({ ...current, email }, "keyboard")
-        ),
-      FormSubmitted: (payload) =>
-        SubscriptionRef.update(state, (current) => submitSignup(current, payload.via))
+      FormFieldChanged: (payload) =>
+        SubscriptionRef.update(state, (current) => ({
+          ...current,
+          form: setFormFieldValue(signupFormSpec, current.form, payload.field, payload.value)
+        })),
+      FormFieldBlurred: (payload) =>
+        SubscriptionRef.update(state, (current) => ({
+          ...current,
+          form: blurFormField(signupFormSpec, current.form, payload.field)
+        })),
+      FormSubmitRequested: (payload) =>
+        Effect.gen(function*() {
+          let submitted: { readonly name: string; readonly email: string } | undefined
+          yield* SubscriptionRef.update(state, (current) => {
+            const result = submitForm(signupFormSpec, current.form)
+            if (!result.valid) {
+              return {
+                ...current,
+                form: result.state,
+                message: "Enter a name and valid email."
+              }
+            }
+            submitted = result.value
+            return {
+              ...current,
+              form: result.state
+            }
+          })
+          if (submitted !== undefined) {
+            yield* SubscriptionRef.update(state, (current) => submitSignup(current, {
+              ...submitted,
+              via: payload.via ?? "button"
+            }))
+          }
+        })
     }
-    const registry = yield* makeIntentRegistry(signupActivityIntents, handlers, { now: () => 0 })
+    const registry = yield* makeIntentRegistry(signupActivityIntents, handlers, {
+      now: () => 0,
+      redactIntent: makeFormIntentRedactor([signupFormSpec])
+    })
     const report: IntentReporter = (ref, runtimeValue) =>
       registry.dispatch(resolveIntentRef(ref, runtimeValue))
 

@@ -5,9 +5,10 @@ import {
   type ColorToken,
   type Dimension,
   type FlatStyle,
+  FormFieldValueBinding,
   type ImageView,
   type IntentError,
-  type IntentRef,
+  IntentRef,
   type IntentReporter,
   type JsonPayload,
   type LinkView,
@@ -23,6 +24,7 @@ import {
   type View,
   type Viewport,
   type ViewportInput,
+  StaticPayload,
   defaultViewportInput,
   defaultTheme,
   makeNavigateIntent,
@@ -312,6 +314,7 @@ class DomRendererState {
   readonly keyed = new Map<string, HTMLElement>()
   readonly listeners = new WeakMap<EventTarget, Array<EventCleanup>>()
   readonly allListeners = new Set<EventCleanup>()
+  focusRequest: HTMLElement | undefined
 
   constructor(container: Element, document: Document, theme: Theme) {
     this.root = document.createElement("div")
@@ -328,6 +331,20 @@ class DomRendererState {
     this.keyed.clear()
     this.root.remove()
     this.styles.dispose()
+  }
+
+  requestFocus(element: HTMLElement): void {
+    this.focusRequest = element
+  }
+
+  clearFocusRequest(): void {
+    this.focusRequest = undefined
+  }
+
+  consumeFocusRequest(): HTMLElement | undefined {
+    const element = this.focusRequest
+    this.focusRequest = undefined
+    return element
   }
 
   resetListeners(target: EventTarget): void {
@@ -528,8 +545,16 @@ const renderTextField = (view: TextFieldView, state: DomRendererState, report: I
   if (!fieldWasActive) {
     field.value = view.value
   }
-  if (view.onChange !== undefined) {
-    state.addListener(field, "input", () => runReportedIntent(report, view.onChange!, fieldValue(field)))
+  const onChange = view.field === undefined
+    ? view.onChange
+    : IntentRef("FormFieldChanged", FormFieldValueBinding(view.field))
+  if (onChange !== undefined) {
+    state.addListener(field, "input", () => runReportedIntent(report, onChange, fieldValue(field)))
+  }
+  if (view.field !== undefined) {
+    state.addListener(field, "blur", () =>
+      runReportedIntent(report, IntentRef("FormFieldBlurred", StaticPayload(view.field!)))
+    )
   }
   if (view.onSubmit !== undefined) {
     state.addListener(field, "keydown", (event) => {
@@ -539,8 +564,8 @@ const renderTextField = (view: TextFieldView, state: DomRendererState, report: I
     })
   }
   element.appendChild(field)
-  if (fieldWasActive) {
-    field.focus()
+  if (fieldWasActive || view.focused === true) {
+    state.requestFocus(field)
   }
   applyBaseStyle(element, view, state)
   return element
@@ -612,10 +637,14 @@ const renderView = (view: View, state: DomRendererState, report: IntentReporter)
 
 const commitView = (view: View, state: DomRendererState, report: IntentReporter): void => {
   const activeBefore = state.root.ownerDocument.activeElement as HTMLElement | null
+  state.clearFocusRequest()
   state.styles.beginRender()
   const element = renderView(view, state, report)
   state.root.replaceChildren(element)
-  if (
+  const focusRequest = state.consumeFocusRequest()
+  if (focusRequest !== undefined && state.root.contains(focusRequest)) {
+    focusRequest.focus()
+  } else if (
     activeBefore !== null &&
     activeBefore !== state.root.ownerDocument.body &&
     state.root.contains(activeBefore) &&
