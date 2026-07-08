@@ -7,6 +7,7 @@
     { "path": "./packages/render-rn" },
     { "path": "./packages/platform-desktop" },
     { "path": "./packages/gallery" },
-    { "path": "./packages/devtools" }
+    { "path": "./packages/devtools" },
+    { "path": "./packages/testkit" }
   ]
 }

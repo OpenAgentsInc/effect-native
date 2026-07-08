@@ -28,6 +28,7 @@
     "@effect-native/platform-desktop": "workspace:*",
     "@effect-native/render-dom": "workspace:*",
     "@effect-native/render-rn": "workspace:*",
+    "@effect-native/testkit": "workspace:*",
     "effect": "4.0.0-beta.94"
   },
   "devDependencies": {
