@@ -120,48 +120,59 @@ bolted on later.
 ## Phase 4 — Desktop and canvas (in progress — epic #20)
 
 Phase 4 is pulled by a real production consumer: **Khala Code Desktop** in the
-OpenAgents monorepo. The port is a migration of the UI substrate, not a
-backend rewrite: Codex, Pylon, khala-sync, approvals, and local services stay
+OpenAgents monorepo. The port is a **migration of the UI substrate, not a
+backend rewrite**: Codex, Pylon, khala-sync, approvals, and local services stay
 owned by the Khala app. Effect Native supplies the typed screen data, runtime,
-renderers, and platform host.
+renderers, and platform host. See the short
+[porting map](./docs/porting-map.md).
 
-The first milestone is a faithful chat vertical slice:
+### Pillars
 
-- the app shell shape — sidebar/navigation rail, thread list, and main chat
-  pane — is authored once as typed Effect Native data
-- a recorded assistant turn appends transcript patches deterministically
-- the transcript includes role-styled messages, a tool-call card, code block,
-  unified diff, and status transitions
-- the composer and command palette are represented through typed intents using
-  the current catalog while richer `Composer`/`Combobox` catalog components are
-  tracked in GAPS
-- `@effect-native/platform-desktop` provides `runMainDesktop`, a typed
-  main/renderer bridge, and headless Layer/test harnesses for menu, window,
-  deep-link, and single-instance services
+| Pillar | Package / surface | Status |
+|---|---|---|
+| Desktop adapter | `@effect-native/platform-desktop` (`runMainDesktop`, typed bridge) | shipped #21 |
+| Canvas renderer | `@effect-native/render-canvas` (scene schema, reconciler, Scope/`Stream` frames, headless + three-effect-shaped backend) | shipped #22 (live GPU driver is app-layer) |
+| Foreign host | catalog `Host` + closed host-kind registry | shipped #23 — [contract](./docs/foreign-host.md) |
+| Interaction expansion | typed key/focus/pointer/paste/drag-drop intents | shipped #24 |
+| Theme | single Protoss-blue dark token set | shipped #25 |
+| Streaming | runtime stream region (append/patch) | shipped #26 |
+| Keymap / focus | `makeKeymap` + focus-scope stack | shipped #41 |
 
-The milestone proof lives in [`docs/proof-desktop.md`](./docs/proof-desktop.md)
-and is checked by `scripts/khala-chat-proof-oracle.test.ts`.
+### Catalog growth (demand-driven)
 
-The remaining Phase 4 work is split into issue-backed lanes:
+All Phase 4 catalog demand rows for the Khala shell are **shipped** through
+`effect-native/v19` (trail in [`GAPS.md`](./GAPS.md)): app shell (#27), anchored
+overlays (#28), command palette/combobox (#29), tabs (#30), icon (#31), composer
+(#32), CodeEditor/Terminal host constructors (#33/#34 over `Host`),
+transcript/markdown (#35), code block/diff (#36), graph figure + timeline (#37),
+settings controls (#38), data display (#39), feedback/recovery (#40).
 
-- **Framework pillars**: desktop adapter (#21), canvas renderer (#22),
-  foreign `Host` node (#23), desktop interaction expansion (#24), the
-  single Protoss-blue theme (#25), streaming/live data binding (#26), and the
-  hotkey/focus registry (#41).
-- **Catalog growth**: app shell (#27), anchored overlays (#28), command
-  palette/combobox (#29), tabs (#30), icon (#31), rich composer (#32),
-  CodeEditor (#33), Terminal (#34), transcript/markdown (#35), code block/diff
-  (#36), graph figure (#37), settings controls (#38), data display (#39), and
-  feedback/recovery surfaces (#40).
-- **Exit receipt**: the full proof (#42) composes chat plus fleet/gym canvas,
-  records screenshots, checks headless/DOM/RN/canvas behavior, and writes the
-  exact owner-gated cutover steps. Replacing the live Khala shell remains an
-  owner product decision.
+### Chat vertical-slice proof (milestone)
 
-The foreign `Host` node is the only planned exception to the closed-catalog
-rule. It is not an arbitrary custom component escape hatch: each host kind is a
+The first milestone is a faithful chat vertical slice — not the full shell
+cutover:
+
+- app shell shape (sidebar / thread list / main pane) as typed data
+- recorded assistant turn appends transcript patches deterministically
+- transcript includes role-styled messages, tool-call card, code block, unified
+  diff, and status transitions
+- composer + command palette via typed intents
+
+Proof: [`docs/proof-desktop.md`](./docs/proof-desktop.md), checked by
+`scripts/khala-chat-proof-oracle.test.ts`.
+
+### Still open
+
+- **Exit receipt (#42)**: compose chat + fleet/gym canvas, screenshots, and the
+  owner-gated live-shell cutover steps. Replacing the live Khala shell remains
+  an owner product decision.
+- Residual polish gaps stay on the register (sheet drag-to-dismiss, overlay
+  animation, RN pixel capture, …) until a screen demands them.
+
+The foreign `Host` node is the **only** planned exception to the closed-catalog
+rule. It is not an arbitrary custom-component escape hatch: each host kind is a
 typed registry entry with bounded props, a Scope-owned lifecycle, renderer
-drivers, and a review bar recorded in GAPS/docs before use.
+drivers, and a review bar — see [`docs/foreign-host.md`](./docs/foreign-host.md).
 
 ## Phase 5 — True native renderers (the fidelity upgrade)
 

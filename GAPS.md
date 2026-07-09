@@ -50,11 +50,11 @@ until it has a fixture and every renderer declares and proves support for it.
 | Schema-backed forms | Marketing intake form and dashboard settings forms | 2026-07-08 | shipped -> #12 |
 | Modal + Sheet overlays | Dashboard approvals and confirmation surfaces | 2026-07-08 | shipped -> #13 |
 | Virtualized List + SectionList | Dashboard activity feed and grouped settings/history lists | 2026-07-08 | shipped -> #14 |
-| Desktop host adapter | Khala Code Desktop needs the DOM renderer mounted inside an Electrobun webview with typed bridge/native services | 2026-07-08 | accepted -> #21; first test host shipped in Phase 4 chat milestone |
-| Canvas scene renderer | Khala fleet board and gym panes need typed graph/timeline scenes over three-effect | 2026-07-08 | accepted -> #22 |
-| Foreign `Host` node | Monaco editor and terminal surfaces need one reviewed, typed escape hatch | 2026-07-08 | shipped -> #23 (v7: `Host` component with closed host-kind registry {code-editor, terminal, canvas}, serializable props, `onEvent` intent; DOM host-driver registry with Scope-bound mount/update/unmount; RN declares unsupported loudly) |
+| Desktop host adapter | Khala Code Desktop needs the DOM renderer mounted inside an Electrobun webview with typed bridge/native services | 2026-07-08 | shipped -> #21 (`@effect-native/platform-desktop`: `runMainDesktop`, typed main/renderer bridge, headless Layer harnesses for menu/window/deep-link/single-instance; first consumer is the Phase 4 chat proof host) |
+| Canvas scene renderer | Khala fleet board and gym panes need typed graph/timeline scenes over three-effect | 2026-07-08 | shipped -> #22 (`@effect-native/render-canvas`: closed scene-descriptor catalog `effect-native/scene/v1`, pure reconciler, Scope/`Stream` frame loop, headless backend with disposal proofs, three-effect-shaped backend port; first catalog consumer is GraphFigure #37. Live GPU wiring via a real `@openagentsinc/three-effect` WebGL surface remains an app-layer driver swap — package stays free of a hard `three` dependency) |
+| Foreign `Host` node | Monaco editor and terminal surfaces need one reviewed, typed escape hatch | 2026-07-08 | shipped -> #23 (v7: `Host` component with closed host-kind registry {code-editor, terminal, canvas}, serializable props, `onEvent` intent; DOM host-driver registry with Scope-bound mount/update/unmount; RN declares unsupported loudly). Contract doc: [`docs/foreign-host.md`](./docs/foreign-host.md) |
 | Desktop interaction expansion | Composer, palette, transcript, drag/drop, focus, and scroll need typed keyboard/pointer/paste/drop/view-effect intents | 2026-07-08 | shipped -> #24 (v6: typed onKey/focus/pointer/paste/drag-drop intents, pinToEnd view effect, bounded a11y/roving-focus) |
-| Protoss-blue dark theme | Khala Code Desktop is dark-only and pins the OpenAgents Khala CSS variable palette | 2026-07-08 | accepted -> #25; proof theme maps exact hex values onto current token roles |
+| Protoss-blue dark theme | Khala Code Desktop is dark-only and pins the OpenAgents Khala CSS variable palette | 2026-07-08 | shipped -> #25 (`@effect-native/tokens` Khala dark theme maps exact OpenAgents Khala CSS-variable hex values onto shared token roles; desktop chat proof mounts it; no light/dark dual theme) |
 | Streaming live binding | Transcript and fleet/gym state append/patch from recorded or live streams | 2026-07-08 | shipped -> #26 (runtime `makeStreamRegion`: keyed append reconciliation, frame-cadence coalescing via groupedWithin, Scope interruption, recorded patch sequence; no catalog bump) |
 | App shell / split panes / nav rail | Khala Code Desktop chat shell needs sidebar, thread list, resizable workbench, and active pane switching | 2026-07-08 | shipped -> #27 (v10: `SplitPane` with typed panes + min/max/size + draggable divider reporting a bounded `{ paneId, size }` onResize intent + dblclick collapse; `NavRail` sections/items with typed onSelect + active state; `Workbench` swapping active pane as typed state (keepMounted policy); DOM drag-resizable, RN static-divider fallback, headless records) |
 | Popover / dropdown menu / context menu / tooltip | Command menus, settings menus, tooltips, and context menus in Khala Code Desktop | 2026-07-08 | shipped -> #28 (v11: `Popover` anchored surface (typed placement side/align, presence as typed `open`, Escape/dismiss intent, focus-first-on-open + focus-return-to-anchor-on-close); `DropdownMenu`/`ContextMenu` share a recursive typed MenuItem model (icon/disabled/danger/keybinding/submenu) with roving arrow-key focus + per-item onSelect, ContextMenu pointer-positioned via typed x/y; `Tooltip` wraps exactly one target with aria-describedby. DOM full a11y/keyboard; RN pressable-menu + accessibilityHint subset (placement declared unsupported); headless records) |
@@ -76,5 +76,27 @@ until it has a fixture and every renderer declares and proves support for it.
 | Avatar | None yet | 2026-07-08 | waiting |
 | Media beyond `Image` | None yet | 2026-07-08 | waiting |
 | Utility style aliases | Authoring friction not yet demonstrated by a real screen | 2026-07-08 | waiting |
-| Monospace / whitespace-preserving text style | effectnative.org's home-page and doc code samples (#19) need indentation-preserving display; worked around today with one `Text` per source line in a `Stack` instead of a single multi-line string | 2026-07-08 | waiting -> related to #36 CodeBlock |
+| Monospace / whitespace-preserving text style | effectnative.org's home-page and doc code samples (#19) need indentation-preserving display; worked around today with one `Text` per source line in a `Stack` instead of a single multi-line string | 2026-07-08 | waiting -> related to #36 CodeBlock (syntax-highlighted blocks shipped; plain multi-line monospace Text style still open) |
 | React Native pixel visual-baseline capture | Testkit visual baselines (#16) ship a typed `VisualCapture` contract plus a structural-snapshot default and a real DOM-renderer capture (`@effect-native/testkit/visual`); a native RN pixel-capture harness (e.g. a detox/maestro-style screenshot rig) is undemonstrated | 2026-07-08 | waiting |
+| Full Khala Code Desktop shell cutover | Production desktop shell still needs the composed proof of chat + fleet/gym canvas + owner cutover steps | 2026-07-08 | accepted -> #42 (exit receipt for Phase 4 epic #20); migration map: [`docs/porting-map.md`](./docs/porting-map.md) |
+
+## Catalog version trail (Phase 4)
+
+| Marker | Issue | What landed |
+|---|---|---|
+| `v6` | #24 | Desktop interaction intents (key/focus/pointer/paste/drag-drop, pinToEnd) |
+| `v7` | #23 | Foreign `Host` node + closed host-kind registry |
+| `v8` | #31 | `Icon` closed name set |
+| `v9` | #39 | Data display (`Divider`, `Badge`/`Chip`, `Meter`, `StatTile`, `Table`) |
+| `v10` | #27 | App shell (`SplitPane`, `NavRail`, `Workbench`) |
+| `v11` | #28 | Anchored overlays (`Popover`, `DropdownMenu`, `ContextMenu`, `Tooltip`) |
+| `v12` | #29 | `Combobox` + `CommandPalette` |
+| `v13` | #30 | `Tabs` |
+| `v14` | #32 | `Composer` |
+| `v15` | #38 | Settings form controls |
+| `v16` | #40 | Feedback surfaces (`Toast`/`ToastRegion`, `StatusBanner`, `RecoveryOverlay`) |
+| `v17` | #35 | `Markdown` + `Transcript` |
+| `v18` | #36 | `CodeBlock` + `DiffView` |
+| `v19` (current) | #37 | `GraphFigure` + `Timeline` (canvas + DOM/SVG) |
+
+Non-catalog Phase 4 runtime ships (no version bump): desktop adapter (#21), canvas renderer package (#22), streaming region (#26), Keymap/focus (#41), Protoss-blue theme tokens (#25).

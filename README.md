@@ -173,6 +173,14 @@ home page through component library, built and statically prerendered
 entirely with Effect Native itself -- is in this repository too; hosting is
 tracked separately.
 
+Phase 4 (desktop + canvas) is demand-driven by the Khala Code Desktop port —
+a **UI migration, not a backend rewrite**. Catalog demand through
+`effect-native/v19` is shipped; the chat vertical-slice proof is in
+[`docs/proof-desktop.md`](./docs/proof-desktop.md). The foreign-host exception
+is documented in [`docs/foreign-host.md`](./docs/foreign-host.md); the short
+porting map is [`docs/porting-map.md`](./docs/porting-map.md). The exit
+receipt for the full shell cutover remains [#42](https://github.com/OpenAgentsInc/effect-native/issues/42).
+
 See the **[roadmap](./ROADMAP.md)** for what we're building and in what
 order — web and mobile are the priority targets. The planned
 [native renderer build workflow](./docs/native-renderer-build-workflow.md)
