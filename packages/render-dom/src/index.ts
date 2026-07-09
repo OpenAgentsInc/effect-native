@@ -12,6 +12,8 @@ import {
   type ComposerView,
   type CodeEditorHostProps,
   decodeCodeEditorHostProps,
+  type TerminalHostProps,
+  decodeTerminalHostProps,
   type ContextMenuView,
   type Dimension,
   type DividerView,
@@ -166,6 +168,81 @@ export const makeStubCodeEditorDriver = (): DomHostDriver => ({
         textarea.removeEventListener("select", onSelect)
         textarea.removeEventListener("keydown", onKeydown as EventListener)
         textarea.remove()
+      }
+    }
+  }
+})
+
+// Documented minimal Terminal host driver (issue #34). The reviewed
+// escape-hatch driver for `Host(kind: "terminal")`: a real, disposing terminal
+// surface that renders the serializable `output` buffer prop, emits typed
+// `data` input and `resize` events through the Host `onEvent` intent, and honors
+// the scrollback bound. An app swaps in an xterm-backed driver with the same
+// contract; no emulator types cross this boundary.
+export const makeStubTerminalDriver = (): DomHostDriver => ({
+  kind: "terminal",
+  decodeProps: (props) => decodeTerminalHostProps(props),
+  mount: (container, props, context) => {
+    const initial = props as TerminalHostProps
+    const root = context.document.createElement("div")
+    root.setAttribute("data-en-host-driver", "stub-terminal")
+    root.tabIndex = initial.readOnly === true ? -1 : 0
+    root.style.fontFamily = "monospace"
+    root.style.whiteSpace = "pre-wrap"
+    root.style.height = "100%"
+    root.style.overflowY = "auto"
+    const screen = context.document.createElement("pre")
+    screen.setAttribute("data-en-role", "screen")
+    screen.style.margin = "0"
+    root.appendChild(screen)
+
+    const scrollbackLimit = initial.scrollbackLines
+    const writeOutput = (output: string | undefined) => {
+      const text = output ?? ""
+      if (scrollbackLimit === undefined) {
+        screen.textContent = text
+        return
+      }
+      const lines = text.split("\n")
+      screen.textContent = lines.slice(Math.max(0, lines.length - scrollbackLimit)).join("\n")
+    }
+    writeOutput(initial.output)
+
+    let cols = initial.cols ?? 80
+    let rows = initial.rows ?? 24
+    // Emit the initial geometry so the app can size its PTY.
+    context.emit({ type: "resize", cols, rows })
+
+    const onKeydown = (event: KeyboardEvent) => {
+      if (initial.readOnly === true) return
+      // Project printable keys + Enter to a typed `data` event; the app owns the
+      // PTY that echoes output back through the `output` prop.
+      const data = event.key === "Enter" ? "\n" : event.key.length === 1 ? event.key : ""
+      if (data === "") return
+      event.preventDefault()
+      context.emit({ type: "data", data })
+    }
+    root.addEventListener("keydown", onKeydown as EventListener)
+    container.appendChild(root)
+
+    let disposed = false
+    return {
+      update: (next) => {
+        const nextProps = next as TerminalHostProps
+        writeOutput(nextProps.output)
+        const nextCols = nextProps.cols ?? cols
+        const nextRows = nextProps.rows ?? rows
+        if (nextCols !== cols || nextRows !== rows) {
+          cols = nextCols
+          rows = nextRows
+          context.emit({ type: "resize", cols, rows })
+        }
+      },
+      unmount: () => {
+        if (disposed) return
+        disposed = true
+        root.removeEventListener("keydown", onKeydown as EventListener)
+        root.remove()
       }
     }
   }

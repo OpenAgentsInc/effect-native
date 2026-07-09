@@ -3285,6 +3285,63 @@ export const CodeEditor = (props: CodeEditorProps): HostView => {
   })
 }
 
+// ── Terminal host contract (issue #34) ───────────────────────────────────────
+//
+// Like CodeEditor, a Terminal is a typed constructor over the reviewed
+// `Host(kind: "terminal")` escape hatch (#23) — not a new closed-catalog tag.
+// Output is delivered as a serializable `output` buffer prop (the app joins a
+// byte/string Stream via the streaming data-binding runtime into this buffer);
+// user input is emitted as a typed `data` event and resize as a typed `resize`
+// event. No emulator (xterm) types cross the public contract; the PTY/process is
+// the app's concern.
+export interface TerminalHostProps {
+  readonly output?: string
+  readonly cols?: number
+  readonly rows?: number
+  readonly autoFit?: boolean
+  readonly fontScale?: TypeScaleToken
+  readonly scrollbackLines?: number
+  readonly readOnly?: boolean
+}
+export const TerminalHostPropsSchema: Schema.Codec<TerminalHostProps, TerminalHostProps> = Schema.Struct({
+  output: Schema.String.pipe(Schema.optionalKey),
+  cols: NonNegativeNumberSchema.pipe(Schema.optionalKey),
+  rows: NonNegativeNumberSchema.pipe(Schema.optionalKey),
+  autoFit: Schema.Boolean.pipe(Schema.optionalKey),
+  fontScale: TypeScaleTokenSchema.pipe(Schema.optionalKey),
+  scrollbackLines: NonNegativeNumberSchema.pipe(Schema.optionalKey),
+  readOnly: Schema.Boolean.pipe(Schema.optionalKey)
+}) as unknown as Schema.Codec<TerminalHostProps, TerminalHostProps>
+export const decodeTerminalHostProps = Schema.decodeUnknownSync(TerminalHostPropsSchema)
+
+export type TerminalEvent =
+  | { readonly type: "data"; readonly data: string }
+  | { readonly type: "resize"; readonly cols: number; readonly rows: number }
+export const TerminalEventSchema: Schema.Codec<TerminalEvent, TerminalEvent> = Schema.Union([
+  Schema.Struct({ type: Schema.Literal("data"), data: Schema.String }),
+  Schema.Struct({ type: Schema.Literal("resize"), cols: NonNegativeNumberSchema, rows: NonNegativeNumberSchema })
+]) as unknown as Schema.Codec<TerminalEvent, TerminalEvent>
+
+export interface TerminalProps extends TerminalHostProps {
+  readonly key?: NodeKey
+  readonly onEvent?: IntentRef
+  readonly style?: CardStyle
+  readonly a11y?: A11y
+  readonly interactions?: Interactions
+}
+export const Terminal = (props: TerminalProps): HostView => {
+  const { key, onEvent, style, a11y, interactions, ...hostProps } = props
+  return Host({
+    ...(key === undefined ? {} : { key }),
+    ...(onEvent === undefined ? {} : { onEvent }),
+    ...(style === undefined ? {} : { style }),
+    ...(a11y === undefined ? {} : { a11y }),
+    ...(interactions === undefined ? {} : { interactions }),
+    kind: "terminal",
+    props: TerminalHostPropsSchema.make(hostProps) as unknown as JsonPayload
+  })
+}
+
 export type IconProps = WithoutTagAndVersion<IconView>
 export const Icon = (props: IconProps): IconView =>
   IconSchema.make({ _tag: "Icon", catalogVersion: CatalogVersion, ...props })
