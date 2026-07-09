@@ -73,9 +73,15 @@ const describeView = Match.type<View>().pipe(
   Match.tag("LogoRow", () => "marketing"),
   Match.tag("StatsBand", () => "marketing"),
   Match.tag("Glow", () => "marketing"),
-  Match.tag("MockupFrame", () => "marketing"),
+  Match.tag("MockupFrame", () => "marketing")
+).pipe(
   Match.tag("Pager", () => "mobile"),
   Match.tag("SwipeableListItem", () => "mobile"),
+  Match.tag("BackgroundGradient", () => "mobile-surface"),
+  Match.tag("Wallpaper", () => "mobile-surface"),
+  Match.tag("Spotlight", () => "mobile-surface"),
+  Match.tag("Frame", () => "mobile-surface"),
+  Match.tag("BlurredPopup", () => "mobile-surface"),
   Match.exhaustive
 )
 

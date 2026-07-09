@@ -32,6 +32,11 @@ import {
   NavBar,
   Pager,
   SwipeableListItem,
+  BackgroundGradient,
+  Wallpaper,
+  Spotlight,
+  Frame,
+  BlurredPopup,
   NumberField,
   Popover,
   PricingColumn,
@@ -1669,6 +1674,70 @@ const componentStoryMap = {
         fullSwipeActionId: "archive",
         child: Text({ key: "swipe-label", content: "Thread title", variant: "body" })
       })
+    })
+  ],
+  BackgroundGradient: [
+    story({
+      id: "background-gradient-basic",
+      component: "BackgroundGradient",
+      title: "BackgroundGradient",
+      description: "Token gradient backdrop for mobile surfaces.",
+      view: BackgroundGradient(
+        { key: "background-gradient-basic", direction: "vertical", from: "background", to: "accent" },
+        [Text({ key: "bg-label", content: "Gradient", variant: "title" })]
+      )
+    })
+  ],
+  Wallpaper: [
+    story({
+      id: "wallpaper-city",
+      component: "Wallpaper",
+      title: "Wallpaper",
+      description: "Bounded wallpaper variant behind children.",
+      view: Wallpaper(
+        { key: "wallpaper-city", variant: "city" },
+        [Text({ key: "wall-label", content: "City wallpaper", variant: "body" })]
+      )
+    })
+  ],
+  Spotlight: [
+    story({
+      id: "spotlight-basic",
+      component: "Spotlight",
+      title: "Spotlight",
+      description: "Focus glow treatment around a child slot.",
+      view: Spotlight(
+        { key: "spotlight-basic", intensity: "md" },
+        [Text({ key: "spot-label", content: "Focused", variant: "title" })]
+      )
+    })
+  ],
+  Frame: [
+    story({
+      id: "frame-arcade",
+      component: "Frame",
+      title: "Frame",
+      description: "Arcade bordered frame around content.",
+      view: Frame(
+        { key: "frame-arcade", variant: "arcade" },
+        [Text({ key: "frame-label", content: "Framed", variant: "body" })]
+      )
+    })
+  ],
+  BlurredPopup: [
+    story({
+      id: "blurred-popup-open",
+      component: "BlurredPopup",
+      title: "BlurredPopup",
+      description: "Blur-backed popup on the overlay presence lifecycle.",
+      view: BlurredPopup(
+        {
+          key: "blurred-popup-open",
+          open: true,
+          onDismiss: IntentRef("GalleryStory.Pressed", StaticPayload({ amount: 1 }))
+        },
+        [Text({ key: "popup-label", content: "Long-press menu", variant: "body" })]
+      )
     })
   ]
 } satisfies { readonly [Tag in ComponentTag]: ReadonlyArray<Story> }

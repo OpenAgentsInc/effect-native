@@ -88,8 +88,10 @@ export const MarketingCatalogVersion = "effect-native/v20" as const
 export const PagerCatalogVersion = "effect-native/v21" as const
 export const PullToRefreshCatalogVersion = "effect-native/v22" as const
 export const SwipeableListItemCatalogVersion = "effect-native/v23" as const
-export const PreviousCatalogVersion = PullToRefreshCatalogVersion
-export const CatalogVersion = SwipeableListItemCatalogVersion
+export const MobileSurfacesCatalogVersion = "effect-native/v24" as const
+export const MobileGesturesCatalogVersion = "effect-native/v25" as const
+export const PreviousCatalogVersion = MobileSurfacesCatalogVersion
+export const CatalogVersion = MobileGesturesCatalogVersion
 export const CatalogVersionSchema = Schema.Literal(CatalogVersion)
 export type CatalogVersion = typeof CatalogVersion
 export const compatibleCatalogVersions = [
@@ -116,7 +118,9 @@ export const compatibleCatalogVersions = [
   MarketingCatalogVersion,
   PagerCatalogVersion,
   PullToRefreshCatalogVersion,
-  SwipeableListItemCatalogVersion
+  SwipeableListItemCatalogVersion,
+  MobileSurfacesCatalogVersion,
+  MobileGesturesCatalogVersion
 ] as const
 export type CompatibleCatalogVersion = (typeof compatibleCatalogVersions)[number]
 export const CompatibleCatalogVersionSchema = Schema.Literals(compatibleCatalogVersions)
@@ -184,7 +188,12 @@ export const componentTags = [
   "Glow",
   "MockupFrame",
   "Pager",
-  "SwipeableListItem"
+  "SwipeableListItem",
+  "BackgroundGradient",
+  "Wallpaper",
+  "Spotlight",
+  "Frame",
+  "BlurredPopup"
 ] as const
 export type ComponentTag = (typeof componentTags)[number]
 
@@ -1441,6 +1450,11 @@ export const KeyBindingSchema: Schema.Codec<KeyBinding, KeyBinding> = exactStruc
   intent: IntentRefSchema
 }) as unknown as Schema.Codec<KeyBinding, KeyBinding>
 
+// Swipe direction set for mobile gesture expansion (#56).
+export const swipeDirections = ["left", "right", "up", "down"] as const
+export const SwipeDirectionSchema = Schema.Literals(swipeDirections)
+export type SwipeDirection = (typeof swipeDirections)[number]
+
 export interface Interactions {
   readonly onKey?: ReadonlyArray<KeyBinding>
   readonly onFocus?: IntentRef
@@ -1451,6 +1465,12 @@ export interface Interactions {
   readonly onDragEnter?: IntentRef
   readonly onDragLeave?: IntentRef
   readonly onDrop?: IntentRef
+  /** Mobile long-press; payload is optional pointer position as data. */
+  readonly onLongPress?: IntentRef
+  /** Mobile swipe commit (direction carried as runtime payload by the renderer). */
+  readonly onSwipe?: IntentRef
+  /** Mobile pull-to-refresh when not owned by List.onRefresh. */
+  readonly onPullToRefresh?: IntentRef
 }
 export const InteractionsSchema: Schema.Codec<Interactions, Interactions> = exactStruct({
   onKey: Schema.Array(KeyBindingSchema).pipe(Schema.optionalKey),
@@ -1461,7 +1481,10 @@ export const InteractionsSchema: Schema.Codec<Interactions, Interactions> = exac
   onPaste: IntentRefSchema.pipe(Schema.optionalKey),
   onDragEnter: IntentRefSchema.pipe(Schema.optionalKey),
   onDragLeave: IntentRefSchema.pipe(Schema.optionalKey),
-  onDrop: IntentRefSchema.pipe(Schema.optionalKey)
+  onDrop: IntentRefSchema.pipe(Schema.optionalKey),
+  onLongPress: IntentRefSchema.pipe(Schema.optionalKey),
+  onSwipe: IntentRefSchema.pipe(Schema.optionalKey),
+  onPullToRefresh: IntentRefSchema.pipe(Schema.optionalKey)
 }) as unknown as Schema.Codec<Interactions, Interactions>
 
 // Bounded ARIA roles the renderers honor for roving-focus / combobox patterns.
@@ -1530,7 +1553,7 @@ export type DropPayload = Schema.Schema.Type<typeof DropPayloadSchema>
 // Closed host-kind registry for the foreign-host escape hatch (issue #23). A
 // new host kind is a reviewed catalog change with the same growth-rule bar as
 // a component — never an open plugin point.
-export const hostKinds = ["code-editor", "terminal", "canvas"] as const
+export const hostKinds = ["code-editor", "terminal", "canvas", "voice-input", "on-device-model"] as const
 export const HostKindSchema = Schema.Literals(hostKinds)
 export type HostKind = (typeof hostKinds)[number]
 
@@ -2757,6 +2780,51 @@ export interface SwipeableListItemView extends NodeBase {
   readonly style?: CardStyle
 }
 
+
+// Mobile surface treatments (issue #63) — arcade visual identity as catalog data.
+export type GradientDirection = "vertical" | "horizontal" | "radial"
+export type WallpaperVariant = "plain" | "city" | "mesh"
+export type FrameVariant = "square" | "rounded" | "arcade"
+export type SpotlightIntensity = "sm" | "md" | "lg"
+
+export interface BackgroundGradientView extends NodeBase {
+  readonly _tag: "BackgroundGradient"
+  readonly direction?: GradientDirection
+  readonly from?: ColorToken
+  readonly to?: ColorToken
+  readonly children: ReadonlyArray<View>
+  readonly style?: CardStyle
+}
+
+export interface WallpaperView extends NodeBase {
+  readonly _tag: "Wallpaper"
+  readonly variant?: WallpaperVariant
+  readonly children: ReadonlyArray<View>
+  readonly style?: CardStyle
+}
+
+export interface SpotlightView extends NodeBase {
+  readonly _tag: "Spotlight"
+  readonly intensity?: SpotlightIntensity
+  readonly children: ReadonlyArray<View>
+  readonly style?: CardStyle
+}
+
+export interface FrameView extends NodeBase {
+  readonly _tag: "Frame"
+  readonly variant?: FrameVariant
+  readonly children: ReadonlyArray<View>
+  readonly style?: CardStyle
+}
+
+export interface BlurredPopupView extends NodeBase {
+  readonly _tag: "BlurredPopup"
+  readonly open: boolean
+  readonly onDismiss: IntentRef
+  readonly children: ReadonlyArray<View>
+  readonly style?: CardStyle
+}
+
 export type View =
   | StackView
   | TextView
@@ -2821,6 +2889,11 @@ export type View =
   | MockupFrameView
   | PagerView
   | SwipeableListItemView
+  | BackgroundGradientView
+  | WallpaperView
+  | SpotlightView
+  | FrameView
+  | BlurredPopupView
 
 export type KeyedView = View & { readonly key: NodeKey }
 
@@ -2887,6 +2960,11 @@ const childViewEntries = (
     case "Section":
     case "Glow":
     case "MockupFrame":
+    case "BackgroundGradient":
+    case "Wallpaper":
+    case "Spotlight":
+    case "Frame":
+    case "BlurredPopup":
       return view.children.map((child, index) => ({ path: ["children", index], view: child }))
     case "Hero":
       return [
@@ -3958,6 +4036,52 @@ export const SwipeableListItemSchema: Schema.Codec<SwipeableListItemView, Swipea
     style: CardStyleSchema.pipe(Schema.optionalKey)
   })
 
+
+export const GradientDirectionSchema = Schema.Literals(["vertical", "horizontal", "radial"] as const)
+export const WallpaperVariantSchema = Schema.Literals(["plain", "city", "mesh"] as const)
+export const FrameVariantSchema = Schema.Literals(["square", "rounded", "arcade"] as const)
+export const SpotlightIntensitySchema = Schema.Literals(["sm", "md", "lg"] as const)
+
+export const BackgroundGradientSchema: Schema.Codec<BackgroundGradientView, BackgroundGradientView> =
+  Schema.TaggedStruct("BackgroundGradient", {
+    ...CommonFields,
+    direction: GradientDirectionSchema.pipe(Schema.optionalKey),
+    from: ColorTokenSchema.pipe(Schema.optionalKey),
+    to: ColorTokenSchema.pipe(Schema.optionalKey),
+    children: Schema.Array(ViewSelf),
+    style: CardStyleSchema.pipe(Schema.optionalKey)
+  })
+
+export const WallpaperSchema: Schema.Codec<WallpaperView, WallpaperView> = Schema.TaggedStruct("Wallpaper", {
+  ...CommonFields,
+  variant: WallpaperVariantSchema.pipe(Schema.optionalKey),
+  children: Schema.Array(ViewSelf),
+  style: CardStyleSchema.pipe(Schema.optionalKey)
+})
+
+export const SpotlightSchema: Schema.Codec<SpotlightView, SpotlightView> = Schema.TaggedStruct("Spotlight", {
+  ...CommonFields,
+  intensity: SpotlightIntensitySchema.pipe(Schema.optionalKey),
+  children: Schema.Array(ViewSelf),
+  style: CardStyleSchema.pipe(Schema.optionalKey)
+})
+
+export const FrameSchema: Schema.Codec<FrameView, FrameView> = Schema.TaggedStruct("Frame", {
+  ...CommonFields,
+  variant: FrameVariantSchema.pipe(Schema.optionalKey),
+  children: Schema.Array(ViewSelf),
+  style: CardStyleSchema.pipe(Schema.optionalKey)
+})
+
+export const BlurredPopupSchema: Schema.Codec<BlurredPopupView, BlurredPopupView> =
+  Schema.TaggedStruct("BlurredPopup", {
+    ...CommonFields,
+    open: Schema.Boolean,
+    onDismiss: IntentRefSchema,
+    children: Schema.Array(ViewSelf),
+    style: CardStyleSchema.pipe(Schema.optionalKey)
+  })
+
 export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
   Schema.Union([
     StackSchema,
@@ -4022,7 +4146,12 @@ export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
     GlowSchema,
     MockupFrameSchema,
     PagerSchema,
-    SwipeableListItemSchema
+    SwipeableListItemSchema,
+    BackgroundGradientSchema,
+    WallpaperSchema,
+    SpotlightSchema,
+    FrameSchema,
+    BlurredPopupSchema
   ]).check(OverlayStackFilter)
 )
 
@@ -4217,6 +4346,94 @@ export const Terminal = (props: TerminalProps): HostView => {
     props: TerminalHostPropsSchema.make(hostProps) as unknown as JsonPayload
   })
 }
+
+// ── Voice / on-device model host contracts (issue #58) ────────────────────────
+export interface VoiceInputHostProps {
+  readonly listening?: boolean
+  readonly locale?: string
+  readonly partialTranscript?: string
+}
+export const VoiceInputHostPropsSchema: Schema.Codec<VoiceInputHostProps, VoiceInputHostProps> = Schema.Struct({
+  listening: Schema.Boolean.pipe(Schema.optionalKey),
+  locale: Schema.String.pipe(Schema.optionalKey),
+  partialTranscript: Schema.String.pipe(Schema.optionalKey)
+}) as unknown as Schema.Codec<VoiceInputHostProps, VoiceInputHostProps>
+export const decodeVoiceInputHostProps = Schema.decodeUnknownSync(VoiceInputHostPropsSchema)
+
+export type VoiceInputEvent =
+  | { readonly type: "partial"; readonly text: string }
+  | { readonly type: "final"; readonly text: string }
+  | { readonly type: "error"; readonly message: string }
+export const VoiceInputEventSchema: Schema.Codec<VoiceInputEvent, VoiceInputEvent> = Schema.Union([
+  Schema.Struct({ type: Schema.Literal("partial"), text: Schema.String }),
+  Schema.Struct({ type: Schema.Literal("final"), text: Schema.String }),
+  Schema.Struct({ type: Schema.Literal("error"), message: Schema.String })
+]) as unknown as Schema.Codec<VoiceInputEvent, VoiceInputEvent>
+
+export interface VoiceInputProps extends VoiceInputHostProps {
+  readonly key?: NodeKey
+  readonly onEvent?: IntentRef
+  readonly style?: CardStyle
+  readonly a11y?: A11y
+  readonly interactions?: Interactions
+}
+export const VoiceInput = (props: VoiceInputProps): HostView => {
+  const { key, onEvent, style, a11y, interactions, ...hostProps } = props
+  return Host({
+    ...(key === undefined ? {} : { key }),
+    ...(onEvent === undefined ? {} : { onEvent }),
+    ...(style === undefined ? {} : { style }),
+    ...(a11y === undefined ? {} : { a11y }),
+    ...(interactions === undefined ? {} : { interactions }),
+    kind: "voice-input",
+    props: VoiceInputHostPropsSchema.make(hostProps) as unknown as JsonPayload
+  })
+}
+
+export interface OnDeviceModelHostProps {
+  readonly modelId?: string
+  readonly prompt?: string
+  readonly status?: "idle" | "loading" | "ready" | "error"
+}
+export const OnDeviceModelHostPropsSchema: Schema.Codec<OnDeviceModelHostProps, OnDeviceModelHostProps> =
+  Schema.Struct({
+    modelId: Schema.String.pipe(Schema.optionalKey),
+    prompt: Schema.String.pipe(Schema.optionalKey),
+    status: Schema.Literals(["idle", "loading", "ready", "error"] as const).pipe(Schema.optionalKey)
+  }) as unknown as Schema.Codec<OnDeviceModelHostProps, OnDeviceModelHostProps>
+export const decodeOnDeviceModelHostProps = Schema.decodeUnknownSync(OnDeviceModelHostPropsSchema)
+
+export type OnDeviceModelEvent =
+  | { readonly type: "token"; readonly text: string }
+  | { readonly type: "done"; readonly text: string }
+  | { readonly type: "error"; readonly message: string }
+export const OnDeviceModelEventSchema: Schema.Codec<OnDeviceModelEvent, OnDeviceModelEvent> = Schema.Union([
+  Schema.Struct({ type: Schema.Literal("token"), text: Schema.String }),
+  Schema.Struct({ type: Schema.Literal("done"), text: Schema.String }),
+  Schema.Struct({ type: Schema.Literal("error"), message: Schema.String })
+]) as unknown as Schema.Codec<OnDeviceModelEvent, OnDeviceModelEvent>
+
+export interface OnDeviceModelProps extends OnDeviceModelHostProps {
+  readonly key?: NodeKey
+  readonly onEvent?: IntentRef
+  readonly style?: CardStyle
+  readonly a11y?: A11y
+  readonly interactions?: Interactions
+}
+export const OnDeviceModel = (props: OnDeviceModelProps): HostView => {
+  const { key, onEvent, style, a11y, interactions, ...hostProps } = props
+  return Host({
+    ...(key === undefined ? {} : { key }),
+    ...(onEvent === undefined ? {} : { onEvent }),
+    ...(style === undefined ? {} : { style }),
+    ...(a11y === undefined ? {} : { a11y }),
+    ...(interactions === undefined ? {} : { interactions }),
+    kind: "on-device-model",
+    props: OnDeviceModelHostPropsSchema.make(hostProps) as unknown as JsonPayload
+  })
+}
+
+
 
 export type IconProps = WithoutTagAndVersion<IconView>
 export const Icon = (props: IconProps): IconView =>
@@ -4435,6 +4652,42 @@ export type SwipeableListItemProps = WithoutTagAndVersion<SwipeableListItemView>
 export const SwipeableListItem = (props: SwipeableListItemProps): SwipeableListItemView =>
   SwipeableListItemSchema.make({ _tag: "SwipeableListItem", catalogVersion: CatalogVersion, ...props })
 
+export type BackgroundGradientProps = Omit<WithoutTagAndVersion<BackgroundGradientView>, "children">
+export const BackgroundGradient = (
+  props: BackgroundGradientProps,
+  children: ReadonlyArray<View> = []
+): BackgroundGradientView =>
+  BackgroundGradientSchema.make({ _tag: "BackgroundGradient", catalogVersion: CatalogVersion, ...props, children })
+
+export type WallpaperProps = Omit<WithoutTagAndVersion<WallpaperView>, "children">
+export const Wallpaper = (
+  props: WallpaperProps,
+  children: ReadonlyArray<View> = []
+): WallpaperView =>
+  WallpaperSchema.make({ _tag: "Wallpaper", catalogVersion: CatalogVersion, ...props, children })
+
+export type SpotlightProps = Omit<WithoutTagAndVersion<SpotlightView>, "children">
+export const Spotlight = (
+  props: SpotlightProps,
+  children: ReadonlyArray<View> = []
+): SpotlightView =>
+  SpotlightSchema.make({ _tag: "Spotlight", catalogVersion: CatalogVersion, ...props, children })
+
+export type FrameProps = Omit<WithoutTagAndVersion<FrameView>, "children">
+export const Frame = (
+  props: FrameProps,
+  children: ReadonlyArray<View> = []
+): FrameView =>
+  FrameSchema.make({ _tag: "Frame", catalogVersion: CatalogVersion, ...props, children })
+
+export type BlurredPopupProps = Omit<WithoutTagAndVersion<BlurredPopupView>, "children">
+export const BlurredPopup = (
+  props: BlurredPopupProps,
+  children: ReadonlyArray<View> = []
+): BlurredPopupView =>
+  BlurredPopupSchema.make({ _tag: "BlurredPopup", catalogVersion: CatalogVersion, ...props, children })
+
+
 
 
 
@@ -4651,6 +4904,11 @@ export const resolveView = (view: View, input: ViewResolution = {}): View => {
     case "Section":
     case "Glow":
     case "MockupFrame":
+    case "BackgroundGradient":
+    case "Wallpaper":
+    case "Spotlight":
+    case "Frame":
+    case "BlurredPopup":
       return {
         ...view,
         ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) }),
@@ -4987,6 +5245,15 @@ export const resolveBindings = <State>(view: View, state: State): View => {
         ...view,
         child: resolveBindings(view.child, state)
       }
+    case "BackgroundGradient":
+    case "Wallpaper":
+    case "Spotlight":
+    case "Frame":
+    case "BlurredPopup":
+      return {
+        ...view,
+        children: view.children.map((child) => resolveBindings(child, state))
+      }
     case "Composer":
       return view.autocomplete === undefined
         ? view
@@ -5112,6 +5379,15 @@ export const redactSecureView = (view: View): View => {
       return {
         ...view,
         child: redactSecureView(view.child)
+      }
+    case "BackgroundGradient":
+    case "Wallpaper":
+    case "Spotlight":
+    case "Frame":
+    case "BlurredPopup":
+      return {
+        ...view,
+        children: view.children.map(redactSecureView)
       }
     case "FieldRow":
       return {

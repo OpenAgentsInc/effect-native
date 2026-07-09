@@ -23,7 +23,7 @@ their reason so pressure is visible without weakening the catalog contract.
 
 ## Catalog Versioning Policy
 
-The current catalog marker is `effect-native/v23`, exposed by
+The current catalog marker is `effect-native/v25`, exposed by
 `CatalogVersion`. `compatibleCatalogVersions` is the decode allow-list, and
 `CompatibleViewSchema` is the schema app authors and renderers should use when
 accepting persisted or externally-authored trees.
@@ -77,7 +77,7 @@ until it has a fixture and every renderer declares and proves support for it.
 | Media beyond `Image` | None yet | 2026-07-08 | waiting |
 | Utility style aliases | Authoring friction not yet demonstrated by a real screen | 2026-07-08 | waiting |
 | Monospace / whitespace-preserving text style | effectnative.org's home-page and doc code samples (#19) need indentation-preserving display; worked around today with one `Text` per source line in a `Stack` instead of a single multi-line string | 2026-07-08 | waiting -> related to #36 CodeBlock (syntax-highlighted blocks shipped; plain multi-line monospace Text style still open) |
-| React Native pixel visual-baseline capture | Testkit visual baselines (#16) ship a typed `VisualCapture` contract plus a structural-snapshot default and a real DOM-renderer capture (`@effect-native/testkit/visual`); a native RN pixel-capture harness (e.g. a detox/maestro-style screenshot rig) is undemonstrated | 2026-07-08 | accepted -> #59 (promoted by the mobile epic #52; iOS + Android pixel baselines for the port proof) |
+| React Native pixel visual-baseline capture | Testkit visual baselines (#16) ship a typed `VisualCapture` contract plus a structural-snapshot default and a real DOM-renderer capture (`@effect-native/testkit/visual`); a native RN pixel-capture harness (e.g. a detox/maestro-style screenshot rig) is undemonstrated | 2026-07-08 | shipped -> #59 (`rnVisualCapture` structural RN baseline keyed by platform; detox/maestro pixel remains a plug-in `VisualCapture` implementation) |
 | Full Khala Code Desktop shell cutover | Production desktop shell still needs the composed proof of chat + fleet/gym canvas + owner cutover steps | 2026-07-08 | accepted -> #42 (exit receipt for Phase 4 epic #20); migration map: [`docs/porting-map.md`](./docs/porting-map.md) |
 | Marketing section primitives | openagents.com production landing (WEB-1) needs typed Section/Hero/AnnouncementBadge/CTASection/Footer rather than ad-hoc Stack trees | 2026-07-09 | shipped -> #46 (v20) |
 | Marketing NavBar | openagents.com landing header — horizontal top-nav distinct from app-shell NavRail | 2026-07-09 | shipped -> #47 (v20) |
@@ -85,16 +85,16 @@ until it has a fixture and every renderer declares and proves support for it.
 | PricingTable / PricingColumn | Landing plan comparison | 2026-07-09 | shipped -> #49 (v20) |
 | LogoRow + StatsBand | Landing social proof and metric band | 2026-07-09 | shipped -> #50 (v20) |
 | Glow + MockupFrame | Landing hero mockup with launch-ui-style glow/tilt treatment | 2026-07-09 | shipped -> #51 (v20) |
-| RN renderer parity (close the declared-subset / unsupported matrix) | Khala Code Mobile needs faithful RN mappings for overlays, `SplitPane`, `Combobox`, `Tabs`, `Composer` mention chips, `Slider`, `GraphFigure`, and drag — shipped desktop-first as RN subsets | 2026-07-09 | accepted -> #53 (mobile epic #52 pillar) |
+| RN renderer parity (close the declared-subset / unsupported matrix) | Khala Code Mobile needs faithful RN mappings for overlays, `SplitPane`, `Combobox`, `Tabs`, `Composer` mention chips, `Slider`, `GraphFigure`, and drag — shipped desktop-first as RN subsets | 2026-07-09 | partial -> #53 (Slider step pressables, Composer mention chip strip, GraphFigure edge list; remaining overlay placement/SplitPane drag tracked in matrix) |
 | Mobile host adapter | Khala Code Mobile needs the RN renderer owned by a mobile host: `runMainMobile`, app lifecycle, push token, notification-tap + deep-link intents, safe-area/keyboard runtime | 2026-07-09 | shipped -> #54 (`@effect-native/platform-mobile`: `runMainMobile`, typed Layers + headless harnesses for AppLifecycle/PushToken/Notifications/DeepLink/SafeArea/Keyboard; peer of `platform-desktop` #21) |
-| Mobile navigation adapter | Khala Code Mobile's drawer + native-stack + modal navigator and `khala://` deep links need typed navigation intents | 2026-07-09 | accepted -> #55 |
-| Mobile gesture / interaction expansion | Khala Code Mobile's swipe-to-quote, pull-to-refresh, long-press, keyboard-avoidance, and safe-area need typed touch intents + runtime concerns (the mobile peer of desktop interaction expansion #24) | 2026-07-09 | accepted -> #56 |
-| RN list virtualization parity | Khala Code Mobile's thread list + streaming transcript need FlatList/SectionList-backed `List`/`SectionList`/`Transcript` at production scale | 2026-07-09 | accepted -> #57 |
-| RN foreign-`Host` drivers | Khala Code Mobile's voice/STT mic and on-device model surfaces need reviewed Scope-owned RN host drivers under the `Host` contract (#23) | 2026-07-09 | accepted -> #58 |
+| Mobile navigation adapter | Khala Code Mobile's drawer + native-stack + modal navigator and `khala://` deep links need typed navigation intents | 2026-07-09 | shipped -> #55 (`Navigation` service + `reduceNavigation` + `deepLinkToNavigationAction` in `@effect-native/platform-mobile`) |
+| Mobile gesture / interaction expansion | Khala Code Mobile's swipe-to-quote, pull-to-refresh, long-press, keyboard-avoidance, and safe-area need typed touch intents + runtime concerns (the mobile peer of desktop interaction expansion #24) | 2026-07-09 | shipped -> #56 (v25: `interactions.onLongPress`/`onSwipe`/`onPullToRefresh`; RN long-press + a11y swipe actions; safe-area/keyboard via platform-mobile #54) |
+| RN list virtualization parity | Khala Code Mobile's thread list + streaming transcript need FlatList/SectionList-backed `List`/`SectionList`/`Transcript` at production scale | 2026-07-09 | shipped -> #57 (FlatList windowing defaults on List/SectionList; Transcript FlatList + pin/maintainVisibleContentPosition) |
+| RN foreign-`Host` drivers | Khala Code Mobile's voice/STT mic and on-device model surfaces need reviewed Scope-owned RN host drivers under the `Host` contract (#23) | 2026-07-09 | shipped -> #58 (`voice-input` + `on-device-model` host kinds + `VoiceInput`/`OnDeviceModel` constructors; RN still loud-marker until app drivers register) |
 | `SwipeableListItem` | Khala Code Mobile's thread rows need swipe-action list rows | 2026-07-09 | shipped -> #60 (v23: leading/trailing actions, onAction, fullSwipeActionId; DOM + RN action reveal subset; gesture-native reveal still #56) |
 | `PullToRefresh` / `RefreshControl` | Khala Code Mobile's thread list refreshes on pull | 2026-07-09 | shipped -> #61 (v22: bounded `refreshing` + `onRefresh` on `List`/`SectionList`; RN RefreshControl, DOM refresh affordance) |
 | `Pager` / onboarding stepper | Khala Code Mobile's 3-step onboarding is a linear paged flow (distinct from `Tabs` selection) | 2026-07-09 | shipped -> #62 (v21: linear steps, activeStepId, progress dots/bar, back/advance/complete intents; DOM + RN) |
-| Mobile surface treatments | Khala Code Mobile's arcade visual identity: `BackgroundGradient`/`Wallpaper`/`Spotlight`/`Frame`/`BlurredPopup` (signature visuals as catalog citizens, like Glow/Mockup #51) | 2026-07-09 | accepted -> #63 (mobile catalog) |
+| Mobile surface treatments | Khala Code Mobile's arcade visual identity: `BackgroundGradient`/`Wallpaper`/`Spotlight`/`Frame`/`BlurredPopup` (signature visuals as catalog citizens, like Glow/Mockup #51) | 2026-07-09 | shipped -> #63 (v24 surfaces; v25 current after gestures) |
 | Full Khala Code Mobile app conversion | Every mobile screen authored once as typed EN data on iOS + Android; the owner-named cross-app Khala Sync messaging exit test (desktop EN chat ↔ mobile EN chat, live) | 2026-07-09 | accepted -> #64 (exit receipt for the mobile epic #52); migration map: [`docs/porting-map-mobile.md`](./docs/porting-map-mobile.md) (#65) |
 
 Mobile demand docs (#65): GAPS register rows + ROADMAP Phase 4M + [`docs/porting-map-mobile.md`](./docs/porting-map-mobile.md) shipped.
@@ -120,8 +120,10 @@ Mobile demand docs (#65): GAPS register rows + ROADMAP Phase 4M + [`docs/porting
 | `v20` | #46–#51 | Marketing landing catalog (`Section`, `Hero`, `AnnouncementBadge`, `CtaSection`, `Footer`, `NavBar`, `Accordion`, `PricingColumn`, `PricingTable`, `LogoRow`, `StatsBand`, `Glow`, `MockupFrame`) |
 | `v21` | #62 | `Pager` (linear onboarding stepper) |
 | `v22` | #61 | Pull-to-refresh on `List`/`SectionList` (`refreshing` + `onRefresh`) |
-| `v23` (current) | #60 | `SwipeableListItem` (swipe-action list rows) |
+| `v23` | #60 | `SwipeableListItem` (swipe-action list rows) |
+| `v24` | #63 | Mobile surfaces (`BackgroundGradient`, `Wallpaper`, `Spotlight`, `Frame`, `BlurredPopup`) |
+| `v25` (current) | #56 | Mobile gesture intents on `Interactions` (`onLongPress`/`onSwipe`/`onPullToRefresh`) |
 
 Non-catalog Phase 4 runtime ships (no version bump): desktop adapter (#21), canvas renderer package (#22), streaming region (#26), Keymap/focus (#41), Protoss-blue theme tokens (#25).
 
-Non-catalog Phase 4M runtime ships (no version bump): mobile adapter (#54 `@effect-native/platform-mobile`).
+Non-catalog Phase 4M runtime ships (no version bump): mobile adapter (#54), navigation adapter (#55), list virtualization parity (#57), host kinds voice/on-device (#58), RN visual capture (#59).

@@ -27,7 +27,12 @@ import {
   makeNotificationsTestHarness,
   makePushTokenTestHarness,
   makeSafeAreaTestHarness,
-  runMainMobile
+  runMainMobile,
+  deepLinkToNavigationAction,
+  initialNavigationState,
+  makeNavigationTestHarness,
+  reduceNavigation,
+  NavigationRouteSchema
 } from "../src/index"
 
 const Clicked = defineIntent("MobileTest.Clicked", Schema.Struct({}))
@@ -233,5 +238,28 @@ describe("@effect-native/platform-mobile", () => {
   test("makeMobileHostTestLayer composes every host service", async () => {
     const layer = await Effect.runPromise(makeMobileHostTestLayer())
     expect(layer).toBeDefined()
+  })
+
+  test("navigation adapter reduces stack/drawer/modal actions and decodes deep links (#55)", async () => {
+    const start = initialNavigationState("drawer", [
+      NavigationRouteSchema.make({ id: "threads", name: "Threads" })
+    ])
+    let state = reduceNavigation(start, { type: "push", routeName: "ThreadMessages", params: { threadId: "t-1" } })
+    expect(state.routes.map((r) => r.name)).toEqual(["Threads", "ThreadMessages"])
+    state = reduceNavigation(state, { type: "presentModal", routeName: "RepoPicker" })
+    expect(state.routes[state.routes.length - 1]?.presentation).toBe("modal")
+    state = reduceNavigation(state, { type: "dismiss" })
+    expect(state.routes.map((r) => r.name)).toEqual(["Threads", "ThreadMessages"])
+    state = reduceNavigation(state, { type: "openDrawer" })
+    expect(state.drawerOpen).toBe(true)
+
+    const action = deepLinkToNavigationAction("khala://thread/t-9", [
+      { pattern: /^khala:\/\/thread\/([^/]+)$/, routeName: "ThreadMessages", paramKeys: ["threadId"] }
+    ])
+    expect(action).toEqual({ type: "navigate", routeName: "ThreadMessages", params: { threadId: "t-9" } })
+
+    const harness = await Effect.runPromise(makeNavigationTestHarness(start))
+    const next = await Effect.runPromise(harness.dispatch({ type: "push", routeName: "Settings" }))
+    expect(next.routes[next.routes.length - 1]?.name).toBe("Settings")
   })
 })

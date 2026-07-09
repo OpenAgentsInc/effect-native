@@ -29,6 +29,12 @@ import { Effect, Stream } from "effect"
 import { Window } from "happy-dom"
 import type { IntentReporter, PlatformVariant, Theme, View, ViewportInput } from "@effect-native/core"
 import { makeDomRenderer } from "@effect-native/render-dom"
+import {
+  makeReactNativeRenderer,
+  type ReactElementLike,
+  type ReactNativeDependencies,
+  type ReactNodeLike
+} from "@effect-native/render-rn"
 import { stableStringify, stringifySnapshot } from "./snapshot"
 
 export interface VisualTarget {
@@ -184,3 +190,64 @@ export const blessBaseline = (
     const artifact = yield* capture.capture(target)
     yield* store.write(key, artifact)
   })
+
+
+export const RnBaselineFormat = "effect-native/testkit-visual-rn/v1" as const
+
+const createElement = (
+  type: unknown,
+  props: Record<string, unknown> | null = null,
+  ...children: ReadonlyArray<ReactNodeLike>
+): ReactElementLike => ({
+  type,
+  key: typeof props?.key === "string" ? props.key : null,
+  props: {
+    ...(props ?? {}),
+    ...(children.length === 0
+      ? {}
+      : { children: children.length === 1 ? children[0] : children })
+  }
+})
+
+const headlessRnDependencies: ReactNativeDependencies = {
+  React: { createElement },
+  ReactNative: {
+    View: "View",
+    Text: "Text",
+    Pressable: "Pressable",
+    TextInput: "TextInput",
+    FlatList: "FlatList",
+    SectionList: "SectionList",
+    Image: "Image",
+    Modal: "Modal",
+    RefreshControl: "RefreshControl"
+  }
+}
+
+/**
+ * Mounts `target` through `@effect-native/render-rn` with a headless host shim
+ * and captures the serialized RN structure. Platform is part of the artifact so
+ * iOS and Android baselines stay distinct (pixel harnesses plug in later).
+ */
+export const rnVisualCapture: VisualCapture = {
+  capture: (target) =>
+    Effect.scoped(
+      Effect.gen(function*() {
+        const platform = target.platform === "android" || target.platform === "ios"
+          ? target.platform
+          : "ios"
+        const surface = yield* makeReactNativeRenderer({
+          dependencies: headlessRnDependencies,
+          platform,
+          viewport: target.viewport,
+          ...(target.theme === undefined ? {} : { theme: target.theme })
+        }).mount(undefined, Stream.make(target.view), noopReport)
+        const structure = yield* surface.serialize
+        return {
+          format: RnBaselineFormat,
+          encoding: "utf-8" as const,
+          data: stableStringify({ platform, structure })
+        }
+      })
+    )
+}

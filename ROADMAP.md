@@ -194,18 +194,17 @@ hosts/services.
 |---|---|---|
 | RN renderer parity program | close the declared-subset / unsupported matrix | #53 |
 | Mobile host adapter | `@effect-native/platform-mobile` (`runMainMobile`, push/notifications/deep-links, safe-area/keyboard runtime) | #54 shipped |
-| Navigation adapter | typed navigation intents over native stack/drawer/tabs + deep links | #55 |
-| Gesture / interaction expansion | swipe/pull-to-refresh/long-press + safe-area/keyboard | #56 |
-| List virtualization parity | FlatList/SectionList/Transcript at production scale | #57 |
-| RN foreign-`Host` drivers | voice/STT + on-device model host kinds | #58 |
-| RN pixel visual-baseline capture | iOS + Android baselines (promotes the waiting GAPS row) | #59 |
+| Navigation adapter | typed navigation intents over native stack/drawer/tabs + deep links | #55 shipped |
+| Gesture / interaction expansion | swipe/pull-to-refresh/long-press + safe-area/keyboard | #56 shipped |
+| List virtualization parity | FlatList/SectionList/Transcript at production scale | #57 shipped |
+| RN foreign-`Host` drivers | voice/STT + on-device model host kinds | #58 shipped |
+| RN pixel visual-baseline capture | iOS + Android baselines (promotes the waiting GAPS row) | #59 shipped |
 
 ### Catalog growth (demand-driven)
 
 Only what a real mobile screen demands beyond the RN-side reality of existing
-components: `SwipeableListItem` (#60), `PullToRefresh` (#61), `Pager`/onboarding
-stepper (#62), and mobile surface treatments —
-`BackgroundGradient`/`Wallpaper`/`Spotlight`/`Frame`/`BlurredPopup` (#63).
+components: `SwipeableListItem` (#60 shipped), `PullToRefresh` (#61 shipped), `Pager` (#62 shipped),
+and mobile surface treatments (#63 shipped).
 
 ### Exit receipt (#64)
 

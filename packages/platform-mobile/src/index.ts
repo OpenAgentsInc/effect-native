@@ -357,3 +357,183 @@ export const makeMobileHostTestLayer = (): Effect.Effect<
       keyboard.layer
     )
   })
+
+// ---------------------------------------------------------------------------
+// Navigation adapter (#55) — typed stack/drawer/modal model + intent decode
+// ---------------------------------------------------------------------------
+
+export const NavigationPresentationSchema = Schema.Literals([
+  "card",
+  "modal",
+  "transparentModal"
+] as const)
+export type NavigationPresentation = Schema.Schema.Type<typeof NavigationPresentationSchema>
+
+export const NavigationRouteSchema = Schema.Struct({
+  id: Schema.NonEmptyString,
+  name: Schema.NonEmptyString,
+  params: JsonPayloadSchema.pipe(Schema.optionalKey),
+  presentation: NavigationPresentationSchema.pipe(Schema.optionalKey)
+})
+export type NavigationRoute = Schema.Schema.Type<typeof NavigationRouteSchema>
+
+export const NavigationStateSchema = Schema.Struct({
+  root: Schema.Literals(["stack", "drawer", "tabs"] as const),
+  routes: Schema.Array(NavigationRouteSchema),
+  index: Schema.Number,
+  drawerOpen: Schema.Boolean.pipe(Schema.optionalKey)
+})
+export type NavigationState = Schema.Schema.Type<typeof NavigationStateSchema>
+
+export const NavigationActionSchema = Schema.Union([
+  Schema.Struct({
+    type: Schema.Literal("navigate"),
+    routeName: Schema.NonEmptyString,
+    params: JsonPayloadSchema.pipe(Schema.optionalKey)
+  }),
+  Schema.Struct({
+    type: Schema.Literal("push"),
+    routeName: Schema.NonEmptyString,
+    params: JsonPayloadSchema.pipe(Schema.optionalKey)
+  }),
+  Schema.Struct({ type: Schema.Literal("pop"), count: Schema.Number.pipe(Schema.optionalKey) }),
+  Schema.Struct({ type: Schema.Literal("openDrawer") }),
+  Schema.Struct({ type: Schema.Literal("closeDrawer") }),
+  Schema.Struct({
+    type: Schema.Literal("presentModal"),
+    routeName: Schema.NonEmptyString,
+    params: JsonPayloadSchema.pipe(Schema.optionalKey)
+  }),
+  Schema.Struct({ type: Schema.Literal("dismiss") })
+])
+export type NavigationAction = Schema.Schema.Type<typeof NavigationActionSchema>
+
+export interface Navigation {
+  readonly current: Effect.Effect<NavigationState>
+  readonly changes: Stream.Stream<NavigationState>
+  readonly dispatch: (action: NavigationAction) => Effect.Effect<NavigationState>
+}
+
+export const Navigation = Context.Service<Navigation>(
+  "@effect-native/platform-mobile/Navigation"
+)
+
+export const initialNavigationState = (
+  root: NavigationState["root"],
+  routes: ReadonlyArray<NavigationRoute>
+): NavigationState =>
+  NavigationStateSchema.make({
+    root,
+    routes: [...routes],
+    index: Math.max(0, routes.length - 1),
+    drawerOpen: false
+  })
+
+export const reduceNavigation = (
+  state: NavigationState,
+  action: NavigationAction
+): NavigationState => {
+  switch (action.type) {
+    case "navigate":
+    case "push":
+    case "presentModal": {
+      const next: NavigationRoute = NavigationRouteSchema.make({
+        id: `${action.routeName}-${state.routes.length}`,
+        name: action.routeName,
+        ...(action.params === undefined ? {} : { params: action.params }),
+        ...(action.type === "presentModal" ? { presentation: "modal" as const } : {})
+      })
+      const routes = action.type === "navigate" && state.routes.some((r) => r.name === action.routeName)
+        ? state.routes.map((r) => (r.name === action.routeName
+          ? NavigationRouteSchema.make({
+              ...r,
+              ...(action.params === undefined ? {} : { params: action.params })
+            })
+          : r))
+        : [...state.routes, next]
+      const index = action.type === "navigate"
+        ? Math.max(0, routes.findIndex((r) => r.name === action.routeName))
+        : routes.length - 1
+      return NavigationStateSchema.make({ ...state, routes, index, drawerOpen: false })
+    }
+    case "pop": {
+      const count = action.count ?? 1
+      if (state.routes.length <= 1) return state
+      const routes = state.routes.slice(0, Math.max(1, state.routes.length - count))
+      return NavigationStateSchema.make({
+        ...state,
+        routes,
+        index: routes.length - 1
+      })
+    }
+    case "openDrawer":
+      return NavigationStateSchema.make({ ...state, drawerOpen: true })
+    case "closeDrawer":
+      return NavigationStateSchema.make({ ...state, drawerOpen: false })
+    case "dismiss": {
+      if (state.routes.length <= 1) return state
+      const top = state.routes[state.routes.length - 1]
+      if (top?.presentation !== "modal" && top?.presentation !== "transparentModal") {
+        return reduceNavigation(state, { type: "pop" })
+      }
+      const routes = state.routes.slice(0, -1)
+      return NavigationStateSchema.make({ ...state, routes, index: routes.length - 1 })
+    }
+  }
+}
+
+/** Decode a deep link URL into a navigation action (shared with cold start + push taps). */
+export const deepLinkToNavigationAction = (
+  url: string,
+  patterns: ReadonlyArray<{ readonly pattern: RegExp; readonly routeName: string; readonly paramKeys?: ReadonlyArray<string> }>
+): NavigationAction | undefined => {
+  for (const entry of patterns) {
+    const match = entry.pattern.exec(url)
+    if (match === null) continue
+    const params: Record<string, string> = {}
+    for (const [index, key] of (entry.paramKeys ?? []).entries()) {
+      const value = match[index + 1]
+      if (value !== undefined) params[key] = value
+    }
+    return {
+      type: "navigate",
+      routeName: entry.routeName,
+      ...(Object.keys(params).length === 0 ? {} : { params })
+    }
+  }
+  return undefined
+}
+
+export interface NavigationTestHarness {
+  readonly navigation: Navigation
+  readonly layer: Layer.Layer<Navigation>
+  readonly dispatch: (action: NavigationAction) => Effect.Effect<NavigationState>
+}
+
+export const makeNavigationTestHarness = (
+  initial: NavigationState = initialNavigationState("stack", [
+    NavigationRouteSchema.make({ id: "root", name: "Threads" })
+  ])
+): Effect.Effect<NavigationTestHarness> =>
+  Effect.gen(function*() {
+    const stateRef = yield* Ref.make<NavigationState>(initial)
+    const events = yield* PubSub.unbounded<NavigationState>()
+    const dispatch = (action: NavigationAction) =>
+      Effect.gen(function*() {
+        const current = yield* Ref.get(stateRef)
+        const next = reduceNavigation(current, action)
+        yield* Ref.set(stateRef, next)
+        yield* PubSub.publish(events, next)
+        return next
+      })
+    const navigation: Navigation = {
+      current: Ref.get(stateRef),
+      changes: Stream.fromPubSub(events),
+      dispatch
+    }
+    return {
+      navigation,
+      layer: Layer.succeed(Navigation, navigation),
+      dispatch
+    }
+  })

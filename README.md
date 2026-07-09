@@ -175,7 +175,7 @@ tracked separately.
 
 Phase 4 (desktop + canvas) is demand-driven by the Khala Code Desktop port —
 a **UI migration, not a backend rewrite**. Catalog demand through
-`effect-native/v23` is shipped (marketing landing, mobile Pager/pull-to-refresh/SwipeableListItem); the chat vertical-slice proof is in
+`effect-native/v25` is shipped (marketing landing, mobile Pager/pull-to-refresh/SwipeableListItem); the chat vertical-slice proof is in
 [`docs/proof-desktop.md`](./docs/proof-desktop.md). The foreign-host exception
 is documented in [`docs/foreign-host.md`](./docs/foreign-host.md); the short
 porting map is [`docs/porting-map.md`](./docs/porting-map.md). The exit

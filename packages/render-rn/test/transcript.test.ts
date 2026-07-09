@@ -91,10 +91,21 @@ describe("transcript / markdown (#35) React Native renderer", () => {
     )
     expect(transcript.props.testID).toBe("en-transcript")
     expect(transcript.props.accessibilityLiveRegion).toBe("polite")
-    expect(find(transcript, (e) => e.props.testID === "en-message:m1")).not.toBeUndefined()
-    const streaming = find(transcript, (e) => e.props.testID === "en-message:m2")
-    expect(streaming?.props.accessibilityState).toMatchObject({ busy: true })
-    expect(find(transcript, (e) => e.props.children === "On it")).not.toBeUndefined()
+    expect(transcript.type).toBe("FlatList")
+    expect((transcript.props.data as ReadonlyArray<{ key: string }>).map((m) => m.key)).toEqual([
+      "m1",
+      "m2"
+    ])
+    const renderItem = transcript.props.renderItem as
+      | ((input: { item: TranscriptMessage }) => ReactElementLike)
+      | undefined
+    expect(typeof renderItem).toBe("function")
+    const streaming = renderItem!({
+      item: message("m2", "assistant", "On it", "streaming")
+    })
+    expect(streaming.props.testID).toBe("en-message:m2")
+    expect(streaming.props.accessibilityState).toMatchObject({ busy: true })
+    expect(find(streaming, (e) => e.props.children === "On it")).not.toBeUndefined()
   })
 
   test("markdown maps blocks and inline runs to Text/View", () => {

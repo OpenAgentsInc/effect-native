@@ -31,6 +31,11 @@ import {
   type MockupFrameView,
   type PagerView,
   type SwipeableListItemView,
+  type BackgroundGradientView,
+  type WallpaperView,
+  type SpotlightView,
+  type FrameView,
+  type BlurredPopupView,
   Section,
   Hero,
   AnnouncementBadge,
@@ -3710,6 +3715,13 @@ const renderView = (view: View, state: DomRendererState, report: IntentReporter)
       return renderPager(view, state, report)
     case "SwipeableListItem":
       return renderSwipeableListItem(view, state, report)
+    case "BackgroundGradient":
+    case "Wallpaper":
+    case "Spotlight":
+    case "Frame":
+      return renderMobileSurfaceShell(view, state, report)
+    case "BlurredPopup":
+      return renderBlurredPopup(view, state, report)
   }
 }
 
@@ -4502,6 +4514,76 @@ const renderSwipeableListItem = (
   el.appendChild(body)
   actions("trailing", view.trailingActions ?? [])
 
+  applyBaseStyle(el, view, state)
+  applyA11y(el, view)
+  return el
+}
+
+const renderMobileSurfaceShell = (
+  view: BackgroundGradientView | WallpaperView | SpotlightView | FrameView,
+  state: DomRendererState,
+  report: IntentReporter
+): HTMLElement => {
+  const el = state.keyedElement(view, "div")
+  state.resetListeners(el)
+  el.setAttribute("data-en-mobile-surface", view._tag)
+  if (view._tag === "BackgroundGradient") {
+    const from = view.from ?? "background"
+    const to = view.to ?? "accent"
+    const dir = view.direction ?? "vertical"
+    el.style.background =
+      dir === "radial"
+        ? `radial-gradient(circle, var(--en-color-${from}) 0%, var(--en-color-${to}) 70%)`
+        : dir === "horizontal"
+          ? `linear-gradient(90deg, var(--en-color-${from}), var(--en-color-${to}))`
+          : `linear-gradient(180deg, var(--en-color-${from}), var(--en-color-${to}))`
+  }
+  if (view._tag === "Wallpaper") {
+    el.setAttribute("data-en-wallpaper", view.variant ?? "plain")
+    el.style.background = "var(--en-color-surface)"
+  }
+  if (view._tag === "Spotlight") {
+    el.setAttribute("data-en-spotlight", view.intensity ?? "md")
+    el.style.boxShadow = "0 0 40px var(--en-color-accent)"
+  }
+  if (view._tag === "Frame") {
+    el.setAttribute("data-en-frame", view.variant ?? "square")
+    el.style.border = "1px solid var(--en-color-accent)"
+    el.style.borderRadius =
+      view.variant === "rounded" || view.variant === "arcade" ? "var(--en-radius-lg)" : "0"
+    el.style.padding = "var(--en-spacing-3)"
+  }
+  el.replaceChildren(...view.children.map((child) => renderView(child, state, report)))
+  applyBaseStyle(el, view, state)
+  applyA11y(el, view)
+  return el
+}
+
+const renderBlurredPopup = (
+  view: BlurredPopupView,
+  state: DomRendererState,
+  report: IntentReporter
+): HTMLElement => {
+  const el = state.keyedElement(view, "div")
+  state.resetListeners(el)
+  el.setAttribute("data-en-blurred-popup", view.open ? "open" : "closed")
+  el.hidden = !view.open
+  if (view.open) {
+    el.style.position = "fixed"
+    el.style.inset = "0"
+    el.style.display = "flex"
+    el.style.alignItems = "center"
+    el.style.justifyContent = "center"
+    el.style.background = "color-mix(in srgb, var(--en-color-background) 55%, transparent)"
+    el.style.backdropFilter = "blur(8px)"
+    const panel = el.ownerDocument.createElement("div")
+    panel.setAttribute("data-en-role", "popup-panel")
+    for (const child of view.children) panel.appendChild(renderView(child, state, report))
+    el.appendChild(panel)
+    state.addListener(el, "click", (event) => {
+      if (event.target === el) runReportedIntent(report, view.onDismiss)
+    })
+  }
   applyBaseStyle(el, view, state)
   applyA11y(el, view)
   return el

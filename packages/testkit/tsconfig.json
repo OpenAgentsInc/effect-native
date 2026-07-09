@@ -11,6 +11,7 @@
     { "path": "../core" },
     { "path": "../devtools" },
     { "path": "../render-dom" },
+    { "path": "../render-rn" },
     { "path": "../tokens" }
   ],
   "include": ["src/**/*.ts", "test/**/*.ts", "scripts/**/*.ts", "test/fixtures/*.json"]

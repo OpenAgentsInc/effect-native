@@ -16,6 +16,8 @@ import {
   PagerCatalogVersion,
   PullToRefreshCatalogVersion,
   SwipeableListItemCatalogVersion,
+  MobileSurfacesCatalogVersion,
+  MobileGesturesCatalogVersion,
   TranscriptCatalogVersion,
   TabsCatalogVersion,
   FormCatalogVersion,
@@ -78,11 +80,13 @@ describe("catalog version compatibility", () => {
       MarketingCatalogVersion,
       PagerCatalogVersion,
       PullToRefreshCatalogVersion,
-      SwipeableListItemCatalogVersion
+      SwipeableListItemCatalogVersion,
+      MobileSurfacesCatalogVersion,
+      MobileGesturesCatalogVersion
     ])
     // The current marker is the last entry; the previous marker is second-last.
-    expect(CatalogVersion).toBe(SwipeableListItemCatalogVersion)
-    expect(PreviousCatalogVersion).toBe(PullToRefreshCatalogVersion)
+    expect(CatalogVersion).toBe(MobileGesturesCatalogVersion)
+    expect(PreviousCatalogVersion).toBe(MobileSurfacesCatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 1]).toBe(CatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 2]).toBe(PreviousCatalogVersion)
   })

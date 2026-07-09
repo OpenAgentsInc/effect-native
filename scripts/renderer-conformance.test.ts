@@ -40,6 +40,11 @@ import {
   Pager,
   PricingColumn,
   SwipeableListItem,
+  BackgroundGradient,
+  Wallpaper,
+  Spotlight,
+  Frame,
+  BlurredPopup,
   PricingTable,
   RadioGroup,
   RecoveryOverlay,
@@ -627,7 +632,31 @@ const catalogFixturesByTag = {
       { id: "archive", label: "Archive", destructive: true, tone: "danger" }
     ],
     child: Text({ key: "swipe-label", content: "Swipe me", variant: "body" })
-  })
+  }),
+  BackgroundGradient: BackgroundGradient(
+    { key: "bg", direction: "vertical", from: "background", to: "accent" },
+    [Text({ key: "bg-child", content: "BG", variant: "body" })]
+  ),
+  Wallpaper: Wallpaper(
+    { key: "wall", variant: "plain" },
+    [Text({ key: "wall-child", content: "Wall", variant: "body" })]
+  ),
+  Spotlight: Spotlight(
+    { key: "spot", intensity: "sm" },
+    [Text({ key: "spot-child", content: "Spot", variant: "body" })]
+  ),
+  Frame: Frame(
+    { key: "frame", variant: "rounded" },
+    [Text({ key: "frame-child", content: "Frame", variant: "body" })]
+  ),
+  BlurredPopup: BlurredPopup(
+    {
+      key: "popup",
+      open: true,
+      onDismiss: IntentRef("Dismissed", StaticPayload({ surface: "popup" }))
+    },
+    [Text({ key: "popup-child", content: "Popup", variant: "body" })]
+  )
 } satisfies { readonly [Tag in (typeof componentTags)[number]]: View }
 
 const allFixtureTags = Object.keys(catalogFixturesByTag).sort()
@@ -764,7 +793,12 @@ const catalogRendererTags = [
   "Glow",
   "MockupFrame",
   "Pager",
-  "SwipeableListItem"
+  "SwipeableListItem",
+  "BackgroundGradient",
+  "Wallpaper",
+  "Spotlight",
+  "Frame",
+  "BlurredPopup"
 ] as const
 
 // Host (issue #23) is supported by the headless recorder and the DOM renderer

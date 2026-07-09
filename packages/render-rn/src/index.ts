@@ -31,6 +31,11 @@ import {
   type MockupFrameView,
   type PagerView,
   type SwipeableListItemView,
+  type BackgroundGradientView,
+  type WallpaperView,
+  type SpotlightView,
+  type FrameView,
+  type BlurredPopupView,
   type ComboboxOption,
   type ComboboxView,
   type CommandPaletteView,
@@ -418,6 +423,32 @@ const accessibilityProps = (view: View): Record<string, unknown> => {
   return props
 }
 
+const mobileGestureProps = (
+  view: View,
+  report: IntentReporter
+): Record<string, unknown> => {
+  const interactions = "interactions" in view ? view.interactions : undefined
+  if (interactions === undefined) return {}
+  return {
+    ...(interactions.onLongPress === undefined
+      ? {}
+      : {
+          onLongPress: () => runReportedIntent(report, interactions.onLongPress!)
+        }),
+    ...(interactions.onSwipe === undefined
+      ? {}
+      : {
+          // Commit swipe via accessibility action until gesture-handler is host-injected (#56).
+          accessibilityActions: [{ name: "swipeLeft" }, { name: "swipeRight" }],
+          onAccessibilityAction: (event: { readonly nativeEvent: { readonly actionName: string } }) => {
+            const name = event.nativeEvent.actionName
+            const direction = name === "swipeLeft" ? "left" : name === "swipeRight" ? "right" : "up"
+            runReportedIntent(report, interactions.onSwipe!, direction)
+          }
+        })
+  }
+}
+
 const baseProps = (view: View, style: ReactNativeStyle): Record<string, unknown> => ({
   key: view.key,
   nativeID: nativeId(view),
@@ -771,7 +802,14 @@ const nativeCollectionProps = (
             tintColor: colorValue(options.theme ?? defaultTheme, "accent"),
             onRefresh: () => runReportedIntent(report, view.onRefresh!)
           })
+  // Production-scale virtualization defaults (#57): windowing + end-reach wiring.
+  // FlatList always owns the data path (never eager-map all children).
   return {
+    windowSize: 10,
+    initialNumToRender: 12,
+    maxToRenderPerBatch: 10,
+    updateCellsBatchingPeriod: 50,
+    removeClippedSubviews: true,
     ...(view.onEndReached === undefined
       ? {}
       : {
@@ -1590,7 +1628,7 @@ const renderTabs = (
 
 // Rich composer (issue #32) on React Native — a multiline TextInput bound to
 // the same typed document (flattened to plaintext via composerPlainText; inline
-// mention chips are declared unsupported and render as their label text).
+// mention chips render as a typed chip strip above the flattened TextInput (#53 parity).
 // Enter submit-vs-newline and history nav map to onSubmitEditing / typed key
 // commands; the autocomplete combobox renders below.
 const renderComposer = (
@@ -1614,6 +1652,24 @@ const renderComposer = (
     }
   })
   const children: Array<ReactElementLike> = [input]
+  const mentionChips = view.doc.filter((run): run is { readonly kind: "mention"; readonly id: string; readonly label: string } => run.kind === "mention")
+  if (mentionChips.length > 0) {
+    children.push(
+      createElement(
+        dependencies,
+        dependencies.ReactNative.View,
+        { key: "mentions", testID: "en-composer-mentions", style: { flexDirection: "row", flexWrap: "wrap", gap: spacingValue(theme, "1") } },
+        ...mentionChips.map((chip) =>
+          createElement(
+            dependencies,
+            dependencies.ReactNative.Text,
+            { key: `mention-${chip.id}`, testID: `en-composer-mention:${chip.id}`, style: { color: colorValue(theme, "accent") } },
+            chip.label
+          )
+        )
+      )
+    )
+  }
   if (view.attachments !== undefined && view.attachments.length > 0) {
     children.push(
       createElement(
@@ -1772,18 +1828,58 @@ const renderRadioGroup = (
 const renderSlider = (
   view: SliderView,
   dependencies: ReactNativeDependencies,
+  report: IntentReporter,
   options: ReactNativeRenderOptions
-): ReactElementLike =>
-  // No RN core Slider; expose the value/range as an accessible adjustable and
-  // reflect the current value. Drag-to-change is declared unsupported (a
-  // community Slider lib is an app-level swap).
-  createElement(dependencies, dependencies.ReactNative.View, {
-    ...baseProps(view, viewStyle(view, options)),
-    testID: "en-slider",
-    accessibilityRole: "adjustable",
-    accessibilityLabel: view.label,
-    accessibilityValue: { min: view.min, max: view.max, now: view.value }
-  })
+): ReactElementLike => {
+  // Faithful subset (#53): step via +/- pressables + adjustable a11y (drag still optional via host).
+  const theme = options.theme ?? defaultTheme
+  const onChange = controlChangeIntent(view)
+  const step = view.step ?? 1
+  const clamp = (n: number) => Math.min(view.max, Math.max(view.min, n))
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    {
+      ...baseProps(view, mergeNativeStyles({ flexDirection: "row", alignItems: "center", gap: spacingValue(theme, "2") }, viewStyle(view, options))),
+      testID: "en-slider",
+      accessibilityRole: "adjustable",
+      accessibilityLabel: view.label,
+      accessibilityValue: { min: view.min, max: view.max, now: view.value }
+    },
+    createElement(
+      dependencies,
+      dependencies.ReactNative.Pressable,
+      {
+        key: "dec",
+        testID: "en-slider-dec",
+        disabled: view.disabled === true,
+        ...(onChange === undefined || view.disabled === true
+          ? {}
+          : { onPress: () => runReportedIntent(report, onChange, clamp(view.value - step)) })
+      },
+      createElement(dependencies, dependencies.ReactNative.Text, { key: "dec-label" }, "−")
+    ),
+    createElement(
+      dependencies,
+      dependencies.ReactNative.Text,
+      { key: "value", testID: "en-slider-value" },
+      String(view.value)
+    ),
+    createElement(
+      dependencies,
+      dependencies.ReactNative.Pressable,
+      {
+        key: "inc",
+        testID: "en-slider-inc",
+        disabled: view.disabled === true,
+        ...(onChange === undefined || view.disabled === true
+          ? {}
+          : { onPress: () => runReportedIntent(report, onChange, clamp(view.value + step)) })
+      },
+      createElement(dependencies, dependencies.ReactNative.Text, { key: "inc-label" }, "+")
+    )
+  )
+}
 
 const renderNumberField = (
   view: NumberFieldView,
@@ -2089,24 +2185,65 @@ const renderTranscript = (
   dependencies: ReactNativeDependencies,
   report: IntentReporter,
   options: ReactNativeRenderOptions
-): ReactElementLike =>
-  createElement(
+): ReactElementLike => {
+  // Production-scale transcript (#57): FlatList-backed with pin-to-end and
+  // maintainVisibleContentPosition so streaming append stays O(new).
+  const theme = options.theme ?? defaultTheme
+  return createElement(
     dependencies,
-    dependencies.ReactNative.View,
-    { ...baseProps(view, mergeNativeStyles({ flexDirection: "column" }, viewStyle(view, options))), testID: "en-transcript", accessibilityLiveRegion: "polite" },
-    ...view.messages.map((message) =>
-      createElement(
-        dependencies,
-        dependencies.ReactNative.View,
-        {
-          key: `message-${message.key}`,
-          testID: `en-message:${message.key}`,
-          nativeID: `effect-native-message:${message.role}`,
-          ...(message.status === undefined ? {} : { accessibilityState: { busy: message.status === "streaming" || message.status === "thinking" } })
-        },
-        ...message.body.map((child) => renderResolvedReactNativeView(child, dependencies, report, options))
-      ))
+    dependencies.ReactNative.FlatList,
+    {
+      ...baseProps(view, mergeNativeStyles({ flexDirection: "column" }, viewStyle(view, options))),
+      testID: "en-transcript",
+      accessibilityLiveRegion: "polite",
+      data: view.messages,
+      keyExtractor: (message: { readonly key: string }) => message.key,
+      windowSize: 12,
+      initialNumToRender: 16,
+      maxToRenderPerBatch: 8,
+      removeClippedSubviews: true,
+      ...(view.pinToEnd === true
+        ? {
+            maintainVisibleContentPosition: { minIndexForVisible: 0 },
+            onContentSizeChange: () => {
+              // Host list ref scroll-to-end is adapter-owned; mark pin intent for apps.
+              if (view.onPinnedChange !== undefined) {
+                runReportedIntent(report, view.onPinnedChange, true)
+              }
+            }
+          }
+        : {}),
+      renderItem: ({ item: message }: {
+        readonly item: {
+          readonly key: string
+          readonly role: string
+          readonly status?: string
+          readonly body: ReadonlyArray<View>
+        }
+      }) =>
+        createElement(
+          dependencies,
+          dependencies.ReactNative.View,
+          {
+            key: `message-${message.key}`,
+            testID: `en-message:${message.key}`,
+            nativeID: `effect-native-message:${message.role}`,
+            style: { gap: spacingValue(theme, "1") },
+            ...(message.status === undefined
+              ? {}
+              : {
+                  accessibilityState: {
+                    busy: message.status === "streaming" || message.status === "thinking"
+                  }
+                })
+          },
+          ...message.body.map((child) =>
+            renderResolvedReactNativeView(child, dependencies, report, options)
+          )
+        )
+    }
   )
+}
 
 // CodeBlock + unified diff (issue #36) on React Native. Pre-tokenized lines and
 // pre-parsed diff rows map to colored Text runs; no highlighter/parser. The
@@ -2236,7 +2373,7 @@ const renderDiffView = (
 
 // GraphFigure + Timeline (issue #37) on React Native — a read-only subset. RN
 // has no core SVG/canvas, so the graph renders as a selectable node list with
-// status colors (edges + pan/zoom declared unsupported); Timeline maps to a
+// status colors + edge list subset (#53); pan/zoom remains camera-data only. Timeline maps to a
 // list of status-tagged rows.
 const renderGraphFigure = (
   view: GraphFigureView,
@@ -2250,20 +2387,42 @@ const renderGraphFigure = (
     dependencies,
     dependencies.ReactNative.View,
     { ...baseProps(view, mergeNativeStyles({ flexDirection: "column" }, viewStyle(view, options))), testID: "en-graph-figure", accessibilityLabel: view.a11y?.label },
-    ...view.nodes.map((node) => {
-      const dot = createElement(dependencies, dependencies.ReactNative.View, { key: "dot", style: { width: 8, height: 8, borderRadius: 999, backgroundColor: statusColor(node.status) } })
-      const label = createElement(dependencies, dependencies.ReactNative.Text, { key: "label" }, node.label)
-      const props: Record<string, unknown> = {
-        key: `node-${node.id}`,
-        testID: `en-graph-node:${node.id}`,
-        style: { flexDirection: "row", gap: spacingValue(theme, "2") }
-      }
-      if (view.onNodeSelect !== undefined) {
-        const onNodeSelect = view.onNodeSelect
-        return createElement(dependencies, dependencies.ReactNative.Pressable, { ...props, onPress: () => runReportedIntent(report, onNodeSelect, node.id) }, dot, label)
-      }
-      return createElement(dependencies, dependencies.ReactNative.View, props, dot, label)
-    })
+    createElement(
+      dependencies,
+      dependencies.ReactNative.View,
+      { key: "nodes", testID: "en-graph-nodes", style: { flexDirection: "column", gap: spacingValue(theme, "1") } },
+      ...view.nodes.map((node) => {
+        const dot = createElement(dependencies, dependencies.ReactNative.View, { key: "dot", style: { width: 8, height: 8, borderRadius: 999, backgroundColor: statusColor(node.status) } })
+        const label = createElement(dependencies, dependencies.ReactNative.Text, { key: "label" }, node.label)
+        const props: Record<string, unknown> = {
+          key: `node-${node.id}`,
+          testID: `en-graph-node:${node.id}`,
+          style: { flexDirection: "row", gap: spacingValue(theme, "2") }
+        }
+        if (view.onNodeSelect !== undefined) {
+          const onNodeSelect = view.onNodeSelect
+          return createElement(dependencies, dependencies.ReactNative.Pressable, { ...props, onPress: () => runReportedIntent(report, onNodeSelect, node.id) }, dot, label)
+        }
+        return createElement(dependencies, dependencies.ReactNative.View, props, dot, label)
+      })
+    ),
+    createElement(
+      dependencies,
+      dependencies.ReactNative.View,
+      { key: "edges", testID: "en-graph-edges", style: { flexDirection: "column", gap: spacingValue(theme, "1") } },
+      ...view.edges.map((edge) =>
+        createElement(
+          dependencies,
+          dependencies.ReactNative.Text,
+          {
+            key: `edge-${edge.id}`,
+            testID: `en-graph-edge:${edge.id}`,
+            style: { color: colorValue(theme, "textMuted") }
+          },
+          `${edge.from} → ${edge.to}`
+        )
+      )
+    )
   )
 }
 
@@ -2528,7 +2687,7 @@ const renderResolvedReactNativeView = (
     case "RadioGroup":
       return renderRadioGroup(view, dependencies, report, options)
     case "Slider":
-      return renderSlider(view, dependencies, options)
+      return renderSlider(view, dependencies, report, options)
     case "NumberField":
       return renderNumberField(view, dependencies, report, options)
     case "FieldRow":
@@ -2571,8 +2730,82 @@ const renderResolvedReactNativeView = (
       return renderPager(view, dependencies, report, options)
     case "SwipeableListItem":
       return renderSwipeableListItem(view, dependencies, report, options)
+    case "BackgroundGradient":
+    case "Wallpaper":
+    case "Spotlight":
+    case "Frame":
+    case "BlurredPopup":
+      return renderMobileSurfaceShell(view, dependencies, report, options)
   }
 }
+
+const renderMobileSurfaceShell = (
+  view: BackgroundGradientView | WallpaperView | SpotlightView | FrameView | BlurredPopupView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const theme = options.theme ?? defaultTheme
+  if (view._tag === "BlurredPopup") {
+    if (!view.open) {
+      return createElement(dependencies, dependencies.ReactNative.View, {
+        ...baseProps(view, viewStyle(view as never, options)),
+        testID: "en-BlurredPopup-closed"
+      })
+    }
+    return createElement(
+      dependencies,
+      dependencies.ReactNative.Modal,
+      {
+        ...baseProps(view, viewStyle(view as never, options)),
+        testID: "en-BlurredPopup",
+        transparent: true,
+        visible: true,
+        onRequestClose: () => runReportedIntent(report, view.onDismiss)
+      },
+      createElement(
+        dependencies,
+        dependencies.ReactNative.Pressable,
+        {
+          key: "backdrop",
+          testID: "en-BlurredPopup-backdrop",
+          onPress: () => runReportedIntent(report, view.onDismiss),
+          style: { flex: 1, justifyContent: "center", backgroundColor: "rgba(0,0,0,0.45)" }
+        },
+        createElement(
+          dependencies,
+          dependencies.ReactNative.View,
+          { key: "panel", testID: "en-BlurredPopup-panel", style: { margin: spacingValue(theme, "4"), padding: spacingValue(theme, "3"), backgroundColor: colorValue(theme, "surface") } },
+          ...view.children.map((child) => renderResolvedReactNativeView(child, dependencies, report, options))
+        )
+      )
+    )
+  }
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    baseProps(
+      view,
+      mergeNativeStyles(
+        {
+          flexDirection: "column",
+          ...(view._tag === "Frame"
+            ? { borderWidth: 1, borderColor: colorValue(theme, "accent"), padding: spacingValue(theme, "3") }
+            : {}),
+          ...(view._tag === "Spotlight"
+            ? { shadowColor: colorValue(theme, "accent"), shadowOpacity: 0.45, shadowRadius: 16 }
+            : {}),
+          ...(view._tag === "BackgroundGradient" || view._tag === "Wallpaper"
+            ? { backgroundColor: colorValue(theme, "surface") }
+            : {})
+        },
+        viewStyle(view as never, options)
+      )
+    ),
+    ...view.children.map((child) => renderResolvedReactNativeView(child, dependencies, report, options))
+  )
+}
+
 
 const renderSwipeableListItem = (
   view: SwipeableListItemView,
