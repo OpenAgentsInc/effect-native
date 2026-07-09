@@ -56,11 +56,10 @@ GPU context that cannot be a pure function of serializable props, it is a
 
 ## Migration order (suggested)
 
-1. **Chat vertical slice** (already proven) — shell + transcript + composer
-   intents — [`proof-desktop.md`](./proof-desktop.md)
-2. **Host panes** — register real Monaco/xterm drivers behind existing stubs
-3. **Fleet/gym** — `GraphFigure` + live canvas driver
-4. **Full shell cutover** — issue #42 exit receipt + owner decision
+1. **Chat vertical slice** (proven) — shell + transcript + composer — [`proof-desktop.md`](./proof-desktop.md)
+2. **Fleet cockpit** (proven in the same tree) — `GraphFigure` + `Timeline` + settings strip (#42)
+3. **Host panes** — register real Monaco/xterm drivers behind existing stubs
+4. **Owner cutover** — live Electrobun packaging + production screenshot bless
 
 ## Non-goals of this map
 

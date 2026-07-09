@@ -192,7 +192,7 @@ hosts/services.
 
 | Pillar | Surface | Issue |
 |---|---|---|
-| RN renderer parity program | close the declared-subset / unsupported matrix | #53 |
+| RN renderer parity program | close the declared-subset / unsupported matrix | #53 shipped |
 | Mobile host adapter | `@effect-native/platform-mobile` (`runMainMobile`, push/notifications/deep-links, safe-area/keyboard runtime) | #54 shipped |
 | Navigation adapter | typed navigation intents over native stack/drawer/tabs + deep links | #55 shipped |
 | Gesture / interaction expansion | swipe/pull-to-refresh/long-press + safe-area/keyboard | #56 shipped |

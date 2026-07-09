@@ -250,11 +250,13 @@ describe("Phase 4 Khala chat vertical slice oracle", () => {
     )).toBe(true)
     expect(JSON.stringify(headless.snapshots)).toContain("Streaming transcript")
     expect(headless.events.map((event) => event.name)).toEqual([
+      "KhalaChat.ComposerChanged",
+      "KhalaChat.ComposerSubmitted",
       "KhalaChat.PaletteOpened",
       "KhalaChat.PaletteQueryChanged",
-      "KhalaChat.PaletteSelected",
-      "KhalaChat.ComposerChanged",
-      "KhalaChat.ComposerSubmitted"
+      "KhalaChat.PaletteSelected"
     ])
+    expect(JSON.stringify(headless.snapshots)).toContain("Fleet cockpit")
+    expect(JSON.stringify(headless.snapshots)).toContain("GraphFigure")
   })
 })

@@ -3,6 +3,7 @@ import {
   Button,
   Card,
   ComponentValueBinding,
+  GraphFigure,
   IntentRef,
   List,
   Modal,
@@ -11,6 +12,9 @@ import {
   StaticPayload,
   Text,
   TextField,
+  Timeline,
+  Toggle,
+  FieldRow,
   defineIntent,
   makeIntentRegistry,
   makeViewProgramFromState,
@@ -743,6 +747,84 @@ const commandPalette = (state: KhalaChatState): View =>
     ])
   ])
 
+const fleetCockpit = (state: KhalaChatState): View =>
+  Stack({
+    key: "fleet-cockpit",
+    direction: "column",
+    gap: "3",
+    padding: "3",
+    style: { flex: 1, backgroundColor: "background" }
+  }, [
+    Text({ key: "fleet-title", content: "Fleet cockpit", variant: "title", color: "textPrimary" }),
+    Stack({ key: "fleet-chips", direction: "row", gap: "2" }, [
+      Button({
+        key: "fleet-run",
+        label: "Run pairing",
+        variant: "primary",
+        onPress: IntentRef("KhalaChat.SelectView", StaticPayload("fleet"))
+      }),
+      Button({
+        key: "fleet-back-chat",
+        label: "Back to chat",
+        variant: "secondary",
+        onPress: IntentRef("KhalaChat.SelectView", StaticPayload("chat"))
+      })
+    ]),
+    GraphFigure({
+      key: "fleet-graph",
+      layout: "precomputed",
+      width: 420,
+      height: 240,
+      camera: { x: 0, y: 0, zoom: 1 },
+      onNodeSelect: IntentRef("KhalaChat.SelectThread", StaticPayload("thread-fleet-qa")),
+      nodes: [
+        { id: "orrery", label: "Orrery", kind: "worker", status: "active", x: -80, y: 0 },
+        { id: "whitefang", label: "Whitefang", kind: "validator", status: "success", x: 80, y: -40 },
+        { id: "arbiter", label: "Arbiter", kind: "arbiter", status: "idle", x: 0, y: 40 }
+      ],
+      edges: [
+        { id: "e1", from: "orrery", to: "arbiter", kind: "flow", status: "active" },
+        { id: "e2", from: "arbiter", to: "whitefang", kind: "pairing", status: "success" }
+      ]
+    }),
+    Timeline({
+      key: "fleet-timeline",
+      onEventSelect: IntentRef("KhalaChat.SelectThread", StaticPayload("thread-fleet-qa")),
+      events: [
+        {
+          id: "ev1",
+          label: "Pairing opened",
+          time: "12:00",
+          status: "active",
+          refs: ["orrery", "whitefang"]
+        },
+        {
+          id: "ev2",
+          label: "Validated",
+          detail: "Whitefang accepted",
+          time: "12:03",
+          status: "success"
+        }
+      ]
+    })
+  ])
+
+const settingsStrip = (_state: KhalaChatState): View =>
+  Stack({ key: "settings-strip", direction: "column", gap: "2", padding: "2" }, [
+    Text({ key: "settings-label", content: "Settings", variant: "label" }),
+    FieldRow({
+      key: "auto-approve-row",
+      label: "Auto-approve safe edits",
+      description: "Apply low-risk edits automatically.",
+      controlKey: "auto-approve",
+      control: Toggle({
+        key: "auto-approve",
+        value: false,
+        onChange: IntentRef("KhalaChat.SelectView", StaticPayload("chat"))
+      })
+    })
+  ])
+
 export const khalaChatView = (state: KhalaChatState): View =>
   Stack({
     key: "khala-chat-proof",
@@ -756,18 +838,21 @@ export const khalaChatView = (state: KhalaChatState): View =>
   }, [
     navRail(state),
     threadSidebar(state),
-    Stack({
-      key: "main-chat-pane",
-      direction: "column",
-      gap: "3",
-      style: {
-        flex: 1,
-        backgroundColor: "background"
-      }
-    }, [
-      transcript(state),
-      composer(state)
-    ]),
+    state.activeView === "fleet"
+      ? fleetCockpit(state)
+      : Stack({
+          key: "main-chat-pane",
+          direction: "column",
+          gap: "3",
+          style: {
+            flex: 1,
+            backgroundColor: "background"
+          }
+        }, [
+          transcript(state),
+          composer(state),
+          settingsStrip(state)
+        ]),
     commandPalette(state)
   ])
 
@@ -904,6 +989,18 @@ export interface ScriptedKhalaChatStep {
 
 export const scriptedKhalaChatSteps: ReadonlyArray<ScriptedKhalaChatStep> = [
   {
+    kind: "change",
+    key: "composer-field",
+    value: "/attach docs/proof-desktop.md",
+    ref: IntentRef("KhalaChat.ComposerChanged", ComponentValueBinding()),
+    runtimeValue: "/attach docs/proof-desktop.md"
+  },
+  {
+    kind: "press",
+    key: "composer-submit",
+    ref: IntentRef("KhalaChat.ComposerSubmitted", StaticPayload("/attach docs/proof-desktop.md"))
+  },
+  {
     kind: "press",
     key: "palette-open",
     ref: IntentRef("KhalaChat.PaletteOpened", StaticPayload({}))
@@ -919,18 +1016,6 @@ export const scriptedKhalaChatSteps: ReadonlyArray<ScriptedKhalaChatStep> = [
     kind: "press",
     key: "command-view.fleet",
     ref: IntentRef("KhalaChat.PaletteSelected", StaticPayload("view.fleet"))
-  },
-  {
-    kind: "change",
-    key: "composer-field",
-    value: "/attach docs/proof-desktop.md",
-    ref: IntentRef("KhalaChat.ComposerChanged", ComponentValueBinding()),
-    runtimeValue: "/attach docs/proof-desktop.md"
-  },
-  {
-    kind: "press",
-    key: "composer-submit",
-    ref: IntentRef("KhalaChat.ComposerSubmitted", StaticPayload("/attach docs/proof-desktop.md"))
   }
 ]
 

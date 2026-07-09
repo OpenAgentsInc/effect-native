@@ -84,16 +84,29 @@ describe("command palette + combobox (#29) React Native renderer", () => {
     )
 
     expect(palette.props.testID).toBe("en-command-palette")
+    expect(palette.type).toBe("Modal")
     const input = find(palette, (e) => e.props.testID === "en-combobox-input")
     expect(input?.props.value).toBe("op")
-    expect(find(palette, (e) => e.props.testID === "en-combobox-group:Composer")).not.toBeUndefined()
 
-    const files = find(palette, (e) => e.props.testID === "en-combobox-option:files")
-    ;(files?.props.onPress as (() => void) | undefined)?.()
+    const listbox = find(palette, (e) => e.props.testID === "en-combobox-listbox")
+    expect(listbox?.type).toBe("FlatList")
+    const data = listbox?.props.data as ReadonlyArray<{ id: string; disabled?: boolean }>
+    expect(data.map((item) => item.id)).toEqual(["composer", "files", "reload"])
+    const renderItem = listbox?.props.renderItem as
+      | ((input: { item: { id: string; label: string; group?: string; disabled?: boolean } }) => ReactElementLike)
+      | undefined
+    expect(typeof renderItem).toBe("function")
+    const files = renderItem!({
+      item: { id: "files", label: "Go to file", group: "Files" }
+    })
+    expect(files.props.testID).toBe("en-combobox-option:files")
+    ;(files.props.onPress as (() => void) | undefined)?.()
     await new Promise((resolve) => setTimeout(resolve, 0))
     expect(selected).toEqual(["files"])
 
-    const reload = find(palette, (e) => e.props.testID === "en-combobox-option:reload")
-    expect(reload?.props.onPress).toBeUndefined()
+    const reload = renderItem!({
+      item: { id: "reload", label: "Reload", group: "Session", disabled: true }
+    })
+    expect(reload.props.onPress).toBeUndefined()
   })
 })

@@ -21,11 +21,14 @@ The slice includes:
 - status indicators
 - composer surface
 - command palette surface
+- **fleet cockpit** (`GraphFigure` + `Timeline` + run controls) when the fleet
+  nav item is selected
+- a settings strip with real form controls (`FieldRow` + `Toggle`)
 
-The proof intentionally uses the current closed catalog for this milestone.
-Richer dedicated primitives remain issue-backed: app shell (#27), command
-palette/combobox (#29), icon (#31), rich composer (#32), transcript/markdown
-(#35), code block/diff (#36), streaming binding (#26), and keymap/focus (#41).
+This is the Phase 4 exit-receipt composition (#42): chat shell + fleet graph
+from one typed tree, cross-renderer oracle + desktop host. Remaining owner
+cutover (live Electrobun packaging, production screenshot bless) is operational
+follow-through, not a missing catalog capability.
 
 ## Desktop Host
 
