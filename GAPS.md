@@ -86,7 +86,7 @@ until it has a fixture and every renderer declares and proves support for it.
 | LogoRow + StatsBand | Landing social proof and metric band | 2026-07-09 | shipped -> #50 (v20) |
 | Glow + MockupFrame | Landing hero mockup with launch-ui-style glow/tilt treatment | 2026-07-09 | shipped -> #51 (v20) |
 | RN renderer parity (close the declared-subset / unsupported matrix) | Khala Code Mobile needs faithful RN mappings for overlays, `SplitPane`, `Combobox`, `Tabs`, `Composer` mention chips, `Slider`, `GraphFigure`, and drag — shipped desktop-first as RN subsets | 2026-07-09 | accepted -> #53 (mobile epic #52 pillar) |
-| Mobile host adapter | Khala Code Mobile needs the RN renderer owned by a mobile host: `runMainMobile`, app lifecycle, push token, notification-tap + deep-link intents, safe-area/keyboard runtime | 2026-07-09 | accepted -> #54 (`@effect-native/platform-mobile`; peer of `platform-desktop` #21) |
+| Mobile host adapter | Khala Code Mobile needs the RN renderer owned by a mobile host: `runMainMobile`, app lifecycle, push token, notification-tap + deep-link intents, safe-area/keyboard runtime | 2026-07-09 | shipped -> #54 (`@effect-native/platform-mobile`: `runMainMobile`, typed Layers + headless harnesses for AppLifecycle/PushToken/Notifications/DeepLink/SafeArea/Keyboard; peer of `platform-desktop` #21) |
 | Mobile navigation adapter | Khala Code Mobile's drawer + native-stack + modal navigator and `khala://` deep links need typed navigation intents | 2026-07-09 | accepted -> #55 |
 | Mobile gesture / interaction expansion | Khala Code Mobile's swipe-to-quote, pull-to-refresh, long-press, keyboard-avoidance, and safe-area need typed touch intents + runtime concerns (the mobile peer of desktop interaction expansion #24) | 2026-07-09 | accepted -> #56 |
 | RN list virtualization parity | Khala Code Mobile's thread list + streaming transcript need FlatList/SectionList-backed `List`/`SectionList`/`Transcript` at production scale | 2026-07-09 | accepted -> #57 |
@@ -95,7 +95,9 @@ until it has a fixture and every renderer declares and proves support for it.
 | `PullToRefresh` / `RefreshControl` | Khala Code Mobile's thread list refreshes on pull | 2026-07-09 | accepted -> #61 (mobile catalog) |
 | `Pager` / onboarding stepper | Khala Code Mobile's 3-step onboarding is a linear paged flow (distinct from `Tabs` selection) | 2026-07-09 | accepted -> #62 (mobile catalog) |
 | Mobile surface treatments | Khala Code Mobile's arcade visual identity: `BackgroundGradient`/`Wallpaper`/`Spotlight`/`Frame`/`BlurredPopup` (signature visuals as catalog citizens, like Glow/Mockup #51) | 2026-07-09 | accepted -> #63 (mobile catalog) |
-| Full Khala Code Mobile app conversion | Every mobile screen authored once as typed EN data on iOS + Android; the owner-named cross-app Khala Sync messaging exit test (desktop EN chat ↔ mobile EN chat, live) | 2026-07-09 | accepted -> #64 (exit receipt for the mobile epic #52); docs #65 (`docs/porting-map-mobile.md`) |
+| Full Khala Code Mobile app conversion | Every mobile screen authored once as typed EN data on iOS + Android; the owner-named cross-app Khala Sync messaging exit test (desktop EN chat ↔ mobile EN chat, live) | 2026-07-09 | accepted -> #64 (exit receipt for the mobile epic #52); migration map: [`docs/porting-map-mobile.md`](./docs/porting-map-mobile.md) (#65) |
+
+Mobile demand docs (#65): GAPS register rows + ROADMAP Phase 4M + [`docs/porting-map-mobile.md`](./docs/porting-map-mobile.md) shipped.
 
 ## Catalog version trail (Phase 4)
 
@@ -118,3 +120,5 @@ until it has a fixture and every renderer declares and proves support for it.
 | `v20` (current) | #46–#51 | Marketing landing catalog (`Section`, `Hero`, `AnnouncementBadge`, `CtaSection`, `Footer`, `NavBar`, `Accordion`, `PricingColumn`, `PricingTable`, `LogoRow`, `StatsBand`, `Glow`, `MockupFrame`) |
 
 Non-catalog Phase 4 runtime ships (no version bump): desktop adapter (#21), canvas renderer package (#22), streaming region (#26), Keymap/focus (#41), Protoss-blue theme tokens (#25).
+
+Non-catalog Phase 4M runtime ships (no version bump): mobile adapter (#54 `@effect-native/platform-mobile`).

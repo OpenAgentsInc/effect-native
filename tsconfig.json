@@ -7,6 +7,7 @@
     { "path": "./packages/render-rn" },
     { "path": "./packages/render-canvas" },
     { "path": "./packages/platform-desktop" },
+    { "path": "./packages/platform-mobile" },
     { "path": "./packages/gallery" },
     { "path": "./packages/devtools" },
     { "path": "./packages/testkit" },

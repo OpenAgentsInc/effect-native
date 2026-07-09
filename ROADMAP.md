@@ -193,7 +193,7 @@ hosts/services.
 | Pillar | Surface | Issue |
 |---|---|---|
 | RN renderer parity program | close the declared-subset / unsupported matrix | #53 |
-| Mobile host adapter | `@effect-native/platform-mobile` (`runMainMobile`, push/notifications/deep-links, safe-area/keyboard runtime) | #54 |
+| Mobile host adapter | `@effect-native/platform-mobile` (`runMainMobile`, push/notifications/deep-links, safe-area/keyboard runtime) | #54 shipped |
 | Navigation adapter | typed navigation intents over native stack/drawer/tabs + deep links | #55 |
 | Gesture / interaction expansion | swipe/pull-to-refresh/long-press + safe-area/keyboard | #56 |
 | List virtualization parity | FlatList/SectionList/Transcript at production scale | #57 |
@@ -216,7 +216,8 @@ loud unsupported markers — **and the owner-named cross-app test:** a message s
 from **Khala Code Desktop** (the Phase 4 Effect Native chat, DOM renderer) appears
 in **Khala Code Mobile**, and a mobile-sent message appears on desktop — **live
 over Khala Sync, both UIs rendered by Effect Native**, from one shared typed
-transcript view + intent/mutator vocabulary. Docs: #65 (GAPS/ROADMAP/porting-map).
+transcript view + intent/mutator vocabulary. Docs: #65 shipped —
+[`docs/porting-map-mobile.md`](./docs/porting-map-mobile.md).
 
 ## Phase 5 — True native renderers (the fidelity upgrade)
 
