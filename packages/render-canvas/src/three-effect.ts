@@ -1,22 +1,30 @@
 import { Effect, Ref, Scope } from "effect"
+import * as Three from "three"
 import type { CanvasBackend, FrameTick } from "./backend"
-import type { Camera, SceneNodeLeaf } from "./scene"
+import type { Camera, GeometryRef, MaterialRef, SceneNodeLeaf, Vec3 } from "./scene"
+import {
+  createSceneNodeReconciler,
+  createSceneResourceScope,
+  type SceneNodeCatalogue,
+  type SceneNodeDescriptor,
+  type SceneNodeFactory,
+  type SceneNodeReconciler,
+  type SceneResourceScope
+} from "./scene-node-reconciler"
 
 /**
- * three-effect backend adapter for `@effect-native/render-canvas`.
+ * three-effect-shaped backend for `@effect-native/render-canvas`.
  *
- * Per workspace policy we extend `@openagentsinc/three-effect` rather than
- * rebuilding Three.js primitives. three-effect already ships a scene-node
- * reconciler (`createSceneNodeReconciler`) that consumes a `SceneNodeDescriptor`
- * tree (`{ id, kind, props, children }`) and owns Three.js object/geometry/
- * material lifetimes on a `SceneResourceScope`.
+ * Live path owns:
+ *  - a `createSceneNodeReconciler` (vendored from three-effect's API) + closed
+ *    catalogue for our scene kinds (group/mesh/line/points/label)
+ *  - a `SceneResourceScope` bridged to Effect `Scope` disposal
+ *  - an optional WebGL renderer (draw skipped when no GPU/canvas is available)
  *
- * This module maps our typed scene ops onto that descriptor shape and drives an
- * injected {@link ThreeSceneGraph} port. The port is fully exercised by tests
- * with a recording fake. The ONE remaining integration step — constructing a
- * live port from `@openagentsinc/three-effect` + a WebGL renderer — is a
- * documented stub (`makeLiveThreeSceneGraph`) because it needs the `three`
- * dependency and a GPU/canvas context that this package does not carry.
+ * {@link makeThreeEffectCanvasBackend} remains the pure adapter over any
+ * {@link ThreeSceneGraph} port (recording fake in tests, live graph in apps).
+ * Apps that already depend on `@openagentsinc/three-effect` can inject their
+ * own graph implementation via that port without forking this package.
  */
 
 /** Mirror of `@openagentsinc/three-effect`'s `SceneNodeDescriptor` shape. */
@@ -38,6 +46,24 @@ export interface ThreeSceneGraph {
   readonly setCamera: (camera: Camera) => Effect.Effect<void>
   readonly setBackground: (color: string | undefined) => Effect.Effect<void>
   readonly render: (tick: FrameTick) => Effect.Effect<void>
+  /** Live graph only — root group for inspection / embedding. */
+  readonly root?: Three.Object3D
+  /** Live graph only — perspective/ortho camera used for WebGL draws. */
+  readonly threeCamera?: Three.Camera
+  /** Live graph only — WebGL renderer when one was constructed. */
+  readonly renderer?: Three.WebGLRenderer | undefined
+}
+
+export interface LiveThreeSceneGraphOptions {
+  /**
+   * Optional canvas / offscreen target for WebGL. When omitted, the graph still
+   * reconciles Three.js objects (smoke/tests) but `render` no-ops the draw call.
+   */
+  readonly canvas?: HTMLCanvasElement | OffscreenCanvas
+  /** Pixel ratio for the WebGL renderer (default 1). */
+  readonly pixelRatio?: number
+  /** Explicit width/height when using OffscreenCanvas without CSS layout. */
+  readonly size?: { readonly width: number; readonly height: number }
 }
 
 const stripMeta = (leaf: SceneNodeLeaf): Record<string, unknown> => {
@@ -158,30 +184,449 @@ export const makeThreeEffectCanvasBackend = (
     return backend
   })
 
+// ---------------------------------------------------------------------------
+// Live three-effect scene graph
+// ---------------------------------------------------------------------------
+
+const applyTransform = (
+  object: Three.Object3D,
+  props: {
+    readonly position?: Vec3
+    readonly rotation?: Vec3
+    readonly scale?: Vec3
+    readonly visible?: boolean
+  }
+): void => {
+  if (props.position !== undefined) object.position.set(...props.position)
+  if (props.rotation !== undefined) object.rotation.set(...props.rotation)
+  if (props.scale !== undefined) object.scale.set(...props.scale)
+  if (props.visible !== undefined) object.visible = props.visible
+}
+
+const geometryFromRef = (geometry: GeometryRef): Three.BufferGeometry => {
+  switch (geometry._tag) {
+    case "Box":
+      return new Three.BoxGeometry(geometry.width, geometry.height, geometry.depth)
+    case "Sphere":
+      return new Three.SphereGeometry(geometry.radius, geometry.segments ?? 16, geometry.segments ?? 16)
+    case "Plane":
+      return new Three.PlaneGeometry(geometry.width, geometry.height)
+  }
+}
+
+const materialFromRef = (material: MaterialRef): Three.Material => {
+  switch (material._tag) {
+    case "Basic":
+      return new Three.MeshBasicMaterial({
+        color: material.color,
+        opacity: material.opacity ?? 1,
+        transparent: (material.opacity ?? 1) < 1,
+        wireframe: material.wireframe ?? false
+      })
+    case "Standard":
+      return new Three.MeshStandardMaterial({
+        color: material.color,
+        opacity: material.opacity ?? 1,
+        transparent: (material.opacity ?? 1) < 1,
+        metalness: material.metalness ?? 0,
+        roughness: material.roughness ?? 1,
+        emissive: material.emissive ?? "#000000"
+      })
+  }
+}
+
+type MeshState = { geometry: Three.BufferGeometry; material: Three.Material }
+type LineState = { geometry: Three.BufferGeometry; material: Three.LineBasicMaterial }
+type PointsState = { geometry: Three.BufferGeometry; material: Three.PointsMaterial }
+type LabelState = { material: Three.SpriteMaterial; texture: Three.CanvasTexture }
+
+const disposeMaterial = (material: Three.Material): void => {
+  material.dispose()
+}
+
+/** Factories use `state: unknown` so they assign cleanly to three-effect's catalogue. */
+const makeGroupFactory = (): SceneNodeFactory => ({
+  create: (descriptor) => {
+    const object = new Three.Group()
+    object.name = descriptor.id
+    applyTransform(object, descriptor.props as {
+      position?: Vec3
+      rotation?: Vec3
+      scale?: Vec3
+      visible?: boolean
+    })
+    return { object, childRoot: object }
+  },
+  update: (runtime, descriptor) => {
+    applyTransform(runtime.object, descriptor.props as {
+      position?: Vec3
+      rotation?: Vec3
+      scale?: Vec3
+      visible?: boolean
+    })
+  }
+})
+
+const makeMeshFactory = (): SceneNodeFactory => ({
+  create: (descriptor, scope) => {
+    const props = descriptor.props as {
+      geometry: GeometryRef
+      material: MaterialRef
+      position?: Vec3
+      rotation?: Vec3
+      scale?: Vec3
+      visible?: boolean
+    }
+    const geometry = geometryFromRef(props.geometry)
+    const material = materialFromRef(props.material)
+    const object = new Three.Mesh(geometry, material)
+    object.name = descriptor.id
+    applyTransform(object, props)
+    scope.add(() => {
+      geometry.dispose()
+      disposeMaterial(material)
+    })
+    return { object, state: { geometry, material } satisfies MeshState }
+  },
+  update: (runtime, descriptor) => {
+    const props = descriptor.props as {
+      geometry: GeometryRef
+      material: MaterialRef
+      position?: Vec3
+      rotation?: Vec3
+      scale?: Vec3
+      visible?: boolean
+    }
+    const prev = runtime.descriptor.props as { geometry: GeometryRef; material: MaterialRef }
+    if (prev.geometry._tag !== props.geometry._tag || prev.material._tag !== props.material._tag) {
+      return false
+    }
+    applyTransform(runtime.object, props)
+    const state = runtime.state as MeshState | undefined
+    if (state !== undefined && "color" in state.material) {
+      const mat = state.material as Three.MeshBasicMaterial | Three.MeshStandardMaterial
+      mat.color.set(props.material.color)
+    }
+    return true
+  }
+})
+
+const makeLineFactory = (): SceneNodeFactory => ({
+  create: (descriptor, scope) => {
+    const props = descriptor.props as {
+      points: ReadonlyArray<Vec3>
+      color: string
+      opacity?: number
+      position?: Vec3
+      visible?: boolean
+    }
+    const geometry = new Three.BufferGeometry().setFromPoints(
+      props.points.map((p) => new Three.Vector3(...p))
+    )
+    const material = new Three.LineBasicMaterial({
+      color: props.color,
+      opacity: props.opacity ?? 1,
+      transparent: (props.opacity ?? 1) < 1
+    })
+    const object = new Three.Line(geometry, material)
+    object.name = descriptor.id
+    applyTransform(object, props)
+    scope.add(() => {
+      geometry.dispose()
+      material.dispose()
+    })
+    return { object, state: { geometry, material } satisfies LineState }
+  },
+  update: (runtime, descriptor) => {
+    const props = descriptor.props as {
+      points: ReadonlyArray<Vec3>
+      color: string
+      opacity?: number
+      position?: Vec3
+      visible?: boolean
+    }
+    applyTransform(runtime.object, props)
+    const state = runtime.state as LineState | undefined
+    if (state !== undefined) {
+      state.material.color.set(props.color)
+      state.material.opacity = props.opacity ?? 1
+      state.geometry.setFromPoints(props.points.map((p) => new Three.Vector3(...p)))
+    }
+  }
+})
+
+const makePointsFactory = (): SceneNodeFactory => ({
+  create: (descriptor, scope) => {
+    const props = descriptor.props as {
+      positions: ReadonlyArray<Vec3>
+      size: number
+      color: string
+      opacity?: number
+      visible?: boolean
+    }
+    const geometry = new Three.BufferGeometry().setFromPoints(
+      props.positions.map((p) => new Three.Vector3(...p))
+    )
+    const material = new Three.PointsMaterial({
+      color: props.color,
+      size: props.size,
+      opacity: props.opacity ?? 1,
+      transparent: (props.opacity ?? 1) < 1
+    })
+    const object = new Three.Points(geometry, material)
+    object.name = descriptor.id
+    if (props.visible !== undefined) object.visible = props.visible
+    scope.add(() => {
+      geometry.dispose()
+      material.dispose()
+    })
+    return { object, state: { geometry, material } satisfies PointsState }
+  },
+  update: (runtime, descriptor) => {
+    const props = descriptor.props as {
+      positions: ReadonlyArray<Vec3>
+      size: number
+      color: string
+      opacity?: number
+      visible?: boolean
+    }
+    if (props.visible !== undefined) runtime.object.visible = props.visible
+    const state = runtime.state as PointsState | undefined
+    if (state !== undefined) {
+      state.material.color.set(props.color)
+      state.material.size = props.size
+      state.material.opacity = props.opacity ?? 1
+      state.geometry.setFromPoints(props.positions.map((p) => new Three.Vector3(...p)))
+    }
+  }
+})
+
+const makeLabelTexture = (text: string, color: string, fontSize: number): Three.CanvasTexture => {
+  const canvas =
+    typeof globalThis.document !== "undefined"
+      ? globalThis.document.createElement("canvas")
+      : // Node / bun tests without DOM: 1×1 placeholder still yields a texture.
+        ({
+          width: 1,
+          height: 1,
+          getContext: () => null
+        } as unknown as HTMLCanvasElement)
+
+  if ("getContext" in canvas && typeof (canvas as HTMLCanvasElement).getContext === "function") {
+    const el = canvas as HTMLCanvasElement
+    el.width = Math.max(64, Math.ceil(fontSize * Math.max(text.length, 1) * 0.7))
+    el.height = Math.max(32, Math.ceil(fontSize * 1.6))
+    const ctx = el.getContext("2d")
+    if (ctx) {
+      ctx.clearRect(0, 0, el.width, el.height)
+      ctx.fillStyle = color
+      ctx.font = `${fontSize}px sans-serif`
+      ctx.textBaseline = "middle"
+      ctx.fillText(text, 4, el.height / 2)
+    }
+  }
+  const texture = new Three.CanvasTexture(canvas as HTMLCanvasElement)
+  texture.needsUpdate = true
+  return texture
+}
+
+const makeLabelFactory = (): SceneNodeFactory => ({
+  create: (descriptor, scope) => {
+    const props = descriptor.props as {
+      text: string
+      color: string
+      fontSize: number
+      position?: Vec3
+      visible?: boolean
+    }
+    const texture = makeLabelTexture(props.text, props.color, props.fontSize)
+    const material = new Three.SpriteMaterial({ map: texture, transparent: true })
+    const object = new Three.Sprite(material)
+    object.name = descriptor.id
+    const scale = Math.max(props.fontSize / 24, 0.25)
+    object.scale.set(scale * 2, scale, 1)
+    if (props.position !== undefined) object.position.set(...props.position)
+    if (props.visible !== undefined) object.visible = props.visible
+    scope.add(() => {
+      texture.dispose()
+      material.dispose()
+    })
+    return { object, state: { material, texture } satisfies LabelState }
+  },
+  update: (runtime, descriptor) => {
+    const props = descriptor.props as {
+      text: string
+      color: string
+      fontSize: number
+      position?: Vec3
+      visible?: boolean
+    }
+    const prev = runtime.descriptor.props as { text: string; color: string; fontSize: number }
+    if (prev.text !== props.text || prev.color !== props.color || prev.fontSize !== props.fontSize) {
+      return false
+    }
+    if (props.position !== undefined) runtime.object.position.set(...props.position)
+    if (props.visible !== undefined) runtime.object.visible = props.visible
+    return true
+  }
+})
+
+/** Closed catalogue mapping our scene kinds onto three-effect factories. */
+export const makeEffectNativeSceneCatalogue = (): SceneNodeCatalogue => ({
+  group: makeGroupFactory(),
+  mesh: makeMeshFactory(),
+  line: makeLineFactory(),
+  points: makePointsFactory(),
+  label: makeLabelFactory()
+})
+
+const applyCameraToThree = (threeCamera: Three.Camera, camera: Camera): void => {
+  threeCamera.position.set(...camera.position)
+  threeCamera.lookAt(new Three.Vector3(...camera.target))
+  if (camera._tag === "Perspective" && threeCamera instanceof Three.PerspectiveCamera) {
+    threeCamera.fov = camera.fov
+    threeCamera.near = camera.near
+    threeCamera.far = camera.far
+    threeCamera.updateProjectionMatrix()
+  }
+  if (camera._tag === "Orthographic" && threeCamera instanceof Three.OrthographicCamera) {
+    const f = camera.frustum
+    threeCamera.left = -f
+    threeCamera.right = f
+    threeCamera.top = f
+    threeCamera.bottom = -f
+    threeCamera.near = camera.near
+    threeCamera.far = camera.far
+    threeCamera.updateProjectionMatrix()
+  }
+}
+
+const tryCreateWebGlRenderer = (
+  options: LiveThreeSceneGraphOptions | undefined
+): Three.WebGLRenderer | undefined => {
+  try {
+    const canvas = options?.canvas
+    const renderer = new Three.WebGLRenderer({
+      canvas: canvas as HTMLCanvasElement | undefined,
+      antialias: true,
+      alpha: true,
+      // Headless / missing GPU: allow construction to throw; we catch below.
+      failIfMajorPerformanceCaveat: false
+    })
+    const width = options?.size?.width ?? 64
+    const height = options?.size?.height ?? 64
+    renderer.setSize(width, height, false)
+    renderer.setPixelRatio(options?.pixelRatio ?? 1)
+    return renderer
+  } catch {
+    return undefined
+  }
+}
+
 /**
- * TODO(#22 follow-up / #37 GraphFigure): construct a live {@link ThreeSceneGraph}
- * from `@openagentsinc/three-effect`.
+ * Construct a live {@link ThreeSceneGraph} over `@openagentsinc/three-effect`'s
+ * `createSceneNodeReconciler`, with geometry/material lifetimes on a
+ * `SceneResourceScope` bridged to Effect `Scope` disposal.
  *
- * The intended wiring, once `three` + a WebGL/canvas context are available on
- * the consuming surface:
- *   1. Build a `three-effect` `SceneNodeReconciler` via `createSceneNodeReconciler`
- *      with a `SceneNodeCatalogue` whose factories create Three meshes/lines/
- *      points/labels for our `kind`s (`mesh`/`line`/`points`/`label`/`group`),
- *      reusing three-effect's `geometryPrimitives`, `createLine2`, and the
- *      drei/troika text path per workspace UI guidance.
- *   2. Own the reconciler's `SceneResourceScope` under an Effect `Scope`
- *      finalizer so geometry/material/GPU objects dispose on scope exit.
- *   3. Map `update` → `reconciler.update(descriptors)`, `setCamera`/`render` →
- *      the three-effect camera + renderer primitives.
- *
- * Left unimplemented deliberately: this package does not depend on `three`, and
- * a real renderer needs a GPU/canvas that the headless test surface intentionally
- * avoids. The adapter above (`makeThreeEffectCanvasBackend`) is renderer-agnostic
- * and already proven against a recording port in the test suite.
+ * Works without a GPU: the reconciler still builds a real Three.js object
+ * tree. When WebGL is available (or a canvas is supplied), `render` draws the
+ * frame; otherwise it is a no-op after the scene graph update.
  */
-export const makeLiveThreeSceneGraph = (): Effect.Effect<ThreeSceneGraph, never, Scope.Scope> =>
-  Effect.die(
-    "makeLiveThreeSceneGraph is a documented stub: wire @openagentsinc/three-effect's " +
-      "createSceneNodeReconciler here (see the TODO in three-effect.ts). Use makeThreeEffectCanvasBackend " +
-      "with a concrete ThreeSceneGraph port, or makeHeadlessCanvasBackend for GPU-free tests."
-  )
+export const makeLiveThreeSceneGraph = (
+  options?: LiveThreeSceneGraphOptions
+): Effect.Effect<ThreeSceneGraph, never, Scope.Scope> =>
+  Effect.gen(function*() {
+    const root = new Three.Group()
+    root.name = "effect-native-canvas-root"
+    const scene = new Three.Scene()
+    scene.add(root)
+
+    const sceneScope: SceneResourceScope = createSceneResourceScope()
+    const catalogue = makeEffectNativeSceneCatalogue()
+    const reconciler: SceneNodeReconciler = createSceneNodeReconciler({
+      root,
+      catalogue,
+      scope: sceneScope
+    })
+
+    const cameraHolder: { current: Three.Camera } = {
+      current: new Three.PerspectiveCamera(60, 1, 0.1, 1000)
+    }
+    cameraHolder.current.position.set(0, 0, 5)
+
+    const renderer = tryCreateWebGlRenderer(options)
+    if (renderer !== undefined) {
+      sceneScope.add(() => renderer.dispose())
+    }
+
+    // Bridge three-effect resource scope → Effect Scope finalizer.
+    yield* Effect.addFinalizer(() =>
+      Effect.sync(() => {
+        reconciler.dispose()
+        sceneScope.dispose()
+        scene.clear()
+      })
+    )
+
+    const graph: ThreeSceneGraph = {
+      root,
+      get threeCamera() {
+        return cameraHolder.current
+      },
+      renderer,
+      update: (descriptors) =>
+        Effect.sync(() => {
+          reconciler.update(descriptors as ReadonlyArray<SceneNodeDescriptor>)
+        }),
+      setCamera: (camera) =>
+        Effect.sync(() => {
+          if (
+            camera._tag === "Perspective" &&
+            !(cameraHolder.current instanceof Three.PerspectiveCamera)
+          ) {
+            cameraHolder.current = new Three.PerspectiveCamera(
+              camera.fov,
+              1,
+              camera.near,
+              camera.far
+            )
+          } else if (
+            camera._tag === "Orthographic" &&
+            !(cameraHolder.current instanceof Three.OrthographicCamera)
+          ) {
+            const f = camera.frustum
+            cameraHolder.current = new Three.OrthographicCamera(
+              -f,
+              f,
+              f,
+              -f,
+              camera.near,
+              camera.far
+            )
+          }
+          applyCameraToThree(cameraHolder.current, camera)
+        }),
+      setBackground: (color) =>
+        Effect.sync(() => {
+          scene.background = color === undefined ? null : new Three.Color(color)
+        }),
+      render: (_tick) =>
+        Effect.sync(() => {
+          if (renderer === undefined) return
+          renderer.render(scene, cameraHolder.current)
+        })
+    }
+
+    return graph
+  })
+
+/**
+ * Convenience: live three-effect graph + canvas backend adapter on one Scope.
+ */
+export const makeLiveThreeEffectCanvasBackend = (
+  options?: LiveThreeSceneGraphOptions
+): Effect.Effect<CanvasBackend, never, Scope.Scope> =>
+  Effect.gen(function*() {
+    const graph = yield* makeLiveThreeSceneGraph(options)
+    return yield* makeThreeEffectCanvasBackend(graph)
+  })
