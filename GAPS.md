@@ -23,7 +23,7 @@ their reason so pressure is visible without weakening the catalog contract.
 
 ## Catalog Versioning Policy
 
-The current catalog marker is `effect-native/v19`, exposed by
+The current catalog marker is `effect-native/v20`, exposed by
 `CatalogVersion`. `compatibleCatalogVersions` is the decode allow-list, and
 `CompatibleViewSchema` is the schema app authors and renderers should use when
 accepting persisted or externally-authored trees.
@@ -79,6 +79,12 @@ until it has a fixture and every renderer declares and proves support for it.
 | Monospace / whitespace-preserving text style | effectnative.org's home-page and doc code samples (#19) need indentation-preserving display; worked around today with one `Text` per source line in a `Stack` instead of a single multi-line string | 2026-07-08 | waiting -> related to #36 CodeBlock (syntax-highlighted blocks shipped; plain multi-line monospace Text style still open) |
 | React Native pixel visual-baseline capture | Testkit visual baselines (#16) ship a typed `VisualCapture` contract plus a structural-snapshot default and a real DOM-renderer capture (`@effect-native/testkit/visual`); a native RN pixel-capture harness (e.g. a detox/maestro-style screenshot rig) is undemonstrated | 2026-07-08 | waiting |
 | Full Khala Code Desktop shell cutover | Production desktop shell still needs the composed proof of chat + fleet/gym canvas + owner cutover steps | 2026-07-08 | accepted -> #42 (exit receipt for Phase 4 epic #20); migration map: [`docs/porting-map.md`](./docs/porting-map.md) |
+| Marketing section primitives | openagents.com production landing (WEB-1) needs typed Section/Hero/AnnouncementBadge/CTASection/Footer rather than ad-hoc Stack trees | 2026-07-09 | shipped -> #46 (v20) |
+| Marketing NavBar | openagents.com landing header — horizontal top-nav distinct from app-shell NavRail | 2026-07-09 | shipped -> #47 (v20) |
+| Accordion / FAQ | Landing FAQ and disclosure lists | 2026-07-09 | shipped -> #48 (v20) |
+| PricingTable / PricingColumn | Landing plan comparison | 2026-07-09 | shipped -> #49 (v20) |
+| LogoRow + StatsBand | Landing social proof and metric band | 2026-07-09 | shipped -> #50 (v20) |
+| Glow + MockupFrame | Landing hero mockup with launch-ui-style glow/tilt treatment | 2026-07-09 | shipped -> #51 (v20) |
 
 ## Catalog version trail (Phase 4)
 
@@ -97,6 +103,7 @@ until it has a fixture and every renderer declares and proves support for it.
 | `v16` | #40 | Feedback surfaces (`Toast`/`ToastRegion`, `StatusBanner`, `RecoveryOverlay`) |
 | `v17` | #35 | `Markdown` + `Transcript` |
 | `v18` | #36 | `CodeBlock` + `DiffView` |
-| `v19` (current) | #37 | `GraphFigure` + `Timeline` (canvas + DOM/SVG) |
+| `v19` | #37 | `GraphFigure` + `Timeline` (canvas + DOM/SVG) |
+| `v20` (current) | #46–#51 | Marketing landing catalog (`Section`, `Hero`, `AnnouncementBadge`, `CtaSection`, `Footer`, `NavBar`, `Accordion`, `PricingColumn`, `PricingTable`, `LogoRow`, `StatsBand`, `Glow`, `MockupFrame`) |
 
 Non-catalog Phase 4 runtime ships (no version bump): desktop adapter (#21), canvas renderer package (#22), streaming region (#26), Keymap/focus (#41), Protoss-blue theme tokens (#25).

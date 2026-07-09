@@ -1,5 +1,7 @@
 import { Effect, Schema, SubscriptionRef } from "effect"
 import {
+  Accordion,
+  AnnouncementBadge,
   Badge,
   Button,
   Card,
@@ -11,23 +13,34 @@ import {
   Composer,
   ComponentValueBinding,
   ContextMenu,
+  CtaSection,
   DiffView,
   Divider,
   DropdownMenu,
   FieldRow,
+  Footer,
+  Glow,
   GraphFigure,
+  Hero,
   Host,
   Icon,
   Image,
   IntentRef,
+  LogoRow,
   Meter,
+  MockupFrame,
+  NavBar,
   NumberField,
   Popover,
+  PricingColumn,
+  PricingTable,
   RadioGroup,
   RecoveryOverlay,
+  Section,
   Select,
   Slider,
   StatTile,
+  StatsBand,
   StatusBanner,
   Table,
   Timeline,
@@ -1316,6 +1329,288 @@ const componentStoryMap = {
           { id: "ev2", label: "Validated", detail: "Whitefang accepted", time: "12:03", status: "success" }
         ]
       })
+    })
+  ],
+  Section: [
+    story({
+      id: "section-contained",
+      component: "Section",
+      title: "Section",
+      description: "Marketing layout band with contained width and vertical padding.",
+      view: Section(
+        { key: "section-contained", width: "contained", paddingY: "6", background: "surface" },
+        [Text({ key: "section-body", content: "Section content", variant: "body" })]
+      )
+    })
+  ],
+  Hero: [
+    story({
+      id: "hero-center",
+      component: "Hero",
+      title: "Hero",
+      description: "Display-scale headline, subhead, CTA row, and optional media slot.",
+      view: Hero({
+        key: "hero-center",
+        align: "center",
+        headline: "Build with Effect Native",
+        subhead: "One catalog. Every surface.",
+        headlineTone: "gradient",
+        actions: [
+          Button({
+            key: "hero-cta",
+            label: "Get started",
+            variant: "primary",
+            onPress: IntentRef("GalleryStory.Pressed", StaticPayload({ amount: 1 }))
+          })
+        ],
+        media: MockupFrame(
+          { key: "hero-media", variant: "browser", tilt: "left" },
+          [Text({ key: "hero-media-label", content: "Product", variant: "body" })]
+        )
+      })
+    })
+  ],
+  AnnouncementBadge: [
+    story({
+      id: "announcement-badge-basic",
+      component: "AnnouncementBadge",
+      title: "AnnouncementBadge",
+      description: "Outlined pill above a hero with optional action intent.",
+      view: AnnouncementBadge({
+        key: "announcement-badge-basic",
+        label: "Now open",
+        actionLabel: "Read more",
+        onPress: IntentRef("GalleryStory.Pressed", StaticPayload({ amount: 1 }))
+      })
+    })
+  ],
+  CtaSection: [
+    story({
+      id: "cta-section-basic",
+      component: "CtaSection",
+      title: "CtaSection",
+      description: "Headline, supporting copy, and action row for mid-page conversion.",
+      view: CtaSection({
+        key: "cta-section-basic",
+        headline: "Ready to ship?",
+        body: "Start from a typed catalog and render everywhere.",
+        tone: "info",
+        actions: [
+          Button({
+            key: "cta-primary",
+            label: "Open docs",
+            variant: "primary",
+            onPress: IntentRef("GalleryStory.Pressed", StaticPayload({ amount: 1 }))
+          })
+        ]
+      })
+    })
+  ],
+  Footer: [
+    story({
+      id: "footer-basic",
+      component: "Footer",
+      title: "Footer",
+      description: "Brand slot, typed link columns, and legal row.",
+      view: Footer({
+        key: "footer-basic",
+        brand: Text({ key: "footer-brand", content: "Effect Native", variant: "label" }),
+        columns: [
+          {
+            id: "product",
+            title: "Product",
+            links: [
+              Link({ key: "footer-docs", destination: { kind: "path", path: "/docs" } }, [
+                Text({ key: "footer-docs-label", content: "Docs", variant: "body" })
+              ])
+            ]
+          }
+        ],
+        legal: Text({ key: "footer-legal", content: "© OpenAgents", variant: "caption" })
+      })
+    })
+  ],
+  NavBar: [
+    story({
+      id: "navbar-basic",
+      component: "NavBar",
+      title: "NavBar",
+      description: "Marketing top navigation with brand, links, actions, and collapse toggle.",
+      view: NavBar({
+        key: "navbar-basic",
+        brand: Text({ key: "navbar-brand", content: "Effect Native", variant: "label" }),
+        links: [
+          {
+            id: "docs",
+            label: "Docs",
+            onPress: IntentRef("GalleryStory.Pressed", StaticPayload({ amount: 1 }))
+          },
+          {
+            id: "gallery",
+            label: "Gallery",
+            onPress: IntentRef("GalleryStory.Pressed", StaticPayload({ amount: 1 }))
+          }
+        ],
+        sticky: true,
+        collapsed: false,
+        onToggleMenu: IntentRef("GalleryStory.Pressed", StaticPayload({ amount: 1 })),
+        actions: [
+          Button({
+            key: "navbar-signin",
+            label: "Sign in",
+            variant: "ghost",
+            onPress: IntentRef("GalleryStory.Pressed", StaticPayload({ amount: 1 }))
+          })
+        ]
+      })
+    })
+  ],
+  Accordion: [
+    story({
+      id: "accordion-faq",
+      component: "Accordion",
+      title: "Accordion",
+      description: "FAQ-style disclosure list with typed expanded ids and toggle intent.",
+      view: Accordion({
+        key: "accordion-faq",
+        mode: "single",
+        expandedIds: ["q1"],
+        onToggle: IntentRef("GalleryStory.Pressed", ComponentValueBinding()),
+        items: [
+          {
+            id: "q1",
+            header: "What is Effect Native?",
+            content: [
+              Text({
+                key: "faq-q1",
+                content: "A closed, versioned UI catalog on Effect.",
+                variant: "body"
+              })
+            ]
+          },
+          {
+            id: "q2",
+            header: "Where does it render?",
+            content: [
+              Text({
+                key: "faq-q2",
+                content: "Headless, DOM, and React Native today.",
+                variant: "body"
+              })
+            ]
+          }
+        ]
+      })
+    })
+  ],
+  PricingColumn: [
+    story({
+      id: "pricing-column-basic",
+      component: "PricingColumn",
+      title: "PricingColumn",
+      description: "Named plan, price, feature list, and CTA intent.",
+      view: PricingColumn({
+        key: "pricing-column-basic",
+        name: "Starter",
+        price: "$20",
+        period: "mo",
+        features: [
+          { id: "credits", label: "Monthly credits", included: true },
+          { id: "sso", label: "SSO", included: false }
+        ],
+        highlighted: true,
+        ctaLabel: "Buy Starter",
+        onCta: IntentRef("GalleryStory.Pressed", StaticPayload({ amount: 1 }))
+      })
+    })
+  ],
+  PricingTable: [
+    story({
+      id: "pricing-table-basic",
+      component: "PricingTable",
+      title: "PricingTable",
+      description: "Side-by-side pricing columns for plan comparison.",
+      view: PricingTable({
+        key: "pricing-table-basic",
+        columns: [
+          PricingColumn({
+            key: "plan-starter",
+            name: "Starter",
+            price: "$20",
+            period: "mo",
+            features: [{ id: "f1", label: "Credits", included: true }],
+            ctaLabel: "Buy",
+            onCta: IntentRef("GalleryStory.Pressed", StaticPayload({ amount: 1 }))
+          }),
+          PricingColumn({
+            key: "plan-pro",
+            name: "Pro",
+            price: "$80",
+            period: "mo",
+            features: [
+              { id: "f1", label: "Credits", included: true },
+              { id: "f2", label: "Priority", included: true }
+            ],
+            highlighted: true,
+            ctaLabel: "Upgrade",
+            onCta: IntentRef("GalleryStory.Pressed", StaticPayload({ amount: 1 }))
+          })
+        ]
+      })
+    })
+  ],
+  LogoRow: [
+    story({
+      id: "logo-row-basic",
+      component: "LogoRow",
+      title: "LogoRow",
+      description: "Trusted-by logo strip with optional press intents.",
+      view: LogoRow({
+        key: "logo-row-basic",
+        logos: [
+          { id: "a", source: "https://example.com/a.svg", alt: "Alpha" },
+          { id: "b", source: "https://example.com/b.svg", alt: "Beta" }
+        ]
+      })
+    })
+  ],
+  StatsBand: [
+    story({
+      id: "stats-band-basic",
+      component: "StatsBand",
+      title: "StatsBand",
+      description: "Metric band of bound values and labels.",
+      view: StatsBand({
+        key: "stats-band-basic",
+        stats: [
+          { id: "builders", label: "Builders", value: "12,400", tone: "info" },
+          { id: "surfaces", label: "Surfaces", value: "3", tone: "success" }
+        ]
+      })
+    })
+  ],
+  Glow: [
+    story({
+      id: "glow-basic",
+      component: "Glow",
+      title: "Glow",
+      description: "Bounded radial accent glow behind a child slot.",
+      view: Glow(
+        { key: "glow-basic", intensity: "md" },
+        [Text({ key: "glow-child", content: "Highlighted", variant: "title" })]
+      )
+    })
+  ],
+  MockupFrame: [
+    story({
+      id: "mockup-frame-browser",
+      component: "MockupFrame",
+      title: "MockupFrame",
+      description: "Browser/device frame with optional perspective tilt.",
+      view: MockupFrame(
+        { key: "mockup-frame-browser", variant: "browser", tilt: "left" },
+        [Text({ key: "mockup-child", content: "Product screenshot", variant: "body" })]
+      )
     })
   ]
 } satisfies { readonly [Tag in ComponentTag]: ReadonlyArray<Story> }

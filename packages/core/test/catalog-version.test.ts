@@ -12,6 +12,7 @@ import {
   DataDisplayCatalogVersion,
   FeedbackCatalogVersion,
   GraphCatalogVersion,
+  MarketingCatalogVersion,
   TranscriptCatalogVersion,
   TabsCatalogVersion,
   FormCatalogVersion,
@@ -70,11 +71,12 @@ describe("catalog version compatibility", () => {
       FeedbackCatalogVersion,
       TranscriptCatalogVersion,
       CodeBlockCatalogVersion,
-      GraphCatalogVersion
+      GraphCatalogVersion,
+      MarketingCatalogVersion
     ])
     // The current marker is the last entry; the previous marker is second-last.
-    expect(CatalogVersion).toBe(GraphCatalogVersion)
-    expect(PreviousCatalogVersion).toBe(CodeBlockCatalogVersion)
+    expect(CatalogVersion).toBe(MarketingCatalogVersion)
+    expect(PreviousCatalogVersion).toBe(GraphCatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 1]).toBe(CatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 2]).toBe(PreviousCatalogVersion)
   })

@@ -16,23 +16,36 @@ import {
   DropdownMenu,
   FieldBinding,
   FieldRow,
+  Accordion,
+  AnnouncementBadge,
   Badge,
   Chip,
+  CtaSection,
   Divider,
+  Footer,
   FormFieldValueBinding,
+  Glow,
   GraphFigure,
+  Hero,
   Host,
   Icon,
   Image,
   IntentRef,
+  LogoRow,
   Meter,
+  MockupFrame,
+  NavBar,
   NumberField,
   Popover,
+  PricingColumn,
+  PricingTable,
   RadioGroup,
   RecoveryOverlay,
+  Section,
   Select,
   Slider,
   StatTile,
+  StatsBand,
   StatusBanner,
   Table,
   Timeline,
@@ -438,7 +451,144 @@ const catalogFixturesByTag = {
     key: "timeline",
     onEventSelect: IntentRef("Pressed", ComponentValueBinding()),
     events: [{ id: "ev1", label: "Pairing opened", time: "12:00", status: "active" }]
-  })
+  }),
+  Section: Section(
+    { key: "section", width: "contained", paddingY: "4", background: "surface" },
+    [Text({ key: "section-child", content: "Section body", variant: "body" })]
+  ),
+  Hero: Hero({
+    key: "hero",
+    align: "center",
+    headline: "Build once",
+    subhead: "Ship everywhere",
+    headlineTone: "gradient",
+    actions: [
+      Button({
+        key: "hero-cta",
+        label: "Get started",
+        variant: "primary",
+        onPress: IntentRef("Pressed", StaticPayload({ amount: 1 }))
+      })
+    ]
+  }),
+  AnnouncementBadge: AnnouncementBadge({
+    key: "announce",
+    label: "Now open",
+    actionLabel: "Read more",
+    onPress: IntentRef("Pressed", StaticPayload({ amount: 1 }))
+  }),
+  CtaSection: CtaSection({
+    key: "cta-section",
+    headline: "Ready?",
+    body: "Start building.",
+    tone: "info",
+    actions: [
+      Button({
+        key: "cta-btn",
+        label: "Docs",
+        variant: "secondary",
+        onPress: IntentRef("Pressed", StaticPayload({ amount: 1 }))
+      })
+    ]
+  }),
+  Footer: Footer({
+    key: "footer",
+    brand: Text({ key: "footer-brand", content: "EN", variant: "label" }),
+    columns: [
+      {
+        id: "product",
+        title: "Product",
+        links: [
+          Link({ key: "footer-link", destination: { kind: "path", path: "/docs" } }, [
+            Text({ key: "footer-link-label", content: "Docs", variant: "body" })
+          ])
+        ]
+      }
+    ],
+    legal: Text({ key: "footer-legal", content: "© OpenAgents", variant: "caption" })
+  }),
+  NavBar: NavBar({
+    key: "navbar",
+    brand: Text({ key: "navbar-brand", content: "Effect Native", variant: "label" }),
+    links: [
+      {
+        id: "docs",
+        label: "Docs",
+        onPress: IntentRef("Pressed", StaticPayload({ amount: 1 }))
+      }
+    ],
+    sticky: true,
+    collapsed: false,
+    onToggleMenu: IntentRef("Pressed", StaticPayload({ amount: 1 })),
+    actions: [
+      Button({
+        key: "navbar-action",
+        label: "Sign in",
+        variant: "ghost",
+        onPress: IntentRef("Pressed", StaticPayload({ amount: 1 }))
+      })
+    ]
+  }),
+  Accordion: Accordion({
+    key: "accordion",
+    mode: "single",
+    expandedIds: ["q1"],
+    onToggle: IntentRef("Pressed", ComponentValueBinding()),
+    items: [
+      {
+        id: "q1",
+        header: "What is Effect Native?",
+        content: [Text({ key: "faq-body", content: "A typed UI catalog.", variant: "body" })]
+      }
+    ]
+  }),
+  PricingColumn: PricingColumn({
+    key: "pricing-column",
+    name: "Starter",
+    price: "$20",
+    period: "mo",
+    features: [{ id: "f1", label: "Credits", included: true }],
+    highlighted: true,
+    ctaLabel: "Buy",
+    onCta: IntentRef("Pressed", StaticPayload({ amount: 1 }))
+  }),
+  PricingTable: PricingTable({
+    key: "pricing-table",
+    columns: [
+      PricingColumn({
+        key: "pricing-table-col",
+        name: "Pro",
+        price: "$80",
+        period: "mo",
+        features: [{ id: "f1", label: "Priority", included: true }],
+        ctaLabel: "Upgrade",
+        onCta: IntentRef("Pressed", StaticPayload({ amount: 1 }))
+      })
+    ]
+  }),
+  LogoRow: LogoRow({
+    key: "logo-row",
+    logos: [
+      {
+        id: "a",
+        source: "https://example.com/a.svg",
+        alt: "A",
+        onPress: IntentRef("Pressed", StaticPayload({ amount: 1 }))
+      }
+    ]
+  }),
+  StatsBand: StatsBand({
+    key: "stats-band",
+    stats: [{ id: "users", label: "Builders", value: "12,400", tone: "info" }]
+  }),
+  Glow: Glow(
+    { key: "glow", intensity: "md" },
+    [Text({ key: "glow-child", content: "Glow target", variant: "body" })]
+  ),
+  MockupFrame: MockupFrame(
+    { key: "mockup", variant: "browser", tilt: "left" },
+    [Text({ key: "mockup-child", content: "Product shot", variant: "body" })]
+  )
 } satisfies { readonly [Tag in (typeof componentTags)[number]]: View }
 
 const allFixtureTags = Object.keys(catalogFixturesByTag).sort()
@@ -560,7 +710,20 @@ const catalogRendererTags = [
   "CodeBlock",
   "DiffView",
   "GraphFigure",
-  "Timeline"
+  "Timeline",
+  "Section",
+  "Hero",
+  "AnnouncementBadge",
+  "CtaSection",
+  "Footer",
+  "NavBar",
+  "Accordion",
+  "PricingColumn",
+  "PricingTable",
+  "LogoRow",
+  "StatsBand",
+  "Glow",
+  "MockupFrame"
 ] as const
 
 // Host (issue #23) is supported by the headless recorder and the DOM renderer

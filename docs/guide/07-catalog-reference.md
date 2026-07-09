@@ -8,9 +8,9 @@ conformance-checked by
 (`bun run check:catalog-reference`) so this page cannot silently drop a shipped
 component.
 
-Current catalog marker: `CatalogVersion = "effect-native/v19"`.
+Current catalog marker: `CatalogVersion = "effect-native/v20"`.
 
-Closed component tags (`componentTags`, 48 total):
+Closed component tags (`componentTags`, 61 total):
 
 `Stack`, `Text`, `Button`, `Image`, `TextField`, `List`,
 `SectionList`, `Card`, `Spacer`, `Link`, `Modal`, `Sheet`,
@@ -19,7 +19,10 @@ Closed component tags (`componentTags`, 48 total):
 `DropdownMenu`, `ContextMenu`, `Tooltip`, `Combobox`, `CommandPalette`, `Tabs`,
 `Composer`, `Toggle`, `Select`, `Checkbox`, `RadioGroup`, `Slider`,
 `NumberField`, `FieldRow`, `Toast`, `ToastRegion`, `StatusBanner`, `RecoveryOverlay`,
-`Markdown`, `Transcript`, `CodeBlock`, `DiffView`, `GraphFigure`, `Timeline`.
+`Markdown`, `Transcript`, `CodeBlock`, `DiffView`, `GraphFigure`, `Timeline`,
+`Section`, `Hero`, `AnnouncementBadge`, `CtaSection`, `Footer`, `NavBar`,
+`Accordion`, `PricingColumn`, `PricingTable`, `LogoRow`, `StatsBand`, `Glow`,
+`MockupFrame`.
 
 There is no escape hatch to add an ad hoc component — growing the
 catalog is a deliberate, tracked process; see
@@ -124,6 +127,58 @@ catalog is a deliberate, tracked process; see
 
 ### Timeline
 
+### Section
+
+Marketing layout band — width (`full`/`contained`), vertical padding, background token, child slot.
+
+### Hero
+
+Display-scale headline (optional gradient tone), subhead, CTA action row, optional media/mockup slot, start/center align.
+
+### AnnouncementBadge
+
+Outlined pill above a hero — label, optional action label, optional `onPress` intent.
+
+### CtaSection
+
+Mid-page conversion band — headline, body, tone, action row.
+
+### Footer
+
+Brand slot, typed columns of links, legal/meta row.
+
+### NavBar
+
+Marketing top navigation — brand, link list with intents, trailing actions, sticky/collapsed state, menu toggle intent.
+
+### Accordion
+
+Disclosure list (FAQ composition) — items with header + content, mode (`single`/`multi`), expanded ids, `onToggle` intent.
+
+### PricingColumn
+
+Single plan card — name, price, period, features, highlight flag, CTA intent.
+
+### PricingTable
+
+Side-by-side `PricingColumn` children for plan comparison.
+
+### LogoRow
+
+Trusted-by logo strip — source/alt items with optional press intents.
+
+### StatsBand
+
+Metric band — bound value + label items with optional tone.
+
+### Glow
+
+Bounded radial accent glow behind a child slot (`sm`/`md`/`lg` intensity).
+
+### MockupFrame
+
+Device/browser frame around children with optional perspective tilt (`none`/`left`/`right`).
+
 ## Shared vocabulary
 
 ### Common fields
@@ -133,7 +188,7 @@ Every component accepts these two, inherited from `NodeBase`:
 | Field | Type | Notes |
 |---|---|---|
 | `key` | `string` (optional) | Required (enforced by the schema, not just convention) on any view placed inside a `List`/`SectionList`/`Link` children array. |
-| `catalogVersion` | `"effect-native/v5"` | Set automatically by every constructor function — you never pass this yourself. |
+| `catalogVersion` | `"effect-native/v20"` | Set automatically by every constructor function — you never pass this yourself. |
 
 ### Design tokens
 

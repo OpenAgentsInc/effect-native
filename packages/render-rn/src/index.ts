@@ -16,6 +16,19 @@ import {
   type GraphStatus,
   graphStatusColorToken,
   type TimelineView,
+  type SectionView,
+  type HeroView,
+  type AnnouncementBadgeView,
+  type CtaSectionView,
+  type FooterView,
+  type NavBarView,
+  type AccordionView,
+  type PricingColumnView,
+  type PricingTableView,
+  type LogoRowView,
+  type StatsBandView,
+  type GlowView,
+  type MockupFrameView,
   type ComboboxOption,
   type ComboboxView,
   type CommandPaletteView,
@@ -2260,6 +2273,161 @@ const renderTimeline = (
   )
 }
 
+
+// Marketing catalog (#46–#51) — structural RN subset
+const renderMarketingShell = (
+  view: View,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const theme = options.theme ?? defaultTheme
+  const box = (testID: string, children: ReadonlyArray<ReactElementLike>) =>
+    createElement(
+      dependencies,
+      dependencies.ReactNative.View,
+      {
+        ...baseProps(view, mergeNativeStyles({ flexDirection: "column", gap: spacingValue(theme, "2") }, viewStyle(view as never, options))),
+        testID
+      },
+      ...children
+    )
+  const text = (value: string, key: string) =>
+    createElement(dependencies, dependencies.ReactNative.Text, { key }, value)
+  const press = (label: string, intent: IntentRef, key: string) =>
+    createElement(
+      dependencies,
+      dependencies.ReactNative.Pressable,
+      {
+        key,
+        testID: `en-mkt-press-${key}`,
+        onPress: () => runReportedIntent(report, intent)
+      },
+      text(label, `${key}-label`)
+    )
+
+  switch (view._tag) {
+    case "Section":
+    case "Glow":
+    case "MockupFrame":
+      return box(
+        `en-${view._tag}`,
+        view.children.map((child, index) =>
+          renderResolvedReactNativeView(child, dependencies, report, options)
+        ) as ReactElementLike[]
+      )
+    case "Hero": {
+      const kids: Array<ReactElementLike> = [
+        text(typeof view.headline === "string" ? view.headline : "", "headline")
+      ]
+      if (typeof view.subhead === "string") kids.push(text(view.subhead, "subhead"))
+      for (const child of view.actions) kids.push(renderResolvedReactNativeView(child, dependencies, report, options))
+      if (view.media !== undefined) kids.push(renderResolvedReactNativeView(view.media, dependencies, report, options))
+      return box("en-Hero", kids)
+    }
+    case "AnnouncementBadge": {
+      const label =
+        view.actionLabel === undefined ? view.label : `${view.label} · ${view.actionLabel}`
+      if (view.onPress === undefined) {
+        return box("en-AnnouncementBadge", [text(view.label, "label")])
+      }
+      return createElement(
+        dependencies,
+        dependencies.ReactNative.Pressable,
+        {
+          ...baseProps(view, mergeNativeStyles(
+            { flexDirection: "row", alignItems: "center", gap: spacingValue(theme, "2") },
+            viewStyle(view as never, options)
+          )),
+          testID: "en-AnnouncementBadge",
+          onPress: () => runReportedIntent(report, view.onPress!)
+        },
+        text(label, "label")
+      )
+    }
+    case "CtaSection": {
+      const kids: Array<ReactElementLike> = [
+        text(typeof view.headline === "string" ? view.headline : "", "headline")
+      ]
+      if (typeof view.body === "string") kids.push(text(view.body, "body"))
+      for (const child of view.actions) kids.push(renderResolvedReactNativeView(child, dependencies, report, options))
+      return box("en-CtaSection", kids)
+    }
+    case "Footer": {
+      const kids: Array<ReactElementLike> = []
+      if (view.brand !== undefined) kids.push(renderResolvedReactNativeView(view.brand, dependencies, report, options))
+      for (const column of view.columns) {
+        for (const link of column.links) kids.push(renderResolvedReactNativeView(link, dependencies, report, options))
+      }
+      if (view.legal !== undefined) kids.push(renderResolvedReactNativeView(view.legal, dependencies, report, options))
+      return box("en-Footer", kids)
+    }
+    case "NavBar": {
+      const kids: Array<ReactElementLike> = [
+        renderResolvedReactNativeView(view.brand, dependencies, report, options)
+      ]
+      for (const link of view.links) kids.push(press(link.label, link.onPress, link.id))
+      for (const child of view.actions ?? []) kids.push(renderResolvedReactNativeView(child, dependencies, report, options))
+      return box("en-NavBar", kids)
+    }
+    case "Accordion": {
+      const kids: Array<ReactElementLike> = []
+      for (const item of view.items) {
+        kids.push(press(item.header, view.onToggle, item.id))
+        if (view.expandedIds.includes(item.id)) {
+          for (const child of item.content) kids.push(renderResolvedReactNativeView(child, dependencies, report, options))
+        }
+      }
+      return box("en-Accordion", kids)
+    }
+    case "PricingColumn": {
+      const kids: Array<ReactElementLike> = [
+        text(view.name, "name"),
+        text(view.period === undefined ? view.price : `${view.price} / ${view.period}`, "price")
+      ]
+      for (const feature of view.features) {
+        kids.push(text(`${feature.included ? "yes" : "no"}: ${feature.label}`, feature.id))
+      }
+      kids.push(press(view.ctaLabel, view.onCta, "cta"))
+      return box("en-PricingColumn", kids)
+    }
+    case "PricingTable":
+      return box(
+        "en-PricingTable",
+        view.columns.map((column) =>
+          renderResolvedReactNativeView(column, dependencies, report, options)
+        ) as ReactElementLike[]
+      )
+    case "LogoRow":
+      return box(
+        "en-LogoRow",
+        view.logos.map((logo) =>
+          createElement(dependencies, dependencies.ReactNative.Image, {
+            key: logo.id,
+            source: { uri: logo.source },
+            accessibilityLabel: logo.alt,
+            style: { width: 72, height: 28 }
+          })
+        )
+      )
+    case "StatsBand":
+      return box(
+        "en-StatsBand",
+        view.stats.map((stat) =>
+          createElement(
+            dependencies,
+            dependencies.ReactNative.View,
+            { key: stat.id },
+            text(typeof stat.value === "string" ? stat.value : "", `${stat.id}-v`),
+            text(stat.label, `${stat.id}-l`)
+          )
+        )
+      )
+    default:
+      return box(`en-${view._tag}`, [])
+  }
+}
+
 const renderResolvedReactNativeView = (
   view: View,
   dependencies: ReactNativeDependencies,
@@ -2363,6 +2531,20 @@ const renderResolvedReactNativeView = (
       return renderGraphFigure(view, dependencies, report, options)
     case "Timeline":
       return renderTimeline(view, dependencies, report, options)
+    case "Section":
+    case "Hero":
+    case "AnnouncementBadge":
+    case "CtaSection":
+    case "Footer":
+    case "NavBar":
+    case "Accordion":
+    case "PricingColumn":
+    case "PricingTable":
+    case "LogoRow":
+    case "StatsBand":
+    case "Glow":
+    case "MockupFrame":
+      return renderMarketingShell(view, dependencies, report, options)
   }
 }
 

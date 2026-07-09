@@ -16,6 +16,32 @@ import {
   graphStatusColorToken,
   layoutGraphNodes,
   type TimelineView,
+  type SectionView,
+  type HeroView,
+  type AnnouncementBadgeView,
+  type CtaSectionView,
+  type FooterView,
+  type NavBarView,
+  type AccordionView,
+  type PricingColumnView,
+  type PricingTableView,
+  type LogoRowView,
+  type StatsBandView,
+  type GlowView,
+  type MockupFrameView,
+  Section,
+  Hero,
+  AnnouncementBadge,
+  CtaSection,
+  Footer,
+  NavBar,
+  Accordion,
+  PricingColumn,
+  PricingTable,
+  LogoRow,
+  StatsBand,
+  Glow,
+  MockupFrame,
   type ComboboxOption,
   type ComboboxView,
   type CommandPaletteView,
@@ -3626,6 +3652,32 @@ const renderView = (view: View, state: DomRendererState, report: IntentReporter)
       return renderGraphFigure(view, state, report)
     case "Timeline":
       return renderTimeline(view, state, report)
+    case "Section":
+      return renderSection(view, state, report)
+    case "Hero":
+      return renderHero(view, state, report)
+    case "AnnouncementBadge":
+      return renderAnnouncementBadge(view, state, report)
+    case "CtaSection":
+      return renderCtaSection(view, state, report)
+    case "Footer":
+      return renderFooter(view, state, report)
+    case "NavBar":
+      return renderNavBar(view, state, report)
+    case "Accordion":
+      return renderAccordion(view, state, report)
+    case "PricingColumn":
+      return renderPricingColumn(view, state, report)
+    case "PricingTable":
+      return renderPricingTable(view, state, report)
+    case "LogoRow":
+      return renderLogoRow(view, state, report)
+    case "StatsBand":
+      return renderStatsBand(view, state, report)
+    case "Glow":
+      return renderGlow(view, state, report)
+    case "MockupFrame":
+      return renderMockupFrame(view, state, report)
   }
 }
 
@@ -3876,3 +3928,368 @@ export const makeDomRenderer = (options: DomRendererOptions = {}): RendererAdapt
       }))
     })
 })
+
+// Marketing catalog (#46–#51)
+const renderSection = (view: SectionView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const el = state.keyedElement(view, "section")
+  state.resetListeners(el)
+  el.setAttribute("data-en-section-width", view.width ?? "contained")
+  if (view.background !== undefined) el.style.background = `var(--en-color-${view.background})`
+  if (view.paddingY !== undefined) {
+    el.style.paddingTop = `var(--en-spacing-${view.paddingY})`
+    el.style.paddingBottom = `var(--en-spacing-${view.paddingY})`
+  }
+  el.style.maxWidth = view.width === "full" ? "none" : "72rem"
+  el.style.marginInline = "auto"
+  el.replaceChildren(...view.children.map((child) => renderView(child, state, report)))
+  applyBaseStyle(el, view, state)
+  applyA11y(el, view)
+  return el
+}
+
+const renderHero = (view: HeroView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const el = state.keyedElement(view, "header")
+  state.resetListeners(el)
+  el.setAttribute("data-en-hero-align", view.align ?? "start")
+  el.style.display = "flex"
+  el.style.flexDirection = "column"
+  el.style.alignItems = view.align === "center" ? "center" : "flex-start"
+  el.style.gap = "var(--en-spacing-4)"
+  el.style.textAlign = view.align === "center" ? "center" : "start"
+  const h = el.ownerDocument.createElement("h1")
+  h.setAttribute("data-en-role", "headline")
+  h.textContent = typeof view.headline === "string" ? view.headline : ""
+  if (view.headlineTone === "gradient") h.setAttribute("data-en-headline-tone", "gradient")
+  el.appendChild(h)
+  if (typeof view.subhead === "string" && view.subhead.length > 0) {
+    const p = el.ownerDocument.createElement("p")
+    p.setAttribute("data-en-role", "subhead")
+    p.textContent = view.subhead
+    el.appendChild(p)
+  }
+  const actions = el.ownerDocument.createElement("div")
+  actions.setAttribute("data-en-role", "actions")
+  actions.style.display = "flex"
+  actions.style.gap = "var(--en-spacing-2)"
+  for (const child of view.actions) actions.appendChild(renderView(child, state, report))
+  el.appendChild(actions)
+  if (view.media !== undefined) {
+    const media = el.ownerDocument.createElement("div")
+    media.setAttribute("data-en-role", "media")
+    media.appendChild(renderView(view.media, state, report))
+    el.appendChild(media)
+  }
+  applyBaseStyle(el, view, state)
+  applyA11y(el, view)
+  return el
+}
+
+const renderAnnouncementBadge = (
+  view: AnnouncementBadgeView,
+  state: DomRendererState,
+  report: IntentReporter
+): HTMLElement => {
+  const el = state.keyedElement(view, view.onPress === undefined ? "div" : "button")
+  state.resetListeners(el)
+  el.setAttribute("data-en-announcement", "true")
+  el.style.display = "inline-flex"
+  el.style.alignItems = "center"
+  el.style.gap = "var(--en-spacing-2)"
+  el.style.border = "1px solid var(--en-color-border)"
+  el.style.borderRadius = "999px"
+  el.style.padding = "var(--en-spacing-1) var(--en-spacing-3)"
+  const label = el.ownerDocument.createElement("span")
+  label.textContent = view.label
+  el.appendChild(label)
+  if (view.actionLabel !== undefined) {
+    const action = el.ownerDocument.createElement("span")
+    action.setAttribute("data-en-role", "action")
+    action.textContent = view.actionLabel
+    el.appendChild(action)
+  }
+  if (view.onPress !== undefined) {
+    const intent = view.onPress
+    state.addListener(el, "click", () => runReportedIntent(report, intent))
+  }
+  applyBaseStyle(el, view, state)
+  applyA11y(el, view)
+  return el
+}
+
+const renderCtaSection = (view: CtaSectionView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const el = state.keyedElement(view, "section")
+  state.resetListeners(el)
+  el.setAttribute("data-en-cta", "true")
+  if (view.tone !== undefined) el.setAttribute("data-en-tone", view.tone)
+  const h = el.ownerDocument.createElement("h2")
+  h.textContent = typeof view.headline === "string" ? view.headline : ""
+  el.appendChild(h)
+  if (typeof view.body === "string") {
+    const p = el.ownerDocument.createElement("p")
+    p.textContent = view.body
+    el.appendChild(p)
+  }
+  const actions = el.ownerDocument.createElement("div")
+  actions.style.display = "flex"
+  actions.style.gap = "var(--en-spacing-2)"
+  for (const child of view.actions) actions.appendChild(renderView(child, state, report))
+  el.appendChild(actions)
+  applyBaseStyle(el, view, state)
+  applyA11y(el, view)
+  return el
+}
+
+const renderFooter = (view: FooterView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const el = state.keyedElement(view, "footer")
+  state.resetListeners(el)
+  el.style.display = "grid"
+  el.style.gap = "var(--en-spacing-4)"
+  if (view.brand !== undefined) el.appendChild(renderView(view.brand, state, report))
+  const cols = el.ownerDocument.createElement("div")
+  cols.style.display = "flex"
+  cols.style.flexWrap = "wrap"
+  cols.style.gap = "var(--en-spacing-6)"
+  for (const column of view.columns) {
+    const col = el.ownerDocument.createElement("div")
+    col.setAttribute("data-en-footer-col", column.id)
+    if (column.title !== undefined) {
+      const title = el.ownerDocument.createElement("h3")
+      title.textContent = column.title
+      col.appendChild(title)
+    }
+    for (const link of column.links) col.appendChild(renderView(link, state, report))
+    cols.appendChild(col)
+  }
+  el.appendChild(cols)
+  if (view.legal !== undefined) el.appendChild(renderView(view.legal, state, report))
+  applyBaseStyle(el, view, state)
+  applyA11y(el, view)
+  return el
+}
+
+const renderNavBar = (view: NavBarView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const el = state.keyedElement(view, "nav")
+  state.resetListeners(el)
+  el.setAttribute("data-en-navbar", "true")
+  if (view.sticky === true) el.style.position = "sticky"
+  el.style.display = "flex"
+  el.style.alignItems = "center"
+  el.style.gap = "var(--en-spacing-3)"
+  el.appendChild(renderView(view.brand, state, report))
+  const links = el.ownerDocument.createElement("div")
+  links.setAttribute("data-en-navbar-links", view.collapsed === true ? "collapsed" : "open")
+  links.style.display = view.collapsed === true ? "none" : "flex"
+  links.style.gap = "var(--en-spacing-3)"
+  for (const link of view.links) {
+    const btn = el.ownerDocument.createElement("button")
+    btn.type = "button"
+    btn.textContent = link.label
+    btn.setAttribute("data-en-nav-link", link.id)
+    state.addListener(btn, "click", () => runReportedIntent(report, link.onPress))
+    links.appendChild(btn)
+  }
+  el.appendChild(links)
+  if (view.onToggleMenu !== undefined) {
+    const toggle = el.ownerDocument.createElement("button")
+    toggle.type = "button"
+    toggle.setAttribute("data-en-navbar-toggle", "true")
+    toggle.setAttribute("aria-expanded", view.collapsed === true ? "false" : "true")
+    toggle.textContent = "Menu"
+    const intent = view.onToggleMenu
+    state.addListener(toggle, "click", () => runReportedIntent(report, intent))
+    el.appendChild(toggle)
+  }
+  if (view.actions !== undefined) {
+    const actions = el.ownerDocument.createElement("div")
+    actions.setAttribute("data-en-navbar-actions", "true")
+    for (const child of view.actions) actions.appendChild(renderView(child, state, report))
+    el.appendChild(actions)
+  }
+  applyBaseStyle(el, view, state)
+  applyA11y(el, view)
+  return el
+}
+
+const renderAccordion = (view: AccordionView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const el = state.keyedElement(view, "div")
+  state.resetListeners(el)
+  el.setAttribute("data-en-accordion-mode", view.mode ?? "single")
+  for (const item of view.items) {
+    const open = view.expandedIds.includes(item.id)
+    const itemEl = el.ownerDocument.createElement("div")
+    itemEl.setAttribute("data-en-accordion-item", item.id)
+    const header = el.ownerDocument.createElement("button")
+    header.type = "button"
+    header.setAttribute("aria-expanded", open ? "true" : "false")
+    header.textContent = item.header
+    state.addListener(header, "click", () => runReportedIntent(report, view.onToggle, item.id))
+    itemEl.appendChild(header)
+    const region = el.ownerDocument.createElement("div")
+    region.setAttribute("role", "region")
+    region.hidden = !open
+    for (const child of item.content) region.appendChild(renderView(child, state, report))
+    itemEl.appendChild(region)
+    el.appendChild(itemEl)
+  }
+  applyBaseStyle(el, view, state)
+  applyA11y(el, view)
+  return el
+}
+
+const renderPricingColumn = (
+  view: PricingColumnView,
+  state: DomRendererState,
+  report: IntentReporter
+): HTMLElement => {
+  const el = state.keyedElement(view, "article")
+  state.resetListeners(el)
+  el.setAttribute("data-en-pricing-column", view.highlighted === true ? "highlighted" : "default")
+  const name = el.ownerDocument.createElement("h3")
+  name.textContent = view.name
+  el.appendChild(name)
+  const price = el.ownerDocument.createElement("p")
+  price.setAttribute("data-en-role", "price")
+  price.textContent = view.period === undefined ? view.price : `${view.price} / ${view.period}`
+  el.appendChild(price)
+  const list = el.ownerDocument.createElement("ul")
+  for (const feature of view.features) {
+    const li = el.ownerDocument.createElement("li")
+    li.setAttribute("data-en-included", feature.included ? "true" : "false")
+    li.textContent = feature.label
+    list.appendChild(li)
+  }
+  el.appendChild(list)
+  const cta = el.ownerDocument.createElement("button")
+  cta.type = "button"
+  cta.textContent = view.ctaLabel
+  state.addListener(cta, "click", () => runReportedIntent(report, view.onCta))
+  el.appendChild(cta)
+  applyBaseStyle(el, view, state)
+  applyA11y(el, view)
+  return el
+}
+
+const renderPricingTable = (
+  view: PricingTableView,
+  state: DomRendererState,
+  report: IntentReporter
+): HTMLElement => {
+  const el = state.keyedElement(view, "div")
+  state.resetListeners(el)
+  el.style.display = "flex"
+  el.style.flexWrap = "wrap"
+  el.style.gap = "var(--en-spacing-4)"
+  for (const column of view.columns) el.appendChild(renderPricingColumn(column, state, report))
+  applyBaseStyle(el, view, state)
+  applyA11y(el, view)
+  return el
+}
+
+const renderLogoRow = (view: LogoRowView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const el = state.keyedElement(view, "div")
+  state.resetListeners(el)
+  el.style.display = "flex"
+  el.style.flexWrap = "wrap"
+  el.style.alignItems = "center"
+  el.style.gap = "var(--en-spacing-4)"
+  el.style.opacity = "0.85"
+  for (const logo of view.logos) {
+    const img = el.ownerDocument.createElement("img")
+    img.src = logo.source
+    img.alt = logo.alt
+    img.setAttribute("data-en-logo", logo.id)
+    img.style.height = "2rem"
+    img.style.objectFit = "contain"
+    if (logo.onPress !== undefined) {
+      const intent = logo.onPress
+      const btn = el.ownerDocument.createElement("button")
+      btn.type = "button"
+      btn.appendChild(img)
+      state.addListener(btn, "click", () => runReportedIntent(report, intent))
+      el.appendChild(btn)
+    } else {
+      el.appendChild(img)
+    }
+  }
+  applyBaseStyle(el, view, state)
+  applyA11y(el, view)
+  return el
+}
+
+const renderStatsBand = (view: StatsBandView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const el = state.keyedElement(view, "div")
+  state.resetListeners(el)
+  el.style.display = "flex"
+  el.style.flexWrap = "wrap"
+  el.style.gap = "var(--en-spacing-6)"
+  for (const stat of view.stats) {
+    const tile = el.ownerDocument.createElement("div")
+    tile.setAttribute("data-en-stat", stat.id)
+    if (stat.tone !== undefined) tile.setAttribute("data-en-tone", stat.tone)
+    const value = el.ownerDocument.createElement("div")
+    value.setAttribute("data-en-role", "value")
+    value.style.fontSize = "2rem"
+    value.textContent = typeof stat.value === "string" ? stat.value : ""
+    const label = el.ownerDocument.createElement("div")
+    label.setAttribute("data-en-role", "label")
+    label.textContent = stat.label
+    tile.append(value, label)
+    el.appendChild(tile)
+  }
+  applyBaseStyle(el, view, state)
+  applyA11y(el, view)
+  return el
+}
+
+const renderGlow = (view: GlowView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const el = state.keyedElement(view, "div")
+  state.resetListeners(el)
+  el.setAttribute("data-en-glow", view.intensity ?? "md")
+  el.style.position = "relative"
+  el.style.display = "inline-flex"
+  const aura = el.ownerDocument.createElement("div")
+  aura.setAttribute("aria-hidden", "true")
+  aura.setAttribute("data-en-role", "glow-aura")
+  aura.style.position = "absolute"
+  aura.style.inset = "-20%"
+  aura.style.background = "radial-gradient(circle, var(--en-color-accent) 0%, transparent 70%)"
+  aura.style.opacity = view.intensity === "sm" ? "0.35" : view.intensity === "lg" ? "0.75" : "0.55"
+  aura.style.pointerEvents = "none"
+  el.appendChild(aura)
+  const content = el.ownerDocument.createElement("div")
+  content.style.position = "relative"
+  for (const child of view.children) content.appendChild(renderView(child, state, report))
+  el.appendChild(content)
+  applyBaseStyle(el, view, state)
+  applyA11y(el, view)
+  return el
+}
+
+const renderMockupFrame = (
+  view: MockupFrameView,
+  state: DomRendererState,
+  report: IntentReporter
+): HTMLElement => {
+  const el = state.keyedElement(view, "div")
+  state.resetListeners(el)
+  el.setAttribute("data-en-mockup", view.variant ?? "browser")
+  el.setAttribute("data-en-tilt", view.tilt ?? "none")
+  el.style.border = "1px solid var(--en-color-border)"
+  el.style.borderRadius = "var(--en-radius-lg)"
+  el.style.overflow = "hidden"
+  el.style.background = "var(--en-color-surface)"
+  if (view.tilt === "left") el.style.transform = "perspective(1200px) rotateY(8deg)"
+  if (view.tilt === "right") el.style.transform = "perspective(1200px) rotateY(-8deg)"
+  if ((view.variant ?? "browser") === "browser") {
+    const chrome = el.ownerDocument.createElement("div")
+    chrome.setAttribute("data-en-role", "browser-chrome")
+    chrome.style.height = "1.5rem"
+    chrome.style.background = "var(--en-color-surfaceRaised)"
+    el.appendChild(chrome)
+  }
+  for (const child of view.children) el.appendChild(renderView(child, state, report))
+  applyBaseStyle(el, view, state)
+  applyA11y(el, view)
+  return el
+}
+

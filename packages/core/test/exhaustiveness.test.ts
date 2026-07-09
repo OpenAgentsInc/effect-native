@@ -6,9 +6,8 @@ import {
   type View
 } from "../src/index"
 
-// The catalog now exceeds `.pipe`'s 20-argument overload limit, so the matcher
-// is built in two chained pipes. The final `Match.exhaustive` still enforces
-// totality over the whole closed catalog.
+// The catalog exceeds `.pipe`'s 20-argument overload limit, so the matcher
+// is built in chained pipes. Final `Match.exhaustive` enforces totality.
 const describeView = Match.type<View>().pipe(
   Match.tag("Stack", () => "layout"),
   Match.tag("Text", () => "text"),
@@ -60,7 +59,21 @@ const describeView = Match.type<View>().pipe(
   Match.tag("CodeBlock", () => "code"),
   Match.tag("DiffView", () => "code"),
   Match.tag("GraphFigure", () => "figure"),
-  Match.tag("Timeline", () => "figure"),
+  Match.tag("Timeline", () => "figure")
+).pipe(
+  Match.tag("Section", () => "marketing"),
+  Match.tag("Hero", () => "marketing"),
+  Match.tag("AnnouncementBadge", () => "marketing"),
+  Match.tag("CtaSection", () => "marketing"),
+  Match.tag("Footer", () => "marketing"),
+  Match.tag("NavBar", () => "marketing"),
+  Match.tag("Accordion", () => "marketing"),
+  Match.tag("PricingColumn", () => "marketing"),
+  Match.tag("PricingTable", () => "marketing"),
+  Match.tag("LogoRow", () => "marketing"),
+  Match.tag("StatsBand", () => "marketing"),
+  Match.tag("Glow", () => "marketing"),
+  Match.tag("MockupFrame", () => "marketing"),
   Match.exhaustive
 )
 
@@ -78,11 +91,9 @@ const incompleteMatcher = Match.type<View>().pipe(
 const mustNotCompile = Match.exhaustive(incompleteMatcher)
 void mustNotCompile
 
-test("View supports exhaustive Match over the closed catalog", () => {
-  expect(describeView(Spacer({ size: "2" }))).toBe("space")
-  expect(describeView(Button({
-    label: "Save",
-    variant: "primary",
-    onPress: { name: "PressedSave" }
-  }))).toBe("action")
+test("catalog Match.exhaustive covers every component tag", () => {
+  const sample: View = Button({ key: "b", label: "Go", variant: "primary", onPress: { name: "Go" } })
+  expect(describeView(sample)).toBe("action")
+  const space: View = Spacer({ key: "s", size: "2" })
+  expect(describeView(space)).toBe("space")
 })
