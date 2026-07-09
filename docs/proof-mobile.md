@@ -1,43 +1,74 @@
-# Phase 4M Mobile Proof
+# Phase 4M Mobile Proof (exit receipt #64)
 
-The first mobile exit-receipt scaffold for epic #52 / issue #64. Core Khala Code
-Mobile surfaces are **authored once** as typed Effect Native data and checked
-through headless + DOM + React Native oracles.
+Khala Code Mobile core surfaces are **authored once** as typed Effect Native
+data, rendered on **iOS and Android** through `@effect-native/render-rn` +
+`runMainMobile`, and kept coherent with the desktop Effect Native chat via a
+**Khala Sync–shaped dual-client messaging proof**.
 
 ## What Is Defined Once
 
-`examples/khala-mobile/index.ts` owns:
+### Mobile program — `examples/khala-mobile/index.ts`
 
-- onboarding `Pager` inside mobile surface treatments (`BackgroundGradient` /
-  `Spotlight` / `Frame`)
-- thread list with `SwipeableListItem` + pull-to-refresh `List`
-- chat `Transcript` + `Composer`
-- recorded intent script (onboarding → threads → chat submit)
+| Screen | Catalog |
+|---|---|
+| Onboarding | `BackgroundGradient` / `Spotlight` / `Frame` + `Pager` |
+| Thread list | virtualized `List` + `SwipeableListItem` + pull-to-refresh + `BlurredPopup` long-press quote |
+| Chat | `Transcript` of `Markdown` / `CodeBlock` / `DiffView` / tool `Card` + `Composer` (mention chips) + `VoiceInput` Host |
+| Settings | `FieldRow` + `Toggle` / `Checkbox` |
 
-No JSX screens, hooks, or callbacks appear in the public view tree.
+Boot: `runKhalaMobileMain(dependencies, "ios" | "android")` → `runMainMobile`.
 
-## Oracle
+### Shared chat vocabulary — `examples/khala-shared-chat/index.ts`
 
-`scripts/khala-mobile-proof-oracle.test.ts` replays the same scripted path on:
+- `ChatTurnEvent` / `chat.composeTurn` mutator name (production Khala Sync shape)
+- Memory hub: dense versions, post-image changelog, dual-client apply
+- One `sharedTranscriptView` for desktop DOM and mobile RN
 
-- headless renderer
-- DOM renderer
-- React Native renderer (iOS platform option)
+## Oracles (CI receipts)
 
-It asserts final state, intent log, and structural presence of the chat surface.
+```sh
+bun test scripts/khala-mobile-proof-oracle.test.ts
+bun test scripts/khala-cross-app-sync-oracle.test.ts
+```
+
+| Test | Asserts |
+|---|---|
+| Mobile path | onboarding → settings → threads → chat; headless = DOM = RN(iOS) = RN(Android) |
+| `runMainMobile` | boots on both platform options |
+| RN visual baselines | `rnVisualCapture` for chat on iOS + Android |
+| Cross-app Sync | desktop mutator lands on mobile; mobile mutator lands on desktop; same ordered turns; both views render |
+
+## Cross-app Khala Sync exit test
+
+The owner-named headline criterion:
+
+1. Message from **desktop** (Effect Native shared transcript / DOM path) appears on **mobile**.
+2. Message from **mobile** (Effect Native shared transcript / RN path) appears on **desktop**.
+3. Both UIs use the **same typed transcript view + compose intents**.
+4. Convergence is driven by a **Khala Sync–shaped** hub: named mutator
+   `chat.composeTurn`, scope `scope.thread.cross-app-proof`, dense versions,
+   post-image `chat_turn_event` log entries, dual-client apply.
+
+Production Cloud SQL / WebSocket hub wiring lives in `openagents` packages
+(`khala-sync-client` / `khala-sync-server`). This framework receipt freezes the
+**UI + mutator algebra** those packages already carry — the CI harness is the
+protocol proof; a live staging demo plugs the same mutator name into the real
+transport without changing either app’s view tree.
+
+## Receipt artifacts
+
+| Artifact | Path |
+|---|---|
+| Mobile program | `examples/khala-mobile/index.ts` |
+| Shared chat + hub | `examples/khala-shared-chat/index.ts` |
+| Mobile oracle | `scripts/khala-mobile-proof-oracle.test.ts` |
+| Cross-app oracle | `scripts/khala-cross-app-sync-oracle.test.ts` |
+| Desktop counterpart | `examples/khala-chat/index.ts` + `docs/proof-desktop.md` |
 
 ## Run
 
 ```sh
 bun install
-bun test scripts/khala-mobile-proof-oracle.test.ts
+bun test scripts/khala-mobile-proof-oracle.test.ts scripts/khala-cross-app-sync-oracle.test.ts
+bun run check
 ```
-
-Live Expo host wiring remains `examples/mobile/` + `@effect-native/platform-mobile`
-`runMainMobile` for device smoke; the oracle is the CI receipt.
-
-## Cross-app Khala Sync
-
-The owner-named live desktop↔mobile messaging exit test still requires a shared
-sync runtime outside this framework repo. This proof freezes the **UI contract**
-both apps must share for that test.

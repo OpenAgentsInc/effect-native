@@ -1,9 +1,15 @@
-import { Effect, Schema, Stream, SubscriptionRef } from "effect"
+import { Effect, Schema, SubscriptionRef } from "effect"
 import {
   BackgroundGradient,
+  BlurredPopup,
   Button,
+  Card,
+  Checkbox,
+  CodeBlock,
   ComponentValueBinding,
   Composer,
+  DiffView,
+  FieldRow,
   Frame,
   IntentRef,
   List,
@@ -14,7 +20,9 @@ import {
   StaticPayload,
   SwipeableListItem,
   Text,
+  Toggle,
   Transcript,
+  VoiceInput,
   defineIntent,
   makeIntentRegistry,
   makeViewProgramFromState,
@@ -27,6 +35,8 @@ import {
   type ViewProgram
 } from "@effect-native/core"
 import { khalaTheme } from "@effect-native/tokens"
+import { runMainMobile } from "@effect-native/platform-mobile"
+import type { ReactNativeDependencies } from "@effect-native/render-rn"
 
 export const khalaMobileTheme: Theme = khalaTheme
 
@@ -41,17 +51,24 @@ export const KhalaMobileThreadSchema = Schema.Struct({
 export type KhalaMobileThread = Schema.Schema.Type<typeof KhalaMobileThreadSchema>
 
 export const KhalaMobileStateSchema = Schema.Struct({
-  screen: Schema.Literals(["onboarding", "threads", "chat"] as const),
+  screen: Schema.Literals(["onboarding", "threads", "chat", "settings"] as const),
   onboardingStep: Schema.NonEmptyString,
   threads: Schema.Array(KhalaMobileThreadSchema),
   activeThreadId: Schema.NonEmptyString,
   refreshing: Schema.Boolean,
   composerText: Schema.String,
-  messages: Schema.Array(Schema.Struct({
-    key: Schema.NonEmptyString,
-    role: Schema.Literals(["user", "assistant"] as const),
-    text: Schema.String
-  })),
+  quotePopupOpen: Schema.Boolean,
+  quotedText: Schema.String,
+  autoApprove: Schema.Boolean,
+  stream: Schema.Boolean,
+  messages: Schema.Array(
+    Schema.Struct({
+      key: Schema.NonEmptyString,
+      role: Schema.Literals(["user", "assistant"] as const),
+      kind: Schema.Literals(["prose", "code", "diff", "tool"] as const),
+      text: Schema.String
+    })
+  ),
   streamPatchCount: Schema.Number
 })
 export type KhalaMobileState = Schema.Schema.Type<typeof KhalaMobileStateSchema>
@@ -66,9 +83,30 @@ export const initialKhalaMobileState: KhalaMobileState = KhalaMobileStateSchema.
   activeThreadId: "t-1",
   refreshing: false,
   composerText: "",
+  quotePopupOpen: false,
+  quotedText: "",
+  autoApprove: false,
+  stream: true,
   messages: [
-    { key: "m1", role: "user", text: "Ship the mobile proof screens." },
-    { key: "m2", role: "assistant", text: "Authoring once for iOS and Android." }
+    { key: "m1", role: "user", kind: "prose", text: "Ship the mobile proof screens." },
+    {
+      key: "m2",
+      role: "assistant",
+      kind: "code",
+      text: "Authoring once for iOS and Android."
+    },
+    {
+      key: "m3",
+      role: "assistant",
+      kind: "diff",
+      text: "typed Effect Native chat tree"
+    },
+    {
+      key: "m4",
+      role: "assistant",
+      kind: "tool",
+      text: "Read reference surface"
+    }
   ],
   streamPatchCount: 0
 })
@@ -81,6 +119,11 @@ export const ThreadAction = defineIntent("KhalaMobile.ThreadAction", Schema.NonE
 export const ComposerChanged = defineIntent("KhalaMobile.ComposerChanged", Schema.String)
 export const ComposerSubmitted = defineIntent("KhalaMobile.ComposerSubmitted", Schema.String)
 export const BackToThreads = defineIntent("KhalaMobile.BackToThreads", Schema.Struct({}))
+export const OpenSettings = defineIntent("KhalaMobile.OpenSettings", Schema.Struct({}))
+export const ToggleAutoApprove = defineIntent("KhalaMobile.ToggleAutoApprove", Schema.Boolean)
+export const ToggleStream = defineIntent("KhalaMobile.ToggleStream", Schema.Boolean)
+export const OpenQuotePopup = defineIntent("KhalaMobile.OpenQuotePopup", Schema.String)
+export const DismissQuotePopup = defineIntent("KhalaMobile.DismissQuotePopup", Schema.Struct({}))
 
 export const khalaMobileIntentDefinitions = [
   SelectStep,
@@ -90,8 +133,86 @@ export const khalaMobileIntentDefinitions = [
   ThreadAction,
   ComposerChanged,
   ComposerSubmitted,
-  BackToThreads
+  BackToThreads,
+  OpenSettings,
+  ToggleAutoApprove,
+  ToggleStream,
+  OpenQuotePopup,
+  DismissQuotePopup
 ] as const
+
+const messageBody = (message: KhalaMobileState["messages"][number]): ReadonlyArray<View> => {
+  if (message.kind === "code") {
+    return [
+      CodeBlock({
+        key: `${message.key}-code`,
+        language: "typescript",
+        showLineNumbers: true,
+        lines: [
+          {
+            tokens: [
+              { kind: "keyword", text: "const" },
+              { kind: "plain", text: " view = " },
+              { kind: "function", text: "khalaMobileView" },
+              { kind: "plain", text: "(state)" }
+            ]
+          }
+        ]
+      })
+    ]
+  }
+  if (message.kind === "diff") {
+    return [
+      DiffView({
+        key: `${message.key}-diff`,
+        language: "typescript",
+        layout: "unified",
+        hunks: [
+          {
+            header: "@@ mobile proof @@",
+            rows: [
+              {
+                kind: "remove",
+                oldLine: 1,
+                id: `${message.key}-r`,
+                tokens: [{ kind: "plain", text: "custom JSX chat shell" }]
+              },
+              {
+                kind: "add",
+                newLine: 1,
+                id: `${message.key}-a`,
+                tokens: [{ kind: "plain", text: message.text }]
+              }
+            ]
+          }
+        ]
+      })
+    ]
+  }
+  if (message.kind === "tool") {
+    return [
+      Card({ key: `${message.key}-tool`, padding: "2", radius: "md" }, [
+        Text({
+          key: `${message.key}-tool-title`,
+          content: message.text,
+          variant: "label"
+        }),
+        Text({
+          key: `${message.key}-tool-status`,
+          content: "complete",
+          variant: "caption",
+          color: "success"
+        })
+      ])
+    ]
+  }
+  return [
+    Markdown({
+      key: `${message.key}-md`,
+      blocks: [{ kind: "paragraph", children: [{ kind: "text", text: message.text }] }]
+    })
+  ]
+}
 
 export const khalaMobileView = (state: KhalaMobileState): View => {
   if (state.screen === "onboarding") {
@@ -153,9 +274,51 @@ export const khalaMobileView = (state: KhalaMobileState): View => {
     )
   }
 
+  if (state.screen === "settings") {
+    return Stack({ key: "settings-root", direction: "column", gap: "3", padding: "3" }, [
+      Button({
+        key: "settings-back",
+        label: "Back",
+        variant: "ghost",
+        onPress: IntentRef("KhalaMobile.BackToThreads", StaticPayload({}))
+      }),
+      Text({ key: "settings-title", content: "Settings", variant: "title" }),
+      FieldRow({
+        key: "auto-approve-row",
+        label: "Auto-approve safe edits",
+        description: "Apply low-risk edits automatically.",
+        controlKey: "auto-approve",
+        control: Toggle({
+          key: "auto-approve",
+          value: state.autoApprove,
+          onChange: IntentRef("KhalaMobile.ToggleAutoApprove", ComponentValueBinding())
+        })
+      }),
+      FieldRow({
+        key: "stream-row",
+        label: "Stream responses",
+        controlKey: "stream",
+        control: Checkbox({
+          key: "stream",
+          checked: state.stream,
+          label: "Stream",
+          onChange: IntentRef("KhalaMobile.ToggleStream", ComponentValueBinding())
+        })
+      })
+    ])
+  }
+
   if (state.screen === "threads") {
     return Stack({ key: "threads-root", direction: "column", gap: "3", padding: "3" }, [
-      Text({ key: "threads-title", content: "Threads", variant: "title" }),
+      Stack({ key: "threads-header", direction: "row", gap: "2" }, [
+        Text({ key: "threads-title", content: "Threads", variant: "title" }),
+        Button({
+          key: "open-settings",
+          label: "Settings",
+          variant: "ghost",
+          onPress: IntentRef("KhalaMobile.OpenSettings", StaticPayload({}))
+        })
+      ]),
       List(
         {
           key: "thread-list",
@@ -170,17 +333,38 @@ export const khalaMobileView = (state: KhalaMobileState): View => {
               key: thread.id,
               onAction: IntentRef("KhalaMobile.ThreadAction", ComponentValueBinding()),
               trailingActions: [
-                { id: "archive", label: "Archive", destructive: true, tone: "danger" }
+                { id: "archive", label: "Archive", destructive: true, tone: "danger" },
+                { id: "quote", label: "Quote", tone: "info" }
               ],
               child: Button({
                 key: `${thread.id}-open`,
                 label: `${thread.title}\n${thread.preview}`,
                 variant: "ghost",
-                onPress: IntentRef("KhalaMobile.OpenThread", StaticPayload(thread.id))
+                onPress: IntentRef("KhalaMobile.OpenThread", StaticPayload(thread.id)),
+                interactions: {
+                  onLongPress: IntentRef(
+                    "KhalaMobile.OpenQuotePopup",
+                    StaticPayload(thread.preview)
+                  )
+                }
               })
             })
           )
         ) as ReadonlyArray<KeyedView>
+      ),
+      BlurredPopup(
+        {
+          key: "quote-popup",
+          open: state.quotePopupOpen,
+          onDismiss: IntentRef("KhalaMobile.DismissQuotePopup", StaticPayload({}))
+        },
+        [
+          Text({
+            key: "quote-body",
+            content: state.quotedText.length > 0 ? state.quotedText : "Quote",
+            variant: "body"
+          })
+        ]
       )
     ])
   }
@@ -198,22 +382,21 @@ export const khalaMobileView = (state: KhalaMobileState): View => {
       messages: state.messages.map((message) => ({
         key: message.key,
         role: message.role,
-        body: [
-          Markdown({
-            key: `${message.key}-md`,
-            blocks: [{ kind: "paragraph", children: [{ kind: "text", text: message.text }] }]
-          })
-        ]
+        body: messageBody(message)
       }))
     }),
     Composer({
       key: "composer",
       mode: "normal",
       placeholder: "Message…",
-      doc: [{ kind: "text", text: state.composerText }],
+      doc: [
+        { kind: "text", text: state.composerText },
+        { kind: "mention", id: "orrery", label: "@Orrery" }
+      ],
       onChange: IntentRef("KhalaMobile.ComposerChanged", ComponentValueBinding()),
       onSubmit: IntentRef("KhalaMobile.ComposerSubmitted", ComponentValueBinding())
-    })
+    }),
+    VoiceInput({ key: "mic", listening: false, locale: "en-US" })
   ])
 }
 
@@ -262,13 +445,38 @@ export const makeKhalaMobileRuntime = Effect.gen(function*() {
           composerText: "",
           messages: [
             ...current.messages,
-            { key: `m-${current.messages.length + 1}`, role: "user", text }
+            {
+              key: `m-${current.messages.length + 1}`,
+              role: "user",
+              kind: "prose",
+              text
+            }
           ],
           streamPatchCount: current.streamPatchCount + 1
         }
       }),
     "KhalaMobile.BackToThreads": () =>
-      SubscriptionRef.update(state, (current) => ({ ...current, screen: "threads" }))
+      SubscriptionRef.update(state, (current) => ({ ...current, screen: "threads" })),
+    "KhalaMobile.OpenSettings": () =>
+      SubscriptionRef.update(state, (current) => ({ ...current, screen: "settings" })),
+    "KhalaMobile.ToggleAutoApprove": (value) =>
+      SubscriptionRef.update(state, (current) => ({
+        ...current,
+        autoApprove: typeof value === "boolean" ? value : !current.autoApprove
+      })),
+    "KhalaMobile.ToggleStream": (value) =>
+      SubscriptionRef.update(state, (current) => ({
+        ...current,
+        stream: typeof value === "boolean" ? value : !current.stream
+      })),
+    "KhalaMobile.OpenQuotePopup": (value) =>
+      SubscriptionRef.update(state, (current) => ({
+        ...current,
+        quotePopupOpen: true,
+        quotedText: typeof value === "string" ? value : current.quotedText
+      })),
+    "KhalaMobile.DismissQuotePopup": () =>
+      SubscriptionRef.update(state, (current) => ({ ...current, quotePopupOpen: false }))
   }
   const registry = yield* makeIntentRegistry(khalaMobileIntentDefinitions, handlers, { now: () => 0 })
   const report: IntentReporter = (ref, runtimeValue) =>
@@ -281,7 +489,20 @@ export const makeKhalaMobileRuntime = Effect.gen(function*() {
   }
 })
 
-export const recordedMobileTurnStream = Stream.fromIterable([
-  { kind: "open-thread" as const, threadId: "t-1" },
-  { kind: "compose" as const, text: "Continue the fleet port." }
-])
+/** Boot the mobile proof under runMainMobile (iOS or Android platform option). */
+export const runKhalaMobileMain = (
+  dependencies: ReactNativeDependencies,
+  platform: "ios" | "android"
+) =>
+  Effect.gen(function*() {
+    const runtime = yield* makeKhalaMobileRuntime
+    const app = yield* runMainMobile({
+      runtime: {
+        program: runtime.program,
+        report: runtime.report
+      },
+      dependencies,
+      rendererOptions: { platform, theme: khalaMobileTheme }
+    })
+    return { app, runtime }
+  })

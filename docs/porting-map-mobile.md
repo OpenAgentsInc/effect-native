@@ -66,7 +66,7 @@ subsets** or **loud unsupported markers**. Closing the matrix is issue #53:
 6. **RN parity promotions** — close the subset matrix against real screens (#53)
 7. **RN Host drivers** — voice/STT + on-device model (#58)
 8. **RN pixel baselines** — iOS + Android visual capture (#59)
-9. **Exit receipt** — core screens on both platforms + cross-app Khala Sync messaging test (#64)
+9. **Exit receipt** — core screens on both platforms + cross-app Khala Sync messaging test (#64 shipped — `docs/proof-mobile.md`)
 
 ## Non-goals of this map
 
