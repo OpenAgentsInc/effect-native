@@ -1,12 +1,11 @@
 /**
- * Scene-node reconciler adapted from `@openagentsinc/three-effect`
- * (`packages/core/src/sceneNodeReconcilerPrimitives.ts` +
- * `resourceScopePrimitives.ts`, Apache-2.0).
+ * Scene-node reconciler for the Three.js canvas backend.
  *
- * Vendored here so `@effect-native/render-canvas` can typecheck and test
- * without pulling three-effect's full surface (and its Effect peer pin). The
- * public contract is intentionally the same: apps that already depend on
- * three-effect can still inject a live graph via {@link ThreeSceneGraph}.
+ * Owns keyed create/update/dispose of `three.Object3D` trees with a nested
+ * resource scope. This is part of `@effect-native/render-canvas` (not a
+ * dependency on any product-side Three wrapper). Historical lineage: the
+ * keyed-descriptor reconcile pattern is common to scene graphs; implementation
+ * here is owned and versioned with Effect Native.
  */
 import * as Three from "three"
 

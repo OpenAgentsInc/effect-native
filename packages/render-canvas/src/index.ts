@@ -12,8 +12,7 @@
  *  - a backend scene-graph interface + op application (`backend.ts`);
  *  - a `Stream`-driven frame loop with `Scope`-owned disposal (`frame.ts`);
  *  - a headless recording backend for GPU-free snapshot tests (`headless.ts`);
- *  - a three-effect-shaped live backend + injectable graph port
- *    (`three-effect.ts`, reconciler API aligned with three-effect).
+ *  - a live Three.js backend + injectable graph port (`three-backend.ts`).
  */
 
 export const packageName = "@effect-native/render-canvas" as const
@@ -23,7 +22,7 @@ export * from "./reconciler"
 export * from "./backend"
 export * from "./frame"
 export * from "./headless"
-export * from "./three-effect"
+export * from "./three-backend"
 export * from "./graph-figure"
 export {
   createSceneNodeReconciler,

@@ -15,7 +15,7 @@ Some production surfaces are inherently imperative:
 
 - a code editor (Monaco or equivalent) owns its own document model and keymap
 - a terminal owns a scrollback buffer and PTY-shaped I/O
-- a GPU scene may already live behind a reconciler like three-effect
+- a GPU scene may already live behind an imperative Three.js mount
 
 Forcing those into pure catalog views would either lie (fake a subset) or blow
 open the catalog. `Host` keeps the rest of the tree serializable while

@@ -17,7 +17,7 @@ coding-agent shell that proved the Phase 4 catalog.
 | DOM / desktop webview mount | `@effect-native/render-dom` + `@effect-native/platform-desktop` |
 | Agent turns, tools, sync, auth, billing | Unchanged app/backend services |
 | Monaco / terminal implementations | App-supplied **host drivers** under the `Host` contract |
-| Fleet/gym 3D scene engine | Canvas scene descriptors + app three-effect driver |
+| Fleet/gym 3D scene engine | Canvas scene descriptors + Three.js backend (app-owned WebGL host) |
 
 ## Surface → catalog / host
 

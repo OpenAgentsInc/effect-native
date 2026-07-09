@@ -131,7 +131,7 @@ renderers, and platform host. See the short
 | Pillar | Package / surface | Status |
 |---|---|---|
 | Desktop adapter | `@effect-native/platform-desktop` (`runMainDesktop`, typed bridge) | shipped #21 |
-| Canvas renderer | `@effect-native/render-canvas` (scene schema, reconciler, Scope/`Stream` frames, headless + live three-effect-shaped graph over `three`) | shipped #22 |
+| Canvas renderer | `@effect-native/render-canvas` (scene schema, reconciler, Scope/`Stream` frames, headless + live Three.js backend) | shipped #22 |
 | Foreign host | catalog `Host` + closed host-kind registry | shipped #23 — [contract](./docs/foreign-host.md) |
 | Interaction expansion | typed key/focus/pointer/paste/drag-drop intents | shipped #24 |
 | Theme | single Protoss-blue dark token set | shipped #25 |

@@ -28,7 +28,7 @@ import {
  *
  * This is the documented adapter the canvas renderer consumes; it is exercised
  * against the headless canvas backend (no GPU) exactly like the DOM/RN headless
- * renderers, and against the honestly-stubbed live three-effect backend.
+ * renderers, and against the live Three.js backend.
  */
 export interface GraphFigureSceneOptions {
   readonly theme?: Theme

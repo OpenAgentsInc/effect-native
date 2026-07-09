@@ -12,9 +12,9 @@ export interface FrameTick {
 /**
  * The backend scene-graph interface. The reconciler produces {@link SceneOp}s;
  * a backend applies them imperatively to whatever it owns (a headless record,
- * a three-effect scene graph, a raw WebGL context, ...). GPU/geometry/material
+ * a Three.js scene graph, a raw WebGL context, ...). GPU/geometry/material
  * resource lifetimes belong to the backend and are released on `Scope` exit
- * (see the headless and three-effect backends).
+ * (see the headless and Three.js backends).
  */
 export interface CanvasBackend {
   readonly setCamera: (camera: Camera) => Effect.Effect<void>

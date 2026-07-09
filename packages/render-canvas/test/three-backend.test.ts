@@ -11,9 +11,9 @@ import {
   group,
   label,
   line,
-  makeLiveThreeEffectCanvasBackend,
+  makeLiveThreeCanvasBackend,
   makeLiveThreeSceneGraph,
-  makeThreeEffectCanvasBackend,
+  makeThreeCanvasBackend,
   mesh,
   perspectiveCamera,
   scene,
@@ -45,7 +45,7 @@ const makeRecordingGraph = Effect.gen(function*() {
   return { graph, get: Ref.get(ref) }
 })
 
-describe("three-effect descriptor mapping", () => {
+describe("Three.js descriptor mapping", () => {
   test("maps a leaf to kind + props without _tag/key", () => {
     const { kind, props } = toThreeDescriptorProps(meshNode("m1", "#4cc2ff"))
     expect(kind).toBe("mesh")
@@ -68,13 +68,13 @@ describe("three-effect descriptor mapping", () => {
   })
 })
 
-describe("three-effect canvas backend (against a recording port)", () => {
+describe("Three.js canvas backend (against a recording port)", () => {
   test("forwards camera/background and pushes a reconciled descriptor tree per dirty frame", async () => {
     const rec = await Effect.runPromise(
       Effect.scoped(
         Effect.gen(function*() {
           const recording = yield* makeRecordingGraph
-          const backend = yield* makeThreeEffectCanvasBackend(recording.graph)
+          const backend = yield* makeThreeCanvasBackend(recording.graph)
           const frames = framesFromScenes([
             scene({ camera: cam, background: "#0a0e14" }, [group({ key: "g" }, [meshNode("m1", "#fff")])]),
             scene({ camera: cam, background: "#0a0e14" }, [
@@ -97,7 +97,7 @@ describe("three-effect canvas backend (against a recording port)", () => {
   })
 })
 
-describe("live three-effect scene graph (createSceneNodeReconciler)", () => {
+describe("live Three.js scene graph (createSceneNodeReconciler)", () => {
   test("builds real Three.js objects for mesh/line/label and updates across frames", async () => {
     const result = await Effect.runPromise(
       Effect.scoped(
@@ -213,11 +213,11 @@ describe("live three-effect scene graph (createSceneNodeReconciler)", () => {
     expect(rootRef!.children.length).toBe(0)
   })
 
-  test("makeLiveThreeEffectCanvasBackend drains a typed graph scene end-to-end", async () => {
+  test("makeLiveThreeCanvasBackend drains a typed graph scene end-to-end", async () => {
     const run = await Effect.runPromise(
       Effect.scoped(
         Effect.gen(function*() {
-          const backend = yield* makeLiveThreeEffectCanvasBackend()
+          const backend = yield* makeLiveThreeCanvasBackend()
           const frames = framesFromScenes([
             scene({ camera: cam, background: "#111111" }, [
               group({ key: "root" }, [

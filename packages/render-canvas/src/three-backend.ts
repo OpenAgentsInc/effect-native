@@ -13,21 +13,20 @@ import {
 } from "./scene-node-reconciler"
 
 /**
- * three-effect-shaped backend for `@effect-native/render-canvas`.
+ * Three.js backend for `@effect-native/render-canvas`.
  *
  * Live path owns:
- *  - a `createSceneNodeReconciler` (vendored from three-effect's API) + closed
- *    catalogue for our scene kinds (group/mesh/line/points/label)
- *  - a `SceneResourceScope` bridged to Effect `Scope` disposal
- *  - an optional WebGL renderer (draw skipped when no GPU/canvas is available)
+ *  - a closed scene-node reconciler + catalogue (group/mesh/line/points/label)
+ *  - a resource scope bridged to Effect `Scope` disposal
+ *  - an optional WebGLRenderer (draw skipped when no GPU/canvas is available)
  *
- * {@link makeThreeEffectCanvasBackend} remains the pure adapter over any
+ * {@link makeThreeCanvasBackend} is the pure adapter over any
  * {@link ThreeSceneGraph} port (recording fake in tests, live graph in apps).
- * Apps that already depend on `@openagentsinc/three-effect` can inject their
- * own graph implementation via that port without forking this package.
+ * The package depends on `three` — not on experimental product wrappers.
  */
 
-/** Mirror of `@openagentsinc/three-effect`'s `SceneNodeDescriptor` shape. */
+
+/** Serializable scene-node descriptor for the Three.js backend. */
 export interface ThreeSceneDescriptor {
   readonly id: string
   readonly kind: string
@@ -36,10 +35,9 @@ export interface ThreeSceneDescriptor {
 }
 
 /**
- * Effect-shaped port over a three-effect scene graph. A concrete implementation
- * wraps three-effect's `SceneNodeReconciler` + camera/renderer; the reconciler's
- * `SceneResourceScope` is bridged to an Effect `Scope` finalizer so GPU
- * resources are disposed on scope exit.
+ * Effect-shaped port over a Three.js scene graph. A concrete implementation
+ * owns a scene-node reconciler + camera/renderer; resources are released when
+ * the Effect `Scope` closes.
  */
 export interface ThreeSceneGraph {
   readonly update: (descriptors: ReadonlyArray<ThreeSceneDescriptor>) => Effect.Effect<void>
@@ -74,7 +72,7 @@ const stripMeta = (leaf: SceneNodeLeaf): Record<string, unknown> => {
   return rest
 }
 
-/** Map a single leaf descriptor to a three-effect scene-node descriptor (sans children). */
+/** Map a single leaf to a scene-node descriptor (sans children). */
 export const toThreeDescriptorProps = (leaf: SceneNodeLeaf): { kind: string; props: Record<string, unknown> } => ({
   kind: leaf._tag.toLowerCase(),
   props: stripMeta(leaf)
@@ -87,7 +85,7 @@ interface StoredNode {
   readonly node: SceneNodeLeaf
 }
 
-/** Build a three-effect descriptor tree from a flat stored-node set. */
+/** Build a descriptor tree from a flat stored-node set. */
 export const buildThreeDescriptors = (stored: ReadonlyArray<StoredNode>): ReadonlyArray<ThreeSceneDescriptor> => {
   const byParent = new Map<string | null, Array<StoredNode>>()
   for (const entry of stored) {
@@ -126,10 +124,9 @@ const descendantIds = (stored: ReadonlyArray<StoredNode>, rootId: string): Reado
 
 /**
  * Build a {@link CanvasBackend} that reconciles our typed scene ops into a
- * three-effect descriptor tree and pushes it to the injected graph port on each
- * frame. Camera/background changes are forwarded immediately.
+ * descriptor tree and pushes it to the injected graph port on each frame. Camera/background changes are forwarded immediately.
  */
-export const makeThreeEffectCanvasBackend = (
+export const makeThreeCanvasBackend = (
   graph: ThreeSceneGraph
 ): Effect.Effect<CanvasBackend, never, Scope.Scope> =>
   Effect.gen(function*() {
@@ -185,7 +182,7 @@ export const makeThreeEffectCanvasBackend = (
   })
 
 // ---------------------------------------------------------------------------
-// Live three-effect scene graph
+// Live Three.js scene graph
 // ---------------------------------------------------------------------------
 
 const applyTransform = (
@@ -244,7 +241,7 @@ const disposeMaterial = (material: Three.Material): void => {
   material.dispose()
 }
 
-/** Factories use `state: unknown` so they assign cleanly to three-effect's catalogue. */
+/** Factories use `state: unknown` for the catalogue's untyped state slot. */
 const makeGroupFactory = (): SceneNodeFactory => ({
   create: (descriptor) => {
     const object = new Three.Group()
@@ -471,7 +468,7 @@ const makeLabelFactory = (): SceneNodeFactory => ({
   }
 })
 
-/** Closed catalogue mapping our scene kinds onto three-effect factories. */
+/** Closed catalogue mapping our scene kinds onto Three.js factories. */
 export const makeEffectNativeSceneCatalogue = (): SceneNodeCatalogue => ({
   group: makeGroupFactory(),
   mesh: makeMeshFactory(),
@@ -524,9 +521,9 @@ const tryCreateWebGlRenderer = (
 }
 
 /**
- * Construct a live {@link ThreeSceneGraph} over `@openagentsinc/three-effect`'s
- * `createSceneNodeReconciler`, with geometry/material lifetimes on a
- * `SceneResourceScope` bridged to Effect `Scope` disposal.
+ * Construct a live {@link ThreeSceneGraph} over Three.js with a scene-node
+ * reconciler; geometry/material lifetimes ride a resource scope bridged to
+ * Effect `Scope` disposal.
  *
  * Works without a GPU: the reconciler still builds a real Three.js object
  * tree. When WebGL is available (or a canvas is supplied), `render` draws the
@@ -559,7 +556,7 @@ export const makeLiveThreeSceneGraph = (
       sceneScope.add(() => renderer.dispose())
     }
 
-    // Bridge three-effect resource scope → Effect Scope finalizer.
+    // Bridge resource scope → Effect Scope finalizer.
     yield* Effect.addFinalizer(() =>
       Effect.sync(() => {
         reconciler.dispose()
@@ -621,12 +618,12 @@ export const makeLiveThreeSceneGraph = (
   })
 
 /**
- * Convenience: live three-effect graph + canvas backend adapter on one Scope.
+ * Convenience: live Three.js graph + canvas backend adapter on one Scope.
  */
-export const makeLiveThreeEffectCanvasBackend = (
+export const makeLiveThreeCanvasBackend = (
   options?: LiveThreeSceneGraphOptions
 ): Effect.Effect<CanvasBackend, never, Scope.Scope> =>
   Effect.gen(function*() {
     const graph = yield* makeLiveThreeSceneGraph(options)
-    return yield* makeThreeEffectCanvasBackend(graph)
+    return yield* makeThreeCanvasBackend(graph)
   })
