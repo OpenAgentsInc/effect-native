@@ -4081,3 +4081,214 @@ export const makeStreamRegion = <A, E, R>(
       frames: Ref.get(frameCount)
     }
   })
+
+// ── Hotkey / keybinding registry + focus management (issue #41) ───────────────
+//
+// The app-wide counterpart to the per-node `onKey` intents from the interaction
+// expansion (#24). A `Keymap` registers named commands (id, title, group,
+// declarative enablement, optional keybinding) and resolves a pressed chord to a
+// command within the active focus scope, then fires the command's typed intent —
+// no `addEventListener` in app code. Scopes form a stack so an overlay scope can
+// shadow a global binding; focus-return targets ride the same stack. Conflicts
+// (two commands, same chord, same scope) are surfaced as typed diagnostics, not
+// a silent last-wins. Keybinding labels are derived from the table, platform
+// aware (⌘ vs Ctrl).
+
+// A chord is not a serializable view node, so its key is the raw
+// KeyboardEvent.key value (letters normalized to lower case) rather than the
+// bounded navigation-only KeyName set used by node `onKey` bindings.
+export interface KeyChord {
+  readonly key: string
+  readonly alt?: boolean
+  readonly ctrl?: boolean
+  readonly meta?: boolean
+  readonly shift?: boolean
+}
+
+export const KeyChordSchema: Schema.Codec<KeyChord, KeyChord> = exactStruct({
+  key: Schema.NonEmptyString,
+  alt: Schema.Boolean.pipe(Schema.optionalKey),
+  ctrl: Schema.Boolean.pipe(Schema.optionalKey),
+  meta: Schema.Boolean.pipe(Schema.optionalKey),
+  shift: Schema.Boolean.pipe(Schema.optionalKey)
+}) as unknown as Schema.Codec<KeyChord, KeyChord>
+
+export const defaultFocusScope = "global" as const
+
+export interface CommandDefinition {
+  readonly id: string
+  readonly title: string
+  readonly group?: string
+  readonly intent: IntentRef
+  readonly binding?: KeyChord
+  // The focus scope this command belongs to; defaults to "global".
+  readonly scope?: string
+  // Declarative enablement: the command is enabled only when this context flag
+  // is active (see Keymap.setContext). Omit for always-enabled.
+  readonly when?: string
+}
+
+export interface KeymapConflict {
+  readonly chord: KeyChord
+  readonly scope: string
+  readonly commandIds: ReadonlyArray<string>
+}
+
+export const normalizeChordKey = (key: string): string =>
+  key.length === 1 ? key.toLowerCase() : key
+
+export const chordEquals = (a: KeyChord, b: KeyChord): boolean =>
+  normalizeChordKey(a.key) === normalizeChordKey(b.key) &&
+  (a.alt === true) === (b.alt === true) &&
+  (a.ctrl === true) === (b.ctrl === true) &&
+  (a.meta === true) === (b.meta === true) &&
+  (a.shift === true) === (b.shift === true)
+
+// Platform-aware keybinding label derived from the table (never hand-authored).
+export const formatChord = (chord: KeyChord, platform: PlatformVariant = "web"): string => {
+  const mac = platform === "ios"
+  const parts: Array<string> = []
+  if (chord.ctrl === true) parts.push(mac ? "⌃" : "Ctrl")
+  if (chord.alt === true) parts.push(mac ? "⌥" : "Alt")
+  if (chord.shift === true) parts.push(mac ? "⇧" : "Shift")
+  if (chord.meta === true) parts.push(mac ? "⌘" : "Meta")
+  const key = chord.key.length === 1 ? chord.key.toUpperCase() : chord.key
+  parts.push(key)
+  return mac ? parts.join("") : parts.join("+")
+}
+
+const detectKeymapConflicts = (commands: ReadonlyArray<CommandDefinition>): ReadonlyArray<KeymapConflict> => {
+  const byKey = new Map<string, { readonly chord: KeyChord; readonly scope: string; readonly ids: Array<string> }>()
+  for (const command of commands) {
+    if (command.binding === undefined) continue
+    const scope = command.scope ?? defaultFocusScope
+    const chord = command.binding
+    const signature = `${scope}::${normalizeChordKey(chord.key)}::${chord.alt === true}::${chord.ctrl === true}::${chord.meta === true}::${chord.shift === true}`
+    const existing = byKey.get(signature)
+    if (existing === undefined) {
+      byKey.set(signature, { chord, scope, ids: [command.id] })
+    } else {
+      existing.ids.push(command.id)
+    }
+  }
+  return Array.from(byKey.values())
+    .filter((entry) => entry.ids.length > 1)
+    .map((entry) => ({ chord: entry.chord, scope: entry.scope, commandIds: entry.ids }))
+}
+
+export interface Keymap {
+  readonly commands: ReadonlyArray<CommandDefinition>
+  readonly conflicts: ReadonlyArray<KeymapConflict>
+  // Resolve a chord to a command within the current scope stack + context,
+  // without firing it. Higher (more recently pushed) scopes shadow lower ones.
+  readonly resolve: (chord: KeyChord) => Effect.Effect<Option.Option<CommandDefinition>>
+  // Resolve and fire the matched command's intent; returns the command id fired.
+  readonly dispatchChord: (chord: KeyChord) => Effect.Effect<Option.Option<string>, IntentError, IntentRegistry>
+  readonly activeScope: Effect.Effect<string>
+  readonly scopeStack: Effect.Effect<ReadonlyArray<string>>
+  // Push a focus scope (e.g. "palette-open") with an optional focus-return
+  // target key restored when the scope is popped.
+  readonly pushScope: (scope: string, returnFocus?: string) => Effect.Effect<void>
+  // Pop the top scope; returns the focus-return target recorded for it.
+  readonly popScope: Effect.Effect<Option.Option<string>>
+  readonly setContext: (flags: Iterable<string>) => Effect.Effect<void>
+  readonly context: Effect.Effect<ReadonlySet<string>>
+  readonly keybindingLabel: (commandId: string) => Option.Option<string>
+}
+
+export interface KeymapOptions {
+  readonly platform?: PlatformVariant
+  readonly initialScope?: string
+  readonly initialContext?: Iterable<string>
+}
+
+const commandEnabled = (command: CommandDefinition, context: ReadonlySet<string>): boolean =>
+  command.when === undefined || context.has(command.when)
+
+export const makeKeymap = (
+  commands: ReadonlyArray<CommandDefinition>,
+  options: KeymapOptions = {}
+): Effect.Effect<Keymap> =>
+  Effect.gen(function*() {
+    const platform = options.platform ?? "web"
+    const scopeStackRef = yield* Ref.make<ReadonlyArray<string>>([options.initialScope ?? defaultFocusScope])
+    const returnFocusStackRef = yield* Ref.make<ReadonlyArray<string | undefined>>([undefined])
+    const contextRef = yield* Ref.make<ReadonlySet<string>>(new Set(options.initialContext ?? []))
+    const conflicts = detectKeymapConflicts(commands)
+    const commandsById = new Map(commands.map((command) => [command.id, command] as const))
+
+    const resolveIn = (
+      chord: KeyChord,
+      stack: ReadonlyArray<string>,
+      context: ReadonlySet<string>
+    ): Option.Option<CommandDefinition> => {
+      for (let index = stack.length - 1; index >= 0; index -= 1) {
+        const scope = stack[index]
+        const match = commands.find((command) =>
+          (command.scope ?? defaultFocusScope) === scope &&
+          command.binding !== undefined &&
+          chordEquals(command.binding, chord) &&
+          commandEnabled(command, context))
+        if (match !== undefined) return Option.some(match)
+      }
+      return Option.none()
+    }
+
+    const resolve = (chord: KeyChord): Effect.Effect<Option.Option<CommandDefinition>> =>
+      Effect.gen(function*() {
+        const stack = yield* Ref.get(scopeStackRef)
+        const context = yield* Ref.get(contextRef)
+        return resolveIn(chord, stack, context)
+      })
+
+    const dispatchChord = (chord: KeyChord): Effect.Effect<Option.Option<string>, IntentError, IntentRegistry> =>
+      Effect.gen(function*() {
+        const matched = yield* resolve(chord)
+        if (Option.isNone(matched)) return Option.none()
+        yield* dispatchIntent(resolveIntentRef(matched.value.intent))
+        return Option.some(matched.value.id)
+      })
+
+    return {
+      commands,
+      conflicts,
+      resolve,
+      dispatchChord,
+      activeScope: Ref.get(scopeStackRef).pipe(Effect.map((stack) => stack[stack.length - 1] ?? defaultFocusScope)),
+      scopeStack: Ref.get(scopeStackRef),
+      pushScope: (scope, returnFocus) =>
+        Effect.gen(function*() {
+          yield* Ref.update(scopeStackRef, (stack) => [...stack, scope])
+          yield* Ref.update(returnFocusStackRef, (stack) => [...stack, returnFocus])
+        }),
+      popScope: Effect.gen(function*() {
+        const stack = yield* Ref.get(scopeStackRef)
+        if (stack.length <= 1) return Option.none()
+        yield* Ref.set(scopeStackRef, stack.slice(0, -1))
+        const focusStack = yield* Ref.get(returnFocusStackRef)
+        const returned = focusStack[focusStack.length - 1]
+        yield* Ref.set(returnFocusStackRef, focusStack.slice(0, -1))
+        return returned === undefined ? Option.none() : Option.some(returned)
+      }),
+      setContext: (flags) => Ref.set(contextRef, new Set(flags)),
+      context: Ref.get(contextRef),
+      keybindingLabel: (commandId) => {
+        const command = commandsById.get(commandId)
+        return command === undefined || command.binding === undefined
+          ? Option.none()
+          : Option.some(formatChord(command.binding, platform))
+      }
+    }
+  })
+
+export const Keymap = Context.Service<Keymap>("@effect-native/core/Keymap")
+
+export const makeKeymapLayer = (
+  commands: ReadonlyArray<CommandDefinition>,
+  options?: KeymapOptions
+) => Layer.effect(Keymap, makeKeymap(commands, options))
+
+// Roving-tabindex helper (issue #41): the active item gets tabIndex 0, the rest
+// -1, so a group is a single tab stop with arrow-key traversal inside it.
+export const rovingTabIndex = (count: number, activeIndex: number): ReadonlyArray<-1 | 0> =>
+  Array.from({ length: count }, (_unused, index) => (index === activeIndex ? 0 : -1))
