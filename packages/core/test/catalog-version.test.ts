@@ -18,6 +18,7 @@ import {
   SwipeableListItemCatalogVersion,
   MobileSurfacesCatalogVersion,
   MobileGesturesCatalogVersion,
+  MediaVideoCatalogVersion,
   TranscriptCatalogVersion,
   TabsCatalogVersion,
   FormCatalogVersion,
@@ -82,11 +83,12 @@ describe("catalog version compatibility", () => {
       PullToRefreshCatalogVersion,
       SwipeableListItemCatalogVersion,
       MobileSurfacesCatalogVersion,
-      MobileGesturesCatalogVersion
+      MobileGesturesCatalogVersion,
+      MediaVideoCatalogVersion
     ])
     // The current marker is the last entry; the previous marker is second-last.
-    expect(CatalogVersion).toBe(MobileGesturesCatalogVersion)
-    expect(PreviousCatalogVersion).toBe(MobileSurfacesCatalogVersion)
+    expect(CatalogVersion).toBe(MediaVideoCatalogVersion)
+    expect(PreviousCatalogVersion).toBe(MobileGesturesCatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 1]).toBe(CatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 2]).toBe(PreviousCatalogVersion)
   })

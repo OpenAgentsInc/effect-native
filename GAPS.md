@@ -23,7 +23,7 @@ their reason so pressure is visible without weakening the catalog contract.
 
 ## Catalog Versioning Policy
 
-The current catalog marker is `effect-native/v25`, exposed by
+The current catalog marker is `effect-native/v26`, exposed by
 `CatalogVersion`. `compatibleCatalogVersions` is the decode allow-list, and
 `CompatibleViewSchema` is the schema app authors and renderers should use when
 accepting persisted or externally-authored trees.
@@ -74,7 +74,12 @@ until it has a fixture and every renderer declares and proves support for it.
 | Sheet drag-to-dismiss gesture | Gesture demand not yet demonstrated beyond basic sheet presentation | 2026-07-08 | waiting |
 | Overlay animation polish | Basic presentation shipped; richer transitions need a demanding screen | 2026-07-08 | waiting |
 | Avatar | None yet | 2026-07-08 | waiting |
-| Media beyond `Image` | None yet | 2026-07-08 | waiting |
+| Media beyond `Image` (playback: src URLs, HLS, posters) | None yet — the live-attach case split off and shipped as the `media-video` host kind below | 2026-07-08 | waiting |
+| `media-video` host kind (live `MediaStream` attach target) | OpenAgents `/sarah` avatar surface: WebRTC/`<video>` attach for the owned renderer and the LiveAvatar fallback currently mounts in a sibling container outside the EN tree (#66) | 2026-07-09 | shipped -> #67 (v26: `hostKinds` gains `media-video`; typed `MediaVideo` constructor with bounded fit/muted/mirrored props + ready/ended/error event union; DOM `makeMediaVideoDriver` hands the app a Scope-owned `<video>` via `onElement` — the stream never crosses the serializable boundary; RN stays a loud unsupported marker until a native video driver is demanded) |
+| Streaming transcript with partial-utterance updates | OpenAgents `/sarah` voice transcript (#66) — role-tagged live-append list with in-place partial updates | 2026-07-09 | already shipped -> #35 + #26 (keyed `Transcript` messages with the closed `thinking/streaming/failed/done` status set update in place; live append rides `makeStreamRegion`; no new component needed — demand recorded so the consumer converts off `List`+`Card`) |
+| Mic state + audio level indicator | OpenAgents `/sarah` push-to-talk / VAD UI (#66): typed idle/live/denied/muted mic state plus a 0..1 level meter | 2026-07-09 | waiting (proposal: `MicIndicator` with closed state set + level; `Meter`/`Badge` (#39) compose an interim; enters when the demanding screen actually wires PTT/level metering) |
+| Handoff / checkout / receipt cards | OpenAgents `/sarah` sales tool effects (#66): typed cards for human-handoff, checkout link, and payment receipt | 2026-07-09 | waiting (today honestly composed from `Card`+`Text`+`Button` — catalog-blessed composition, not a workaround; a typed card family enters when a second surface demands the same shapes) |
+| First-contact AI disclosure banner | OpenAgents `/sarah` (#66): persistent AI-disclosure notice on first contact | 2026-07-09 | covered -> #40 `StatusBanner` (persistent inline tone+message is the disclosure shape; no separate component unless regulatory fields — jurisdiction copy slots, ack intent — become real demand) |
 | Utility style aliases | Authoring friction not yet demonstrated by a real screen | 2026-07-08 | waiting |
 | Monospace / whitespace-preserving text style | effectnative.org's home-page and doc code samples (#19) need indentation-preserving display; worked around today with one `Text` per source line in a `Stack` instead of a single multi-line string | 2026-07-08 | waiting -> related to #36 CodeBlock (syntax-highlighted blocks shipped; plain multi-line monospace Text style still open) |
 | React Native pixel visual-baseline capture | Testkit visual baselines (#16) ship a typed `VisualCapture` contract plus a structural-snapshot default and a real DOM-renderer capture (`@effect-native/testkit/visual`); a native RN pixel-capture harness (e.g. a detox/maestro-style screenshot rig) is undemonstrated | 2026-07-08 | shipped -> #59 (`rnVisualCapture` structural RN baseline keyed by platform; detox/maestro pixel remains a plug-in `VisualCapture` implementation) |

@@ -8,7 +8,7 @@ conformance-checked by
 (`bun run check:catalog-reference`) so this page cannot silently drop a shipped
 component.
 
-Current catalog marker: `CatalogVersion = "effect-native/v25"`.
+Current catalog marker: `CatalogVersion = "effect-native/v26"`.
 
 Closed component tags (`componentTags`, 68 total):
 
@@ -223,7 +223,7 @@ Every component accepts these two, inherited from `NodeBase`:
 | Field | Type | Notes |
 |---|---|---|
 | `key` | `string` (optional) | Required (enforced by the schema, not just convention) on any view placed inside a `List`/`SectionList`/`Link` children array. |
-| `catalogVersion` | `"effect-native/v25"` | Set automatically by every constructor function — you never pass this yourself. |
+| `catalogVersion` | `"effect-native/v26"` | Set automatically by every constructor function — you never pass this yourself. |
 
 ### Design tokens
 
