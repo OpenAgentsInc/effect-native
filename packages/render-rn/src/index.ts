@@ -17,6 +17,9 @@ import {
   type DropdownMenuView,
   type FieldBinding,
   type FieldRowView,
+  type MarkdownBlock,
+  type MarkdownInline,
+  type MarkdownView,
   type MenuItem,
   type MeterView,
   type NotificationModel,
@@ -61,6 +64,7 @@ import {
   type TabsView,
   type TextFieldView,
   type TextView,
+  type TranscriptView,
   type View,
   type WorkbenchView,
   type Viewport,
@@ -1971,6 +1975,95 @@ const renderRecoveryOverlay = (
   )
 }
 
+// Streaming transcript / markdown (issue #35) on React Native. The same
+// pre-parsed typed model maps to nested Text/View; no parser. Transcript renders
+// role-tagged bubbles with typed status; auto-pin is an app/runtime concern on
+// RN (the model is append-optimized upstream).
+let markdownKeyCounter = 0
+const renderMarkdownInline = (
+  inline: MarkdownInline,
+  dependencies: ReactNativeDependencies
+): ReactElementLike => {
+  const key = `md-${markdownKeyCounter++}`
+  switch (inline.kind) {
+    case "text":
+      return createElement(dependencies, dependencies.ReactNative.Text, { key }, inline.text)
+    case "code":
+      return createElement(dependencies, dependencies.ReactNative.Text, { key, style: { fontFamily: "monospace" } }, inline.text)
+    case "strong":
+      return createElement(dependencies, dependencies.ReactNative.Text, { key, style: { fontWeight: "700" } }, ...inline.children.map((child) => renderMarkdownInline(child, dependencies)))
+    case "emphasis":
+      return createElement(dependencies, dependencies.ReactNative.Text, { key, style: { fontStyle: "italic" } }, ...inline.children.map((child) => renderMarkdownInline(child, dependencies)))
+    case "link":
+      return createElement(dependencies, dependencies.ReactNative.Text, { key, accessibilityRole: "link", style: { textDecorationLine: "underline" } }, ...inline.children.map((child) => renderMarkdownInline(child, dependencies)))
+  }
+}
+
+const renderMarkdownBlock = (
+  block: MarkdownBlock,
+  dependencies: ReactNativeDependencies
+): ReactElementLike => {
+  const key = `mdb-${markdownKeyCounter++}`
+  switch (block.kind) {
+    case "heading":
+      return createElement(dependencies, dependencies.ReactNative.Text, { key, accessibilityRole: "header", style: { fontWeight: "700" } }, ...block.children.map((child) => renderMarkdownInline(child, dependencies)))
+    case "paragraph":
+      return createElement(dependencies, dependencies.ReactNative.Text, { key }, ...block.children.map((child) => renderMarkdownInline(child, dependencies)))
+    case "list":
+      return createElement(
+        dependencies,
+        dependencies.ReactNative.View,
+        { key },
+        ...block.items.map((item, index) =>
+          createElement(
+            dependencies,
+            dependencies.ReactNative.View,
+            { key: `li-${index}`, style: { flexDirection: "row" } },
+            createElement(dependencies, dependencies.ReactNative.Text, { key: "bullet" }, block.ordered ? `${index + 1}. ` : "• "),
+            createElement(dependencies, dependencies.ReactNative.View, { key: "content" }, ...item.map((child) => renderMarkdownBlock(child, dependencies)))
+          ))
+      )
+    case "blockquote":
+      return createElement(dependencies, dependencies.ReactNative.View, { key, style: { borderLeftWidth: 2, paddingLeft: 8 } }, ...block.children.map((child) => renderMarkdownBlock(child, dependencies)))
+  }
+}
+
+const renderMarkdown = (
+  view: MarkdownView,
+  dependencies: ReactNativeDependencies,
+  options: ReactNativeRenderOptions
+): ReactElementLike =>
+  createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    { ...baseProps(view, mergeNativeStyles({ flexDirection: "column" }, viewStyle(view, options))), testID: "en-markdown" },
+    ...view.blocks.map((block) => renderMarkdownBlock(block, dependencies))
+  )
+
+const renderTranscript = (
+  view: TranscriptView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike =>
+  createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    { ...baseProps(view, mergeNativeStyles({ flexDirection: "column" }, viewStyle(view, options))), testID: "en-transcript", accessibilityLiveRegion: "polite" },
+    ...view.messages.map((message) =>
+      createElement(
+        dependencies,
+        dependencies.ReactNative.View,
+        {
+          key: `message-${message.key}`,
+          testID: `en-message:${message.key}`,
+          nativeID: `effect-native-message:${message.role}`,
+          ...(message.status === undefined ? {} : { accessibilityState: { busy: message.status === "streaming" || message.status === "thinking" } })
+        },
+        ...message.body.map((child) => renderResolvedReactNativeView(child, dependencies, report, options))
+      ))
+  )
+
 const renderResolvedReactNativeView = (
   view: View,
   dependencies: ReactNativeDependencies,
@@ -2062,6 +2155,10 @@ const renderResolvedReactNativeView = (
       return renderStatusBanner(view, dependencies, report, options)
     case "RecoveryOverlay":
       return renderRecoveryOverlay(view, dependencies, report, options)
+    case "Markdown":
+      return renderMarkdown(view, dependencies, options)
+    case "Transcript":
+      return renderTranscript(view, dependencies, report, options)
   }
 }
 
@@ -2244,6 +2341,12 @@ export const viewStructure = (view: View): ReactNativeStructure => {
         tag: "FieldRow",
         ...(view.key === undefined ? {} : { key: view.key }),
         children: [viewStructure(view.control)]
+      }
+    case "Transcript":
+      return {
+        tag: "Transcript",
+        ...(view.key === undefined ? {} : { key: view.key }),
+        children: view.messages.flatMap((message) => message.body.map(viewStructure))
       }
     case "Tabs":
       return {

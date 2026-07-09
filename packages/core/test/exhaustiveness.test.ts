@@ -54,6 +54,8 @@ const describeView = Match.type<View>().pipe(
   Match.tag("ToastRegion", () => "feedback"),
   Match.tag("StatusBanner", () => "feedback"),
   Match.tag("RecoveryOverlay", () => "feedback"),
+  Match.tag("Markdown", () => "richtext"),
+  Match.tag("Transcript", () => "richtext"),
   Match.exhaustive
 )
 

@@ -81,8 +81,9 @@ export const TabsCatalogVersion = "effect-native/v13" as const
 export const ComposerCatalogVersion = "effect-native/v14" as const
 export const SettingsControlsCatalogVersion = "effect-native/v15" as const
 export const FeedbackCatalogVersion = "effect-native/v16" as const
-export const PreviousCatalogVersion = SettingsControlsCatalogVersion
-export const CatalogVersion = FeedbackCatalogVersion
+export const TranscriptCatalogVersion = "effect-native/v17" as const
+export const PreviousCatalogVersion = FeedbackCatalogVersion
+export const CatalogVersion = TranscriptCatalogVersion
 export const CatalogVersionSchema = Schema.Literal(CatalogVersion)
 export type CatalogVersion = typeof CatalogVersion
 export const compatibleCatalogVersions = [
@@ -101,6 +102,7 @@ export const compatibleCatalogVersions = [
   ComboboxCatalogVersion,
   TabsCatalogVersion,
   ComposerCatalogVersion,
+  SettingsControlsCatalogVersion,
   PreviousCatalogVersion,
   CatalogVersion
 ] as const
@@ -149,7 +151,9 @@ export const componentTags = [
   "Toast",
   "ToastRegion",
   "StatusBanner",
-  "RecoveryOverlay"
+  "RecoveryOverlay",
+  "Markdown",
+  "Transcript"
 ] as const
 export type ComponentTag = (typeof componentTags)[number]
 
@@ -2331,6 +2335,54 @@ export interface RecoveryOverlayView extends NodeBase {
   readonly actions: ReadonlyArray<RecoveryActionModel>
 }
 
+// Streaming transcript / markdown (issue #35). The app parses markdown to this
+// typed, pre-parsed block+inline model (as Khala does today) — the catalog ships
+// no parser and no arbitrary HTML enters the tree. Transcript composes a keyed,
+// append-optimized list of typed message items whose bodies are ordinary
+// catalog views (Markdown, Card tool-cards, CodeBlock once #36 lands).
+export type MarkdownInline =
+  | { readonly kind: "text"; readonly text: string }
+  | { readonly kind: "code"; readonly text: string }
+  | { readonly kind: "strong"; readonly children: ReadonlyArray<MarkdownInline> }
+  | { readonly kind: "emphasis"; readonly children: ReadonlyArray<MarkdownInline> }
+  | { readonly kind: "link"; readonly href: string; readonly children: ReadonlyArray<MarkdownInline> }
+
+export type MarkdownBlock =
+  | { readonly kind: "heading"; readonly level: 1 | 2 | 3 | 4 | 5 | 6; readonly children: ReadonlyArray<MarkdownInline> }
+  | { readonly kind: "paragraph"; readonly children: ReadonlyArray<MarkdownInline> }
+  | { readonly kind: "list"; readonly ordered: boolean; readonly items: ReadonlyArray<ReadonlyArray<MarkdownBlock>> }
+  | { readonly kind: "blockquote"; readonly children: ReadonlyArray<MarkdownBlock> }
+
+export interface MarkdownView extends NodeBase {
+  readonly _tag: "Markdown"
+  readonly blocks: ReadonlyArray<MarkdownBlock>
+  readonly style?: TextStyle
+}
+
+export const transcriptRoles = ["user", "assistant", "system", "tool"] as const
+export type TranscriptRole = (typeof transcriptRoles)[number]
+export const transcriptStatuses = ["thinking", "streaming", "failed", "done"] as const
+export type TranscriptStatus = (typeof transcriptStatuses)[number]
+
+export interface TranscriptMessage {
+  readonly key: NodeKey
+  readonly role: TranscriptRole
+  readonly status?: TranscriptStatus
+  readonly body: ReadonlyArray<View>
+}
+
+export interface TranscriptView extends NodeBase {
+  readonly _tag: "Transcript"
+  readonly messages: ReadonlyArray<TranscriptMessage>
+  // Auto-pin-to-bottom while streaming; onPinnedChange fires when the user
+  // scrolls away from / back to the end (the "jump to latest" affordance).
+  readonly pinToEnd?: boolean
+  readonly onPinnedChange?: IntentRef
+  readonly virtualize?: boolean
+  readonly estimatedItemSize?: Dimension
+  readonly style?: ListStyle
+}
+
 export type View =
   | StackView
   | TextView
@@ -2374,6 +2426,8 @@ export type View =
   | ToastRegionView
   | StatusBannerView
   | RecoveryOverlayView
+  | MarkdownView
+  | TranscriptView
 
 export type KeyedView = View & { readonly key: NodeKey }
 
@@ -2428,6 +2482,12 @@ const childViewEntries = (
         : [{ path: ["autocomplete", "combobox"], view: view.autocomplete.combobox }]
     case "FieldRow":
       return [{ path: ["control"], view: view.control }]
+    case "Transcript":
+      return view.messages.flatMap((message, messageIndex) =>
+        message.body.map((child, bodyIndex) => ({
+          path: ["messages", messageIndex, "body", bodyIndex],
+          view: child
+        })))
     default:
       return []
   }
@@ -3103,6 +3163,46 @@ export const RecoveryOverlaySchema: Schema.Codec<RecoveryOverlayView, RecoveryOv
     actions: Schema.Array(RecoveryActionModelSchema)
   })
 
+const MarkdownInlineSelf = Schema.suspend((): Schema.Codec<MarkdownInline, MarkdownInline> => MarkdownInlineSchema)
+export const MarkdownInlineSchema: Schema.Codec<MarkdownInline, MarkdownInline> = Schema.Union([
+  Schema.Struct({ kind: Schema.Literal("text"), text: Schema.String }),
+  Schema.Struct({ kind: Schema.Literal("code"), text: Schema.String }),
+  Schema.Struct({ kind: Schema.Literal("strong"), children: Schema.Array(MarkdownInlineSelf) }),
+  Schema.Struct({ kind: Schema.Literal("emphasis"), children: Schema.Array(MarkdownInlineSelf) }),
+  Schema.Struct({ kind: Schema.Literal("link"), href: UriStringSchema, children: Schema.Array(MarkdownInlineSelf) })
+]) as unknown as Schema.Codec<MarkdownInline, MarkdownInline>
+
+const MarkdownBlockSelf = Schema.suspend((): Schema.Codec<MarkdownBlock, MarkdownBlock> => MarkdownBlockSchema)
+export const MarkdownBlockSchema: Schema.Codec<MarkdownBlock, MarkdownBlock> = Schema.Union([
+  Schema.Struct({ kind: Schema.Literal("heading"), level: Schema.Literals([1, 2, 3, 4, 5, 6] as const), children: Schema.Array(MarkdownInlineSchema) }),
+  Schema.Struct({ kind: Schema.Literal("paragraph"), children: Schema.Array(MarkdownInlineSchema) }),
+  Schema.Struct({ kind: Schema.Literal("list"), ordered: Schema.Boolean, items: Schema.Array(Schema.Array(MarkdownBlockSelf)) }),
+  Schema.Struct({ kind: Schema.Literal("blockquote"), children: Schema.Array(MarkdownBlockSelf) })
+]) as unknown as Schema.Codec<MarkdownBlock, MarkdownBlock>
+
+export const MarkdownSchema: Schema.Codec<MarkdownView, MarkdownView> = Schema.TaggedStruct("Markdown", {
+  ...CommonFields,
+  blocks: Schema.Array(MarkdownBlockSchema),
+  style: TextStyleSchema.pipe(Schema.optionalKey)
+})
+
+export const TranscriptMessageSchema: Schema.Codec<TranscriptMessage, TranscriptMessage> = Schema.Struct({
+  key: NodeKeySchema,
+  role: Schema.Literals(transcriptRoles),
+  status: Schema.Literals(transcriptStatuses).pipe(Schema.optionalKey),
+  body: Schema.Array(ViewSelf)
+})
+
+export const TranscriptSchema: Schema.Codec<TranscriptView, TranscriptView> = Schema.TaggedStruct("Transcript", {
+  ...CommonFields,
+  messages: Schema.Array(TranscriptMessageSchema),
+  pinToEnd: Schema.Boolean.pipe(Schema.optionalKey),
+  onPinnedChange: IntentRefSchema.pipe(Schema.optionalKey),
+  virtualize: Schema.Boolean.pipe(Schema.optionalKey),
+  estimatedItemSize: DimensionSchema.pipe(Schema.optionalKey),
+  style: ListStyleSchema.pipe(Schema.optionalKey)
+})
+
 export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
   Schema.Union([
     StackSchema,
@@ -3146,7 +3246,9 @@ export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
     ToastSchema,
     ToastRegionSchema,
     StatusBannerSchema,
-    RecoveryOverlaySchema
+    RecoveryOverlaySchema,
+    MarkdownSchema,
+    TranscriptSchema
   ]).check(OverlayStackFilter)
 )
 
@@ -3458,6 +3560,14 @@ export type RecoveryOverlayProps = WithoutTagAndVersion<RecoveryOverlayView>
 export const RecoveryOverlay = (props: RecoveryOverlayProps): RecoveryOverlayView =>
   RecoveryOverlaySchema.make({ _tag: "RecoveryOverlay", catalogVersion: CatalogVersion, ...props })
 
+export type MarkdownProps = WithoutTagAndVersion<MarkdownView>
+export const Markdown = (props: MarkdownProps): MarkdownView =>
+  MarkdownSchema.make({ _tag: "Markdown", catalogVersion: CatalogVersion, ...props })
+
+export type TranscriptProps = WithoutTagAndVersion<TranscriptView>
+export const Transcript = (props: TranscriptProps): TranscriptView =>
+  TranscriptSchema.make({ _tag: "Transcript", catalogVersion: CatalogVersion, ...props })
+
 // Normalize a composer document to its plaintext value (text runs verbatim,
 // mentions rendered as their label). This is the value renderers emit on change
 // and the app can re-parse to a typed document.
@@ -3621,6 +3731,7 @@ export const resolveView = (view: View, input: ViewResolution = {}): View => {
     case "Toast":
     case "ToastRegion":
     case "StatusBanner":
+    case "Markdown":
       return {
         ...view,
         ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) })
@@ -3629,6 +3740,15 @@ export const resolveView = (view: View, input: ViewResolution = {}): View => {
       return {
         ...view,
         open: input.state === undefined ? view.open : resolveBoundBoolean(view.open, input.state)
+      }
+    case "Transcript":
+      return {
+        ...view,
+        ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) }),
+        messages: view.messages.map((message) => ({
+          ...message,
+          body: message.body.map((child) => resolveView(child, input))
+        }))
       }
     case "FieldRow":
       return {
@@ -3727,11 +3847,20 @@ export const resolveBindings = <State>(view: View, state: State): View => {
     case "Toast":
     case "ToastRegion":
     case "StatusBanner":
+    case "Markdown":
       return view
     case "RecoveryOverlay":
       return {
         ...view,
         open: resolveBoundBoolean(view.open, state)
+      }
+    case "Transcript":
+      return {
+        ...view,
+        messages: view.messages.map((message) => ({
+          ...message,
+          body: message.body.map((child) => resolveBindings(child, state))
+        }))
       }
     case "FieldRow":
       return {
@@ -3904,6 +4033,14 @@ export const redactSecureView = (view: View): View => {
       return {
         ...view,
         control: redactSecureView(view.control)
+      }
+    case "Transcript":
+      return {
+        ...view,
+        messages: view.messages.map((message) => ({
+          ...message,
+          body: message.body.map(redactSecureView)
+        }))
       }
     default:
       return view

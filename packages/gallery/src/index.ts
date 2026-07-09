@@ -31,10 +31,12 @@ import {
   ToastRegion,
   Toggle,
   Tooltip,
+  Transcript,
   IntentSchema,
   JsonPayloadSchema,
   Link,
   List,
+  Markdown,
   Modal,
   NavRail,
   SectionList,
@@ -1181,6 +1183,47 @@ const componentStoryMap = {
         ]
       }),
       controls: [booleanControl("recovery-overlay-open", "Open", ["open"], true)]
+    })
+  ],
+  Markdown: [
+    story({
+      id: "markdown-basic",
+      component: "Markdown",
+      title: "Markdown",
+      description: "Renders a pre-parsed typed block+inline model — no parser, no raw HTML.",
+      view: Markdown({
+        key: "markdown-basic",
+        blocks: [
+          { kind: "heading", level: 2, children: [{ kind: "text", text: "Plan" }] },
+          { kind: "paragraph", children: [
+            { kind: "text", text: "Ship the " },
+            { kind: "strong", children: [{ kind: "text", text: "diff" }] },
+            { kind: "text", text: " with " },
+            { kind: "code", text: "make test" }
+          ] },
+          { kind: "list", ordered: false, items: [
+            [{ kind: "paragraph", children: [{ kind: "text", text: "Run the suite" }] }],
+            [{ kind: "paragraph", children: [{ kind: "text", text: "Open a PR" }] }]
+          ] }
+        ]
+      })
+    })
+  ],
+  Transcript: [
+    story({
+      id: "transcript-basic",
+      component: "Transcript",
+      title: "Transcript",
+      description: "A keyed, append-optimized log of role-styled messages with typed status.",
+      view: Transcript({
+        key: "transcript-basic",
+        pinToEnd: true,
+        onPinnedChange: IntentRef("GalleryStory.Pressed", ComponentValueBinding()),
+        messages: [
+          { key: "m1", role: "user", body: [Markdown({ key: "m1-md", blocks: [{ kind: "paragraph", children: [{ kind: "text", text: "Fix the failing test." }] }] })] },
+          { key: "m2", role: "assistant", status: "streaming", body: [Markdown({ key: "m2-md", blocks: [{ kind: "paragraph", children: [{ kind: "text", text: "On it — running the suite now." }] }] })] }
+        ]
+      })
     })
   ]
 } satisfies { readonly [Tag in ComponentTag]: ReadonlyArray<Story> }

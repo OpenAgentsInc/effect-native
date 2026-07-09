@@ -38,6 +38,7 @@ import {
   Tooltip,
   Link,
   List,
+  Markdown,
   Modal,
   NavRail,
   SectionList,
@@ -49,6 +50,7 @@ import {
   Tabs,
   Text,
   TextField,
+  Transcript,
   Workbench,
   componentTags,
   blurFormField,
@@ -381,6 +383,21 @@ const catalogFixturesByTag = {
     title: "Recovering",
     status: "Reconnecting…",
     actions: [{ id: "retry", label: "Retry", variant: "primary", action: IntentRef("Pressed", StaticPayload({ id: "retry" })) }]
+  }),
+  Markdown: Markdown({
+    key: "markdown",
+    blocks: [
+      { kind: "heading", level: 2, children: [{ kind: "text", text: "Plan" }] },
+      { kind: "paragraph", children: [{ kind: "text", text: "Ship it" }, { kind: "code", text: "now" }] }
+    ]
+  }),
+  Transcript: Transcript({
+    key: "transcript",
+    pinToEnd: true,
+    messages: [
+      { key: "m1", role: "user", body: [Text({ key: "m1-body", content: "Fix the test", variant: "body" })] },
+      { key: "m2", role: "assistant", status: "streaming", body: [Text({ key: "m2-body", content: "On it", variant: "body" })] }
+    ]
   })
 } satisfies { readonly [Tag in (typeof componentTags)[number]]: View }
 
@@ -497,7 +514,9 @@ const catalogRendererTags = [
   "Toast",
   "ToastRegion",
   "StatusBanner",
-  "RecoveryOverlay"
+  "RecoveryOverlay",
+  "Markdown",
+  "Transcript"
 ] as const
 
 // Host (issue #23) is supported by the headless recorder and the DOM renderer

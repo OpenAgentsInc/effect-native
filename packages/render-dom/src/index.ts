@@ -20,6 +20,9 @@ import {
   type DropdownMenuView,
   type FieldBinding,
   type FieldRowView,
+  type MarkdownBlock,
+  type MarkdownInline,
+  type MarkdownView,
   type MenuItem,
   type MeterView,
   type NotificationModel,
@@ -68,6 +71,7 @@ import {
   type TabsView,
   type TextFieldView,
   type TextView,
+  type TranscriptView,
   type View,
   type WorkbenchView,
   type Viewport,
@@ -832,7 +836,7 @@ const describeDroppedItems = (event: DragEvent): ReadonlyArray<JsonPayload> => {
 // user scrolls away from / back to the end.
 const applyScrollRegion = (
   element: HTMLElement,
-  view: StackView | ListView,
+  view: StackView | ListView | TranscriptView,
   state: DomRendererState,
   report: IntentReporter
 ): void => {
@@ -3063,6 +3067,115 @@ const renderRecoveryOverlay = (view: RecoveryOverlayView, state: DomRendererStat
   return element
 }
 
+// Streaming transcript / markdown (issue #35). The app hands a pre-parsed
+// typed block+inline model; the renderer maps it to semantic HTML — no
+// markdown parser, no arbitrary HTML. Transcript is a keyed, aria-live log with
+// role-styled bubbles, typed status indicators, and auto-pin-to-bottom.
+const renderMarkdownInline = (inline: MarkdownInline, document: Document): Node => {
+  switch (inline.kind) {
+    case "text":
+      return document.createTextNode(inline.text)
+    case "code": {
+      const code = document.createElement("code")
+      code.textContent = inline.text
+      return code
+    }
+    case "strong": {
+      const strong = document.createElement("strong")
+      strong.append(...inline.children.map((child) => renderMarkdownInline(child, document)))
+      return strong
+    }
+    case "emphasis": {
+      const em = document.createElement("em")
+      em.append(...inline.children.map((child) => renderMarkdownInline(child, document)))
+      return em
+    }
+    case "link": {
+      const anchor = document.createElement("a")
+      anchor.href = inline.href
+      anchor.rel = "noopener noreferrer"
+      anchor.append(...inline.children.map((child) => renderMarkdownInline(child, document)))
+      return anchor
+    }
+  }
+}
+
+const renderMarkdownBlock = (block: MarkdownBlock, document: Document): HTMLElement => {
+  switch (block.kind) {
+    case "heading": {
+      const heading = document.createElement(`h${block.level}`)
+      heading.append(...block.children.map((child) => renderMarkdownInline(child, document)))
+      return heading
+    }
+    case "paragraph": {
+      const paragraph = document.createElement("p")
+      paragraph.append(...block.children.map((child) => renderMarkdownInline(child, document)))
+      return paragraph
+    }
+    case "list": {
+      const list = document.createElement(block.ordered ? "ol" : "ul")
+      for (const item of block.items) {
+        const li = document.createElement("li")
+        li.append(...item.map((child) => renderMarkdownBlock(child, document)))
+        list.appendChild(li)
+      }
+      return list
+    }
+    case "blockquote": {
+      const quote = document.createElement("blockquote")
+      quote.append(...block.children.map((child) => renderMarkdownBlock(child, document)))
+      return quote
+    }
+  }
+}
+
+const renderMarkdown = (view: MarkdownView, state: DomRendererState): HTMLElement => {
+  const element = state.keyedElement(view, "div")
+  state.resetListeners(element)
+  element.setAttribute("data-en-role", "markdown")
+  element.replaceChildren(...view.blocks.map((block) => renderMarkdownBlock(block, element.ownerDocument)))
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  return element
+}
+
+const renderTranscript = (view: TranscriptView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const element = state.keyedElement(view, "div")
+  state.resetListeners(element)
+  element.setAttribute("role", "log")
+  element.setAttribute("aria-live", "polite")
+  if (view.virtualize === true) element.setAttribute("data-en-virtualized", "true")
+  element.style.display = "flex"
+  element.style.flexDirection = "column"
+  element.style.gap = "var(--en-spacing-2)"
+  const document = element.ownerDocument
+  const messages = view.messages.map((message) => {
+    const messageEl = document.createElement("div")
+    messageEl.setAttribute("data-en-message", message.key)
+    messageEl.setAttribute("data-en-role", message.role)
+    if (message.status !== undefined) {
+      messageEl.setAttribute("data-en-status", message.status)
+      const indicator = document.createElement("span")
+      indicator.setAttribute("data-en-role", "status")
+      indicator.setAttribute("aria-label", message.status)
+      if (message.status === "streaming" || message.status === "thinking") {
+        indicator.setAttribute("aria-busy", "true")
+      }
+      messageEl.appendChild(indicator)
+    }
+    const body = document.createElement("div")
+    body.setAttribute("data-en-role", "body")
+    body.append(...message.body.map((child) => renderView(child, state, report)))
+    messageEl.appendChild(body)
+    return messageEl
+  })
+  element.replaceChildren(...messages)
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  applyScrollRegion(element, view, state, report)
+  return element
+}
+
 const renderView = (view: View, state: DomRendererState, report: IntentReporter): HTMLElement => {
   switch (view._tag) {
     case "Stack":
@@ -3149,6 +3262,10 @@ const renderView = (view: View, state: DomRendererState, report: IntentReporter)
       return renderStatusBanner(view, state, report)
     case "RecoveryOverlay":
       return renderRecoveryOverlay(view, state, report)
+    case "Markdown":
+      return renderMarkdown(view, state)
+    case "Transcript":
+      return renderTranscript(view, state, report)
   }
 }
 
@@ -3320,6 +3437,12 @@ export const viewStructure = (view: View): DomStructure => {
         tag: "FieldRow",
         ...(view.key === undefined ? {} : { key: view.key }),
         children: [viewStructure(view.control)]
+      }
+    case "Transcript":
+      return {
+        tag: "Transcript",
+        ...(view.key === undefined ? {} : { key: view.key }),
+        children: view.messages.flatMap((message) => message.body.map(viewStructure))
       }
     default:
       return {

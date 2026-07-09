@@ -10,6 +10,7 @@ import {
   ComposerCatalogVersion,
   DataDisplayCatalogVersion,
   FeedbackCatalogVersion,
+  TranscriptCatalogVersion,
   TabsCatalogVersion,
   FormCatalogVersion,
   HostCatalogVersion,
@@ -64,11 +65,12 @@ describe("catalog version compatibility", () => {
       TabsCatalogVersion,
       ComposerCatalogVersion,
       SettingsControlsCatalogVersion,
-      FeedbackCatalogVersion
+      FeedbackCatalogVersion,
+      TranscriptCatalogVersion
     ])
     // The current marker is the last entry; the previous marker is second-last.
-    expect(CatalogVersion).toBe(FeedbackCatalogVersion)
-    expect(PreviousCatalogVersion).toBe(SettingsControlsCatalogVersion)
+    expect(CatalogVersion).toBe(TranscriptCatalogVersion)
+    expect(PreviousCatalogVersion).toBe(FeedbackCatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 1]).toBe(CatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 2]).toBe(PreviousCatalogVersion)
   })
