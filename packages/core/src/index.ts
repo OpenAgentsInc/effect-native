@@ -77,8 +77,9 @@ export const DataDisplayCatalogVersion = "effect-native/v9" as const
 export const AppShellCatalogVersion = "effect-native/v10" as const
 export const AnchoredOverlayCatalogVersion = "effect-native/v11" as const
 export const ComboboxCatalogVersion = "effect-native/v12" as const
-export const PreviousCatalogVersion = AnchoredOverlayCatalogVersion
-export const CatalogVersion = ComboboxCatalogVersion
+export const TabsCatalogVersion = "effect-native/v13" as const
+export const PreviousCatalogVersion = ComboboxCatalogVersion
+export const CatalogVersion = TabsCatalogVersion
 export const CatalogVersionSchema = Schema.Literal(CatalogVersion)
 export type CatalogVersion = typeof CatalogVersion
 export const compatibleCatalogVersions = [
@@ -93,6 +94,7 @@ export const compatibleCatalogVersions = [
   IconCatalogVersion,
   DataDisplayCatalogVersion,
   AppShellCatalogVersion,
+  AnchoredOverlayCatalogVersion,
   PreviousCatalogVersion,
   CatalogVersion
 ] as const
@@ -128,7 +130,8 @@ export const componentTags = [
   "ContextMenu",
   "Tooltip",
   "Combobox",
-  "CommandPalette"
+  "CommandPalette",
+  "Tabs"
 ] as const
 export type ComponentTag = (typeof componentTags)[number]
 
@@ -2079,6 +2082,33 @@ export interface CommandPaletteView extends NodeBase {
   readonly onDismiss: IntentRef
 }
 
+// Tabs (issue #30). A typed tablist with WAI-ARIA tablist/tab/tabpanel
+// semantics, roving tabindex, and arrow-key nav. Panel association is by id
+// (data), never DOM position; kept-mounted vs lazy is a typed policy.
+export interface TabItem {
+  readonly id: string
+  readonly label: string
+  readonly icon?: IconName
+  readonly disabled?: boolean
+  readonly badge?: string
+}
+
+export interface TabPanel {
+  readonly id: string
+  readonly content: View
+}
+
+export interface TabsView extends NodeBase {
+  readonly _tag: "Tabs"
+  readonly tabs: ReadonlyArray<TabItem>
+  readonly panels: ReadonlyArray<TabPanel>
+  readonly selectedId: string
+  readonly orientation?: "horizontal" | "vertical"
+  readonly keepMounted?: boolean
+  readonly onSelect: IntentRef
+  readonly style?: CardStyle
+}
+
 export type View =
   | StackView
   | TextView
@@ -2109,6 +2139,7 @@ export type View =
   | TooltipView
   | ComboboxView
   | CommandPaletteView
+  | TabsView
 
 export type KeyedView = View & { readonly key: NodeKey }
 
@@ -2155,6 +2186,8 @@ const childViewEntries = (
       return view.children.map((child, index) => ({ path: ["children", index], view: child }))
     case "CommandPalette":
       return [{ path: ["combobox"], view: view.combobox }]
+    case "Tabs":
+      return view.panels.map((panel, index) => ({ path: ["panels", index, "content"], view: panel.content }))
     default:
       return []
   }
@@ -2648,6 +2681,30 @@ export const CommandPaletteSchema: Schema.Codec<CommandPaletteView, CommandPalet
     onDismiss: IntentRefSchema
   })
 
+export const TabItemSchema: Schema.Codec<TabItem, TabItem> = Schema.Struct({
+  id: Schema.NonEmptyString,
+  label: Schema.String,
+  icon: IconNameSchema.pipe(Schema.optionalKey),
+  disabled: Schema.Boolean.pipe(Schema.optionalKey),
+  badge: Schema.String.pipe(Schema.optionalKey)
+})
+
+export const TabPanelSchema: Schema.Codec<TabPanel, TabPanel> = Schema.Struct({
+  id: Schema.NonEmptyString,
+  content: ViewSelf
+})
+
+export const TabsSchema: Schema.Codec<TabsView, TabsView> = Schema.TaggedStruct("Tabs", {
+  ...CommonFields,
+  tabs: Schema.Array(TabItemSchema).check(Schema.isMinLength(1, { title: "NonEmptyTabs" })),
+  panels: Schema.Array(TabPanelSchema),
+  selectedId: Schema.NonEmptyString,
+  orientation: Schema.Literals(["horizontal", "vertical"]).pipe(Schema.optionalKey),
+  keepMounted: Schema.Boolean.pipe(Schema.optionalKey),
+  onSelect: IntentRefSchema,
+  style: CardStyleSchema.pipe(Schema.optionalKey)
+})
+
 export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
   Schema.Union([
     StackSchema,
@@ -2678,7 +2735,8 @@ export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
     ContextMenuSchema,
     TooltipSchema,
     ComboboxSchema,
-    CommandPaletteSchema
+    CommandPaletteSchema,
+    TabsSchema
   ]).check(OverlayStackFilter)
 )
 
@@ -2821,6 +2879,10 @@ export const Combobox = (props: ComboboxProps): ComboboxView =>
 export type CommandPaletteProps = WithoutTagAndVersion<CommandPaletteView>
 export const CommandPalette = (props: CommandPaletteProps): CommandPaletteView =>
   CommandPaletteSchema.make({ _tag: "CommandPalette", catalogVersion: CatalogVersion, ...props })
+
+export type TabsProps = WithoutTagAndVersion<TabsView>
+export const Tabs = (props: TabsProps): TabsView =>
+  TabsSchema.make({ _tag: "Tabs", catalogVersion: CatalogVersion, ...props })
 
 export const decodeView = Schema.decodeUnknownSync(ViewSchema)
 export const encodeView = Schema.encodeSync(ViewSchema)
@@ -3014,6 +3076,12 @@ export const resolveView = (view: View, input: ViewResolution = {}): View => {
         open: input.state === undefined ? view.open : resolveBoundBoolean(view.open, input.state),
         combobox: resolveView(view.combobox, input) as ComboboxView
       }
+    case "Tabs":
+      return {
+        ...view,
+        ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) }),
+        panels: view.panels.map((panel) => ({ ...panel, content: resolveView(panel.content, input) }))
+      }
   }
 }
 
@@ -3079,6 +3147,11 @@ export const resolveBindings = <State>(view: View, state: State): View => {
         ...view,
         open: resolveBoundBoolean(view.open, state),
         combobox: resolveBindings(view.combobox, state) as ComboboxView
+      }
+    case "Tabs":
+      return {
+        ...view,
+        panels: view.panels.map((panel) => ({ ...panel, content: resolveBindings(panel.content, state) }))
       }
     case "List":
       return {
@@ -3187,6 +3260,11 @@ export const redactSecureView = (view: View): View => {
       return {
         ...view,
         children: view.children.map(redactSecureView)
+      }
+    case "Tabs":
+      return {
+        ...view,
+        panels: view.panels.map((panel) => ({ ...panel, content: redactSecureView(panel.content) }))
       }
     default:
       return view

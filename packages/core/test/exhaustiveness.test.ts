@@ -40,6 +40,7 @@ const describeView = Match.type<View>().pipe(
   Match.tag("Tooltip", () => "overlay"),
   Match.tag("Combobox", () => "typeahead"),
   Match.tag("CommandPalette", () => "typeahead"),
+  Match.tag("Tabs", () => "tabs"),
   Match.exhaustive
 )
 

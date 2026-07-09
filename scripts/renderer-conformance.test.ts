@@ -34,6 +34,7 @@ import {
   SplitPane,
   Stack,
   StaticPayload,
+  Tabs,
   Text,
   TextField,
   Workbench,
@@ -294,6 +295,19 @@ const catalogFixturesByTag = {
       onSelect: IntentRef("Pressed", ComponentValueBinding()),
       options: [{ id: "composer", label: "Focus composer" }]
     })
+  }),
+  Tabs: Tabs({
+    key: "tabs",
+    selectedId: "chat",
+    onSelect: IntentRef("Pressed", ComponentValueBinding()),
+    tabs: [
+      { id: "chat", label: "Chat", icon: "Circle" },
+      { id: "editor", label: "Editor", badge: "2" }
+    ],
+    panels: [
+      { id: "chat", content: Text({ key: "tab-chat", content: "Chat panel", variant: "body" }) },
+      { id: "editor", content: Text({ key: "tab-editor", content: "Editor panel", variant: "body" }) }
+    ]
   })
 } satisfies { readonly [Tag in (typeof componentTags)[number]]: View }
 
@@ -397,7 +411,8 @@ const catalogRendererTags = [
   "ContextMenu",
   "Tooltip",
   "Combobox",
-  "CommandPalette"
+  "CommandPalette",
+  "Tabs"
 ] as const
 
 // Host (issue #23) is supported by the headless recorder and the DOM renderer

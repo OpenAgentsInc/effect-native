@@ -31,6 +31,7 @@ import {
   SplitPane,
   Stack,
   StaticPayload,
+  Tabs,
   Text,
   TextField,
   Workbench,
@@ -911,6 +912,31 @@ const componentStoryMap = {
         })
       }),
       controls: [booleanControl("command-palette-open", "Open", ["open"], true)]
+    })
+  ],
+  Tabs: [
+    story({
+      id: "tabs-basic",
+      component: "Tabs",
+      title: "Tabs",
+      description: "WAI-ARIA tablist with roving tabindex; panel association by id, typed onSelect.",
+      view: Tabs({
+        key: "tabs-basic",
+        selectedId: "chat",
+        orientation: "horizontal",
+        onSelect: IntentRef("GalleryStory.Pressed", ComponentValueBinding()),
+        tabs: [
+          { id: "chat", label: "Chat", icon: "Circle" },
+          { id: "editor", label: "Editor", icon: "Play", badge: "2" },
+          { id: "terminal", label: "Terminal", disabled: true }
+        ],
+        panels: [
+          { id: "chat", content: Text({ key: "tab-chat", content: "Chat panel", variant: "body" }) },
+          { id: "editor", content: Text({ key: "tab-editor", content: "Editor panel", variant: "body" }) },
+          { id: "terminal", content: Text({ key: "tab-terminal", content: "Terminal panel", variant: "body" }) }
+        ]
+      }),
+      controls: [booleanControl("tabs-keep-mounted", "Keep mounted", ["keepMounted"], false)]
     })
   ]
 } satisfies { readonly [Tag in ComponentTag]: ReadonlyArray<Story> }

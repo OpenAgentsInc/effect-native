@@ -23,7 +23,7 @@ their reason so pressure is visible without weakening the catalog contract.
 
 ## Catalog Versioning Policy
 
-The current catalog marker is `effect-native/v12`, exposed by
+The current catalog marker is `effect-native/v13`, exposed by
 `CatalogVersion`. `compatibleCatalogVersions` is the decode allow-list, and
 `CompatibleViewSchema` is the schema app authors and renderers should use when
 accepting persisted or externally-authored trees.
@@ -59,7 +59,7 @@ until it has a fixture and every renderer declares and proves support for it.
 | App shell / split panes / nav rail | Khala Code Desktop chat shell needs sidebar, thread list, resizable workbench, and active pane switching | 2026-07-08 | shipped -> #27 (v10: `SplitPane` with typed panes + min/max/size + draggable divider reporting a bounded `{ paneId, size }` onResize intent + dblclick collapse; `NavRail` sections/items with typed onSelect + active state; `Workbench` swapping active pane as typed state (keepMounted policy); DOM drag-resizable, RN static-divider fallback, headless records) |
 | Popover / dropdown menu / context menu / tooltip | Command menus, settings menus, tooltips, and context menus in Khala Code Desktop | 2026-07-08 | shipped -> #28 (v11: `Popover` anchored surface (typed placement side/align, presence as typed `open`, Escape/dismiss intent, focus-first-on-open + focus-return-to-anchor-on-close); `DropdownMenu`/`ContextMenu` share a recursive typed MenuItem model (icon/disabled/danger/keybinding/submenu) with roving arrow-key focus + per-item onSelect, ContextMenu pointer-positioned via typed x/y; `Tooltip` wraps exactly one target with aria-describedby. DOM full a11y/keyboard; RN pressable-menu + accessibilityHint subset (placement declared unsupported); headless records) |
 | Command palette / combobox | Khala command palette and slash-command autocomplete | 2026-07-08 | shipped -> #29 (v12: `Combobox` typeahead with app-supplied options (id/label/subtitle/icon/group/disabled+reason/keybinding), roving aria-activedescendant, typed onQueryChange/onHighlight/onSelect, loading + empty states, grouped rendering — no keyword routing in the component; `CommandPalette` composes a Combobox in the modal-overlay presence lifecycle (focus trap + return). DOM full combobox/listbox a11y + arrow/Enter keyboard; RN TextInput + pressable grouped options subset; headless records) |
-| Tabs | Khala settings, workbench, and panel groups | 2026-07-08 | accepted -> #30 |
+| Tabs | Khala settings, workbench, and panel groups | 2026-07-08 | shipped -> #30 (v13: `Tabs` typed tab model (id/label/icon/disabled/badge) + typed selectedId state + onSelect intent, horizontal/vertical orientation, WAI-ARIA tablist/tab/tabpanel with roving tabindex + arrow/Home/End keyboard nav; panel association by id (data) with lazy vs keepMounted policy. DOM full a11y/keyboard; RN pressable segmented tab bar + active panel (roving nav declared unsupported); headless records) |
 | Icon | Khala nav rail, command buttons, statuses, fleet controls, and menu items | 2026-07-08 | shipped -> #31 (v8: closed IconName set + iconSizes, per-renderer registries — DOM inline SVG/currentColor, RN font glyphs — typed decorative vs meaningful a11y) |
 | Rich contenteditable composer | Khala chat composer needs multiline contenteditable text, slash commands, mentions, history, and attachments | 2026-07-08 | accepted -> #32 |
 | CodeEditor host | Khala editor panel needs Monaco under the reviewed Host contract | 2026-07-08 | accepted -> #33 |

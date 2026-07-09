@@ -43,6 +43,7 @@ import {
   type SpacerView,
   type SplitPaneView,
   type StackView,
+  type TabsView,
   type TextFieldView,
   type TextView,
   type View,
@@ -1458,6 +1459,72 @@ const renderCommandPalette = (
   )
 }
 
+// Tabs (issue #30) on React Native — a segmented tab bar of pressable tabs
+// plus the active panel. Roving-tabindex/arrow-key nav has no RN mapping (touch
+// selection only); vertical orientation is honored via layout direction.
+const renderTabs = (
+  view: TabsView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const theme = options.theme ?? defaultTheme
+  const orientation = view.orientation ?? "horizontal"
+  const tabBar = createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    {
+      key: "tablist",
+      accessibilityRole: "tablist",
+      style: { flexDirection: orientation === "vertical" ? "column" : "row", gap: spacingValue(theme, "1") }
+    },
+    ...view.tabs.map((tab) => {
+      const selected = view.selectedId === tab.id
+      const parts: Array<ReactElementLike> = []
+      if (tab.icon !== undefined) {
+        parts.push(createElement(dependencies, dependencies.ReactNative.Text, { key: "icon" }, iconGlyphs[tab.icon]))
+      }
+      parts.push(createElement(dependencies, dependencies.ReactNative.Text, { key: "label" }, tab.label))
+      if (tab.badge !== undefined) {
+        parts.push(createElement(dependencies, dependencies.ReactNative.Text, { key: "badge" }, tab.badge))
+      }
+      return createElement(
+        dependencies,
+        dependencies.ReactNative.Pressable,
+        {
+          key: `tab-${tab.id}`,
+          testID: `en-tab:${tab.id}`,
+          accessibilityRole: "tab",
+          accessibilityState: { selected, disabled: tab.disabled === true },
+          disabled: tab.disabled === true,
+          style: { flexDirection: "row", gap: spacingValue(theme, "1") },
+          ...(tab.disabled === true ? {} : { onPress: () => runReportedIntent(report, view.onSelect, tab.id) })
+        },
+        ...parts
+      )
+    })
+  )
+  const panels = (view.keepMounted === true
+    ? view.panels
+    : view.panels.filter((panel) => panel.id === view.selectedId)
+  ).map((panel) => {
+    const active = panel.id === view.selectedId
+    return createElement(
+      dependencies,
+      dependencies.ReactNative.View,
+      { key: `panel-${panel.id}`, testID: `en-tabpanel:${panel.id}`, accessibilityRole: "tabpanel", style: { display: active ? "flex" : "none" } },
+      renderResolvedReactNativeView(panel.content, dependencies, report, options)
+    )
+  })
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    baseProps(view, mergeNativeStyles({ flexDirection: orientation === "vertical" ? "row" : "column" }, viewStyle(view, options))),
+    tabBar,
+    ...panels
+  )
+}
+
 const renderResolvedReactNativeView = (
   view: View,
   dependencies: ReactNativeDependencies,
@@ -1523,6 +1590,8 @@ const renderResolvedReactNativeView = (
       return renderCombobox(view, dependencies, report, options)
     case "CommandPalette":
       return renderCommandPalette(view, dependencies, report, options)
+    case "Tabs":
+      return renderTabs(view, dependencies, report, options)
   }
 }
 
@@ -1699,6 +1768,15 @@ export const viewStructure = (view: View): ReactNativeStructure => {
         tag: "CommandPalette",
         ...(view.key === undefined ? {} : { key: view.key }),
         children: [viewStructure(view.combobox)]
+      }
+    case "Tabs":
+      return {
+        tag: "Tabs",
+        ...(view.key === undefined ? {} : { key: view.key }),
+        children: (view.keepMounted === true
+          ? view.panels
+          : view.panels.filter((panel) => panel.id === view.selectedId)
+        ).map((panel) => viewStructure(panel.content))
       }
     default:
       return {

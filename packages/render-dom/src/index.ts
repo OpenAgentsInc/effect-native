@@ -47,6 +47,7 @@ import {
   type SpacerView,
   type SplitPaneView,
   type StackView,
+  type TabsView,
   type TextFieldView,
   type TextView,
   type View,
@@ -2243,6 +2244,111 @@ const renderCommandPalette = (view: CommandPaletteView, state: DomRendererState,
   return element
 }
 
+// Tabs (issue #30). WAI-ARIA tablist/tab/tabpanel with roving tabindex and
+// arrow-key navigation dispatching a typed onSelect. Panel association is by id
+// (data). keepMounted keeps inactive panels mounted-but-hidden.
+const renderTabs = (view: TabsView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const element = state.keyedElement(view, "div")
+  state.resetListeners(element)
+  const orientation = view.orientation ?? "horizontal"
+  element.style.display = "flex"
+  element.style.flexDirection = orientation === "vertical" ? "row" : "column"
+  const document = element.ownerDocument
+
+  const tablist = document.createElement("div")
+  tablist.setAttribute("role", "tablist")
+  tablist.setAttribute("aria-orientation", orientation)
+  tablist.setAttribute("data-en-role", "tablist")
+  tablist.style.display = "flex"
+  tablist.style.flexDirection = orientation === "vertical" ? "column" : "row"
+
+  const enabledIds = view.tabs.filter((tab) => tab.disabled !== true).map((tab) => tab.id)
+  const moveSelection = (direction: 1 | -1) => {
+    if (enabledIds.length === 0) return
+    const index = enabledIds.indexOf(view.selectedId)
+    const nextId = enabledIds[(index + direction + enabledIds.length) % enabledIds.length]!
+    runReportedIntent(report, view.onSelect, nextId)
+  }
+
+  for (const tab of view.tabs) {
+    const button = document.createElement("button") as HTMLButtonElement
+    button.type = "button"
+    button.id = `en-tab-${cssEscape(tab.id)}`
+    button.setAttribute("role", "tab")
+    button.setAttribute("data-en-tab", tab.id)
+    const selected = view.selectedId === tab.id
+    button.setAttribute("aria-selected", selected ? "true" : "false")
+    button.setAttribute("aria-controls", `en-tabpanel-${cssEscape(tab.id)}`)
+    button.tabIndex = selected ? 0 : -1
+    button.disabled = tab.disabled === true
+    button.style.display = "inline-flex"
+    button.style.alignItems = "center"
+    button.style.gap = "var(--en-spacing-2)"
+    if (tab.icon !== undefined) {
+      const iconEl = document.createElement("span")
+      iconEl.setAttribute("aria-hidden", "true")
+      iconEl.style.display = "inline-flex"
+      iconEl.innerHTML = iconSvg(tab.icon, iconSizePixels.sm)
+      button.appendChild(iconEl)
+    }
+    const label = document.createElement("span")
+    label.setAttribute("data-en-role", "label")
+    label.textContent = tab.label
+    button.appendChild(label)
+    if (tab.badge !== undefined) {
+      const badge = document.createElement("span")
+      badge.setAttribute("data-en-role", "badge")
+      badge.textContent = tab.badge
+      button.appendChild(badge)
+    }
+    state.resetListeners(button)
+    if (tab.disabled !== true) {
+      state.addListener(button, "click", () => runReportedIntent(report, view.onSelect, tab.id))
+    }
+    state.addListener(button, "keydown", (event) => {
+      const key = (event as KeyboardEvent).key
+      const forward = orientation === "vertical" ? "ArrowDown" : "ArrowRight"
+      const backward = orientation === "vertical" ? "ArrowUp" : "ArrowLeft"
+      if (key === forward) {
+        event.preventDefault()
+        moveSelection(1)
+      } else if (key === backward) {
+        event.preventDefault()
+        moveSelection(-1)
+      } else if (key === "Home") {
+        event.preventDefault()
+        if (enabledIds.length > 0) runReportedIntent(report, view.onSelect, enabledIds[0]!)
+      } else if (key === "End") {
+        event.preventDefault()
+        if (enabledIds.length > 0) runReportedIntent(report, view.onSelect, enabledIds[enabledIds.length - 1]!)
+      }
+    })
+    tablist.appendChild(button)
+  }
+
+  const panelsToRender = view.keepMounted === true
+    ? view.panels
+    : view.panels.filter((panel) => panel.id === view.selectedId)
+  const panelEls = panelsToRender.map((panel) => {
+    const panelEl = document.createElement("div")
+    panelEl.id = `en-tabpanel-${cssEscape(panel.id)}`
+    panelEl.setAttribute("role", "tabpanel")
+    panelEl.setAttribute("data-en-tabpanel", panel.id)
+    panelEl.setAttribute("aria-labelledby", `en-tab-${cssEscape(panel.id)}`)
+    const active = panel.id === view.selectedId
+    panelEl.hidden = !active
+    panelEl.style.display = active ? "block" : "none"
+    panelEl.appendChild(renderView(panel.content, state, report))
+    return panelEl
+  })
+
+  element.replaceChildren(tablist, ...panelEls)
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  applyInteractions(element, view, state, report)
+  return element
+}
+
 const renderView = (view: View, state: DomRendererState, report: IntentReporter): HTMLElement => {
   switch (view._tag) {
     case "Stack":
@@ -2303,6 +2409,8 @@ const renderView = (view: View, state: DomRendererState, report: IntentReporter)
       return renderCombobox(view, state, report)
     case "CommandPalette":
       return renderCommandPalette(view, state, report)
+    case "Tabs":
+      return renderTabs(view, state, report)
   }
 }
 
@@ -2459,6 +2567,15 @@ export const viewStructure = (view: View): DomStructure => {
         tag: "CommandPalette",
         ...(view.key === undefined ? {} : { key: view.key }),
         children: [viewStructure(view.combobox)]
+      }
+    case "Tabs":
+      return {
+        tag: "Tabs",
+        ...(view.key === undefined ? {} : { key: view.key }),
+        children: (view.keepMounted === true
+          ? view.panels
+          : view.panels.filter((panel) => panel.id === view.selectedId)
+        ).map((panel) => viewStructure(panel.content))
       }
     default:
       return {
