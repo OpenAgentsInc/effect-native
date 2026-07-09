@@ -5,6 +5,7 @@ import {
   Binding,
   Button,
   Card,
+  Checkbox,
   Combobox,
   CommandPalette,
   Composer,
@@ -12,6 +13,7 @@ import {
   ContextMenu,
   DropdownMenu,
   FieldBinding,
+  FieldRow,
   Badge,
   Chip,
   Divider,
@@ -21,9 +23,14 @@ import {
   Image,
   IntentRef,
   Meter,
+  NumberField,
   Popover,
+  RadioGroup,
+  Select,
+  Slider,
   StatTile,
   Table,
+  Toggle,
   Tooltip,
   Link,
   List,
@@ -319,6 +326,32 @@ const catalogFixturesByTag = {
     onChange: IntentRef("Changed", ComponentValueBinding()),
     onSubmit: IntentRef("Submitted", ComponentValueBinding()),
     onKeyCommand: IntentRef("Pressed", ComponentValueBinding())
+  }),
+  Toggle: Toggle({ key: "toggle", value: true, label: "Auto-approve", onChange: IntentRef("Pressed", ComponentValueBinding()) }),
+  Select: Select({
+    key: "select",
+    value: "claude",
+    label: "Model",
+    onChange: IntentRef("Changed", ComponentValueBinding()),
+    options: [{ value: "claude", label: "Claude" }, { value: "codex", label: "Codex" }]
+  }),
+  Checkbox: Checkbox({ key: "checkbox", checked: true, label: "Stream", onChange: IntentRef("Pressed", ComponentValueBinding()) }),
+  RadioGroup: RadioGroup({
+    key: "radio-group",
+    name: "mode",
+    value: "review",
+    label: "Mode",
+    onChange: IntentRef("Changed", ComponentValueBinding()),
+    options: [{ value: "review", label: "Review" }, { value: "auto", label: "Auto" }]
+  }),
+  Slider: Slider({ key: "slider", value: 40, min: 0, max: 100, step: 5, label: "Temperature", onChange: IntentRef("Pressed", ComponentValueBinding()) }),
+  NumberField: NumberField({ key: "number-field", value: 8, min: 1, max: 32, step: 1, label: "Workers", onChange: IntentRef("Pressed", ComponentValueBinding()) }),
+  FieldRow: FieldRow({
+    key: "field-row",
+    label: "Auto-approve safe edits",
+    description: "Apply low-risk edits automatically.",
+    controlKey: "field-row-toggle",
+    control: Toggle({ key: "field-row-toggle", value: false, onChange: IntentRef("Pressed", ComponentValueBinding()) })
   })
 } satisfies { readonly [Tag in (typeof componentTags)[number]]: View }
 
@@ -424,7 +457,14 @@ const catalogRendererTags = [
   "Combobox",
   "CommandPalette",
   "Tabs",
-  "Composer"
+  "Composer",
+  "Toggle",
+  "Select",
+  "Checkbox",
+  "RadioGroup",
+  "Slider",
+  "NumberField",
+  "FieldRow"
 ] as const
 
 // Host (issue #23) is supported by the headless recorder and the DOM renderer

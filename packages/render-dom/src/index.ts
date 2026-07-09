@@ -3,6 +3,7 @@ import {
   type BadgeView,
   type ButtonView,
   type CardView,
+  type CheckboxView,
   type ChipView,
   type ColorToken,
   type ComboboxOption,
@@ -13,9 +14,16 @@ import {
   type Dimension,
   type DividerView,
   type DropdownMenuView,
+  type FieldBinding,
+  type FieldRowView,
   type MenuItem,
   type MeterView,
+  type NumberFieldView,
   type PopoverView,
+  type RadioGroupView,
+  type SelectView,
+  type SliderView,
+  type ToggleView,
   type TooltipView,
   type StatTileView,
   type TableView,
@@ -2478,6 +2486,226 @@ const renderComposer = (view: ComposerView, state: DomRendererState, report: Int
   return element
 }
 
+// Settings form controls (issue #38). Each control emits a typed onChange (or a
+// #12 FormFieldChanged intent when `field` is bound), and reflects
+// disabled/invalid state via native controls + aria-invalid.
+const controlChangeIntent = (view: {
+  readonly field?: FieldBinding
+  readonly onChange?: IntentRef
+}): IntentRef | undefined =>
+  view.field !== undefined ? IntentRef("FormFieldChanged", FormFieldValueBinding(view.field)) : view.onChange
+
+const applyControlA11y = (element: HTMLElement, view: { readonly disabled?: boolean; readonly invalid?: boolean }): void => {
+  if (view.invalid === true) element.setAttribute("aria-invalid", "true")
+}
+
+const renderToggle = (view: ToggleView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const element = state.keyedElement(view, "button") as HTMLButtonElement
+  state.resetListeners(element)
+  element.type = "button"
+  element.setAttribute("role", "switch")
+  element.setAttribute("data-en-role", "control")
+  element.setAttribute("aria-checked", view.value ? "true" : "false")
+  if (view.label !== undefined) element.setAttribute("aria-label", view.label)
+  element.disabled = view.disabled === true
+  applyControlA11y(element, view)
+  element.textContent = view.label ?? (view.value ? "On" : "Off")
+  const onChange = controlChangeIntent(view)
+  if (onChange !== undefined && view.disabled !== true) {
+    state.addListener(element, "click", () => runReportedIntent(report, onChange, !view.value))
+  }
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  applyInteractions(element, view, state, report)
+  return element
+}
+
+const renderSelect = (view: SelectView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const element = state.keyedElement(view, "select") as HTMLSelectElement
+  state.resetListeners(element)
+  element.setAttribute("data-en-role", "control")
+  element.disabled = view.disabled === true
+  if (view.label !== undefined) element.setAttribute("aria-label", view.label)
+  applyControlA11y(element, view)
+  const document = element.ownerDocument
+  const optionEls: Array<HTMLOptionElement> = []
+  if (view.placeholder !== undefined) {
+    const placeholder = document.createElement("option")
+    placeholder.value = ""
+    placeholder.textContent = view.placeholder
+    placeholder.disabled = true
+    optionEls.push(placeholder)
+  }
+  for (const option of view.options) {
+    const optionEl = document.createElement("option")
+    optionEl.value = option.value
+    optionEl.textContent = option.label
+    optionEl.disabled = option.disabled === true
+    optionEls.push(optionEl)
+  }
+  element.replaceChildren(...optionEls)
+  element.value = view.value
+  const onChange = controlChangeIntent(view)
+  if (onChange !== undefined) {
+    state.addListener(element, "change", () => runReportedIntent(report, onChange, element.value))
+  }
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  return element
+}
+
+const renderCheckbox = (view: CheckboxView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const element = state.keyedElement(view, "label") as HTMLLabelElement
+  state.resetListeners(element)
+  element.style.display = "inline-flex"
+  element.style.alignItems = "center"
+  element.style.gap = "var(--en-spacing-2)"
+  const document = element.ownerDocument
+  const input = document.createElement("input") as HTMLInputElement
+  input.type = "checkbox"
+  input.setAttribute("data-en-role", "control")
+  input.checked = view.checked
+  input.disabled = view.disabled === true
+  applyControlA11y(input, view)
+  const onChange = controlChangeIntent(view)
+  state.resetListeners(input)
+  if (onChange !== undefined) {
+    state.addListener(input, "change", () => runReportedIntent(report, onChange, input.checked))
+  }
+  const children: Array<HTMLElement | Text> = [input]
+  if (view.label !== undefined) {
+    const label = document.createElement("span")
+    label.setAttribute("data-en-role", "label")
+    label.textContent = view.label
+    children.push(label)
+  }
+  element.replaceChildren(...children)
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  return element
+}
+
+const renderRadioGroup = (view: RadioGroupView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const element = state.keyedElement(view, "div")
+  state.resetListeners(element)
+  element.setAttribute("role", "radiogroup")
+  if (view.label !== undefined) element.setAttribute("aria-label", view.label)
+  applyControlA11y(element, view)
+  const orientation = view.orientation ?? "vertical"
+  element.style.display = "flex"
+  element.style.flexDirection = orientation === "horizontal" ? "row" : "column"
+  element.style.gap = "var(--en-spacing-2)"
+  const document = element.ownerDocument
+  const onChange = controlChangeIntent(view)
+  const optionEls = view.options.map((option) => {
+    const wrapper = document.createElement("label")
+    wrapper.style.display = "inline-flex"
+    wrapper.style.alignItems = "center"
+    wrapper.style.gap = "var(--en-spacing-1)"
+    const input = document.createElement("input") as HTMLInputElement
+    input.type = "radio"
+    input.name = view.name
+    input.value = option.value
+    input.setAttribute("data-en-radio", option.value)
+    input.checked = view.value === option.value
+    input.disabled = view.disabled === true || option.disabled === true
+    state.resetListeners(input)
+    if (onChange !== undefined && !input.disabled) {
+      state.addListener(input, "change", () => runReportedIntent(report, onChange, option.value))
+    }
+    const label = document.createElement("span")
+    label.textContent = option.label
+    wrapper.append(input, label)
+    return wrapper
+  })
+  element.replaceChildren(...optionEls)
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  return element
+}
+
+const renderSlider = (view: SliderView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const element = state.keyedElement(view, "input") as HTMLInputElement
+  state.resetListeners(element)
+  element.type = "range"
+  element.setAttribute("data-en-role", "control")
+  element.min = String(view.min)
+  element.max = String(view.max)
+  if (view.step !== undefined) element.step = String(view.step)
+  element.value = String(view.value)
+  element.disabled = view.disabled === true
+  if (view.label !== undefined) element.setAttribute("aria-label", view.label)
+  applyControlA11y(element, view)
+  const onChange = controlChangeIntent(view)
+  if (onChange !== undefined) {
+    state.addListener(element, "input", () => runReportedIntent(report, onChange, Number(element.value)))
+  }
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  return element
+}
+
+const renderNumberField = (view: NumberFieldView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const element = state.keyedElement(view, "input") as HTMLInputElement
+  const wasActive = state.root.ownerDocument.activeElement === element
+  state.resetListeners(element)
+  element.type = "number"
+  element.setAttribute("data-en-role", "control")
+  if (view.min !== undefined) element.min = String(view.min)
+  if (view.max !== undefined) element.max = String(view.max)
+  if (view.step !== undefined) element.step = String(view.step)
+  if (view.placeholder !== undefined) element.placeholder = view.placeholder
+  if (!wasActive) element.value = String(view.value)
+  element.disabled = view.disabled === true
+  if (view.label !== undefined) element.setAttribute("aria-label", view.label)
+  applyControlA11y(element, view)
+  const onChange = controlChangeIntent(view)
+  if (onChange !== undefined) {
+    state.addListener(element, "input", () => {
+      const parsed = Number(element.value)
+      runReportedIntent(report, onChange, element.value === "" || Number.isNaN(parsed) ? null : parsed)
+    })
+  }
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  if (wasActive) state.requestFocus(element)
+  return element
+}
+
+const renderFieldRow = (view: FieldRowView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const element = state.keyedElement(view, "div")
+  state.resetListeners(element)
+  element.style.display = "flex"
+  element.style.flexDirection = "column"
+  element.style.gap = "var(--en-spacing-1)"
+  const document = element.ownerDocument
+  const label = document.createElement("label")
+  label.setAttribute("data-en-role", "label")
+  label.textContent = view.label
+  if (view.controlKey !== undefined) label.setAttribute("for", `en-${cssEscape(view.controlKey)}`)
+  const children: Array<HTMLElement> = [label]
+  if (view.description !== undefined) {
+    const description = document.createElement("span")
+    description.setAttribute("data-en-role", "description")
+    description.style.color = colorValue("textMuted")
+    description.textContent = view.description
+    children.push(description)
+  }
+  children.push(renderView(view.control, state, report))
+  if (view.error !== undefined) {
+    const error = document.createElement("span")
+    error.setAttribute("data-en-role", "error")
+    error.setAttribute("role", "alert")
+    error.style.color = colorValue("danger")
+    error.textContent = view.error
+    children.push(error)
+  }
+  element.replaceChildren(...children)
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  return element
+}
+
 const renderView = (view: View, state: DomRendererState, report: IntentReporter): HTMLElement => {
   switch (view._tag) {
     case "Stack":
@@ -2542,6 +2770,20 @@ const renderView = (view: View, state: DomRendererState, report: IntentReporter)
       return renderTabs(view, state, report)
     case "Composer":
       return renderComposer(view, state, report)
+    case "Toggle":
+      return renderToggle(view, state, report)
+    case "Select":
+      return renderSelect(view, state, report)
+    case "Checkbox":
+      return renderCheckbox(view, state, report)
+    case "RadioGroup":
+      return renderRadioGroup(view, state, report)
+    case "Slider":
+      return renderSlider(view, state, report)
+    case "NumberField":
+      return renderNumberField(view, state, report)
+    case "FieldRow":
+      return renderFieldRow(view, state, report)
   }
 }
 
@@ -2707,6 +2949,12 @@ export const viewStructure = (view: View): DomStructure => {
           ? view.panels
           : view.panels.filter((panel) => panel.id === view.selectedId)
         ).map((panel) => viewStructure(panel.content))
+      }
+    case "FieldRow":
+      return {
+        tag: "FieldRow",
+        ...(view.key === undefined ? {} : { key: view.key }),
+        children: [viewStructure(view.control)]
       }
     default:
       return {

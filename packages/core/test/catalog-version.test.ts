@@ -19,6 +19,7 @@ import {
   OverlayCatalogVersion,
   PreviousCatalogVersion,
   ResponsiveCatalogVersion,
+  SettingsControlsCatalogVersion,
   Text,
   compatibleCatalogVersions,
   decodeCompatibleView
@@ -60,11 +61,12 @@ describe("catalog version compatibility", () => {
       AnchoredOverlayCatalogVersion,
       ComboboxCatalogVersion,
       TabsCatalogVersion,
-      ComposerCatalogVersion
+      ComposerCatalogVersion,
+      SettingsControlsCatalogVersion
     ])
     // The current marker is the last entry; the previous marker is second-last.
-    expect(CatalogVersion).toBe(ComposerCatalogVersion)
-    expect(PreviousCatalogVersion).toBe(TabsCatalogVersion)
+    expect(CatalogVersion).toBe(SettingsControlsCatalogVersion)
+    expect(PreviousCatalogVersion).toBe(ComposerCatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 1]).toBe(CatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 2]).toBe(PreviousCatalogVersion)
   })

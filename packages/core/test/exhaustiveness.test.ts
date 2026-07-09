@@ -43,6 +43,13 @@ const describeView = Match.type<View>().pipe(
   Match.tag("CommandPalette", () => "typeahead"),
   Match.tag("Tabs", () => "tabs"),
   Match.tag("Composer", () => "composer"),
+  Match.tag("Toggle", () => "control"),
+  Match.tag("Select", () => "control"),
+  Match.tag("Checkbox", () => "control"),
+  Match.tag("RadioGroup", () => "control"),
+  Match.tag("Slider", () => "control"),
+  Match.tag("NumberField", () => "control"),
+  Match.tag("FieldRow", () => "control"),
   Match.exhaustive
 )
 

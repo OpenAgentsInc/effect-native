@@ -3,6 +3,7 @@ import {
   Badge,
   Button,
   Card,
+  Checkbox,
   Chip,
   Combobox,
   CommandPalette,
@@ -11,14 +12,20 @@ import {
   ContextMenu,
   Divider,
   DropdownMenu,
+  FieldRow,
   Host,
   Icon,
   Image,
   IntentRef,
   Meter,
+  NumberField,
   Popover,
+  RadioGroup,
+  Select,
+  Slider,
   StatTile,
   Table,
+  Toggle,
   Tooltip,
   IntentSchema,
   JsonPayloadSchema,
@@ -974,6 +981,129 @@ const componentStoryMap = {
             ]
           })
         }
+      })
+    })
+  ],
+  Toggle: [
+    story({
+      id: "toggle-basic",
+      component: "Toggle",
+      title: "Toggle",
+      description: "Boolean setting; typed value + onChange, disabled/invalid state.",
+      view: Toggle({
+        key: "toggle-basic",
+        value: true,
+        label: "Auto-approve safe edits",
+        onChange: IntentRef("GalleryStory.Pressed", ComponentValueBinding())
+      }),
+      controls: [booleanControl("toggle-value", "Value", ["value"], true)]
+    })
+  ],
+  Select: [
+    story({
+      id: "select-basic",
+      component: "Select",
+      title: "Select",
+      description: "Single-choice from a typed option list.",
+      view: Select({
+        key: "select-basic",
+        value: "claude",
+        label: "Model",
+        onChange: IntentRef("GalleryStory.Changed", ComponentValueBinding()),
+        options: [
+          { value: "claude", label: "Claude" },
+          { value: "codex", label: "Codex" },
+          { value: "local", label: "Local", disabled: true }
+        ]
+      })
+    })
+  ],
+  Checkbox: [
+    story({
+      id: "checkbox-basic",
+      component: "Checkbox",
+      title: "Checkbox",
+      description: "Multi-select boolean; typed checked + onChange.",
+      view: Checkbox({
+        key: "checkbox-basic",
+        checked: true,
+        label: "Stream tokens",
+        onChange: IntentRef("GalleryStory.Pressed", ComponentValueBinding())
+      }),
+      controls: [booleanControl("checkbox-checked", "Checked", ["checked"], true)]
+    })
+  ],
+  RadioGroup: [
+    story({
+      id: "radio-group-basic",
+      component: "RadioGroup",
+      title: "RadioGroup",
+      description: "Exclusive choice; typed value + onChange.",
+      view: RadioGroup({
+        key: "radio-group-basic",
+        name: "harness-mode",
+        value: "review",
+        label: "Harness mode",
+        onChange: IntentRef("GalleryStory.Changed", ComponentValueBinding()),
+        options: [
+          { value: "review", label: "Review" },
+          { value: "auto", label: "Autonomous" }
+        ]
+      })
+    })
+  ],
+  Slider: [
+    story({
+      id: "slider-basic",
+      component: "Slider",
+      title: "Slider",
+      description: "Bounded numeric range; typed value + onChange.",
+      view: Slider({
+        key: "slider-basic",
+        value: 40,
+        min: 0,
+        max: 100,
+        step: 5,
+        label: "Temperature",
+        onChange: IntentRef("GalleryStory.Pressed", ComponentValueBinding())
+      }),
+      controls: [numberControl("slider-value", "Value", ["value"], 40)]
+    })
+  ],
+  NumberField: [
+    story({
+      id: "number-field-basic",
+      component: "NumberField",
+      title: "NumberField",
+      description: "Bounded numeric input with step/min/max.",
+      view: NumberField({
+        key: "number-field-basic",
+        value: 8,
+        min: 1,
+        max: 32,
+        step: 1,
+        label: "Max parallel workers",
+        onChange: IntentRef("GalleryStory.Pressed", ComponentValueBinding())
+      }),
+      controls: [numberControl("number-field-value", "Value", ["value"], 8)]
+    })
+  ],
+  FieldRow: [
+    story({
+      id: "field-row-basic",
+      component: "FieldRow",
+      title: "FieldRow",
+      description: "Label + control + description + error layout for settings panels.",
+      view: FieldRow({
+        key: "field-row-basic",
+        label: "Auto-approve safe edits",
+        description: "Apply low-risk edits without a manual review step.",
+        controlKey: "field-row-toggle",
+        control: Toggle({
+          key: "field-row-toggle",
+          value: false,
+          onChange: IntentRef("GalleryStory.Pressed", ComponentValueBinding())
+        })
       })
     })
   ]

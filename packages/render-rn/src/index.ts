@@ -4,6 +4,7 @@ import {
   type BadgeView,
   type ButtonView,
   type CardView,
+  type CheckboxView,
   type ChipView,
   type ColorToken,
   type ComboboxOption,
@@ -14,9 +15,16 @@ import {
   type ContextMenuView,
   type DividerView,
   type DropdownMenuView,
+  type FieldBinding,
+  type FieldRowView,
   type MenuItem,
   type MeterView,
+  type NumberFieldView,
   type PopoverView,
+  type RadioGroupView,
+  type SelectView,
+  type SliderView,
+  type ToggleView,
   type TooltipView,
   type StatTileView,
   type TableView,
@@ -1587,6 +1595,208 @@ const renderComposer = (
   )
 }
 
+// Settings form controls (issue #38) on React Native. Each emits a typed
+// onChange (or a #12 FormFieldChanged intent when `field` is bound), mapped to
+// native switch/picker/checkbox/radio/slider/number equivalents.
+const controlChangeIntent = (view: {
+  readonly field?: FieldBinding
+  readonly onChange?: IntentRef
+}): IntentRef | undefined =>
+  view.field !== undefined ? IntentRef("FormFieldChanged", FormFieldValueBinding(view.field)) : view.onChange
+
+const renderToggle = (
+  view: ToggleView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const onChange = controlChangeIntent(view)
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.Pressable,
+    {
+      ...baseProps(view, viewStyle(view, options)),
+      testID: "en-toggle",
+      accessibilityRole: "switch",
+      accessibilityState: { checked: view.value, disabled: view.disabled === true },
+      disabled: view.disabled === true,
+      ...(onChange === undefined || view.disabled === true
+        ? {}
+        : { onPress: () => runReportedIntent(report, onChange, !view.value) })
+    },
+    createElement(dependencies, dependencies.ReactNative.Text, { key: "label" }, view.label ?? (view.value ? "On" : "Off"))
+  )
+}
+
+const renderSelect = (
+  view: SelectView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const onChange = controlChangeIntent(view)
+  // No native <select> in RN; render selectable rows (picker-style).
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    { ...baseProps(view, mergeNativeStyles({ flexDirection: "column" }, viewStyle(view, options))), testID: "en-select", accessibilityLabel: view.label },
+    ...view.options.map((option) =>
+      createElement(
+        dependencies,
+        dependencies.ReactNative.Pressable,
+        {
+          key: `option-${option.value}`,
+          testID: `en-select-option:${option.value}`,
+          accessibilityRole: "menuitem",
+          accessibilityState: { selected: view.value === option.value, disabled: view.disabled === true || option.disabled === true },
+          disabled: view.disabled === true || option.disabled === true,
+          ...(onChange === undefined || view.disabled === true || option.disabled === true
+            ? {}
+            : { onPress: () => runReportedIntent(report, onChange, option.value) })
+        },
+        createElement(dependencies, dependencies.ReactNative.Text, { key: "label" }, option.label)
+      ))
+  )
+}
+
+const renderCheckbox = (
+  view: CheckboxView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const onChange = controlChangeIntent(view)
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.Pressable,
+    {
+      ...baseProps(view, mergeNativeStyles({ flexDirection: "row" }, viewStyle(view, options))),
+      testID: "en-checkbox",
+      accessibilityRole: "checkbox",
+      accessibilityState: { checked: view.checked, disabled: view.disabled === true },
+      disabled: view.disabled === true,
+      ...(onChange === undefined || view.disabled === true
+        ? {}
+        : { onPress: () => runReportedIntent(report, onChange, !view.checked) })
+    },
+    createElement(dependencies, dependencies.ReactNative.Text, { key: "box" }, view.checked ? "☑" : "☐"),
+    ...(view.label === undefined ? [] : [createElement(dependencies, dependencies.ReactNative.Text, { key: "label" }, view.label)])
+  )
+}
+
+const renderRadioGroup = (
+  view: RadioGroupView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const onChange = controlChangeIntent(view)
+  const orientation = view.orientation ?? "vertical"
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    { ...baseProps(view, mergeNativeStyles({ flexDirection: orientation === "horizontal" ? "row" : "column" }, viewStyle(view, options))), testID: "en-radio-group", accessibilityRole: "radiogroup", accessibilityLabel: view.label },
+    ...view.options.map((option) =>
+      createElement(
+        dependencies,
+        dependencies.ReactNative.Pressable,
+        {
+          key: `radio-${option.value}`,
+          testID: `en-radio:${option.value}`,
+          accessibilityRole: "radio",
+          accessibilityState: { selected: view.value === option.value, disabled: view.disabled === true || option.disabled === true },
+          disabled: view.disabled === true || option.disabled === true,
+          ...(onChange === undefined || view.disabled === true || option.disabled === true
+            ? {}
+            : { onPress: () => runReportedIntent(report, onChange, option.value) })
+        },
+        createElement(dependencies, dependencies.ReactNative.Text, { key: "dot" }, view.value === option.value ? "◉" : "○"),
+        createElement(dependencies, dependencies.ReactNative.Text, { key: "label" }, option.label)
+      ))
+  )
+}
+
+const renderSlider = (
+  view: SliderView,
+  dependencies: ReactNativeDependencies,
+  options: ReactNativeRenderOptions
+): ReactElementLike =>
+  // No RN core Slider; expose the value/range as an accessible adjustable and
+  // reflect the current value. Drag-to-change is declared unsupported (a
+  // community Slider lib is an app-level swap).
+  createElement(dependencies, dependencies.ReactNative.View, {
+    ...baseProps(view, viewStyle(view, options)),
+    testID: "en-slider",
+    accessibilityRole: "adjustable",
+    accessibilityLabel: view.label,
+    accessibilityValue: { min: view.min, max: view.max, now: view.value }
+  })
+
+const renderNumberField = (
+  view: NumberFieldView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const onChange = controlChangeIntent(view)
+  return createElement(dependencies, dependencies.ReactNative.TextInput, {
+    ...baseProps(view, viewStyle(view, options)),
+    testID: "en-number-field",
+    accessibilityLabel: view.label,
+    keyboardType: "numeric",
+    editable: view.disabled !== true,
+    placeholder: view.placeholder,
+    value: String(view.value),
+    ...(onChange === undefined
+      ? {}
+      : {
+          onChangeText: (text: string) => {
+            const parsed = Number(text)
+            runReportedIntent(report, onChange, text === "" || Number.isNaN(parsed) ? null : parsed)
+          }
+        })
+  })
+}
+
+const renderFieldRow = (
+  view: FieldRowView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const theme = options.theme ?? defaultTheme
+  const children: Array<ReactElementLike> = [
+    createElement(dependencies, dependencies.ReactNative.Text, { key: "label", testID: "en-field-row-label" }, view.label)
+  ]
+  if (view.description !== undefined) {
+    children.push(
+      createElement(
+        dependencies,
+        dependencies.ReactNative.Text,
+        { key: "description", style: { color: colorValue(theme, "textMuted") } },
+        view.description
+      )
+    )
+  }
+  children.push(renderResolvedReactNativeView(view.control, dependencies, report, options))
+  if (view.error !== undefined) {
+    children.push(
+      createElement(
+        dependencies,
+        dependencies.ReactNative.Text,
+        { key: "error", testID: "en-field-row-error", accessibilityRole: "alert", style: { color: colorValue(theme, "danger") } },
+        view.error
+      )
+    )
+  }
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    baseProps(view, mergeNativeStyles({ flexDirection: "column", gap: spacingValue(theme, "1") }, viewStyle(view, options))),
+    ...children
+  )
+}
+
 const renderResolvedReactNativeView = (
   view: View,
   dependencies: ReactNativeDependencies,
@@ -1656,6 +1866,20 @@ const renderResolvedReactNativeView = (
       return renderTabs(view, dependencies, report, options)
     case "Composer":
       return renderComposer(view, dependencies, report, options)
+    case "Toggle":
+      return renderToggle(view, dependencies, report, options)
+    case "Select":
+      return renderSelect(view, dependencies, report, options)
+    case "Checkbox":
+      return renderCheckbox(view, dependencies, report, options)
+    case "RadioGroup":
+      return renderRadioGroup(view, dependencies, report, options)
+    case "Slider":
+      return renderSlider(view, dependencies, options)
+    case "NumberField":
+      return renderNumberField(view, dependencies, report, options)
+    case "FieldRow":
+      return renderFieldRow(view, dependencies, report, options)
   }
 }
 
@@ -1832,6 +2056,12 @@ export const viewStructure = (view: View): ReactNativeStructure => {
         tag: "CommandPalette",
         ...(view.key === undefined ? {} : { key: view.key }),
         children: [viewStructure(view.combobox)]
+      }
+    case "FieldRow":
+      return {
+        tag: "FieldRow",
+        ...(view.key === undefined ? {} : { key: view.key }),
+        children: [viewStructure(view.control)]
       }
     case "Tabs":
       return {

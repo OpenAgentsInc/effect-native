@@ -79,8 +79,9 @@ export const AnchoredOverlayCatalogVersion = "effect-native/v11" as const
 export const ComboboxCatalogVersion = "effect-native/v12" as const
 export const TabsCatalogVersion = "effect-native/v13" as const
 export const ComposerCatalogVersion = "effect-native/v14" as const
-export const PreviousCatalogVersion = TabsCatalogVersion
-export const CatalogVersion = ComposerCatalogVersion
+export const SettingsControlsCatalogVersion = "effect-native/v15" as const
+export const PreviousCatalogVersion = ComposerCatalogVersion
+export const CatalogVersion = SettingsControlsCatalogVersion
 export const CatalogVersionSchema = Schema.Literal(CatalogVersion)
 export type CatalogVersion = typeof CatalogVersion
 export const compatibleCatalogVersions = [
@@ -97,6 +98,7 @@ export const compatibleCatalogVersions = [
   AppShellCatalogVersion,
   AnchoredOverlayCatalogVersion,
   ComboboxCatalogVersion,
+  TabsCatalogVersion,
   PreviousCatalogVersion,
   CatalogVersion
 ] as const
@@ -134,7 +136,14 @@ export const componentTags = [
   "Combobox",
   "CommandPalette",
   "Tabs",
-  "Composer"
+  "Composer",
+  "Toggle",
+  "Select",
+  "Checkbox",
+  "RadioGroup",
+  "Slider",
+  "NumberField",
+  "FieldRow"
 ] as const
 export type ComponentTag = (typeof componentTags)[number]
 
@@ -2159,6 +2168,106 @@ export interface ComposerView extends NodeBase {
   readonly style?: TextFieldStyle
 }
 
+// Settings form controls (issue #38). Concrete widgets the Schema-backed
+// FormSpec (#12) binds to: each carries a typed value + typed onChange intent,
+// disabled/invalid state, and an optional `field` binding so it drives a
+// FormSpec field exactly like TextField. FieldRow is the label + control +
+// description + error layout the settings panels repeat.
+export interface ChoiceOption {
+  readonly value: string
+  readonly label: string
+  readonly disabled?: boolean
+}
+
+export interface ToggleView extends NodeBase {
+  readonly _tag: "Toggle"
+  readonly value: boolean
+  readonly label?: string
+  readonly disabled?: boolean
+  readonly invalid?: boolean
+  readonly field?: FieldBinding
+  readonly onChange?: IntentRef
+  readonly style?: CardStyle
+}
+
+export interface SelectView extends NodeBase {
+  readonly _tag: "Select"
+  readonly value: string
+  readonly options: ReadonlyArray<ChoiceOption>
+  readonly placeholder?: string
+  readonly label?: string
+  readonly disabled?: boolean
+  readonly invalid?: boolean
+  readonly field?: FieldBinding
+  readonly onChange?: IntentRef
+  readonly style?: TextFieldStyle
+}
+
+export interface CheckboxView extends NodeBase {
+  readonly _tag: "Checkbox"
+  readonly checked: boolean
+  readonly label?: string
+  readonly disabled?: boolean
+  readonly invalid?: boolean
+  readonly field?: FieldBinding
+  readonly onChange?: IntentRef
+  readonly style?: CardStyle
+}
+
+export interface RadioGroupView extends NodeBase {
+  readonly _tag: "RadioGroup"
+  readonly value: string
+  readonly name: string
+  readonly options: ReadonlyArray<ChoiceOption>
+  readonly orientation?: "horizontal" | "vertical"
+  readonly label?: string
+  readonly disabled?: boolean
+  readonly invalid?: boolean
+  readonly field?: FieldBinding
+  readonly onChange?: IntentRef
+  readonly style?: CardStyle
+}
+
+export interface SliderView extends NodeBase {
+  readonly _tag: "Slider"
+  readonly value: number
+  readonly min: number
+  readonly max: number
+  readonly step?: number
+  readonly label?: string
+  readonly disabled?: boolean
+  readonly invalid?: boolean
+  readonly field?: FieldBinding
+  readonly onChange?: IntentRef
+  readonly style?: CardStyle
+}
+
+export interface NumberFieldView extends NodeBase {
+  readonly _tag: "NumberField"
+  readonly value: number
+  readonly min?: number
+  readonly max?: number
+  readonly step?: number
+  readonly placeholder?: string
+  readonly label?: string
+  readonly disabled?: boolean
+  readonly invalid?: boolean
+  readonly field?: FieldBinding
+  readonly onChange?: IntentRef
+  readonly style?: TextFieldStyle
+}
+
+export interface FieldRowView extends NodeBase {
+  readonly _tag: "FieldRow"
+  readonly label: string
+  readonly description?: string
+  readonly error?: string
+  // The bound control's node key, for label association.
+  readonly controlKey?: string
+  readonly control: View
+  readonly style?: CardStyle
+}
+
 export type View =
   | StackView
   | TextView
@@ -2191,6 +2300,13 @@ export type View =
   | CommandPaletteView
   | TabsView
   | ComposerView
+  | ToggleView
+  | SelectView
+  | CheckboxView
+  | RadioGroupView
+  | SliderView
+  | NumberFieldView
+  | FieldRowView
 
 export type KeyedView = View & { readonly key: NodeKey }
 
@@ -2243,6 +2359,8 @@ const childViewEntries = (
       return view.autocomplete === undefined
         ? []
         : [{ path: ["autocomplete", "combobox"], view: view.autocomplete.combobox }]
+    case "FieldRow":
+      return [{ path: ["control"], view: view.control }]
     default:
       return []
   }
@@ -2792,6 +2910,81 @@ export const ComposerSchema: Schema.Codec<ComposerView, ComposerView> = Schema.T
   style: TextFieldStyleSchema.pipe(Schema.optionalKey)
 })
 
+export const ChoiceOptionSchema: Schema.Codec<ChoiceOption, ChoiceOption> = Schema.Struct({
+  value: Schema.String,
+  label: Schema.String,
+  disabled: Schema.Boolean.pipe(Schema.optionalKey)
+})
+
+const SettingsControlCommonFields = {
+  ...CommonFields,
+  label: Schema.String.pipe(Schema.optionalKey),
+  disabled: Schema.Boolean.pipe(Schema.optionalKey),
+  invalid: Schema.Boolean.pipe(Schema.optionalKey),
+  field: FieldBindingSchema.pipe(Schema.optionalKey),
+  onChange: IntentRefSchema.pipe(Schema.optionalKey)
+} as const
+
+export const ToggleSchema: Schema.Codec<ToggleView, ToggleView> = Schema.TaggedStruct("Toggle", {
+  ...SettingsControlCommonFields,
+  value: Schema.Boolean,
+  style: CardStyleSchema.pipe(Schema.optionalKey)
+})
+
+export const SelectSchema: Schema.Codec<SelectView, SelectView> = Schema.TaggedStruct("Select", {
+  ...SettingsControlCommonFields,
+  value: Schema.String,
+  options: Schema.Array(ChoiceOptionSchema),
+  placeholder: Schema.String.pipe(Schema.optionalKey),
+  style: TextFieldStyleSchema.pipe(Schema.optionalKey)
+})
+
+export const CheckboxSchema: Schema.Codec<CheckboxView, CheckboxView> = Schema.TaggedStruct("Checkbox", {
+  ...SettingsControlCommonFields,
+  checked: Schema.Boolean,
+  style: CardStyleSchema.pipe(Schema.optionalKey)
+})
+
+export const RadioGroupSchema: Schema.Codec<RadioGroupView, RadioGroupView> = Schema.TaggedStruct("RadioGroup", {
+  ...SettingsControlCommonFields,
+  value: Schema.String,
+  name: Schema.NonEmptyString,
+  options: Schema.Array(ChoiceOptionSchema),
+  orientation: Schema.Literals(["horizontal", "vertical"]).pipe(Schema.optionalKey),
+  style: CardStyleSchema.pipe(Schema.optionalKey)
+})
+
+const FiniteNumberSchema = Schema.Number.check(Schema.isFinite({ title: "FiniteNumber" }))
+
+export const SliderSchema: Schema.Codec<SliderView, SliderView> = Schema.TaggedStruct("Slider", {
+  ...SettingsControlCommonFields,
+  value: FiniteNumberSchema,
+  min: FiniteNumberSchema,
+  max: FiniteNumberSchema,
+  step: Schema.Number.check(Schema.isFinite({ title: "FiniteStep" }), Schema.isGreaterThan(0, { title: "PositiveStep" })).pipe(Schema.optionalKey),
+  style: CardStyleSchema.pipe(Schema.optionalKey)
+})
+
+export const NumberFieldSchema: Schema.Codec<NumberFieldView, NumberFieldView> = Schema.TaggedStruct("NumberField", {
+  ...SettingsControlCommonFields,
+  value: FiniteNumberSchema,
+  min: FiniteNumberSchema.pipe(Schema.optionalKey),
+  max: FiniteNumberSchema.pipe(Schema.optionalKey),
+  step: Schema.Number.check(Schema.isFinite({ title: "FiniteStep" }), Schema.isGreaterThan(0, { title: "PositiveStep" })).pipe(Schema.optionalKey),
+  placeholder: Schema.String.pipe(Schema.optionalKey),
+  style: TextFieldStyleSchema.pipe(Schema.optionalKey)
+})
+
+export const FieldRowSchema: Schema.Codec<FieldRowView, FieldRowView> = Schema.TaggedStruct("FieldRow", {
+  ...CommonFields,
+  label: Schema.String,
+  description: Schema.String.pipe(Schema.optionalKey),
+  error: Schema.String.pipe(Schema.optionalKey),
+  controlKey: Schema.String.pipe(Schema.optionalKey),
+  control: ViewSelf,
+  style: CardStyleSchema.pipe(Schema.optionalKey)
+})
+
 export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
   Schema.Union([
     StackSchema,
@@ -2824,7 +3017,14 @@ export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
     ComboboxSchema,
     CommandPaletteSchema,
     TabsSchema,
-    ComposerSchema
+    ComposerSchema,
+    ToggleSchema,
+    SelectSchema,
+    CheckboxSchema,
+    RadioGroupSchema,
+    SliderSchema,
+    NumberFieldSchema,
+    FieldRowSchema
   ]).check(OverlayStackFilter)
 )
 
@@ -2975,6 +3175,34 @@ export const Tabs = (props: TabsProps): TabsView =>
 export type ComposerProps = WithoutTagAndVersion<ComposerView>
 export const Composer = (props: ComposerProps): ComposerView =>
   ComposerSchema.make({ _tag: "Composer", catalogVersion: CatalogVersion, ...props })
+
+export type ToggleProps = WithoutTagAndVersion<ToggleView>
+export const Toggle = (props: ToggleProps): ToggleView =>
+  ToggleSchema.make({ _tag: "Toggle", catalogVersion: CatalogVersion, ...props })
+
+export type SelectProps = WithoutTagAndVersion<SelectView>
+export const Select = (props: SelectProps): SelectView =>
+  SelectSchema.make({ _tag: "Select", catalogVersion: CatalogVersion, ...props })
+
+export type CheckboxProps = WithoutTagAndVersion<CheckboxView>
+export const Checkbox = (props: CheckboxProps): CheckboxView =>
+  CheckboxSchema.make({ _tag: "Checkbox", catalogVersion: CatalogVersion, ...props })
+
+export type RadioGroupProps = WithoutTagAndVersion<RadioGroupView>
+export const RadioGroup = (props: RadioGroupProps): RadioGroupView =>
+  RadioGroupSchema.make({ _tag: "RadioGroup", catalogVersion: CatalogVersion, ...props })
+
+export type SliderProps = WithoutTagAndVersion<SliderView>
+export const Slider = (props: SliderProps): SliderView =>
+  SliderSchema.make({ _tag: "Slider", catalogVersion: CatalogVersion, ...props })
+
+export type NumberFieldProps = WithoutTagAndVersion<NumberFieldView>
+export const NumberField = (props: NumberFieldProps): NumberFieldView =>
+  NumberFieldSchema.make({ _tag: "NumberField", catalogVersion: CatalogVersion, ...props })
+
+export type FieldRowProps = WithoutTagAndVersion<FieldRowView>
+export const FieldRow = (props: FieldRowProps): FieldRowView =>
+  FieldRowSchema.make({ _tag: "FieldRow", catalogVersion: CatalogVersion, ...props })
 
 // Normalize a composer document to its plaintext value (text runs verbatim,
 // mentions rendered as their label). This is the value renderers emit on change
@@ -3130,9 +3358,21 @@ export const resolveView = (view: View, input: ViewResolution = {}): View => {
     case "StatTile":
     case "NavRail":
     case "Combobox":
+    case "Toggle":
+    case "Select":
+    case "Checkbox":
+    case "RadioGroup":
+    case "Slider":
+    case "NumberField":
       return {
         ...view,
         ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) })
+      }
+    case "FieldRow":
+      return {
+        ...view,
+        ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) }),
+        control: resolveView(view.control, input)
       }
     case "Table":
       return {
@@ -3216,7 +3456,18 @@ export const resolveBindings = <State>(view: View, state: State): View => {
     case "StatTile":
     case "NavRail":
     case "Combobox":
+    case "Toggle":
+    case "Select":
+    case "Checkbox":
+    case "RadioGroup":
+    case "Slider":
+    case "NumberField":
       return view
+    case "FieldRow":
+      return {
+        ...view,
+        control: resolveBindings(view.control, state)
+      }
     case "Table":
       return {
         ...view,
@@ -3378,6 +3629,11 @@ export const redactSecureView = (view: View): View => {
       return {
         ...view,
         panels: view.panels.map((panel) => ({ ...panel, content: redactSecureView(panel.content) }))
+      }
+    case "FieldRow":
+      return {
+        ...view,
+        control: redactSecureView(view.control)
       }
     default:
       return view
