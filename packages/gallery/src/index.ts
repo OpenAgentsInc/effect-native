@@ -18,13 +18,16 @@ import {
   Link,
   List,
   Modal,
+  NavRail,
   SectionList,
   Sheet,
   Spacer,
+  SplitPane,
   Stack,
   StaticPayload,
   Text,
   TextField,
+  Workbench,
   ViewSchema,
   componentTags,
   colorTokens,
@@ -716,6 +719,66 @@ const componentStoryMap = {
           }
         ]
       })
+    })
+  ],
+  SplitPane: [
+    story({
+      id: "split-pane-basic",
+      component: "SplitPane",
+      title: "SplitPane",
+      description: "Resizable split layout; divider drag reports a typed { paneId, size } intent.",
+      view: SplitPane({
+        key: "split-pane-basic",
+        orientation: "row",
+        panes: [
+          { id: "sidebar", size: 240, min: 160, max: 360, content: Text({ key: "sp-side", content: "Sidebar", variant: "body" }) },
+          { id: "main", content: Text({ key: "sp-main", content: "Main", variant: "body" }) }
+        ],
+        onResize: IntentRef("GalleryStory.Pressed", StaticPayload({ id: "split-pane-basic" })),
+        onCollapseToggle: IntentRef("GalleryStory.Pressed", StaticPayload({ id: "split-pane-collapse" }))
+      }),
+      controls: [enumControl("split-orientation", "Orientation", ["orientation"], "row", stackDirections)]
+    })
+  ],
+  NavRail: [
+    story({
+      id: "nav-rail-basic",
+      component: "NavRail",
+      title: "NavRail",
+      description: "Navigation rail with sections and selectable items; selection is a typed intent.",
+      view: NavRail({
+        key: "nav-rail-basic",
+        activeId: "chat",
+        onSelect: IntentRef("GalleryStory.Pressed", ComponentValueBinding()),
+        sections: [
+          {
+            id: "workbench",
+            label: "Workbench",
+            items: [
+              { id: "chat", label: "Chat", icon: "Circle" },
+              { id: "editor", label: "Editor", icon: "Play" },
+              { id: "terminal", label: "Terminal", icon: "Stop", disabled: true }
+            ]
+          }
+        ]
+      })
+    })
+  ],
+  Workbench: [
+    story({
+      id: "workbench-basic",
+      component: "Workbench",
+      title: "Workbench",
+      description: "Names and swaps the active pane as typed state — no mount/unmount closures.",
+      view: Workbench({
+        key: "workbench-basic",
+        activePaneId: "chat",
+        panes: [
+          { id: "chat", content: Text({ key: "wb-chat", content: "Chat pane", variant: "body" }) },
+          { id: "editor", content: Text({ key: "wb-editor", content: "Editor pane", variant: "body" }) }
+        ]
+      }),
+      controls: [booleanControl("workbench-keep-mounted", "Keep mounted", ["keepMounted"], false)]
     })
   ]
 } satisfies { readonly [Tag in ComponentTag]: ReadonlyArray<Story> }

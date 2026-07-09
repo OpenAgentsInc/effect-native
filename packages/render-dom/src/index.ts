@@ -32,14 +32,17 @@ import {
   type MountedSurface,
   NavigationHandler,
   type NavigationDestination,
+  type NavRailView,
   type RendererAdapter,
   type SectionListView,
   type SheetView,
   type SpacerView,
+  type SplitPaneView,
   type StackView,
   type TextFieldView,
   type TextView,
   type View,
+  type WorkbenchView,
   type Viewport,
   type ViewportInput,
   StaticPayload,
@@ -1566,6 +1569,199 @@ const renderTable = (view: TableView, state: DomRendererState, report: IntentRep
   return element
 }
 
+// App shell components (issue #27). SplitPane lays panes out along an axis with
+// draggable dividers whose drag reports a typed { paneId, size } intent (no
+// free-form drag math in app code). NavRail is a selection contract; Workbench
+// swaps the active pane as typed state.
+const iconSvg = (name: IconName, sizePx: number): string => {
+  const glyph = iconRegistry[name]
+  const paint = glyph.fill
+    ? 'fill="currentColor"'
+    : 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"'
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${sizePx}" height="${sizePx}" viewBox="0 0 24 24" ${paint}>${glyph.body}</svg>`
+}
+
+const splitAxis = (orientation: "row" | "column"): {
+  readonly clientAxis: "clientX" | "clientY"
+  readonly sizeField: "width" | "height"
+  readonly cursor: string
+} =>
+  orientation === "row"
+    ? { clientAxis: "clientX", sizeField: "width", cursor: "col-resize" }
+    : { clientAxis: "clientY", sizeField: "height", cursor: "row-resize" }
+
+const clampSize = (value: number, min: Dimension | undefined, max: Dimension | undefined, theme: Theme): number => {
+  let next = value
+  if (min !== undefined) next = Math.max(next, dimensionPixels(min, theme))
+  if (max !== undefined) next = Math.min(next, dimensionPixels(max, theme))
+  return Math.max(0, next)
+}
+
+const renderSplitPane = (view: SplitPaneView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const element = state.keyedElement(view, "div")
+  state.resetListeners(element)
+  const axis = splitAxis(view.orientation)
+  element.style.display = "flex"
+  element.style.flexDirection = view.orientation
+  element.style.width = "100%"
+  element.style.height = "100%"
+  const children: Array<HTMLElement> = []
+  view.panes.forEach((pane, index) => {
+    const paneEl = element.ownerDocument.createElement("div")
+    paneEl.setAttribute("data-en-pane", pane.id)
+    paneEl.setAttribute("data-en-collapsed", pane.collapsed === true ? "true" : "false")
+    if (pane.collapsed === true) {
+      paneEl.style.flex = "0 0 0"
+      paneEl.style.overflow = "hidden"
+      paneEl.style[axis.sizeField] = "0"
+    } else if (pane.size === undefined) {
+      paneEl.style.flex = "1 1 0"
+    } else {
+      paneEl.style.flex = "0 0 auto"
+      paneEl.style[axis.sizeField] = dimensionValue(pane.size)
+    }
+    paneEl.appendChild(renderView(pane.content, state, report))
+    children.push(paneEl)
+
+    if (index < view.panes.length - 1) {
+      const divider = element.ownerDocument.createElement("div")
+      divider.setAttribute("data-en-role", "divider")
+      divider.setAttribute("data-en-divider-index", String(index))
+      divider.setAttribute("role", "separator")
+      divider.setAttribute("aria-orientation", view.orientation === "row" ? "vertical" : "horizontal")
+      divider.tabIndex = 0
+      divider.style.flex = "0 0 auto"
+      divider.style[axis.sizeField] = "6px"
+      divider.style.cursor = axis.cursor
+      divider.style.background = colorValue("border")
+      state.resetListeners(divider)
+      const onResize = view.onResize
+      if (onResize !== undefined) {
+        let dragging = false
+        let startCoord = 0
+        let startSize = 0
+        const move = (event: PointerEvent) => {
+          if (!dragging) return
+          const delta = event[axis.clientAxis] - startCoord
+          const size = clampSize(startSize + delta, pane.min, pane.max, state.theme)
+          runReportedIntent(report, onResize, { paneId: pane.id, size })
+        }
+        const up = () => {
+          dragging = false
+          element.ownerDocument.removeEventListener("pointermove", move as EventListener)
+          element.ownerDocument.removeEventListener("pointerup", up as EventListener)
+        }
+        state.addListener(divider, "pointerdown", (event) => {
+          dragging = true
+          startCoord = (event as PointerEvent)[axis.clientAxis]
+          const rect = paneEl.getBoundingClientRect?.()
+          startSize = rect === undefined
+            ? (typeof pane.size === "number" ? pane.size : dimensionPixels(pane.size ?? 0, state.theme))
+            : rect[axis.sizeField]
+          element.ownerDocument.addEventListener("pointermove", move as EventListener)
+          element.ownerDocument.addEventListener("pointerup", up as EventListener)
+        })
+      }
+      const onCollapseToggle = view.onCollapseToggle
+      if (onCollapseToggle !== undefined) {
+        state.addListener(divider, "dblclick", () =>
+          runReportedIntent(report, onCollapseToggle, { paneId: pane.id, collapsed: pane.collapsed !== true })
+        )
+      }
+      children.push(divider)
+    }
+  })
+  element.replaceChildren(...children)
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  applyInteractions(element, view, state, report)
+  return element
+}
+
+const renderNavRail = (view: NavRailView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const element = state.keyedElement(view, "nav")
+  state.resetListeners(element)
+  element.style.display = "flex"
+  element.style.flexDirection = "column"
+  const document = element.ownerDocument
+  const sections = view.sections.map((section) => {
+    const sectionEl = document.createElement("div")
+    sectionEl.setAttribute("data-en-section", section.id)
+    sectionEl.setAttribute("role", "group")
+    if (section.label !== undefined) {
+      const label = document.createElement("span")
+      label.setAttribute("data-en-role", "section-label")
+      label.textContent = section.label
+      sectionEl.appendChild(label)
+    }
+    for (const item of section.items) {
+      const button = document.createElement("button") as HTMLButtonElement
+      button.type = "button"
+      button.setAttribute("data-en-nav-item", item.id)
+      button.disabled = item.disabled === true
+      const active = view.activeId === item.id
+      button.setAttribute("data-en-active", active ? "true" : "false")
+      if (active) button.setAttribute("aria-current", "page")
+      button.style.display = "flex"
+      button.style.alignItems = "center"
+      button.style.gap = "var(--en-spacing-2)"
+      if (item.icon !== undefined) {
+        const iconEl = document.createElement("span")
+        iconEl.setAttribute("data-en-icon", item.icon)
+        iconEl.setAttribute("aria-hidden", "true")
+        iconEl.style.display = "inline-flex"
+        iconEl.innerHTML = iconSvg(item.icon, iconSizePixels.md)
+        button.appendChild(iconEl)
+      }
+      const label = document.createElement("span")
+      label.setAttribute("data-en-role", "label")
+      label.textContent = item.label
+      button.appendChild(label)
+      state.resetListeners(button)
+      if (item.disabled !== true) {
+        state.addListener(button, "click", () => runReportedIntent(report, view.onSelect, item.id))
+      }
+      sectionEl.appendChild(button)
+    }
+    return sectionEl
+  })
+  element.replaceChildren(...sections)
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  applyInteractions(element, view, state, report)
+  return element
+}
+
+const renderWorkbench = (view: WorkbenchView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const element = state.keyedElement(view, "div")
+  state.resetListeners(element)
+  element.setAttribute("data-en-active-pane", view.activePaneId)
+  element.style.display = "flex"
+  element.style.flex = "1 1 0"
+  element.style.minWidth = "0"
+  const keepMounted = view.keepMounted === true
+  const panesToRender = keepMounted
+    ? view.panes
+    : view.panes.filter((pane) => pane.id === view.activePaneId)
+  const children = panesToRender.map((pane) => {
+    const paneEl = element.ownerDocument.createElement("div")
+    paneEl.setAttribute("data-en-pane", pane.id)
+    const active = pane.id === view.activePaneId
+    paneEl.setAttribute("data-en-active", active ? "true" : "false")
+    paneEl.style.display = active ? "flex" : "none"
+    paneEl.style.flex = "1 1 0"
+    paneEl.style.minWidth = "0"
+    if (!active) paneEl.setAttribute("aria-hidden", "true")
+    paneEl.appendChild(renderView(pane.content, state, report))
+    return paneEl
+  })
+  element.replaceChildren(...children)
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  applyInteractions(element, view, state, report)
+  return element
+}
+
 const renderView = (view: View, state: DomRendererState, report: IntentReporter): HTMLElement => {
   switch (view._tag) {
     case "Stack":
@@ -1608,6 +1804,12 @@ const renderView = (view: View, state: DomRendererState, report: IntentReporter)
       return renderStatTile(view, state)
     case "Table":
       return renderTable(view, state, report)
+    case "SplitPane":
+      return renderSplitPane(view, state, report)
+    case "NavRail":
+      return renderNavRail(view, state, report)
+    case "Workbench":
+      return renderWorkbench(view, state, report)
   }
 }
 
@@ -1737,6 +1939,21 @@ export const viewStructure = (view: View): DomStructure => {
         tag: "Card",
         ...(view.key === undefined ? {} : { key: view.key }),
         children: view.children.map(viewStructure)
+      }
+    case "SplitPane":
+      return {
+        tag: "SplitPane",
+        ...(view.key === undefined ? {} : { key: view.key }),
+        children: view.panes.map((pane) => viewStructure(pane.content))
+      }
+    case "Workbench":
+      return {
+        tag: "Workbench",
+        ...(view.key === undefined ? {} : { key: view.key }),
+        children: (view.keepMounted === true
+          ? view.panes
+          : view.panes.filter((pane) => pane.id === view.activePaneId)
+        ).map((pane) => viewStructure(pane.content))
       }
     default:
       return {

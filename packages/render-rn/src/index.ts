@@ -27,15 +27,18 @@ import {
   type ListView,
   type ModalView,
   type MountedSurface,
+  type NavRailView,
   type PlatformVariant,
   type RendererAdapter,
   type SectionListView,
   type SheetView,
   type SpacerView,
+  type SplitPaneView,
   type StackView,
   type TextFieldView,
   type TextView,
   type View,
+  type WorkbenchView,
   type Viewport,
   type ViewportInput,
   StaticPayload,
@@ -1064,6 +1067,134 @@ const renderTable = (
 const rnAlignItems = (align: "start" | "center" | "end" | undefined): "flex-start" | "center" | "flex-end" =>
   align === "center" ? "center" : align === "end" ? "flex-end" : "flex-start"
 
+// App shell components (issue #27) on React Native. Divider drag-to-resize has
+// no faithful RN host mapping and is declared unsupported (dividers render as
+// static separators, sizes are honored). NavRail maps to a stacked selectable
+// list; Workbench renders the active pane (hidden-but-mounted when keepMounted).
+const renderSplitPane = (
+  view: SplitPaneView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const theme = options.theme ?? defaultTheme
+  const sizeField = view.orientation === "row" ? "width" : "height"
+  const style = mergeNativeStyles(
+    { flexDirection: view.orientation, flex: 1 },
+    viewStyle(view, options)
+  )
+  const children: Array<ReactElementLike> = []
+  view.panes.forEach((pane, index) => {
+    const paneStyle: ReactNativeStyle = pane.collapsed === true
+      ? { [sizeField]: 0, overflow: "hidden" }
+      : pane.size === undefined
+        ? { flex: 1 }
+        : { [sizeField]: dimensionValue(theme, pane.size) }
+    children.push(
+      createElement(
+        dependencies,
+        dependencies.ReactNative.View,
+        { key: `pane-${pane.id}`, nativeID: `effect-native-pane:${pane.id}`, style: paneStyle },
+        renderResolvedReactNativeView(pane.content, dependencies, report, options)
+      )
+    )
+    if (index < view.panes.length - 1) {
+      children.push(
+        createElement(dependencies, dependencies.ReactNative.View, {
+          key: `divider-${index}`,
+          testID: "en-split-divider",
+          accessibilityRole: "none",
+          style: {
+            [sizeField]: 1,
+            backgroundColor: colorValue(theme, "border")
+          }
+        })
+      )
+    }
+  })
+  return createElement(dependencies, dependencies.ReactNative.View, baseProps(view, style), ...children)
+}
+
+const renderNavRail = (
+  view: NavRailView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const theme = options.theme ?? defaultTheme
+  const style = mergeNativeStyles({ flexDirection: "column" }, viewStyle(view, options))
+  const sections = view.sections.map((section) => {
+    const parts: Array<ReactElementLike> = []
+    if (section.label !== undefined) {
+      parts.push(
+        createElement(dependencies, dependencies.ReactNative.Text, { key: "label" }, section.label)
+      )
+    }
+    for (const item of section.items) {
+      const active = view.activeId === item.id
+      const itemChildren: Array<ReactElementLike> = []
+      if (item.icon !== undefined) {
+        itemChildren.push(
+          createElement(dependencies, dependencies.ReactNative.Text, { key: "icon" }, iconGlyphs[item.icon])
+        )
+      }
+      itemChildren.push(
+        createElement(dependencies, dependencies.ReactNative.Text, { key: "label" }, item.label)
+      )
+      parts.push(
+        createElement(
+          dependencies,
+          dependencies.ReactNative.Pressable,
+          {
+            key: `item-${item.id}`,
+            testID: `en-nav-item:${item.id}`,
+            accessibilityRole: "menuitem",
+            accessibilityState: { selected: active, disabled: item.disabled === true },
+            disabled: item.disabled === true,
+            style: { flexDirection: "row", gap: spacingValue(theme, "2") },
+            ...(item.disabled === true
+              ? {}
+              : { onPress: () => runReportedIntent(report, view.onSelect, item.id) })
+          },
+          ...itemChildren
+        )
+      )
+    }
+    return createElement(
+      dependencies,
+      dependencies.ReactNative.View,
+      { key: `section-${section.id}` },
+      ...parts
+    )
+  })
+  return createElement(dependencies, dependencies.ReactNative.View, baseProps(view, style), ...sections)
+}
+
+const renderWorkbench = (
+  view: WorkbenchView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const style = mergeNativeStyles({ flex: 1 }, viewStyle(view, options))
+  const keepMounted = view.keepMounted === true
+  const panes = keepMounted ? view.panes : view.panes.filter((pane) => pane.id === view.activePaneId)
+  const children = panes.map((pane) => {
+    const active = pane.id === view.activePaneId
+    return createElement(
+      dependencies,
+      dependencies.ReactNative.View,
+      {
+        key: `pane-${pane.id}`,
+        nativeID: `effect-native-pane:${pane.id}`,
+        style: { flex: 1, display: active ? "flex" : "none" }
+      },
+      renderResolvedReactNativeView(pane.content, dependencies, report, options)
+    )
+  })
+  return createElement(dependencies, dependencies.ReactNative.View, baseProps(view, style), ...children)
+}
+
 const renderResolvedReactNativeView = (
   view: View,
   dependencies: ReactNativeDependencies,
@@ -1111,6 +1242,12 @@ const renderResolvedReactNativeView = (
       return renderStatTile(view, dependencies, options)
     case "Table":
       return renderTable(view, dependencies, report, options)
+    case "SplitPane":
+      return renderSplitPane(view, dependencies, report, options)
+    case "NavRail":
+      return renderNavRail(view, dependencies, report, options)
+    case "Workbench":
+      return renderWorkbench(view, dependencies, report, options)
   }
 }
 
@@ -1260,6 +1397,21 @@ export const viewStructure = (view: View): ReactNativeStructure => {
         tag: "Card",
         ...(view.key === undefined ? {} : { key: view.key }),
         children: view.children.map(viewStructure)
+      }
+    case "SplitPane":
+      return {
+        tag: "SplitPane",
+        ...(view.key === undefined ? {} : { key: view.key }),
+        children: view.panes.map((pane) => viewStructure(pane.content))
+      }
+    case "Workbench":
+      return {
+        tag: "Workbench",
+        ...(view.key === undefined ? {} : { key: view.key }),
+        children: (view.keepMounted === true
+          ? view.panes
+          : view.panes.filter((pane) => pane.id === view.activePaneId)
+        ).map((pane) => viewStructure(pane.content))
       }
     default:
       return {

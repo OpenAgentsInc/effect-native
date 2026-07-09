@@ -21,13 +21,16 @@ import {
   Link,
   List,
   Modal,
+  NavRail,
   SectionList,
   Spacer,
   Sheet,
+  SplitPane,
   Stack,
   StaticPayload,
   Text,
   TextField,
+  Workbench,
   componentTags,
   blurFormField,
   defineFormSpec,
@@ -206,6 +209,30 @@ const catalogFixturesByTag = {
     rows: [
       { id: "row-1", cells: [Text({ key: "c-name", content: "Orrery", variant: "body" }), Badge({ key: "c-status", label: "ok", tone: "success" })] }
     ]
+  }),
+  SplitPane: SplitPane({
+    key: "split",
+    orientation: "row",
+    onResize: IntentRef("Resized"),
+    panes: [
+      { id: "left", size: 200, min: 120, max: 320, content: Text({ key: "split-left", content: "Left", variant: "body" }) },
+      { id: "right", content: Text({ key: "split-right", content: "Right", variant: "body" }) }
+    ]
+  }),
+  NavRail: NavRail({
+    key: "rail",
+    activeId: "chat",
+    onSelect: IntentRef("Pressed", ComponentValueBinding()),
+    sections: [
+      { id: "panes", label: "Workbench", items: [{ id: "chat", label: "Chat", icon: "Circle" }] }
+    ]
+  }),
+  Workbench: Workbench({
+    key: "bench",
+    activePaneId: "chat",
+    panes: [
+      { id: "chat", content: Text({ key: "bench-chat", content: "Chat pane", variant: "body" }) }
+    ]
   })
 } satisfies { readonly [Tag in (typeof componentTags)[number]]: View }
 
@@ -300,7 +327,10 @@ const catalogRendererTags = [
   "Chip",
   "Meter",
   "StatTile",
-  "Table"
+  "Table",
+  "SplitPane",
+  "NavRail",
+  "Workbench"
 ] as const
 
 // Host (issue #23) is supported by the headless recorder and the DOM renderer

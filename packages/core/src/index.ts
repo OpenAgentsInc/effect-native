@@ -74,8 +74,9 @@ export const InteractionCatalogVersion = "effect-native/v6" as const
 export const HostCatalogVersion = "effect-native/v7" as const
 export const IconCatalogVersion = "effect-native/v8" as const
 export const DataDisplayCatalogVersion = "effect-native/v9" as const
-export const PreviousCatalogVersion = IconCatalogVersion
-export const CatalogVersion = DataDisplayCatalogVersion
+export const AppShellCatalogVersion = "effect-native/v10" as const
+export const PreviousCatalogVersion = DataDisplayCatalogVersion
+export const CatalogVersion = AppShellCatalogVersion
 export const CatalogVersionSchema = Schema.Literal(CatalogVersion)
 export type CatalogVersion = typeof CatalogVersion
 export const compatibleCatalogVersions = [
@@ -87,6 +88,7 @@ export const compatibleCatalogVersions = [
   CollectionCatalogVersion,
   InteractionCatalogVersion,
   HostCatalogVersion,
+  IconCatalogVersion,
   PreviousCatalogVersion,
   CatalogVersion
 ] as const
@@ -113,7 +115,10 @@ export const componentTags = [
   "Chip",
   "Meter",
   "StatTile",
-  "Table"
+  "Table",
+  "SplitPane",
+  "NavRail",
+  "Workbench"
 ] as const
 export type ComponentTag = (typeof componentTags)[number]
 
@@ -1899,6 +1904,67 @@ export interface TableView extends NodeBase {
   readonly style?: CardStyle
 }
 
+// App shell catalog components (issue #27). The Khala Code Desktop top-level
+// shell: a resizable SplitPane workbench beside a navigation rail. Divider drag
+// and pane switching are named typed intents — no free-form drag math or
+// mount/unmount closures in app code.
+export interface SplitPanePane {
+  readonly id: string
+  readonly min?: Dimension
+  readonly max?: Dimension
+  readonly size?: Dimension
+  readonly collapsed?: boolean
+  readonly content: View
+}
+
+export interface SplitPaneView extends NodeBase {
+  readonly _tag: "SplitPane"
+  readonly orientation: StackDirection
+  readonly panes: ReadonlyArray<SplitPanePane>
+  // Divider drag reports { paneId, size } as a bounded numeric descriptor.
+  readonly onResize?: IntentRef
+  // Collapse/expand reports { paneId, collapsed } as typed state.
+  readonly onCollapseToggle?: IntentRef
+  readonly style?: CardStyle
+}
+
+export interface NavRailItem {
+  readonly id: string
+  readonly label: string
+  readonly icon?: IconName
+  readonly disabled?: boolean
+}
+
+export interface NavRailSection {
+  readonly id: string
+  readonly label?: string
+  readonly items: ReadonlyArray<NavRailItem>
+}
+
+export interface NavRailView extends NodeBase {
+  readonly _tag: "NavRail"
+  readonly sections: ReadonlyArray<NavRailSection>
+  readonly activeId?: string
+  readonly onSelect: IntentRef
+  readonly style?: CardStyle
+}
+
+export interface WorkbenchPane {
+  readonly id: string
+  readonly content: View
+}
+
+export interface WorkbenchView extends NodeBase {
+  readonly _tag: "Workbench"
+  readonly panes: ReadonlyArray<WorkbenchPane>
+  readonly activePaneId: string
+  // When true inactive panes stay mounted (hidden); otherwise only the active
+  // pane renders. Pane switching is a typed state change (driven by NavRail /
+  // Tabs onSelect), never a mount/unmount closure.
+  readonly keepMounted?: boolean
+  readonly style?: CardStyle
+}
+
 export type View =
   | StackView
   | TextView
@@ -1920,6 +1986,9 @@ export type View =
   | MeterView
   | StatTileView
   | TableView
+  | SplitPaneView
+  | NavRailView
+  | WorkbenchView
 
 export type KeyedView = View & { readonly key: NodeKey }
 
@@ -1956,6 +2025,10 @@ const childViewEntries = (
           path: ["rows", rowIndex, "cells", cellIndex],
           view: cell
         })))
+    case "SplitPane":
+      return view.panes.map((pane, index) => ({ path: ["panes", index, "content"], view: pane.content }))
+    case "Workbench":
+      return view.panes.map((pane, index) => ({ path: ["panes", index, "content"], view: pane.content }))
     default:
       return []
   }
@@ -2295,6 +2368,62 @@ export const TableSchema: Schema.Codec<TableView, TableView> = Schema.TaggedStru
   style: CardStyleSchema.pipe(Schema.optionalKey)
 })
 
+export const SplitPanePaneSchema: Schema.Codec<SplitPanePane, SplitPanePane> = Schema.Struct({
+  id: Schema.NonEmptyString,
+  min: DimensionSchema.pipe(Schema.optionalKey),
+  max: DimensionSchema.pipe(Schema.optionalKey),
+  size: DimensionSchema.pipe(Schema.optionalKey),
+  collapsed: Schema.Boolean.pipe(Schema.optionalKey),
+  content: ViewSelf
+})
+
+export const SplitPaneSchema: Schema.Codec<SplitPaneView, SplitPaneView> = Schema.TaggedStruct("SplitPane", {
+  ...CommonFields,
+  orientation: StackDirectionSchema,
+  panes: Schema.Array(SplitPanePaneSchema).check(
+    Schema.isMinLength(1, { title: "NonEmptySplitPanePanes" })
+  ),
+  onResize: IntentRefSchema.pipe(Schema.optionalKey),
+  onCollapseToggle: IntentRefSchema.pipe(Schema.optionalKey),
+  style: CardStyleSchema.pipe(Schema.optionalKey)
+})
+
+export const NavRailItemSchema: Schema.Codec<NavRailItem, NavRailItem> = Schema.Struct({
+  id: Schema.NonEmptyString,
+  label: Schema.String,
+  icon: IconNameSchema.pipe(Schema.optionalKey),
+  disabled: Schema.Boolean.pipe(Schema.optionalKey)
+})
+
+export const NavRailSectionSchema: Schema.Codec<NavRailSection, NavRailSection> = Schema.Struct({
+  id: Schema.NonEmptyString,
+  label: Schema.String.pipe(Schema.optionalKey),
+  items: Schema.Array(NavRailItemSchema)
+})
+
+export const NavRailSchema: Schema.Codec<NavRailView, NavRailView> = Schema.TaggedStruct("NavRail", {
+  ...CommonFields,
+  sections: Schema.Array(NavRailSectionSchema),
+  activeId: Schema.String.pipe(Schema.optionalKey),
+  onSelect: IntentRefSchema,
+  style: CardStyleSchema.pipe(Schema.optionalKey)
+})
+
+export const WorkbenchPaneSchema: Schema.Codec<WorkbenchPane, WorkbenchPane> = Schema.Struct({
+  id: Schema.NonEmptyString,
+  content: ViewSelf
+})
+
+export const WorkbenchSchema: Schema.Codec<WorkbenchView, WorkbenchView> = Schema.TaggedStruct("Workbench", {
+  ...CommonFields,
+  panes: Schema.Array(WorkbenchPaneSchema).check(
+    Schema.isMinLength(1, { title: "NonEmptyWorkbenchPanes" })
+  ),
+  activePaneId: Schema.NonEmptyString,
+  keepMounted: Schema.Boolean.pipe(Schema.optionalKey),
+  style: CardStyleSchema.pipe(Schema.optionalKey)
+})
+
 export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
   Schema.Union([
     StackSchema,
@@ -2316,7 +2445,10 @@ export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
     ChipSchema,
     MeterSchema,
     StatTileSchema,
-    TableSchema
+    TableSchema,
+    SplitPaneSchema,
+    NavRailSchema,
+    WorkbenchSchema
   ]).check(OverlayStackFilter)
 )
 
@@ -2423,6 +2555,18 @@ export const StatTile = (props: StatTileProps): StatTileView =>
 export type TableProps = WithoutTagAndVersion<TableView>
 export const Table = (props: TableProps): TableView =>
   TableSchema.make({ _tag: "Table", catalogVersion: CatalogVersion, ...props })
+
+export type SplitPaneProps = WithoutTagAndVersion<SplitPaneView>
+export const SplitPane = (props: SplitPaneProps): SplitPaneView =>
+  SplitPaneSchema.make({ _tag: "SplitPane", catalogVersion: CatalogVersion, ...props })
+
+export type NavRailProps = WithoutTagAndVersion<NavRailView>
+export const NavRail = (props: NavRailProps): NavRailView =>
+  NavRailSchema.make({ _tag: "NavRail", catalogVersion: CatalogVersion, ...props })
+
+export type WorkbenchProps = WithoutTagAndVersion<WorkbenchView>
+export const Workbench = (props: WorkbenchProps): WorkbenchView =>
+  WorkbenchSchema.make({ _tag: "Workbench", catalogVersion: CatalogVersion, ...props })
 
 export const decodeView = Schema.decodeUnknownSync(ViewSchema)
 export const encodeView = Schema.encodeSync(ViewSchema)
@@ -2570,6 +2714,7 @@ export const resolveView = (view: View, input: ViewResolution = {}): View => {
     case "Chip":
     case "Meter":
     case "StatTile":
+    case "NavRail":
       return {
         ...view,
         ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) })
@@ -2582,6 +2727,13 @@ export const resolveView = (view: View, input: ViewResolution = {}): View => {
           ...row,
           cells: row.cells.map((cell) => resolveView(cell, input))
         }))
+      }
+    case "SplitPane":
+    case "Workbench":
+      return {
+        ...view,
+        ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) }),
+        panes: view.panes.map((pane) => ({ ...pane, content: resolveView(pane.content, input) }))
       }
   }
 }
@@ -2609,6 +2761,7 @@ export const resolveBindings = <State>(view: View, state: State): View => {
     case "Chip":
     case "Meter":
     case "StatTile":
+    case "NavRail":
       return view
     case "Table":
       return {
@@ -2617,6 +2770,12 @@ export const resolveBindings = <State>(view: View, state: State): View => {
           ...row,
           cells: row.cells.map((cell) => resolveBindings(cell, state))
         }))
+      }
+    case "SplitPane":
+    case "Workbench":
+      return {
+        ...view,
+        panes: view.panes.map((pane) => ({ ...pane, content: resolveBindings(pane.content, state) }))
       }
     case "List":
       return {
@@ -2713,6 +2872,12 @@ export const redactSecureView = (view: View): View => {
           ...row,
           cells: row.cells.map(redactSecureView)
         }))
+      }
+    case "SplitPane":
+    case "Workbench":
+      return {
+        ...view,
+        panes: view.panes.map((pane) => ({ ...pane, content: redactSecureView(pane.content) }))
       }
     default:
       return view

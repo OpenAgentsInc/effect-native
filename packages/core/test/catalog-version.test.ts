@@ -1,9 +1,11 @@
 import { describe, expect, test } from "bun:test"
 import { Exit, Schema } from "effect"
 import {
+  AppShellCatalogVersion,
   CatalogVersion,
   CollectionCatalogVersion,
   CompatibleViewSchema,
+  DataDisplayCatalogVersion,
   FormCatalogVersion,
   HostCatalogVersion,
   IconCatalogVersion,
@@ -19,62 +21,26 @@ import {
 } from "../src/index"
 
 describe("catalog version compatibility", () => {
-  test("the current decoder accepts prior-version trees through the compatible schema", () => {
+  test("the current decoder accepts every compatible-version tree through the compatible schema", () => {
     const view = Text({
       key: "copy",
       content: "Versioned tree",
       variant: "body",
       color: "textPrimary"
     })
+    const encoded = JSON.parse(JSON.stringify(view))
 
-    const v1Tree = {
-      ...JSON.parse(JSON.stringify(view)),
-      catalogVersion: LinkCatalogVersion
-    }
-    const v2Tree = {
-      ...JSON.parse(JSON.stringify(view)),
-      catalogVersion: ResponsiveCatalogVersion
-    }
-    const v3Tree = {
-      ...JSON.parse(JSON.stringify(view)),
-      catalogVersion: FormCatalogVersion
-    }
-    const v4Tree = {
-      ...JSON.parse(JSON.stringify(view)),
-      catalogVersion: OverlayCatalogVersion
-    }
-    const v5Tree = {
-      ...JSON.parse(JSON.stringify(view)),
-      catalogVersion: CollectionCatalogVersion
-    }
-    const v6Tree = {
-      ...JSON.parse(JSON.stringify(view)),
-      catalogVersion: InteractionCatalogVersion
-    }
-    const v7Tree = {
-      ...JSON.parse(JSON.stringify(view)),
-      catalogVersion: HostCatalogVersion
-    }
-    const v8Tree = {
-      ...JSON.parse(JSON.stringify(view)),
-      catalogVersion: PreviousCatalogVersion
-    }
-    const v0Tree = {
-      ...JSON.parse(JSON.stringify(view)),
-      catalogVersion: LegacyCatalogVersion
+    // Every prior version in the allow-list must still decode, preserving its
+    // own version marker (a vN+1 decoder never rewrites a vN tree's version).
+    for (const version of compatibleCatalogVersions) {
+      const tree = { ...encoded, catalogVersion: version }
+      expect(decodeCompatibleView(tree).catalogVersion).toBe(version)
     }
 
-    expect(decodeCompatibleView(JSON.parse(JSON.stringify(view)))).toEqual(view)
-    expect(decodeCompatibleView(v0Tree).catalogVersion).toBe(LegacyCatalogVersion)
-    expect(decodeCompatibleView(v1Tree).catalogVersion).toBe(LinkCatalogVersion)
-    expect(decodeCompatibleView(v2Tree).catalogVersion).toBe(ResponsiveCatalogVersion)
-    expect(decodeCompatibleView(v3Tree).catalogVersion).toBe(FormCatalogVersion)
-    expect(decodeCompatibleView(v4Tree).catalogVersion).toBe(OverlayCatalogVersion)
-    expect(decodeCompatibleView(v5Tree).catalogVersion).toBe(CollectionCatalogVersion)
-    expect(decodeCompatibleView(v6Tree).catalogVersion).toBe(InteractionCatalogVersion)
-    expect(decodeCompatibleView(v7Tree).catalogVersion).toBe(HostCatalogVersion)
-    expect(decodeCompatibleView(v8Tree).catalogVersion).toBe(IconCatalogVersion)
-    expect(PreviousCatalogVersion).toBe(IconCatalogVersion)
+    expect(decodeCompatibleView(encoded)).toEqual(view)
+  })
+
+  test("the compatible allow-list is the ordered v0..current chain", () => {
     expect(compatibleCatalogVersions).toEqual([
       LegacyCatalogVersion,
       LinkCatalogVersion,
@@ -84,9 +50,15 @@ describe("catalog version compatibility", () => {
       CollectionCatalogVersion,
       InteractionCatalogVersion,
       HostCatalogVersion,
-      PreviousCatalogVersion,
-      CatalogVersion
+      IconCatalogVersion,
+      DataDisplayCatalogVersion,
+      AppShellCatalogVersion
     ])
+    // The current marker is the last entry; the previous marker is second-last.
+    expect(CatalogVersion).toBe(AppShellCatalogVersion)
+    expect(PreviousCatalogVersion).toBe(DataDisplayCatalogVersion)
+    expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 1]).toBe(CatalogVersion)
+    expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 2]).toBe(PreviousCatalogVersion)
   })
 
   test("unknown component tags remain typed decode failures", () => {

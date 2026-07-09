@@ -31,6 +31,9 @@ const describeView = Match.type<View>().pipe(
   Match.tag("Meter", () => "status"),
   Match.tag("StatTile", () => "status"),
   Match.tag("Table", () => "data"),
+  Match.tag("SplitPane", () => "shell"),
+  Match.tag("NavRail", () => "shell"),
+  Match.tag("Workbench", () => "shell"),
   Match.exhaustive
 )
 
