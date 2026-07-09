@@ -6,6 +6,9 @@ import {
   type CardView,
   type ChipView,
   type ColorToken,
+  type ComboboxOption,
+  type ComboboxView,
+  type CommandPaletteView,
   type ContextMenuView,
   type DividerView,
   type DropdownMenuView,
@@ -1321,6 +1324,140 @@ const renderTooltip = (
   )
 }
 
+// Command palette + Combobox (issue #29) on React Native. Filtering stays
+// app-supplied. TextInput + pressable options map faithfully; roving
+// aria-activedescendant has no RN equivalent (highlight is reflected via
+// accessibilityState.selected). CommandPalette renders its combobox inside a
+// modal-styled container when open.
+const renderComboboxOption = (
+  option: ComboboxOption,
+  view: ComboboxView,
+  dependencies: ReactNativeDependencies,
+  theme: Theme,
+  report: IntentReporter
+): ReactElementLike => {
+  const parts: Array<ReactElementLike> = []
+  if (option.icon !== undefined) {
+    parts.push(createElement(dependencies, dependencies.ReactNative.Text, { key: "icon" }, iconGlyphs[option.icon]))
+  }
+  parts.push(createElement(dependencies, dependencies.ReactNative.Text, { key: "label" }, option.label))
+  if (option.subtitle !== undefined) {
+    parts.push(
+      createElement(
+        dependencies,
+        dependencies.ReactNative.Text,
+        { key: "subtitle", style: { color: colorValue(theme, "textMuted") } },
+        option.subtitle
+      )
+    )
+  }
+  if (option.keybinding !== undefined) {
+    parts.push(createElement(dependencies, dependencies.ReactNative.Text, { key: "kbd" }, option.keybinding))
+  }
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.Pressable,
+    {
+      key: `option-${option.id}`,
+      testID: `en-combobox-option:${option.id}`,
+      accessibilityRole: "menuitem",
+      accessibilityState: { selected: view.highlightedId === option.id, disabled: option.disabled === true },
+      disabled: option.disabled === true,
+      style: { flexDirection: "row", gap: spacingValue(theme, "2") },
+      ...(option.disabled === true ? {} : { onPress: () => runReportedIntent(report, view.onSelect, option.id) })
+    },
+    ...parts
+  )
+}
+
+const renderCombobox = (
+  view: ComboboxView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const theme = options.theme ?? defaultTheme
+  const input = createElement(dependencies, dependencies.ReactNative.TextInput, {
+    key: "control",
+    testID: "en-combobox-input",
+    accessibilityRole: "search",
+    placeholder: view.placeholder,
+    value: view.query,
+    ...(view.onQueryChange === undefined
+      ? {}
+      : { onChangeText: (value: string) => runReportedIntent(report, view.onQueryChange!, value) })
+  })
+  const listChildren: Array<ReactElementLike> = []
+  if (view.options.length === 0) {
+    listChildren.push(
+      createElement(
+        dependencies,
+        dependencies.ReactNative.Text,
+        { key: "empty", testID: "en-combobox-empty", accessibilityRole: "text" },
+        view.loading === true ? "" : (view.emptyLabel ?? "No results")
+      )
+    )
+  } else {
+    let currentGroup: string | undefined
+    let started = false
+    for (const option of view.options) {
+      if (!started || option.group !== currentGroup) {
+        currentGroup = option.group
+        started = true
+        if (option.group !== undefined) {
+          listChildren.push(
+            createElement(
+              dependencies,
+              dependencies.ReactNative.Text,
+              { key: `group-${option.group}`, testID: `en-combobox-group:${option.group}` },
+              option.group
+            )
+          )
+        }
+      }
+      listChildren.push(renderComboboxOption(option, view, dependencies, theme, report))
+    }
+  }
+  const listbox = createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    { key: "listbox", accessibilityRole: "list", ...(view.loading === true ? { "aria-busy": true } : {}) },
+    ...listChildren
+  )
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    { ...baseProps(view, mergeNativeStyles({ flexDirection: "column" }, viewStyle(view, options))), accessibilityRole: "none" },
+    input,
+    listbox
+  )
+}
+
+const renderCommandPalette = (
+  view: CommandPaletteView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const open = view.open === true
+  const children: Array<ReactElementLike> = []
+  if (view.title !== undefined) {
+    children.push(createElement(dependencies, dependencies.ReactNative.Text, { key: "title" }, view.title))
+  }
+  if (open) children.push(renderCombobox(view.combobox, dependencies, report, options))
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    {
+      ...baseProps(view, mergeNativeStyles({ display: open ? "flex" : "none", flexDirection: "column" }, {})),
+      testID: "en-command-palette",
+      accessibilityViewIsModal: true,
+      accessibilityRole: "none"
+    },
+    ...children
+  )
+}
+
 const renderResolvedReactNativeView = (
   view: View,
   dependencies: ReactNativeDependencies,
@@ -1382,6 +1519,10 @@ const renderResolvedReactNativeView = (
       return renderContextMenu(view, dependencies, report, options)
     case "Tooltip":
       return renderTooltip(view, dependencies, report, options)
+    case "Combobox":
+      return renderCombobox(view, dependencies, report, options)
+    case "CommandPalette":
+      return renderCommandPalette(view, dependencies, report, options)
   }
 }
 
@@ -1552,6 +1693,12 @@ export const viewStructure = (view: View): ReactNativeStructure => {
         tag: "Tooltip",
         ...(view.key === undefined ? {} : { key: view.key }),
         children: view.children.map(viewStructure)
+      }
+    case "CommandPalette":
+      return {
+        tag: "CommandPalette",
+        ...(view.key === undefined ? {} : { key: view.key }),
+        children: [viewStructure(view.combobox)]
       }
     default:
       return {

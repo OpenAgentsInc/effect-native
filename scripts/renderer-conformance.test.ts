@@ -5,6 +5,8 @@ import {
   Binding,
   Button,
   Card,
+  Combobox,
+  CommandPalette,
   ComponentValueBinding,
   ContextMenu,
   DropdownMenu,
@@ -270,7 +272,29 @@ const catalogFixturesByTag = {
     placement: { side: "top", align: "center" }
   }, [
     Icon({ key: "tooltip-target", name: "Play", size: "md", label: "Run" })
-  ])
+  ]),
+  Combobox: Combobox({
+    key: "combobox",
+    query: "op",
+    placeholder: "Search…",
+    highlightedId: "open",
+    onQueryChange: IntentRef("Changed", ComponentValueBinding()),
+    onHighlight: IntentRef("Pressed", ComponentValueBinding()),
+    onSelect: IntentRef("Pressed", ComponentValueBinding()),
+    options: [{ id: "open", label: "Open", group: "Navigation" }]
+  }),
+  CommandPalette: CommandPalette({
+    key: "command-palette",
+    open: true,
+    title: "Commands",
+    onDismiss: IntentRef("Dismissed", StaticPayload({ surface: "command-palette" })),
+    combobox: Combobox({
+      key: "command-palette-combobox",
+      query: "",
+      onSelect: IntentRef("Pressed", ComponentValueBinding()),
+      options: [{ id: "composer", label: "Focus composer" }]
+    })
+  })
 } satisfies { readonly [Tag in (typeof componentTags)[number]]: View }
 
 const allFixtureTags = Object.keys(catalogFixturesByTag).sort()
@@ -371,7 +395,9 @@ const catalogRendererTags = [
   "Popover",
   "DropdownMenu",
   "ContextMenu",
-  "Tooltip"
+  "Tooltip",
+  "Combobox",
+  "CommandPalette"
 ] as const
 
 // Host (issue #23) is supported by the headless recorder and the DOM renderer

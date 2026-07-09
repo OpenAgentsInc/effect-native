@@ -76,8 +76,9 @@ export const IconCatalogVersion = "effect-native/v8" as const
 export const DataDisplayCatalogVersion = "effect-native/v9" as const
 export const AppShellCatalogVersion = "effect-native/v10" as const
 export const AnchoredOverlayCatalogVersion = "effect-native/v11" as const
-export const PreviousCatalogVersion = AppShellCatalogVersion
-export const CatalogVersion = AnchoredOverlayCatalogVersion
+export const ComboboxCatalogVersion = "effect-native/v12" as const
+export const PreviousCatalogVersion = AnchoredOverlayCatalogVersion
+export const CatalogVersion = ComboboxCatalogVersion
 export const CatalogVersionSchema = Schema.Literal(CatalogVersion)
 export type CatalogVersion = typeof CatalogVersion
 export const compatibleCatalogVersions = [
@@ -91,6 +92,7 @@ export const compatibleCatalogVersions = [
   HostCatalogVersion,
   IconCatalogVersion,
   DataDisplayCatalogVersion,
+  AppShellCatalogVersion,
   PreviousCatalogVersion,
   CatalogVersion
 ] as const
@@ -124,7 +126,9 @@ export const componentTags = [
   "Popover",
   "DropdownMenu",
   "ContextMenu",
-  "Tooltip"
+  "Tooltip",
+  "Combobox",
+  "CommandPalette"
 ] as const
 export type ComponentTag = (typeof componentTags)[number]
 
@@ -2037,6 +2041,44 @@ export interface TooltipView extends NodeBase {
   readonly children: ReadonlyArray<View>
 }
 
+// Command palette + Combobox / typeahead (issue #29). Filtering is app-supplied
+// (results in as data) — no keyword/string routing in the component. Highlight
+// is roving via aria-activedescendant; selection/highlight/query are named
+// typed intents. CommandPalette is a modal-overlay composition of a Combobox on
+// the #13 presence primitive.
+export interface ComboboxOption {
+  readonly id: string
+  readonly label: string
+  readonly subtitle?: string
+  readonly icon?: IconName
+  readonly group?: string
+  readonly disabled?: boolean
+  readonly disabledReason?: string
+  readonly keybinding?: string
+}
+
+export interface ComboboxView extends NodeBase {
+  readonly _tag: "Combobox"
+  readonly query: string
+  readonly placeholder?: string
+  readonly options: ReadonlyArray<ComboboxOption>
+  readonly highlightedId?: string
+  readonly loading?: boolean
+  readonly emptyLabel?: string
+  readonly onQueryChange?: IntentRef
+  readonly onHighlight?: IntentRef
+  readonly onSelect: IntentRef
+  readonly style?: CardStyle
+}
+
+export interface CommandPaletteView extends NodeBase {
+  readonly _tag: "CommandPalette"
+  readonly open: Bound<boolean>
+  readonly title?: string
+  readonly combobox: ComboboxView
+  readonly onDismiss: IntentRef
+}
+
 export type View =
   | StackView
   | TextView
@@ -2065,6 +2107,8 @@ export type View =
   | DropdownMenuView
   | ContextMenuView
   | TooltipView
+  | ComboboxView
+  | CommandPaletteView
 
 export type KeyedView = View & { readonly key: NodeKey }
 
@@ -2109,6 +2153,8 @@ const childViewEntries = (
       return view.children.map((child, index) => ({ path: ["children", index], view: child }))
     case "Tooltip":
       return view.children.map((child, index) => ({ path: ["children", index], view: child }))
+    case "CommandPalette":
+      return [{ path: ["combobox"], view: view.combobox }]
     default:
       return []
   }
@@ -2568,6 +2614,40 @@ export const TooltipSchema: Schema.Codec<TooltipView, TooltipView> = Schema.Tagg
   )
 })
 
+export const ComboboxOptionSchema: Schema.Codec<ComboboxOption, ComboboxOption> = Schema.Struct({
+  id: Schema.NonEmptyString,
+  label: Schema.String,
+  subtitle: Schema.String.pipe(Schema.optionalKey),
+  icon: IconNameSchema.pipe(Schema.optionalKey),
+  group: Schema.String.pipe(Schema.optionalKey),
+  disabled: Schema.Boolean.pipe(Schema.optionalKey),
+  disabledReason: Schema.String.pipe(Schema.optionalKey),
+  keybinding: Schema.String.pipe(Schema.optionalKey)
+})
+
+export const ComboboxSchema: Schema.Codec<ComboboxView, ComboboxView> = Schema.TaggedStruct("Combobox", {
+  ...CommonFields,
+  query: Schema.String,
+  placeholder: Schema.String.pipe(Schema.optionalKey),
+  options: Schema.Array(ComboboxOptionSchema),
+  highlightedId: Schema.String.pipe(Schema.optionalKey),
+  loading: Schema.Boolean.pipe(Schema.optionalKey),
+  emptyLabel: Schema.String.pipe(Schema.optionalKey),
+  onQueryChange: IntentRefSchema.pipe(Schema.optionalKey),
+  onHighlight: IntentRefSchema.pipe(Schema.optionalKey),
+  onSelect: IntentRefSchema,
+  style: CardStyleSchema.pipe(Schema.optionalKey)
+})
+
+export const CommandPaletteSchema: Schema.Codec<CommandPaletteView, CommandPaletteView> =
+  Schema.TaggedStruct("CommandPalette", {
+    ...CommonFields,
+    open: BoundBooleanSchema,
+    title: Schema.String.pipe(Schema.optionalKey),
+    combobox: ComboboxSchema,
+    onDismiss: IntentRefSchema
+  })
+
 export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
   Schema.Union([
     StackSchema,
@@ -2596,7 +2676,9 @@ export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
     PopoverSchema,
     DropdownMenuSchema,
     ContextMenuSchema,
-    TooltipSchema
+    TooltipSchema,
+    ComboboxSchema,
+    CommandPaletteSchema
   ]).check(OverlayStackFilter)
 )
 
@@ -2731,6 +2813,14 @@ export const ContextMenu = (props: ContextMenuProps): ContextMenuView =>
 export type TooltipProps = Omit<WithoutTagAndVersion<TooltipView>, "children">
 export const Tooltip = (props: TooltipProps, children: ReadonlyArray<View>): TooltipView =>
   TooltipSchema.make({ _tag: "Tooltip", catalogVersion: CatalogVersion, ...props, children })
+
+export type ComboboxProps = WithoutTagAndVersion<ComboboxView>
+export const Combobox = (props: ComboboxProps): ComboboxView =>
+  ComboboxSchema.make({ _tag: "Combobox", catalogVersion: CatalogVersion, ...props })
+
+export type CommandPaletteProps = WithoutTagAndVersion<CommandPaletteView>
+export const CommandPalette = (props: CommandPaletteProps): CommandPaletteView =>
+  CommandPaletteSchema.make({ _tag: "CommandPalette", catalogVersion: CatalogVersion, ...props })
 
 export const decodeView = Schema.decodeUnknownSync(ViewSchema)
 export const encodeView = Schema.encodeSync(ViewSchema)
@@ -2879,6 +2969,7 @@ export const resolveView = (view: View, input: ViewResolution = {}): View => {
     case "Meter":
     case "StatTile":
     case "NavRail":
+    case "Combobox":
       return {
         ...view,
         ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) })
@@ -2917,6 +3008,12 @@ export const resolveView = (view: View, input: ViewResolution = {}): View => {
         ...view,
         children: view.children.map((child) => resolveView(child, input))
       }
+    case "CommandPalette":
+      return {
+        ...view,
+        open: input.state === undefined ? view.open : resolveBoundBoolean(view.open, input.state),
+        combobox: resolveView(view.combobox, input) as ComboboxView
+      }
   }
 }
 
@@ -2944,6 +3041,7 @@ export const resolveBindings = <State>(view: View, state: State): View => {
     case "Meter":
     case "StatTile":
     case "NavRail":
+    case "Combobox":
       return view
     case "Table":
       return {
@@ -2975,6 +3073,12 @@ export const resolveBindings = <State>(view: View, state: State): View => {
       return {
         ...view,
         children: view.children.map((child) => resolveBindings(child, state))
+      }
+    case "CommandPalette":
+      return {
+        ...view,
+        open: resolveBoundBoolean(view.open, state),
+        combobox: resolveBindings(view.combobox, state) as ComboboxView
       }
     case "List":
       return {

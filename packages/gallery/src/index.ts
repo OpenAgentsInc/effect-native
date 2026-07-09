@@ -4,6 +4,8 @@ import {
   Button,
   Card,
   Chip,
+  Combobox,
+  CommandPalette,
   ComponentValueBinding,
   ContextMenu,
   Divider,
@@ -859,6 +861,56 @@ const componentStoryMap = {
       }, [
         Icon({ key: "tooltip-target", name: "Play", size: "md", label: "Run" })
       ])
+    })
+  ],
+  Combobox: [
+    story({
+      id: "combobox-basic",
+      component: "Combobox",
+      title: "Combobox",
+      description: "Typeahead with app-supplied results, roving aria-activedescendant, and typed intents.",
+      view: Combobox({
+        key: "combobox-basic",
+        query: "op",
+        placeholder: "Search commands…",
+        highlightedId: "open-file",
+        onQueryChange: IntentRef("GalleryStory.Changed", ComponentValueBinding()),
+        onHighlight: IntentRef("GalleryStory.Pressed", ComponentValueBinding()),
+        onSelect: IntentRef("GalleryStory.Pressed", ComponentValueBinding()),
+        options: [
+          { id: "open-file", label: "Open file", subtitle: "Jump to a workspace file", icon: "Play", group: "Navigation", keybinding: "⌘P" },
+          { id: "open-recent", label: "Open recent", group: "Navigation" },
+          { id: "reload", label: "Reload window", group: "Session", icon: "Reload", disabled: true, disabledReason: "Unavailable while a turn is streaming" }
+        ]
+      })
+    })
+  ],
+  CommandPalette: [
+    story({
+      id: "command-palette-basic",
+      component: "CommandPalette",
+      title: "CommandPalette",
+      description: "Modal-overlay composition of a Combobox on the presence primitive.",
+      view: CommandPalette({
+        key: "command-palette-basic",
+        open: true,
+        title: "Command palette",
+        onDismiss: IntentRef("GalleryStory.Dismissed", StaticPayload({ surface: "command-palette" })),
+        combobox: Combobox({
+          key: "command-palette-combobox",
+          query: "",
+          placeholder: "Type a command…",
+          highlightedId: "composer",
+          onQueryChange: IntentRef("GalleryStory.Changed", ComponentValueBinding()),
+          onHighlight: IntentRef("GalleryStory.Pressed", ComponentValueBinding()),
+          onSelect: IntentRef("GalleryStory.Pressed", ComponentValueBinding()),
+          options: [
+            { id: "composer", label: "Focus composer", group: "Composer", keybinding: "⌘I" },
+            { id: "files", label: "Go to file", group: "Files", keybinding: "⌘P" }
+          ]
+        })
+      }),
+      controls: [booleanControl("command-palette-open", "Open", ["open"], true)]
     })
   ]
 } satisfies { readonly [Tag in ComponentTag]: ReadonlyArray<Story> }

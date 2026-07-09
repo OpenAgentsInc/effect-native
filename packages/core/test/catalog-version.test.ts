@@ -4,6 +4,7 @@ import {
   AnchoredOverlayCatalogVersion,
   AppShellCatalogVersion,
   CatalogVersion,
+  ComboboxCatalogVersion,
   CollectionCatalogVersion,
   CompatibleViewSchema,
   DataDisplayCatalogVersion,
@@ -54,11 +55,12 @@ describe("catalog version compatibility", () => {
       IconCatalogVersion,
       DataDisplayCatalogVersion,
       AppShellCatalogVersion,
-      AnchoredOverlayCatalogVersion
+      AnchoredOverlayCatalogVersion,
+      ComboboxCatalogVersion
     ])
     // The current marker is the last entry; the previous marker is second-last.
-    expect(CatalogVersion).toBe(AnchoredOverlayCatalogVersion)
-    expect(PreviousCatalogVersion).toBe(AppShellCatalogVersion)
+    expect(CatalogVersion).toBe(ComboboxCatalogVersion)
+    expect(PreviousCatalogVersion).toBe(AnchoredOverlayCatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 1]).toBe(CatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 2]).toBe(PreviousCatalogVersion)
   })

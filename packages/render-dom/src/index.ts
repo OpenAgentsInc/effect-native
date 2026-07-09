@@ -5,6 +5,9 @@ import {
   type CardView,
   type ChipView,
   type ColorToken,
+  type ComboboxOption,
+  type ComboboxView,
+  type CommandPaletteView,
   type ContextMenuView,
   type Dimension,
   type DividerView,
@@ -2027,6 +2030,219 @@ const renderTooltip = (view: TooltipView, state: DomRendererState, report: Inten
   return element
 }
 
+// Command palette + Combobox (issue #29). Filtering is app-supplied (options in
+// as data); the renderer owns combobox/listbox a11y, roving
+// aria-activedescendant, and keyboard nav that dispatches typed
+// highlight/select intents. CommandPalette wraps a Combobox in the modal
+// overlay lifecycle (focus trap + focus return via data-en-overlay-open).
+const enabledOptionIds = (options: ReadonlyArray<ComboboxOption>): ReadonlyArray<string> =>
+  options.filter((option) => option.disabled !== true).map((option) => option.id)
+
+const adjacentOptionId = (
+  options: ReadonlyArray<ComboboxOption>,
+  current: string | undefined,
+  direction: 1 | -1
+): string | undefined => {
+  const ids = enabledOptionIds(options)
+  if (ids.length === 0) return undefined
+  const index = current === undefined ? -1 : ids.indexOf(current)
+  if (index === -1) return direction === 1 ? ids[0] : ids[ids.length - 1]
+  return ids[(index + direction + ids.length) % ids.length]
+}
+
+const renderComboboxOption = (
+  option: ComboboxOption,
+  view: ComboboxView,
+  state: DomRendererState,
+  report: IntentReporter
+): HTMLElement => {
+  const document = state.root.ownerDocument
+  const optionEl = document.createElement("div")
+  optionEl.id = `en-${cssEscape(option.id)}`
+  optionEl.setAttribute("role", "option")
+  optionEl.setAttribute("data-en-option", option.id)
+  const highlighted = view.highlightedId === option.id
+  optionEl.setAttribute("aria-selected", highlighted ? "true" : "false")
+  if (option.disabled === true) {
+    optionEl.setAttribute("aria-disabled", "true")
+    if (option.disabledReason !== undefined) optionEl.setAttribute("title", option.disabledReason)
+  }
+  optionEl.style.display = "flex"
+  optionEl.style.alignItems = "center"
+  optionEl.style.gap = "var(--en-spacing-2)"
+  if (option.icon !== undefined) {
+    const iconEl = document.createElement("span")
+    iconEl.setAttribute("aria-hidden", "true")
+    iconEl.style.display = "inline-flex"
+    iconEl.innerHTML = iconSvg(option.icon, iconSizePixels.sm)
+    optionEl.appendChild(iconEl)
+  }
+  const label = document.createElement("span")
+  label.setAttribute("data-en-role", "label")
+  label.textContent = option.label
+  optionEl.appendChild(label)
+  if (option.subtitle !== undefined) {
+    const subtitle = document.createElement("span")
+    subtitle.setAttribute("data-en-role", "subtitle")
+    subtitle.style.color = colorValue("textMuted")
+    subtitle.textContent = option.subtitle
+    optionEl.appendChild(subtitle)
+  }
+  if (option.keybinding !== undefined) {
+    const kbd = document.createElement("kbd")
+    kbd.setAttribute("data-en-role", "keybinding")
+    kbd.style.marginLeft = "auto"
+    kbd.textContent = option.keybinding
+    optionEl.appendChild(kbd)
+  }
+  if (option.disabled !== true) {
+    state.addListener(optionEl, "click", () => runReportedIntent(report, view.onSelect, option.id))
+  }
+  return optionEl
+}
+
+const renderCombobox = (view: ComboboxView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const element = state.keyedElement(view, "div")
+  state.resetListeners(element)
+  element.style.display = "flex"
+  element.style.flexDirection = "column"
+  const document = element.ownerDocument
+  const listboxId = `en-listbox-${cssEscape(view.key ?? "combobox")}`
+
+  const input = document.createElement("input") as HTMLInputElement
+  input.setAttribute("role", "combobox")
+  input.setAttribute("data-en-role", "control")
+  input.setAttribute("aria-expanded", "true")
+  input.setAttribute("aria-controls", listboxId)
+  input.setAttribute("aria-autocomplete", "list")
+  input.setAttribute("placeholder", view.placeholder ?? "")
+  if (view.highlightedId !== undefined) {
+    input.setAttribute("aria-activedescendant", `en-${cssEscape(view.highlightedId)}`)
+  }
+  const existingControl = element.querySelector('[data-en-role="control"]')
+  const wasActive = existingControl !== null && document.activeElement === existingControl
+  input.value = view.query
+  state.resetListeners(input)
+  if (view.onQueryChange !== undefined) {
+    const onQueryChange = view.onQueryChange
+    state.addListener(input, "input", () => runReportedIntent(report, onQueryChange, input.value))
+  }
+  state.addListener(input, "keydown", (event) => {
+    const key = (event as KeyboardEvent).key
+    if (key === "ArrowDown" && view.onHighlight !== undefined) {
+      event.preventDefault()
+      const next = adjacentOptionId(view.options, view.highlightedId, 1)
+      if (next !== undefined) runReportedIntent(report, view.onHighlight, next)
+    } else if (key === "ArrowUp" && view.onHighlight !== undefined) {
+      event.preventDefault()
+      const prev = adjacentOptionId(view.options, view.highlightedId, -1)
+      if (prev !== undefined) runReportedIntent(report, view.onHighlight, prev)
+    } else if (key === "Enter" && view.highlightedId !== undefined) {
+      const target = view.options.find((option) => option.id === view.highlightedId)
+      if (target !== undefined && target.disabled !== true) {
+        event.preventDefault()
+        runReportedIntent(report, view.onSelect, view.highlightedId)
+      }
+    }
+  })
+
+  const listbox = document.createElement("div")
+  listbox.id = listboxId
+  listbox.setAttribute("role", "listbox")
+  listbox.setAttribute("data-en-role", "listbox")
+  if (view.loading === true) listbox.setAttribute("aria-busy", "true")
+
+  const children: Array<HTMLElement> = []
+  if (view.options.length === 0) {
+    const empty = document.createElement("div")
+    empty.setAttribute("role", "status")
+    empty.setAttribute("data-en-role", "empty")
+    empty.textContent = view.loading === true ? "" : (view.emptyLabel ?? "No results")
+    children.push(empty)
+  } else {
+    let currentGroup: string | undefined = undefined
+    let started = false
+    for (const option of view.options) {
+      if (option.group !== currentGroup || !started) {
+        currentGroup = option.group
+        started = true
+        if (option.group !== undefined) {
+          const header = document.createElement("div")
+          header.setAttribute("role", "presentation")
+          header.setAttribute("data-en-role", "group-header")
+          header.setAttribute("data-en-group", option.group)
+          header.style.color = colorValue("textMuted")
+          header.textContent = option.group
+          children.push(header)
+        }
+      }
+      children.push(renderComboboxOption(option, view, state, report))
+    }
+  }
+  listbox.replaceChildren(...children)
+  element.replaceChildren(input, listbox)
+  if (wasActive) state.requestFocus(input)
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  applyInteractions(element, view, state, report)
+  return element
+}
+
+const renderCommandPalette = (view: CommandPaletteView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const element = state.keyedElement(view, "div")
+  state.resetListeners(element)
+  const open = view.open === true
+  element.setAttribute("role", "dialog")
+  element.setAttribute("aria-modal", "true")
+  element.setAttribute("data-en-overlay", "command-palette")
+  element.setAttribute("data-en-overlay-open", open ? "true" : "false")
+  element.tabIndex = -1
+  element.hidden = !open
+  element.style.position = "fixed"
+  element.style.inset = "0"
+  element.style.display = open ? "flex" : "none"
+  element.style.alignItems = "flex-start"
+  element.style.justifyContent = "center"
+  element.style.padding = "var(--en-spacing-6) var(--en-spacing-4)"
+  element.style.backgroundColor = "rgba(15, 23, 42, 0.32)"
+
+  const backdrop = element.ownerDocument.createElement("div")
+  backdrop.setAttribute("data-en-role", "backdrop")
+  backdrop.style.position = "absolute"
+  backdrop.style.inset = "0"
+  state.resetListeners(backdrop)
+  state.addListener(backdrop, "click", () => runReportedIntent(report, view.onDismiss))
+
+  const panel = element.ownerDocument.createElement("section")
+  panel.setAttribute("data-en-role", "panel")
+  panel.style.position = "relative"
+  panel.style.width = "var(--en-dimension-lg)"
+  panel.style.maxWidth = "100%"
+  panel.style.background = "var(--en-color-background)"
+  panel.style.border = "1px solid var(--en-color-border)"
+  panel.style.borderRadius = "var(--en-radius-lg)"
+  panel.style.padding = "var(--en-spacing-3)"
+  if (view.title !== undefined) {
+    const title = element.ownerDocument.createElement("h2")
+    title.textContent = view.title
+    title.style.margin = "0 0 var(--en-spacing-2) 0"
+    panel.appendChild(title)
+  }
+  panel.appendChild(renderCombobox(view.combobox, state, report))
+  element.replaceChildren(backdrop, panel)
+
+  state.addListener(element, "keydown", (event) => {
+    if ((event as KeyboardEvent).key === "Escape") {
+      runReportedIntent(report, view.onDismiss)
+      return
+    }
+    trapOverlayFocus(element, event as KeyboardEvent)
+  })
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  return element
+}
+
 const renderView = (view: View, state: DomRendererState, report: IntentReporter): HTMLElement => {
   switch (view._tag) {
     case "Stack":
@@ -2083,6 +2299,10 @@ const renderView = (view: View, state: DomRendererState, report: IntentReporter)
       return renderContextMenu(view, state, report)
     case "Tooltip":
       return renderTooltip(view, state, report)
+    case "Combobox":
+      return renderCombobox(view, state, report)
+    case "CommandPalette":
+      return renderCommandPalette(view, state, report)
   }
 }
 
@@ -2233,6 +2453,12 @@ export const viewStructure = (view: View): DomStructure => {
         tag: "Tooltip",
         ...(view.key === undefined ? {} : { key: view.key }),
         children: view.children.map(viewStructure)
+      }
+    case "CommandPalette":
+      return {
+        tag: "CommandPalette",
+        ...(view.key === undefined ? {} : { key: view.key }),
+        children: [viewStructure(view.combobox)]
       }
     default:
       return {
