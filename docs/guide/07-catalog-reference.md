@@ -1,23 +1,128 @@
 # 7. Catalog reference
 
-Every prop table below is read directly from the Schema definitions in
-[`packages/core/src/index.ts`](../../packages/core/src/index.ts) — not
-hand-guessed. Each component also gets a small snippet that constructs it
-with the real `@effect-native/core` constructor function, type-checked the
-same way as every other snippet in this guide, so this page can't drift from
-the shipped catalog without the check failing.
+Every prop table below is read from Schema definitions in
+[`packages/core/src/index.ts`](../../packages/core/src/index.ts) where a full
+table is maintained. The **closed tag set** and catalog version are
+conformance-checked by
+[`scripts/check-catalog-reference.ts`](../../scripts/check-catalog-reference.ts)
+(`bun run check:catalog-reference`) so this page cannot silently drop a shipped
+component.
 
-Current catalog marker: `CatalogVersion = "effect-native/v5"`. The closed set
-of component tags (`componentTags` in the source) is:
+Current catalog marker: `CatalogVersion = "effect-native/v19"`.
 
-```
-Stack, Text, Button, Image, TextField, List, SectionList, Card, Spacer,
-Link, Modal, Sheet
-```
+Closed component tags (`componentTags`, 48 total):
 
-There is no escape hatch to add an ad hoc thirteenth component — growing the
+`Stack`, `Text`, `Button`, `Image`, `TextField`, `List`,
+`SectionList`, `Card`, `Spacer`, `Link`, `Modal`, `Sheet`,
+`Host`, `Icon`, `Divider`, `Badge`, `Chip`, `Meter`,
+`StatTile`, `Table`, `SplitPane`, `NavRail`, `Workbench`, `Popover`,
+`DropdownMenu`, `ContextMenu`, `Tooltip`, `Combobox`, `CommandPalette`, `Tabs`,
+`Composer`, `Toggle`, `Select`, `Checkbox`, `RadioGroup`, `Slider`,
+`NumberField`, `FieldRow`, `Toast`, `ToastRegion`, `StatusBanner`, `RecoveryOverlay`,
+`Markdown`, `Transcript`, `CodeBlock`, `DiffView`, `GraphFigure`, `Timeline`.
+
+There is no escape hatch to add an ad hoc component — growing the
 catalog is a deliberate, tracked process; see
-[`../../GAPS.md`](../../GAPS.md).
+[`../../GAPS.md`](../../GAPS.md). Foreign imperative surfaces use the reviewed
+[`Host`](../foreign-host.md) node (also listed above), not an open plugin API.
+
+## Full tag index
+
+### Stack
+
+### Text
+
+### Button
+
+### Image
+
+### TextField
+
+### List
+
+### SectionList
+
+### Card
+
+### Spacer
+
+### Link
+
+### Modal
+
+### Sheet
+
+### Host
+
+### Icon
+
+### Divider
+
+### Badge
+
+### Chip
+
+### Meter
+
+### StatTile
+
+### Table
+
+### SplitPane
+
+### NavRail
+
+### Workbench
+
+### Popover
+
+### DropdownMenu
+
+### ContextMenu
+
+### Tooltip
+
+### Combobox
+
+### CommandPalette
+
+### Tabs
+
+### Composer
+
+### Toggle
+
+### Select
+
+### Checkbox
+
+### RadioGroup
+
+### Slider
+
+### NumberField
+
+### FieldRow
+
+### Toast
+
+### ToastRegion
+
+### StatusBanner
+
+### RecoveryOverlay
+
+### Markdown
+
+### Transcript
+
+### CodeBlock
+
+### DiffView
+
+### GraphFigure
+
+### Timeline
 
 ## Shared vocabulary
 

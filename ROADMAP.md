@@ -88,7 +88,7 @@ headless, DOM, and React Native renderer coverage.
 **Exit criterion:** complete. The catalog now covers the first production
 web/mobile app surface needs without opening a custom-component escape hatch.
 
-## Phase 3 — Developer experience (in progress — issues #16–#19)
+## Phase 3 — Developer experience (complete — issues #15–#19)
 
 The leverage that falls out of "views are data, interactions are values":
 
@@ -97,9 +97,10 @@ The leverage that falls out of "views are data, interactions are values":
   Phase 0 (#15 complete; see [`docs/devtools.md`](./docs/devtools.md))
 - **Testing story**: an app-author-facing test harness — deterministic view
   snapshots, intent-driven interaction tests, visual baselines per
-  renderer (#16)
+  renderer (#16 complete; see [`docs/testing.md`](./docs/testing.md))
 - **Documentation**: a guide good enough for someone outside the project to
-  build an app (#17 complete; see [`docs/guide/README.md`](./docs/guide/README.md))
+  build an app (#17 complete; see [`docs/guide/README.md`](./docs/guide/README.md)
+  + `examples/guide-app`, doc-snippet runner, catalog-reference conformance)
 - **Component gallery**: every catalog component browsable in every
   supported renderer — open it on the web, open it on a phone — with
   stories as serializable data, prop knobs generated from the schemas, and

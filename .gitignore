@@ -5,3 +5,4 @@ dist
 scripts/.doc-snippets
 packages/site/src/content.generated.json
 
+packages/render-canvas/dist/
