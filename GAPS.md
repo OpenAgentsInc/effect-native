@@ -23,7 +23,7 @@ their reason so pressure is visible without weakening the catalog contract.
 
 ## Catalog Versioning Policy
 
-The current catalog marker is `effect-native/v10`, exposed by
+The current catalog marker is `effect-native/v11`, exposed by
 `CatalogVersion`. `compatibleCatalogVersions` is the decode allow-list, and
 `CompatibleViewSchema` is the schema app authors and renderers should use when
 accepting persisted or externally-authored trees.
@@ -57,7 +57,7 @@ until it has a fixture and every renderer declares and proves support for it.
 | Protoss-blue dark theme | Khala Code Desktop is dark-only and pins the OpenAgents Khala CSS variable palette | 2026-07-08 | accepted -> #25; proof theme maps exact hex values onto current token roles |
 | Streaming live binding | Transcript and fleet/gym state append/patch from recorded or live streams | 2026-07-08 | shipped -> #26 (runtime `makeStreamRegion`: keyed append reconciliation, frame-cadence coalescing via groupedWithin, Scope interruption, recorded patch sequence; no catalog bump) |
 | App shell / split panes / nav rail | Khala Code Desktop chat shell needs sidebar, thread list, resizable workbench, and active pane switching | 2026-07-08 | shipped -> #27 (v10: `SplitPane` with typed panes + min/max/size + draggable divider reporting a bounded `{ paneId, size }` onResize intent + dblclick collapse; `NavRail` sections/items with typed onSelect + active state; `Workbench` swapping active pane as typed state (keepMounted policy); DOM drag-resizable, RN static-divider fallback, headless records) |
-| Popover / dropdown menu / context menu / tooltip | Command menus, settings menus, tooltips, and context menus in Khala Code Desktop | 2026-07-08 | accepted -> #28 |
+| Popover / dropdown menu / context menu / tooltip | Command menus, settings menus, tooltips, and context menus in Khala Code Desktop | 2026-07-08 | shipped -> #28 (v11: `Popover` anchored surface (typed placement side/align, presence as typed `open`, Escape/dismiss intent, focus-first-on-open + focus-return-to-anchor-on-close); `DropdownMenu`/`ContextMenu` share a recursive typed MenuItem model (icon/disabled/danger/keybinding/submenu) with roving arrow-key focus + per-item onSelect, ContextMenu pointer-positioned via typed x/y; `Tooltip` wraps exactly one target with aria-describedby. DOM full a11y/keyboard; RN pressable-menu + accessibilityHint subset (placement declared unsupported); headless records) |
 | Command palette / combobox | Khala command palette and slash-command autocomplete | 2026-07-08 | accepted -> #29 |
 | Tabs | Khala settings, workbench, and panel groups | 2026-07-08 | accepted -> #30 |
 | Icon | Khala nav rail, command buttons, statuses, fleet controls, and menu items | 2026-07-08 | shipped -> #31 (v8: closed IconName set + iconSizes, per-renderer registries — DOM inline SVG/currentColor, RN font glyphs — typed decorative vs meaningful a11y) |

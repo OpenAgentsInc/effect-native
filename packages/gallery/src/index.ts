@@ -5,14 +5,18 @@ import {
   Card,
   Chip,
   ComponentValueBinding,
+  ContextMenu,
   Divider,
+  DropdownMenu,
   Host,
   Icon,
   Image,
   IntentRef,
   Meter,
+  Popover,
   StatTile,
   Table,
+  Tooltip,
   IntentSchema,
   JsonPayloadSchema,
   Link,
@@ -779,6 +783,82 @@ const componentStoryMap = {
         ]
       }),
       controls: [booleanControl("workbench-keep-mounted", "Keep mounted", ["keepMounted"], false)]
+    })
+  ],
+  Popover: [
+    story({
+      id: "popover-basic",
+      component: "Popover",
+      title: "Popover",
+      description: "Anchored floating surface; presence is typed state, dismiss is a typed intent.",
+      view: Popover({
+        key: "popover-basic",
+        open: true,
+        placement: { side: "bottom", align: "start" },
+        anchorKey: "popover-anchor",
+        dismissable: true,
+        onDismiss: IntentRef("GalleryStory.Dismissed", StaticPayload({ surface: "popover" }))
+      }, [
+        Text({ key: "popover-copy", content: "Thread token details", variant: "body" })
+      ]),
+      controls: [booleanControl("popover-open", "Open", ["open"], true)]
+    })
+  ],
+  DropdownMenu: [
+    story({
+      id: "dropdown-menu-basic",
+      component: "DropdownMenu",
+      title: "DropdownMenu",
+      description: "Keyboard-navigable menu from a typed item model; per-item onSelect.",
+      view: DropdownMenu({
+        key: "dropdown-menu-basic",
+        open: true,
+        placement: { side: "bottom", align: "start" },
+        onSelect: IntentRef("GalleryStory.Pressed", ComponentValueBinding()),
+        onDismiss: IntentRef("GalleryStory.Dismissed", StaticPayload({ surface: "dropdown-menu" })),
+        items: [
+          { id: "rename", label: "Rename", icon: "Reload", keybinding: "F2" },
+          { id: "delete", label: "Delete", icon: "X", danger: true },
+          { id: "archived", label: "Archived", disabled: true }
+        ]
+      }),
+      controls: [booleanControl("dropdown-open", "Open", ["open"], true)]
+    })
+  ],
+  ContextMenu: [
+    story({
+      id: "context-menu-basic",
+      component: "ContextMenu",
+      title: "ContextMenu",
+      description: "Pointer-anchored menu at a typed position; same item model as DropdownMenu.",
+      view: ContextMenu({
+        key: "context-menu-basic",
+        open: true,
+        x: 120,
+        y: 80,
+        onSelect: IntentRef("GalleryStory.Pressed", ComponentValueBinding()),
+        onDismiss: IntentRef("GalleryStory.Dismissed", StaticPayload({ surface: "context-menu" })),
+        items: [
+          { id: "open", label: "Open" },
+          { id: "copy-path", label: "Copy path", keybinding: "⌘C" }
+        ]
+      })
+    })
+  ],
+  Tooltip: [
+    story({
+      id: "tooltip-basic",
+      component: "Tooltip",
+      title: "Tooltip",
+      description: "Non-interactive hover/focus label wrapping one target; aria-describedby.",
+      view: Tooltip({
+        key: "tooltip-basic",
+        content: "Run the current cell",
+        placement: { side: "top", align: "center" },
+        delayMillis: 200
+      }, [
+        Icon({ key: "tooltip-target", name: "Play", size: "md", label: "Run" })
+      ])
     })
   ]
 } satisfies { readonly [Tag in ComponentTag]: ReadonlyArray<Story> }

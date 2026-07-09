@@ -5,9 +5,14 @@ import {
   type CardView,
   type ChipView,
   type ColorToken,
+  type ContextMenuView,
   type Dimension,
   type DividerView,
+  type DropdownMenuView,
+  type MenuItem,
   type MeterView,
+  type PopoverView,
+  type TooltipView,
   type StatTileView,
   type TableView,
   type Tone,
@@ -383,6 +388,9 @@ class DomRendererState {
   overlayBodyOverflow: string | undefined
   readonly endReachedSignatures = new Map<string, string>()
   readonly pinnedSignatures = new Map<string, boolean>()
+  // Tracks anchored-overlay (popover/menu) open state per node key so an
+  // open->closed transition can return focus to the anchor (issue #28).
+  readonly anchoredOpen = new Map<string, boolean>()
   readonly hostDrivers: Map<HostKind, DomHostDriver>
   readonly hostInstances = new Map<string, { readonly kind: HostKind; readonly instance: DomHostInstance }>()
 
@@ -1762,6 +1770,263 @@ const renderWorkbench = (view: WorkbenchView, state: DomRendererState, report: I
   return element
 }
 
+// Anchored overlay family (issue #28). Placement (side + align) is recorded as
+// data attributes; the renderer owns positioning/collision. Menus share a
+// typed item model with keyboard roving-focus. Dismiss + selection flow through
+// named typed intents. On open->close a popover/menu returns focus to its
+// anchor node when one is declared.
+const menuItemButton = (
+  item: MenuItem,
+  depth: number,
+  state: DomRendererState,
+  onSelect: IntentRef,
+  onDismiss: IntentRef | undefined,
+  report: IntentReporter
+): HTMLElement => {
+  const document = state.root.ownerDocument
+  const button = document.createElement("button") as HTMLButtonElement
+  button.type = "button"
+  button.setAttribute("role", "menuitem")
+  button.setAttribute("data-en-menu-item", item.id)
+  button.disabled = item.disabled === true
+  button.tabIndex = -1
+  if (item.danger === true) button.setAttribute("data-en-danger", "true")
+  if (item.items !== undefined && item.items.length > 0) button.setAttribute("aria-haspopup", "menu")
+  button.style.display = "flex"
+  button.style.alignItems = "center"
+  button.style.gap = "var(--en-spacing-2)"
+  button.style.paddingLeft = `calc(var(--en-spacing-2) * ${depth + 1})`
+  if (item.icon !== undefined) {
+    const iconEl = document.createElement("span")
+    iconEl.setAttribute("aria-hidden", "true")
+    iconEl.style.display = "inline-flex"
+    iconEl.innerHTML = iconSvg(item.icon, iconSizePixels.sm)
+    button.appendChild(iconEl)
+  }
+  const label = document.createElement("span")
+  label.setAttribute("data-en-role", "label")
+  label.textContent = item.label
+  button.appendChild(label)
+  if (item.keybinding !== undefined) {
+    const kbd = document.createElement("kbd")
+    kbd.setAttribute("data-en-role", "keybinding")
+    kbd.textContent = item.keybinding
+    kbd.style.marginLeft = "auto"
+    button.appendChild(kbd)
+  }
+  if (item.danger === true) button.style.color = colorValue("danger")
+  state.resetListeners(button)
+  if (item.disabled !== true) {
+    state.addListener(button, "click", () => {
+      runReportedIntent(report, onSelect, item.id)
+      if (onDismiss !== undefined) runReportedIntent(report, onDismiss)
+    })
+  }
+  return button
+}
+
+const renderMenuList = (
+  items: ReadonlyArray<MenuItem>,
+  depth: number,
+  state: DomRendererState,
+  onSelect: IntentRef,
+  onDismiss: IntentRef | undefined,
+  report: IntentReporter
+): ReadonlyArray<HTMLElement> =>
+  items.flatMap((item) => {
+    const button = menuItemButton(item, depth, state, onSelect, onDismiss, report)
+    if (item.items === undefined || item.items.length === 0) return [button]
+    const submenu = state.root.ownerDocument.createElement("div")
+    submenu.setAttribute("role", "menu")
+    submenu.setAttribute("data-en-submenu-of", item.id)
+    submenu.append(...renderMenuList(item.items, depth + 1, state, onSelect, onDismiss, report))
+    return [button, submenu]
+  })
+
+const wireMenuKeyboard = (
+  menuEl: HTMLElement,
+  dismissable: boolean,
+  onDismiss: IntentRef | undefined,
+  state: DomRendererState,
+  report: IntentReporter
+): void => {
+  state.addListener(menuEl, "keydown", (event) => {
+    const key = (event as KeyboardEvent).key
+    const items = Array.from(menuEl.querySelectorAll('[data-en-menu-item]:not([disabled])')) as Array<HTMLElement>
+    if (items.length === 0) return
+    const activeIndex = items.indexOf(menuEl.ownerDocument.activeElement as HTMLElement)
+    if (key === "ArrowDown") {
+      event.preventDefault()
+      items[(activeIndex + 1 + items.length) % items.length]!.focus()
+    } else if (key === "ArrowUp") {
+      event.preventDefault()
+      items[(activeIndex - 1 + items.length) % items.length]!.focus()
+    } else if (key === "Home") {
+      event.preventDefault()
+      items[0]!.focus()
+    } else if (key === "End") {
+      event.preventDefault()
+      items[items.length - 1]!.focus()
+    } else if (key === "Escape" && dismissable && onDismiss !== undefined) {
+      event.preventDefault()
+      runReportedIntent(report, onDismiss)
+    }
+  })
+}
+
+// Focus first menu item on open; return focus to the anchor on open->close.
+const syncAnchoredFocus = (
+  view: PopoverView | DropdownMenuView | ContextMenuView,
+  element: HTMLElement,
+  open: boolean,
+  state: DomRendererState
+): void => {
+  const signatureKey = `${view._tag}:${view.key ?? ""}`
+  const wasOpen = state.anchoredOpen.get(signatureKey) === true
+  state.anchoredOpen.set(signatureKey, open)
+  if (open && !wasOpen) {
+    const first = (element.querySelector('[data-en-menu-item]:not([disabled])') ?? focusableElements(element)[0]) as
+      | HTMLElement
+      | undefined
+    if (first !== undefined) state.requestFocus(first)
+  } else if (!open && wasOpen) {
+    const anchorKey = "anchorKey" in view ? view.anchorKey : undefined
+    if (anchorKey !== undefined) {
+      const anchor = state.root.querySelector(`#en-${cssEscape(anchorKey)}`) as HTMLElement | null
+      if (anchor !== null) state.requestFocus(anchor)
+    }
+  }
+}
+
+const renderPopover = (view: PopoverView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const element = state.keyedElement(view, "div")
+  state.resetListeners(element)
+  const open = view.open === true
+  element.setAttribute("data-en-overlay", "popover")
+  element.setAttribute("role", "dialog")
+  element.setAttribute("data-en-placement", `${view.placement.side}:${view.placement.align}`)
+  if (view.anchorKey !== undefined) element.setAttribute("data-en-anchor", view.anchorKey)
+  element.hidden = !open
+  element.style.position = "absolute"
+  element.style.display = open ? "block" : "none"
+  element.style.background = "var(--en-color-surface)"
+  element.style.border = "1px solid var(--en-color-border)"
+  element.style.borderRadius = "var(--en-radius-md)"
+  element.style.padding = "var(--en-spacing-3)"
+  if (open) {
+    element.replaceChildren(...view.children.map((child) => renderView(child, state, report)))
+  } else {
+    element.replaceChildren()
+  }
+  if (view.dismissable) {
+    state.addListener(element, "keydown", (event) => {
+      if ((event as KeyboardEvent).key === "Escape") {
+        runReportedIntent(report, view.onDismiss)
+      }
+    })
+  }
+  syncAnchoredFocus(view, element, open, state)
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  applyInteractions(element, view, state, report)
+  return element
+}
+
+const renderDropdownMenu = (view: DropdownMenuView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const element = state.keyedElement(view, "div")
+  state.resetListeners(element)
+  const open = view.open === true
+  element.setAttribute("data-en-overlay", "dropdown-menu")
+  element.setAttribute("role", "menu")
+  element.setAttribute("data-en-placement", `${view.placement.side}:${view.placement.align}`)
+  if (view.anchorKey !== undefined) element.setAttribute("data-en-anchor", view.anchorKey)
+  element.hidden = !open
+  element.tabIndex = -1
+  element.style.position = "absolute"
+  element.style.display = open ? "flex" : "none"
+  element.style.flexDirection = "column"
+  element.style.background = "var(--en-color-surface)"
+  element.style.border = "1px solid var(--en-color-border)"
+  element.style.borderRadius = "var(--en-radius-md)"
+  if (open) {
+    element.replaceChildren(...renderMenuList(view.items, 0, state, view.onSelect, view.onDismiss, report))
+  } else {
+    element.replaceChildren()
+  }
+  wireMenuKeyboard(element, true, view.onDismiss, state, report)
+  syncAnchoredFocus(view, element, open, state)
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  applyInteractions(element, view, state, report)
+  return element
+}
+
+const renderContextMenu = (view: ContextMenuView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const element = state.keyedElement(view, "div")
+  state.resetListeners(element)
+  const open = view.open === true
+  element.setAttribute("data-en-overlay", "context-menu")
+  element.setAttribute("role", "menu")
+  element.setAttribute("data-en-position", `${view.x}:${view.y}`)
+  element.hidden = !open
+  element.tabIndex = -1
+  element.style.position = "fixed"
+  element.style.left = px(view.x)
+  element.style.top = px(view.y)
+  element.style.display = open ? "flex" : "none"
+  element.style.flexDirection = "column"
+  element.style.background = "var(--en-color-surface)"
+  element.style.border = "1px solid var(--en-color-border)"
+  element.style.borderRadius = "var(--en-radius-md)"
+  if (open) {
+    element.replaceChildren(...renderMenuList(view.items, 0, state, view.onSelect, view.onDismiss, report))
+  } else {
+    element.replaceChildren()
+  }
+  wireMenuKeyboard(element, true, view.onDismiss, state, report)
+  syncAnchoredFocus(view, element, open, state)
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  applyInteractions(element, view, state, report)
+  return element
+}
+
+const renderTooltip = (view: TooltipView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const element = state.keyedElement(view, "span")
+  state.resetListeners(element)
+  element.style.position = "relative"
+  element.style.display = "inline-flex"
+  const document = element.ownerDocument
+  const tooltipId = `en-tooltip-${cssEscape(view.key ?? view.content)}`
+  const target = renderView(view.children[0]!, state, report)
+  target.setAttribute("aria-describedby", tooltipId)
+  const bubble = document.createElement("span")
+  bubble.id = tooltipId
+  bubble.setAttribute("role", "tooltip")
+  bubble.setAttribute("data-en-role", "tooltip")
+  if (view.placement !== undefined) {
+    bubble.setAttribute("data-en-placement", `${view.placement.side}:${view.placement.align}`)
+  }
+  bubble.textContent = view.content
+  bubble.hidden = true
+  bubble.style.position = "absolute"
+  bubble.style.pointerEvents = "none"
+  bubble.style.background = "var(--en-color-surfaceRaised)"
+  bubble.style.color = "var(--en-color-textPrimary)"
+  bubble.style.padding = "var(--en-spacing-1) var(--en-spacing-2)"
+  bubble.style.borderRadius = "var(--en-radius-sm)"
+  const show = () => { bubble.hidden = false }
+  const hide = () => { bubble.hidden = true }
+  state.addListener(element, "pointerenter", show)
+  state.addListener(element, "pointerleave", hide)
+  state.addListener(element, "focusin", show)
+  state.addListener(element, "focusout", hide)
+  element.replaceChildren(target, bubble)
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  return element
+}
+
 const renderView = (view: View, state: DomRendererState, report: IntentReporter): HTMLElement => {
   switch (view._tag) {
     case "Stack":
@@ -1810,6 +2075,14 @@ const renderView = (view: View, state: DomRendererState, report: IntentReporter)
       return renderNavRail(view, state, report)
     case "Workbench":
       return renderWorkbench(view, state, report)
+    case "Popover":
+      return renderPopover(view, state, report)
+    case "DropdownMenu":
+      return renderDropdownMenu(view, state, report)
+    case "ContextMenu":
+      return renderContextMenu(view, state, report)
+    case "Tooltip":
+      return renderTooltip(view, state, report)
   }
 }
 
@@ -1954,6 +2227,12 @@ export const viewStructure = (view: View): DomStructure => {
           ? view.panes
           : view.panes.filter((pane) => pane.id === view.activePaneId)
         ).map((pane) => viewStructure(pane.content))
+      }
+    case "Tooltip":
+      return {
+        tag: "Tooltip",
+        ...(view.key === undefined ? {} : { key: view.key }),
+        children: view.children.map(viewStructure)
       }
     default:
       return {

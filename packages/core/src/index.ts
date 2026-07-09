@@ -75,8 +75,9 @@ export const HostCatalogVersion = "effect-native/v7" as const
 export const IconCatalogVersion = "effect-native/v8" as const
 export const DataDisplayCatalogVersion = "effect-native/v9" as const
 export const AppShellCatalogVersion = "effect-native/v10" as const
-export const PreviousCatalogVersion = DataDisplayCatalogVersion
-export const CatalogVersion = AppShellCatalogVersion
+export const AnchoredOverlayCatalogVersion = "effect-native/v11" as const
+export const PreviousCatalogVersion = AppShellCatalogVersion
+export const CatalogVersion = AnchoredOverlayCatalogVersion
 export const CatalogVersionSchema = Schema.Literal(CatalogVersion)
 export type CatalogVersion = typeof CatalogVersion
 export const compatibleCatalogVersions = [
@@ -89,6 +90,7 @@ export const compatibleCatalogVersions = [
   InteractionCatalogVersion,
   HostCatalogVersion,
   IconCatalogVersion,
+  DataDisplayCatalogVersion,
   PreviousCatalogVersion,
   CatalogVersion
 ] as const
@@ -118,7 +120,11 @@ export const componentTags = [
   "Table",
   "SplitPane",
   "NavRail",
-  "Workbench"
+  "Workbench",
+  "Popover",
+  "DropdownMenu",
+  "ContextMenu",
+  "Tooltip"
 ] as const
 export type ComponentTag = (typeof componentTags)[number]
 
@@ -1965,6 +1971,72 @@ export interface WorkbenchView extends NodeBase {
   readonly style?: CardStyle
 }
 
+// Anchored overlay family (issue #28). Builds on the Modal/Sheet presence
+// primitive (#13): presence is typed `open` state, dismiss is a typed intent.
+// A shared placement contract (side + align) is resolved by the renderer, not
+// app math; collision/flip is a DOM-renderer concern.
+export type OverlaySide = "top" | "bottom" | "left" | "right"
+export type OverlayAlign = "start" | "center" | "end"
+export interface Placement {
+  readonly side: OverlaySide
+  readonly align: OverlayAlign
+}
+
+// Recursive typed menu-item model shared by DropdownMenu / ContextMenu. No
+// closures — selection flows through the menu's `onSelect` with the item id.
+export interface MenuItem {
+  readonly id: string
+  readonly label: string
+  readonly icon?: IconName
+  readonly disabled?: boolean
+  readonly danger?: boolean
+  readonly keybinding?: string
+  readonly items?: ReadonlyArray<MenuItem>
+}
+
+export interface PopoverView extends NodeBase {
+  readonly _tag: "Popover"
+  readonly open: Bound<boolean>
+  readonly placement: Placement
+  // References the anchor node's `key`; the renderer positions relative to it.
+  readonly anchorKey?: string
+  readonly dismissable: boolean
+  readonly onDismiss: IntentRef
+  readonly children: ReadonlyArray<View>
+}
+
+export interface DropdownMenuView extends NodeBase {
+  readonly _tag: "DropdownMenu"
+  readonly open: Bound<boolean>
+  readonly placement: Placement
+  readonly anchorKey?: string
+  readonly items: ReadonlyArray<MenuItem>
+  readonly onSelect: IntentRef
+  readonly onDismiss: IntentRef
+  readonly style?: CardStyle
+}
+
+export interface ContextMenuView extends NodeBase {
+  readonly _tag: "ContextMenu"
+  readonly open: Bound<boolean>
+  // Pointer-anchored position (typed, not app math).
+  readonly x: number
+  readonly y: number
+  readonly items: ReadonlyArray<MenuItem>
+  readonly onSelect: IntentRef
+  readonly onDismiss: IntentRef
+  readonly style?: CardStyle
+}
+
+export interface TooltipView extends NodeBase {
+  readonly _tag: "Tooltip"
+  readonly content: string
+  readonly placement?: Placement
+  readonly delayMillis?: number
+  // Exactly one target the tooltip describes (aria-describedby).
+  readonly children: ReadonlyArray<View>
+}
+
 export type View =
   | StackView
   | TextView
@@ -1989,6 +2061,10 @@ export type View =
   | SplitPaneView
   | NavRailView
   | WorkbenchView
+  | PopoverView
+  | DropdownMenuView
+  | ContextMenuView
+  | TooltipView
 
 export type KeyedView = View & { readonly key: NodeKey }
 
@@ -2029,6 +2105,10 @@ const childViewEntries = (
       return view.panes.map((pane, index) => ({ path: ["panes", index, "content"], view: pane.content }))
     case "Workbench":
       return view.panes.map((pane, index) => ({ path: ["panes", index, "content"], view: pane.content }))
+    case "Popover":
+      return view.children.map((child, index) => ({ path: ["children", index], view: child }))
+    case "Tooltip":
+      return view.children.map((child, index) => ({ path: ["children", index], view: child }))
     default:
       return []
   }
@@ -2424,6 +2504,70 @@ export const WorkbenchSchema: Schema.Codec<WorkbenchView, WorkbenchView> = Schem
   style: CardStyleSchema.pipe(Schema.optionalKey)
 })
 
+export const OverlaySideSchema = Schema.Literals(["top", "bottom", "left", "right"] as const)
+export const OverlayAlignSchema = Schema.Literals(["start", "center", "end"] as const)
+export const PlacementSchema: Schema.Codec<Placement, Placement> = Schema.Struct({
+  side: OverlaySideSchema,
+  align: OverlayAlignSchema
+})
+
+const MenuItemSelf = Schema.suspend((): Schema.Codec<MenuItem, MenuItem> => MenuItemSchema)
+export const MenuItemSchema: Schema.Codec<MenuItem, MenuItem> = Schema.Struct({
+  id: Schema.NonEmptyString,
+  label: Schema.String,
+  icon: IconNameSchema.pipe(Schema.optionalKey),
+  disabled: Schema.Boolean.pipe(Schema.optionalKey),
+  danger: Schema.Boolean.pipe(Schema.optionalKey),
+  keybinding: Schema.String.pipe(Schema.optionalKey),
+  items: Schema.Array(MenuItemSelf).pipe(Schema.optionalKey)
+})
+
+export const PopoverSchema: Schema.Codec<PopoverView, PopoverView> = Schema.TaggedStruct("Popover", {
+  ...CommonFields,
+  open: BoundBooleanSchema,
+  placement: PlacementSchema,
+  anchorKey: Schema.String.pipe(Schema.optionalKey),
+  dismissable: Schema.Boolean,
+  onDismiss: IntentRefSchema,
+  children: Schema.Array(ViewSelf)
+})
+
+export const DropdownMenuSchema: Schema.Codec<DropdownMenuView, DropdownMenuView> =
+  Schema.TaggedStruct("DropdownMenu", {
+    ...CommonFields,
+    open: BoundBooleanSchema,
+    placement: PlacementSchema,
+    anchorKey: Schema.String.pipe(Schema.optionalKey),
+    items: Schema.Array(MenuItemSchema),
+    onSelect: IntentRefSchema,
+    onDismiss: IntentRefSchema,
+    style: CardStyleSchema.pipe(Schema.optionalKey)
+  })
+
+export const ContextMenuSchema: Schema.Codec<ContextMenuView, ContextMenuView> =
+  Schema.TaggedStruct("ContextMenu", {
+    ...CommonFields,
+    open: BoundBooleanSchema,
+    x: NonNegativeNumberSchema,
+    y: NonNegativeNumberSchema,
+    items: Schema.Array(MenuItemSchema),
+    onSelect: IntentRefSchema,
+    onDismiss: IntentRefSchema,
+    style: CardStyleSchema.pipe(Schema.optionalKey)
+  })
+
+export const TooltipSchema: Schema.Codec<TooltipView, TooltipView> = Schema.TaggedStruct("Tooltip", {
+  ...CommonFields,
+  content: Schema.String,
+  placement: PlacementSchema.pipe(Schema.optionalKey),
+  delayMillis: NonNegativeNumberSchema.pipe(Schema.optionalKey),
+  children: Schema.Array(ViewSelf).check(
+    Schema.makeFilter<ReadonlyArray<View>>((children) =>
+      children.length === 1 ? undefined : { path: [], issue: "Tooltip wraps exactly one target" }
+    )
+  )
+})
+
 export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
   Schema.Union([
     StackSchema,
@@ -2448,7 +2592,11 @@ export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
     TableSchema,
     SplitPaneSchema,
     NavRailSchema,
-    WorkbenchSchema
+    WorkbenchSchema,
+    PopoverSchema,
+    DropdownMenuSchema,
+    ContextMenuSchema,
+    TooltipSchema
   ]).check(OverlayStackFilter)
 )
 
@@ -2567,6 +2715,22 @@ export const NavRail = (props: NavRailProps): NavRailView =>
 export type WorkbenchProps = WithoutTagAndVersion<WorkbenchView>
 export const Workbench = (props: WorkbenchProps): WorkbenchView =>
   WorkbenchSchema.make({ _tag: "Workbench", catalogVersion: CatalogVersion, ...props })
+
+export type PopoverProps = Omit<WithoutTagAndVersion<PopoverView>, "children">
+export const Popover = (props: PopoverProps, children: ReadonlyArray<View> = []): PopoverView =>
+  PopoverSchema.make({ _tag: "Popover", catalogVersion: CatalogVersion, ...props, children })
+
+export type DropdownMenuProps = WithoutTagAndVersion<DropdownMenuView>
+export const DropdownMenu = (props: DropdownMenuProps): DropdownMenuView =>
+  DropdownMenuSchema.make({ _tag: "DropdownMenu", catalogVersion: CatalogVersion, ...props })
+
+export type ContextMenuProps = WithoutTagAndVersion<ContextMenuView>
+export const ContextMenu = (props: ContextMenuProps): ContextMenuView =>
+  ContextMenuSchema.make({ _tag: "ContextMenu", catalogVersion: CatalogVersion, ...props })
+
+export type TooltipProps = Omit<WithoutTagAndVersion<TooltipView>, "children">
+export const Tooltip = (props: TooltipProps, children: ReadonlyArray<View>): TooltipView =>
+  TooltipSchema.make({ _tag: "Tooltip", catalogVersion: CatalogVersion, ...props, children })
 
 export const decodeView = Schema.decodeUnknownSync(ViewSchema)
 export const encodeView = Schema.encodeSync(ViewSchema)
@@ -2735,6 +2899,24 @@ export const resolveView = (view: View, input: ViewResolution = {}): View => {
         ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) }),
         panes: view.panes.map((pane) => ({ ...pane, content: resolveView(pane.content, input) }))
       }
+    case "Popover":
+      return {
+        ...view,
+        open: input.state === undefined ? view.open : resolveBoundBoolean(view.open, input.state),
+        children: view.children.map((child) => resolveView(child, input))
+      }
+    case "DropdownMenu":
+    case "ContextMenu":
+      return {
+        ...view,
+        open: input.state === undefined ? view.open : resolveBoundBoolean(view.open, input.state),
+        ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) })
+      }
+    case "Tooltip":
+      return {
+        ...view,
+        children: view.children.map((child) => resolveView(child, input))
+      }
   }
 }
 
@@ -2776,6 +2958,23 @@ export const resolveBindings = <State>(view: View, state: State): View => {
       return {
         ...view,
         panes: view.panes.map((pane) => ({ ...pane, content: resolveBindings(pane.content, state) }))
+      }
+    case "Popover":
+      return {
+        ...view,
+        open: resolveBoundBoolean(view.open, state),
+        children: view.children.map((child) => resolveBindings(child, state))
+      }
+    case "DropdownMenu":
+    case "ContextMenu":
+      return {
+        ...view,
+        open: resolveBoundBoolean(view.open, state)
+      }
+    case "Tooltip":
+      return {
+        ...view,
+        children: view.children.map((child) => resolveBindings(child, state))
       }
     case "List":
       return {
@@ -2878,6 +3077,12 @@ export const redactSecureView = (view: View): View => {
       return {
         ...view,
         panes: view.panes.map((pane) => ({ ...pane, content: redactSecureView(pane.content) }))
+      }
+    case "Popover":
+    case "Tooltip":
+      return {
+        ...view,
+        children: view.children.map(redactSecureView)
       }
     default:
       return view

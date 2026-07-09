@@ -6,8 +6,13 @@ import {
   type CardView,
   type ChipView,
   type ColorToken,
+  type ContextMenuView,
   type DividerView,
+  type DropdownMenuView,
+  type MenuItem,
   type MeterView,
+  type PopoverView,
+  type TooltipView,
   type StatTileView,
   type TableView,
   type Tone,
@@ -1195,6 +1200,127 @@ const renderWorkbench = (
   return createElement(dependencies, dependencies.ReactNative.View, baseProps(view, style), ...children)
 }
 
+// Anchored overlay family (issue #28) on React Native. Placement/positioning
+// and collision have no faithful RN mapping and are declared unsupported
+// (recorded via testID). Menus render as pressable rows with a typed onSelect;
+// Tooltip maps to an accessibilityHint on its single target (no hover surface).
+const renderMenuRows = (
+  items: ReadonlyArray<MenuItem>,
+  depth: number,
+  dependencies: ReactNativeDependencies,
+  theme: Theme,
+  onSelect: IntentRef,
+  onDismiss: IntentRef | undefined,
+  report: IntentReporter
+): ReadonlyArray<ReactElementLike> =>
+  items.flatMap((item) => {
+    const parts: Array<ReactElementLike> = []
+    if (item.icon !== undefined) {
+      parts.push(createElement(dependencies, dependencies.ReactNative.Text, { key: "icon" }, iconGlyphs[item.icon]))
+    }
+    parts.push(createElement(dependencies, dependencies.ReactNative.Text, { key: "label" }, item.label))
+    if (item.keybinding !== undefined) {
+      parts.push(createElement(dependencies, dependencies.ReactNative.Text, { key: "kbd" }, item.keybinding))
+    }
+    const row = createElement(
+      dependencies,
+      dependencies.ReactNative.Pressable,
+      {
+        key: `item-${item.id}`,
+        testID: `en-menu-item:${item.id}`,
+        accessibilityRole: "menuitem",
+        accessibilityState: { disabled: item.disabled === true },
+        disabled: item.disabled === true,
+        style: {
+          flexDirection: "row",
+          gap: spacingValue(theme, "2"),
+          paddingLeft: spacingValue(theme, "2") * (depth + 1),
+          ...(item.danger === true ? { } : {})
+        },
+        ...(item.disabled === true
+          ? {}
+          : {
+              onPress: () => {
+                runReportedIntent(report, onSelect, item.id)
+                if (onDismiss !== undefined) runReportedIntent(report, onDismiss)
+              }
+            })
+      },
+      ...parts
+    )
+    if (item.items === undefined || item.items.length === 0) return [row]
+    return [row, ...renderMenuRows(item.items, depth + 1, dependencies, theme, onSelect, onDismiss, report)]
+  })
+
+const renderPopover = (
+  view: PopoverView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const open = view.open === true
+  const style = mergeNativeStyles({ display: open ? "flex" : "none" }, viewStyle(view, options))
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    {
+      ...baseProps(view, style),
+      testID: `en-popover:${view.placement.side}:${view.placement.align}`,
+      accessibilityRole: "none"
+    },
+    ...(open ? view.children.map((child) => renderResolvedReactNativeView(child, dependencies, report, options)) : [])
+  )
+}
+
+const renderDropdownMenu = (
+  view: DropdownMenuView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const theme = options.theme ?? defaultTheme
+  const open = view.open === true
+  const style = mergeNativeStyles({ display: open ? "flex" : "none", flexDirection: "column" }, viewStyle(view, options))
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    { ...baseProps(view, style), testID: `en-dropdown-menu:${view.placement.side}:${view.placement.align}`, accessibilityRole: "menu" },
+    ...(open ? renderMenuRows(view.items, 0, dependencies, theme, view.onSelect, view.onDismiss, report) : [])
+  )
+}
+
+const renderContextMenu = (
+  view: ContextMenuView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const theme = options.theme ?? defaultTheme
+  const open = view.open === true
+  const style = mergeNativeStyles({ display: open ? "flex" : "none", flexDirection: "column" }, viewStyle(view, options))
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    { ...baseProps(view, style), testID: `en-context-menu:${view.x}:${view.y}`, accessibilityRole: "menu" },
+    ...(open ? renderMenuRows(view.items, 0, dependencies, theme, view.onSelect, view.onDismiss, report) : [])
+  )
+}
+
+const renderTooltip = (
+  view: TooltipView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const target = renderResolvedReactNativeView(view.children[0]!, dependencies, report, options)
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    { ...baseProps(view, viewStyle(view, options)), testID: "en-tooltip", accessibilityHint: view.content },
+    target
+  )
+}
+
 const renderResolvedReactNativeView = (
   view: View,
   dependencies: ReactNativeDependencies,
@@ -1248,6 +1374,14 @@ const renderResolvedReactNativeView = (
       return renderNavRail(view, dependencies, report, options)
     case "Workbench":
       return renderWorkbench(view, dependencies, report, options)
+    case "Popover":
+      return renderPopover(view, dependencies, report, options)
+    case "DropdownMenu":
+      return renderDropdownMenu(view, dependencies, report, options)
+    case "ContextMenu":
+      return renderContextMenu(view, dependencies, report, options)
+    case "Tooltip":
+      return renderTooltip(view, dependencies, report, options)
   }
 }
 
@@ -1412,6 +1546,12 @@ export const viewStructure = (view: View): ReactNativeStructure => {
           ? view.panes
           : view.panes.filter((pane) => pane.id === view.activePaneId)
         ).map((pane) => viewStructure(pane.content))
+      }
+    case "Tooltip":
+      return {
+        tag: "Tooltip",
+        ...(view.key === undefined ? {} : { key: view.key }),
+        children: view.children.map(viewStructure)
       }
     default:
       return {

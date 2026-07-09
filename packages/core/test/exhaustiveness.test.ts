@@ -34,6 +34,10 @@ const describeView = Match.type<View>().pipe(
   Match.tag("SplitPane", () => "shell"),
   Match.tag("NavRail", () => "shell"),
   Match.tag("Workbench", () => "shell"),
+  Match.tag("Popover", () => "overlay"),
+  Match.tag("DropdownMenu", () => "overlay"),
+  Match.tag("ContextMenu", () => "overlay"),
+  Match.tag("Tooltip", () => "overlay"),
   Match.exhaustive
 )
 

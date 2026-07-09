@@ -6,6 +6,8 @@ import {
   Button,
   Card,
   ComponentValueBinding,
+  ContextMenu,
+  DropdownMenu,
   FieldBinding,
   Badge,
   Chip,
@@ -16,8 +18,10 @@ import {
   Image,
   IntentRef,
   Meter,
+  Popover,
   StatTile,
   Table,
+  Tooltip,
   Link,
   List,
   Modal,
@@ -233,7 +237,40 @@ const catalogFixturesByTag = {
     panes: [
       { id: "chat", content: Text({ key: "bench-chat", content: "Chat pane", variant: "body" }) }
     ]
-  })
+  }),
+  Popover: Popover({
+    key: "popover",
+    open: true,
+    placement: { side: "bottom", align: "start" },
+    dismissable: true,
+    onDismiss: IntentRef("Dismissed", StaticPayload({ surface: "popover" }))
+  }, [
+    Text({ key: "popover-copy", content: "Popover copy", variant: "body" })
+  ]),
+  DropdownMenu: DropdownMenu({
+    key: "dropdown",
+    open: true,
+    placement: { side: "bottom", align: "start" },
+    onSelect: IntentRef("Pressed", ComponentValueBinding()),
+    onDismiss: IntentRef("Dismissed", StaticPayload({ surface: "dropdown" })),
+    items: [{ id: "rename", label: "Rename", icon: "Reload" }]
+  }),
+  ContextMenu: ContextMenu({
+    key: "context",
+    open: true,
+    x: 40,
+    y: 20,
+    onSelect: IntentRef("Pressed", ComponentValueBinding()),
+    onDismiss: IntentRef("Dismissed", StaticPayload({ surface: "context" })),
+    items: [{ id: "open", label: "Open" }]
+  }),
+  Tooltip: Tooltip({
+    key: "tooltip",
+    content: "Tooltip copy",
+    placement: { side: "top", align: "center" }
+  }, [
+    Icon({ key: "tooltip-target", name: "Play", size: "md", label: "Run" })
+  ])
 } satisfies { readonly [Tag in (typeof componentTags)[number]]: View }
 
 const allFixtureTags = Object.keys(catalogFixturesByTag).sort()
@@ -330,7 +367,11 @@ const catalogRendererTags = [
   "Table",
   "SplitPane",
   "NavRail",
-  "Workbench"
+  "Workbench",
+  "Popover",
+  "DropdownMenu",
+  "ContextMenu",
+  "Tooltip"
 ] as const
 
 // Host (issue #23) is supported by the headless recorder and the DOM renderer

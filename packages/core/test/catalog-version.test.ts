@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { Exit, Schema } from "effect"
 import {
+  AnchoredOverlayCatalogVersion,
   AppShellCatalogVersion,
   CatalogVersion,
   CollectionCatalogVersion,
@@ -52,11 +53,12 @@ describe("catalog version compatibility", () => {
       HostCatalogVersion,
       IconCatalogVersion,
       DataDisplayCatalogVersion,
-      AppShellCatalogVersion
+      AppShellCatalogVersion,
+      AnchoredOverlayCatalogVersion
     ])
     // The current marker is the last entry; the previous marker is second-last.
-    expect(CatalogVersion).toBe(AppShellCatalogVersion)
-    expect(PreviousCatalogVersion).toBe(DataDisplayCatalogVersion)
+    expect(CatalogVersion).toBe(AnchoredOverlayCatalogVersion)
+    expect(PreviousCatalogVersion).toBe(AppShellCatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 1]).toBe(CatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 2]).toBe(PreviousCatalogVersion)
   })
