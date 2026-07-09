@@ -176,6 +176,12 @@ This is the insurance the whole architecture exists to enable: the day a
 dependency churns or a screen needs more than RN can give, the path is a
 contained per-component project, not a platform rewrite.
 
+The planned developer/build workflow is documented in
+[`docs/native-renderer-build-workflow.md`](./docs/native-renderer-build-workflow.md):
+normal app authors stay in the Effect Native/Bun/gallery/devtools loop, while
+native renderer and release tasks use the native toolchains programmatically
+(`xcodebuild`/`simctl`/codesign on iOS, Gradle/Kotlin/Android SDK on Android).
+
 ## Phase 6 — Beyond (as demand proves out)
 
 - **Server-driven UI**: the view tree is already serializable data; serving

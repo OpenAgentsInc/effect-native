@@ -174,7 +174,11 @@ entirely with Effect Native itself -- is in this repository too; hosting is
 tracked separately.
 
 See the **[roadmap](./ROADMAP.md)** for what we're building and in what
-order — web and mobile are the priority targets.
+order — web and mobile are the priority targets. The planned
+[native renderer build workflow](./docs/native-renderer-build-workflow.md)
+documents how a future SwiftUI/Jetpack Compose path would stay CLI-first
+(`xcodebuild`/Gradle), how it relates to the current React Native/Expo host,
+and how non-native host views stay inside the typed `Host` boundary.
 
 Nothing here is stable yet. APIs will change without notice until a first
 tagged release.
