@@ -77,7 +77,7 @@ until it has a fixture and every renderer declares and proves support for it.
 | Media beyond `Image` | None yet | 2026-07-08 | waiting |
 | Utility style aliases | Authoring friction not yet demonstrated by a real screen | 2026-07-08 | waiting |
 | Monospace / whitespace-preserving text style | effectnative.org's home-page and doc code samples (#19) need indentation-preserving display; worked around today with one `Text` per source line in a `Stack` instead of a single multi-line string | 2026-07-08 | waiting -> related to #36 CodeBlock (syntax-highlighted blocks shipped; plain multi-line monospace Text style still open) |
-| React Native pixel visual-baseline capture | Testkit visual baselines (#16) ship a typed `VisualCapture` contract plus a structural-snapshot default and a real DOM-renderer capture (`@effect-native/testkit/visual`); a native RN pixel-capture harness (e.g. a detox/maestro-style screenshot rig) is undemonstrated | 2026-07-08 | waiting |
+| React Native pixel visual-baseline capture | Testkit visual baselines (#16) ship a typed `VisualCapture` contract plus a structural-snapshot default and a real DOM-renderer capture (`@effect-native/testkit/visual`); a native RN pixel-capture harness (e.g. a detox/maestro-style screenshot rig) is undemonstrated | 2026-07-08 | accepted -> #59 (promoted by the mobile epic #52; iOS + Android pixel baselines for the port proof) |
 | Full Khala Code Desktop shell cutover | Production desktop shell still needs the composed proof of chat + fleet/gym canvas + owner cutover steps | 2026-07-08 | accepted -> #42 (exit receipt for Phase 4 epic #20); migration map: [`docs/porting-map.md`](./docs/porting-map.md) |
 | Marketing section primitives | openagents.com production landing (WEB-1) needs typed Section/Hero/AnnouncementBadge/CTASection/Footer rather than ad-hoc Stack trees | 2026-07-09 | shipped -> #46 (v20) |
 | Marketing NavBar | openagents.com landing header — horizontal top-nav distinct from app-shell NavRail | 2026-07-09 | shipped -> #47 (v20) |
@@ -85,6 +85,17 @@ until it has a fixture and every renderer declares and proves support for it.
 | PricingTable / PricingColumn | Landing plan comparison | 2026-07-09 | shipped -> #49 (v20) |
 | LogoRow + StatsBand | Landing social proof and metric band | 2026-07-09 | shipped -> #50 (v20) |
 | Glow + MockupFrame | Landing hero mockup with launch-ui-style glow/tilt treatment | 2026-07-09 | shipped -> #51 (v20) |
+| RN renderer parity (close the declared-subset / unsupported matrix) | Khala Code Mobile needs faithful RN mappings for overlays, `SplitPane`, `Combobox`, `Tabs`, `Composer` mention chips, `Slider`, `GraphFigure`, and drag — shipped desktop-first as RN subsets | 2026-07-09 | accepted -> #53 (mobile epic #52 pillar) |
+| Mobile host adapter | Khala Code Mobile needs the RN renderer owned by a mobile host: `runMainMobile`, app lifecycle, push token, notification-tap + deep-link intents, safe-area/keyboard runtime | 2026-07-09 | accepted -> #54 (`@effect-native/platform-mobile`; peer of `platform-desktop` #21) |
+| Mobile navigation adapter | Khala Code Mobile's drawer + native-stack + modal navigator and `khala://` deep links need typed navigation intents | 2026-07-09 | accepted -> #55 |
+| Mobile gesture / interaction expansion | Khala Code Mobile's swipe-to-quote, pull-to-refresh, long-press, keyboard-avoidance, and safe-area need typed touch intents + runtime concerns (the mobile peer of desktop interaction expansion #24) | 2026-07-09 | accepted -> #56 |
+| RN list virtualization parity | Khala Code Mobile's thread list + streaming transcript need FlatList/SectionList-backed `List`/`SectionList`/`Transcript` at production scale | 2026-07-09 | accepted -> #57 |
+| RN foreign-`Host` drivers | Khala Code Mobile's voice/STT mic and on-device model surfaces need reviewed Scope-owned RN host drivers under the `Host` contract (#23) | 2026-07-09 | accepted -> #58 |
+| `SwipeableListItem` | Khala Code Mobile's thread rows need swipe-action list rows | 2026-07-09 | accepted -> #60 (mobile catalog) |
+| `PullToRefresh` / `RefreshControl` | Khala Code Mobile's thread list refreshes on pull | 2026-07-09 | accepted -> #61 (mobile catalog) |
+| `Pager` / onboarding stepper | Khala Code Mobile's 3-step onboarding is a linear paged flow (distinct from `Tabs` selection) | 2026-07-09 | accepted -> #62 (mobile catalog) |
+| Mobile surface treatments | Khala Code Mobile's arcade visual identity: `BackgroundGradient`/`Wallpaper`/`Spotlight`/`Frame`/`BlurredPopup` (signature visuals as catalog citizens, like Glow/Mockup #51) | 2026-07-09 | accepted -> #63 (mobile catalog) |
+| Full Khala Code Mobile app conversion | Every mobile screen authored once as typed EN data on iOS + Android; the owner-named cross-app Khala Sync messaging exit test (desktop EN chat ↔ mobile EN chat, live) | 2026-07-09 | accepted -> #64 (exit receipt for the mobile epic #52); docs #65 (`docs/porting-map-mobile.md`) |
 
 ## Catalog version trail (Phase 4)
 

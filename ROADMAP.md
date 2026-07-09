@@ -175,6 +175,49 @@ rule. It is not an arbitrary custom-component escape hatch: each host kind is a
 typed registry entry with bounded props, a Scope-owned lifecycle, renderer
 drivers, and a review bar — see [`docs/foreign-host.md`](./docs/foreign-host.md).
 
+## Phase 4M — Mobile: React Native as a full peer renderer (epic #52)
+
+Phase 4 grew the catalog **desktop-first**: `@effect-native/render-rn` has a
+`case` for every tag, but a large set render a **declared subset** or a loud
+"unsupported on RN" marker (anchored-overlay placement, `SplitPane` resize,
+`Combobox` semantics, `Tabs` roving nav, `Composer` mention chips, `Slider` drag,
+`Host` kinds, `GraphFigure` edges/pan-zoom, drag-drop). Phase 4M makes **React
+Native a full peer renderer**, pulled by a real production consumer — **Khala Code
+Mobile** (Expo/RN, live on iOS + Android). Like Phase 4, this is a **UI-substrate
+migration, not a backend rewrite**: Khala Sync, auth, credits, the owned OTA
+layer, push, and the native voice/on-device-model modules stay app-owned
+hosts/services.
+
+### Pillars
+
+| Pillar | Surface | Issue |
+|---|---|---|
+| RN renderer parity program | close the declared-subset / unsupported matrix | #53 |
+| Mobile host adapter | `@effect-native/platform-mobile` (`runMainMobile`, push/notifications/deep-links, safe-area/keyboard runtime) | #54 |
+| Navigation adapter | typed navigation intents over native stack/drawer/tabs + deep links | #55 |
+| Gesture / interaction expansion | swipe/pull-to-refresh/long-press + safe-area/keyboard | #56 |
+| List virtualization parity | FlatList/SectionList/Transcript at production scale | #57 |
+| RN foreign-`Host` drivers | voice/STT + on-device model host kinds | #58 |
+| RN pixel visual-baseline capture | iOS + Android baselines (promotes the waiting GAPS row) | #59 |
+
+### Catalog growth (demand-driven)
+
+Only what a real mobile screen demands beyond the RN-side reality of existing
+components: `SwipeableListItem` (#60), `PullToRefresh` (#61), `Pager`/onboarding
+stepper (#62), and mobile surface treatments —
+`BackgroundGradient`/`Wallpaper`/`Spotlight`/`Frame`/`BlurredPopup` (#63).
+
+### Exit receipt (#64)
+
+Khala Code Mobile's core screens (thread list, streaming transcript, composer with
+inline mention chips, onboarding pager, settings) authored once as typed Effect
+Native data, rendering on **both iOS and Android** through `render-rn` with no
+loud unsupported markers — **and the owner-named cross-app test:** a message sent
+from **Khala Code Desktop** (the Phase 4 Effect Native chat, DOM renderer) appears
+in **Khala Code Mobile**, and a mobile-sent message appears on desktop — **live
+over Khala Sync, both UIs rendered by Effect Native**, from one shared typed
+transcript view + intent/mutator vocabulary. Docs: #65 (GAPS/ROADMAP/porting-map).
+
 ## Phase 5 — True native renderers (the fidelity upgrade)
 
 Per-component **Swift (iOS)** and **Jetpack Compose (Android)** renderers,
