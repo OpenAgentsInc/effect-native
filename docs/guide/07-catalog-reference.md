@@ -8,7 +8,7 @@ conformance-checked by
 (`bun run check:catalog-reference`) so this page cannot silently drop a shipped
 component.
 
-Current catalog marker: `CatalogVersion = "effect-native/v21"`.
+Current catalog marker: `CatalogVersion = "effect-native/v22"`.
 
 Closed component tags (`componentTags`, 62 total):
 
@@ -43,7 +43,12 @@ catalog is a deliberate, tracked process; see
 
 ### List
 
+Virtualized collection. Optional pull-to-refresh via typed `refreshing` state and
+`onRefresh` intent (#61).
+
 ### SectionList
+
+Grouped virtualized collection. Same optional `refreshing` / `onRefresh` as `List`.
 
 ### Card
 
@@ -193,7 +198,7 @@ Every component accepts these two, inherited from `NodeBase`:
 | Field | Type | Notes |
 |---|---|---|
 | `key` | `string` (optional) | Required (enforced by the schema, not just convention) on any view placed inside a `List`/`SectionList`/`Link` children array. |
-| `catalogVersion` | `"effect-native/v21"` | Set automatically by every constructor function — you never pass this yourself. |
+| `catalogVersion` | `"effect-native/v22"` | Set automatically by every constructor function — you never pass this yourself. |
 
 ### Design tokens
 

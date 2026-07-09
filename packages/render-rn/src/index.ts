@@ -149,6 +149,8 @@ export interface ReactNativeRuntime {
   readonly SectionList: unknown
   readonly Image: unknown
   readonly Modal: unknown
+  /** Optional — present on real RN; headless tests may omit and still declare onRefresh. */
+  readonly RefreshControl?: unknown
   readonly Dimensions?: ReactNativeDimensions
   readonly StyleSheet?: {
     readonly create: <Styles extends Record<string, ReactNativeStyle>>(styles: Styles) => Styles
@@ -754,15 +756,33 @@ const estimatedItemLength = (
 const nativeCollectionProps = (
   view: ListView | SectionListView,
   report: IntentReporter,
-  options: ReactNativeRenderOptions
+  options: ReactNativeRenderOptions,
+  dependencies: ReactNativeDependencies
 ): Record<string, unknown> => {
   const itemLength = estimatedItemLength(view, options)
+  const refreshControl =
+    view.onRefresh === undefined
+      ? undefined
+      : dependencies.ReactNative.RefreshControl === undefined
+        ? undefined
+        : createElement(dependencies, dependencies.ReactNative.RefreshControl, {
+            refreshing: view.refreshing === true,
+            tintColor: colorValue(options.theme ?? defaultTheme, "accent"),
+            onRefresh: () => runReportedIntent(report, view.onRefresh!)
+          })
   return {
     ...(view.onEndReached === undefined
       ? {}
       : {
           onEndReached: () => runReportedIntent(report, view.onEndReached!),
           onEndReachedThreshold: view.endReachedThreshold ?? 0.5
+        }),
+    ...(view.onRefresh === undefined
+      ? {}
+      : {
+          refreshing: view.refreshing === true,
+          onRefresh: () => runReportedIntent(report, view.onRefresh!),
+          ...(refreshControl === undefined ? {} : { refreshControl })
         }),
     ...(view.virtualize === true && itemLength !== undefined
       ? {
@@ -791,7 +811,7 @@ const renderList = (
       keyExtractor: (item: View & { readonly key: string }) => item.key,
       renderItem: ({ item }: { readonly item: View }) =>
         renderResolvedReactNativeView(item, dependencies, report, options),
-      ...nativeCollectionProps(view, report, options)
+      ...nativeCollectionProps(view, report, options, dependencies)
     }
   )
 }
@@ -820,7 +840,7 @@ const renderSectionList = (
       renderSectionHeader: ({ section }: { readonly section: { readonly header: View } }) =>
         renderResolvedReactNativeView(section.header, dependencies, report, options),
       stickySectionHeadersEnabled: view.stickyHeaders === true,
-      ...nativeCollectionProps(view, report, options)
+      ...nativeCollectionProps(view, report, options, dependencies)
     }
   )
 }

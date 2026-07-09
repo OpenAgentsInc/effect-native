@@ -86,8 +86,9 @@ export const CodeBlockCatalogVersion = "effect-native/v18" as const
 export const GraphCatalogVersion = "effect-native/v19" as const
 export const MarketingCatalogVersion = "effect-native/v20" as const
 export const PagerCatalogVersion = "effect-native/v21" as const
-export const PreviousCatalogVersion = MarketingCatalogVersion
-export const CatalogVersion = PagerCatalogVersion
+export const PullToRefreshCatalogVersion = "effect-native/v22" as const
+export const PreviousCatalogVersion = PagerCatalogVersion
+export const CatalogVersion = PullToRefreshCatalogVersion
 export const CatalogVersionSchema = Schema.Literal(CatalogVersion)
 export type CatalogVersion = typeof CatalogVersion
 export const compatibleCatalogVersions = [
@@ -112,7 +113,8 @@ export const compatibleCatalogVersions = [
   CodeBlockCatalogVersion,
   GraphCatalogVersion,
   MarketingCatalogVersion,
-  PagerCatalogVersion
+  PagerCatalogVersion,
+  PullToRefreshCatalogVersion
 ] as const
 export type CompatibleCatalogVersion = (typeof compatibleCatalogVersions)[number]
 export const CompatibleCatalogVersionSchema = Schema.Literals(compatibleCatalogVersions)
@@ -1800,6 +1802,10 @@ export interface ListView extends NodeBase {
   readonly endReachedThreshold?: number
   readonly pinToEnd?: boolean
   readonly onPinnedChange?: IntentRef
+  /** Pull-to-refresh state (data). When true, the list shows a refreshing control. */
+  readonly refreshing?: boolean
+  /** Fired when the user pulls to refresh (or activates the DOM refresh affordance). */
+  readonly onRefresh?: IntentRef
   readonly items: ReadonlyArray<View & { readonly key: NodeKey }>
 }
 
@@ -1817,6 +1823,10 @@ export interface SectionListView extends NodeBase {
   readonly onEndReached?: IntentRef
   readonly endReachedThreshold?: number
   readonly stickyHeaders?: boolean
+  /** Pull-to-refresh state (data). When true, the list shows a refreshing control. */
+  readonly refreshing?: boolean
+  /** Fired when the user pulls to refresh (or activates the DOM refresh affordance). */
+  readonly onRefresh?: IntentRef
   readonly sections: ReadonlyArray<SectionListSection>
 }
 
@@ -3052,6 +3062,8 @@ export const ListSchema: Schema.Codec<ListView, ListView> = Schema.TaggedStruct(
   ...VirtualizationFields,
   pinToEnd: Schema.Boolean.pipe(Schema.optionalKey),
   onPinnedChange: IntentRefSchema.pipe(Schema.optionalKey),
+  refreshing: Schema.Boolean.pipe(Schema.optionalKey),
+  onRefresh: IntentRefSchema.pipe(Schema.optionalKey),
   items: KeyedViewArraySchema
 }).check(VirtualizationFilter)
 
@@ -3068,6 +3080,8 @@ export const SectionListSchema: Schema.Codec<SectionListView, SectionListView> =
     style: ListStyleSchema.pipe(Schema.optionalKey),
     ...VirtualizationFields,
     stickyHeaders: Schema.Boolean.pipe(Schema.optionalKey),
+    refreshing: Schema.Boolean.pipe(Schema.optionalKey),
+    onRefresh: IntentRefSchema.pipe(Schema.optionalKey),
     sections: Schema.Array(SectionListSectionSchema)
   }).check(VirtualizationFilter)
 

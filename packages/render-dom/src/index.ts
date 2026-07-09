@@ -1353,6 +1353,28 @@ const resetCollectionStyle = (element: HTMLElement): void => {
   element.style.height = ""
 }
 
+const renderRefreshAffordance = (
+  host: HTMLElement,
+  view: ListView | SectionListView,
+  state: DomRendererState,
+  report: IntentReporter
+): void => {
+  if (view.onRefresh === undefined) return
+  host.setAttribute("data-en-refreshing", view.refreshing === true ? "true" : "false")
+  const existing = host.querySelector('[data-en-role="refresh"]')
+  if (existing !== null) existing.remove()
+  const button = host.ownerDocument.createElement("button")
+  button.type = "button"
+  button.setAttribute("data-en-role", "refresh")
+  button.textContent = view.refreshing === true ? "Refreshing…" : "Refresh"
+  button.disabled = view.refreshing === true
+  button.style.display = "block"
+  button.style.width = "100%"
+  button.style.marginBottom = "var(--en-spacing-2)"
+  state.addListener(button, "click", () => runReportedIntent(report, view.onRefresh!))
+  host.insertBefore(button, host.firstChild)
+}
+
 const renderList = (view: ListView, state: DomRendererState, report: IntentReporter): HTMLElement => {
   const element = state.keyedElement(view, "ul")
   state.resetListeners(element)
@@ -1379,6 +1401,7 @@ const renderList = (view: ListView, state: DomRendererState, report: IntentRepor
           ...rows,
           virtualSpacer(element.ownerDocument, (view.items.length - end) * itemSize, "li")
         )
+        renderRefreshAffordance(element, view, state, report)
       }
     )
   } else {
@@ -1386,6 +1409,7 @@ const renderList = (view: ListView, state: DomRendererState, report: IntentRepor
     element.replaceChildren(...view.items.map((item) => renderListItem(element, item, state, report)))
   }
 
+  renderRefreshAffordance(element, view, state, report)
   applyBaseStyle(element, view, state)
   applyA11y(element, view)
   applyInteractions(element, view, state, report)
@@ -1473,6 +1497,7 @@ const renderSectionList = (
           ...renderedRows,
           virtualSpacer(element.ownerDocument, (rows.length - end) * itemSize, "div")
         )
+        renderRefreshAffordance(element, view, state, report)
       }
     )
   } else {
@@ -1482,6 +1507,7 @@ const renderSectionList = (
     )
   }
 
+  renderRefreshAffordance(element, view, state, report)
   applyBaseStyle(element, view, state)
   return element
 }
