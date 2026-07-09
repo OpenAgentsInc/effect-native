@@ -21,10 +21,14 @@ import {
   NumberField,
   Popover,
   RadioGroup,
+  RecoveryOverlay,
   Select,
   Slider,
   StatTile,
+  StatusBanner,
   Table,
+  Toast,
+  ToastRegion,
   Toggle,
   Tooltip,
   IntentSchema,
@@ -1105,6 +1109,78 @@ const componentStoryMap = {
           onChange: IntentRef("GalleryStory.Pressed", ComponentValueBinding())
         })
       })
+    })
+  ],
+  Toast: [
+    story({
+      id: "toast-basic",
+      component: "Toast",
+      title: "Toast",
+      description: "A single transient notification with a11y live region and dismiss.",
+      view: Toast({
+        key: "toast-basic",
+        notification: {
+          id: "turn-failed",
+          tone: "danger",
+          title: "Turn failed",
+          detail: "The model connection dropped.",
+          actionLabel: "Retry",
+          action: IntentRef("GalleryStory.Pressed", ComponentValueBinding())
+        },
+        onDismiss: IntentRef("GalleryStory.Dismissed", StaticPayload({ surface: "toast" }))
+      })
+    })
+  ],
+  ToastRegion: [
+    story({
+      id: "toast-region-basic",
+      component: "ToastRegion",
+      title: "ToastRegion",
+      description: "A stacked, placement-aware notification region.",
+      view: ToastRegion({
+        key: "toast-region-basic",
+        placement: "bottom-end",
+        onDismiss: IntentRef("GalleryStory.Dismissed", ComponentValueBinding()),
+        notifications: [
+          { id: "saved", tone: "success", title: "Settings saved" },
+          { id: "update", tone: "info", title: "Update available", detail: "Restart to apply." }
+        ]
+      })
+    })
+  ],
+  StatusBanner: [
+    story({
+      id: "status-banner-basic",
+      component: "StatusBanner",
+      title: "StatusBanner",
+      description: "A persistent inline banner with typed tone + retry/dismiss.",
+      view: StatusBanner({
+        key: "status-banner-basic",
+        tone: "warn",
+        message: "Boot RPC degraded: retrying capture stream.",
+        onRetry: IntentRef("GalleryStory.Pressed", StaticPayload({ id: "retry" })),
+        onDismiss: IntentRef("GalleryStory.Dismissed", StaticPayload({ surface: "status-banner" }))
+      })
+    })
+  ],
+  RecoveryOverlay: [
+    story({
+      id: "recovery-overlay-basic",
+      component: "RecoveryOverlay",
+      title: "RecoveryOverlay",
+      description: "A full-surface blocking overlay with typed recovery actions.",
+      view: RecoveryOverlay({
+        key: "recovery-overlay-basic",
+        open: true,
+        title: "Recovering session",
+        status: "Reconnecting to the desktop bridge…",
+        message: "Your work is safe. Choose how to proceed.",
+        actions: [
+          { id: "retry", label: "Retry now", variant: "primary", action: IntentRef("GalleryStory.Pressed", StaticPayload({ id: "retry" })) },
+          { id: "restart", label: "Restart", variant: "secondary", action: IntentRef("GalleryStory.Pressed", StaticPayload({ id: "restart" })) }
+        ]
+      }),
+      controls: [booleanControl("recovery-overlay-open", "Open", ["open"], true)]
     })
   ]
 } satisfies { readonly [Tag in ComponentTag]: ReadonlyArray<Story> }

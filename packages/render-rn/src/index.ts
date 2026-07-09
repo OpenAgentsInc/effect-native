@@ -19,11 +19,16 @@ import {
   type FieldRowView,
   type MenuItem,
   type MeterView,
+  type NotificationModel,
   type NumberFieldView,
   type PopoverView,
   type RadioGroupView,
+  type RecoveryOverlayView,
   type SelectView,
   type SliderView,
+  type StatusBannerView,
+  type ToastRegionView,
+  type ToastView,
   type ToggleView,
   type TooltipView,
   type StatTileView,
@@ -1797,6 +1802,175 @@ const renderFieldRow = (
   )
 }
 
+// Feedback surfaces (issue #40) on React Native. Toasts/banners carry
+// accessibilityLiveRegion so TalkBack/VoiceOver announce them; auto-dismiss
+// timing is left to the app/runtime (declared unsupported at render time).
+// RecoveryOverlay renders as a blocking modal-styled surface when open.
+const rnLiveRegion = (tone: Tone): string => (tone === "danger" ? "assertive" : "polite")
+
+const renderNotificationCard = (
+  notification: NotificationModel,
+  onDismiss: IntentRef,
+  dependencies: ReactNativeDependencies,
+  theme: Theme,
+  report: IntentReporter
+): ReactElementLike => {
+  const parts: Array<ReactElementLike> = [
+    createElement(dependencies, dependencies.ReactNative.Text, { key: "title" }, notification.title)
+  ]
+  if (notification.detail !== undefined) {
+    parts.push(
+      createElement(dependencies, dependencies.ReactNative.Text, { key: "detail", style: { color: colorValue(theme, "textMuted") } }, notification.detail)
+    )
+  }
+  if (notification.action !== undefined && notification.actionLabel !== undefined) {
+    const action = notification.action
+    parts.push(
+      createElement(
+        dependencies,
+        dependencies.ReactNative.Pressable,
+        { key: "action", testID: `en-toast-action:${notification.id}`, onPress: () => runReportedIntent(report, action, notification.id) },
+        createElement(dependencies, dependencies.ReactNative.Text, { key: "label" }, notification.actionLabel)
+      )
+    )
+  }
+  parts.push(
+    createElement(
+      dependencies,
+      dependencies.ReactNative.Pressable,
+      { key: "dismiss", testID: `en-toast-dismiss:${notification.id}`, accessibilityLabel: "Dismiss", onPress: () => runReportedIntent(report, onDismiss, notification.id) },
+      createElement(dependencies, dependencies.ReactNative.Text, { key: "x" }, "×")
+    )
+  )
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    {
+      key: `notification-${notification.id}`,
+      testID: `en-notification:${notification.id}`,
+      accessibilityRole: notification.tone === "danger" ? "alert" : "text",
+      accessibilityLiveRegion: rnLiveRegion(notification.tone),
+      style: { borderLeftWidth: 3, borderLeftColor: colorValue(theme, toneColorToken[notification.tone]) }
+    },
+    ...parts
+  )
+}
+
+const renderToast = (
+  view: ToastView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const theme = options.theme ?? defaultTheme
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    { ...baseProps(view, viewStyle(view, options)), testID: "en-toast" },
+    renderNotificationCard(view.notification, view.onDismiss, dependencies, theme, report)
+  )
+}
+
+const renderToastRegion = (
+  view: ToastRegionView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const theme = options.theme ?? defaultTheme
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    { ...baseProps(view, mergeNativeStyles({ flexDirection: "column" }, viewStyle(view, options))), testID: `en-toast-region:${view.placement ?? "bottom-end"}`, accessibilityRole: "none" },
+    ...view.notifications.map((notification) => renderNotificationCard(notification, view.onDismiss, dependencies, theme, report))
+  )
+}
+
+const renderStatusBanner = (
+  view: StatusBannerView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const theme = options.theme ?? defaultTheme
+  const parts: Array<ReactElementLike> = [
+    createElement(dependencies, dependencies.ReactNative.Text, { key: "message" }, view.message)
+  ]
+  if (view.onRetry !== undefined) {
+    const onRetry = view.onRetry
+    parts.push(
+      createElement(
+        dependencies,
+        dependencies.ReactNative.Pressable,
+        { key: "retry", testID: "en-status-banner-retry", onPress: () => runReportedIntent(report, onRetry) },
+        createElement(dependencies, dependencies.ReactNative.Text, { key: "label" }, "Retry")
+      )
+    )
+  }
+  if (view.onDismiss !== undefined) {
+    const onDismiss = view.onDismiss
+    parts.push(
+      createElement(
+        dependencies,
+        dependencies.ReactNative.Pressable,
+        { key: "dismiss", testID: "en-status-banner-dismiss", accessibilityLabel: "Dismiss", onPress: () => runReportedIntent(report, onDismiss) },
+        createElement(dependencies, dependencies.ReactNative.Text, { key: "x" }, "×")
+      )
+    )
+  }
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    {
+      ...baseProps(view, mergeNativeStyles({ flexDirection: "row", borderLeftWidth: 3, borderLeftColor: colorValue(theme, toneColorToken[view.tone]) }, viewStyle(view, options))),
+      testID: `en-status-banner:${view.tone}`,
+      accessibilityRole: view.tone === "danger" ? "alert" : "text",
+      accessibilityLiveRegion: rnLiveRegion(view.tone)
+    },
+    ...parts
+  )
+}
+
+const renderRecoveryOverlay = (
+  view: RecoveryOverlayView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const open = view.open === true
+  const children: Array<ReactElementLike> = [
+    createElement(dependencies, dependencies.ReactNative.Text, { key: "title", accessibilityRole: "header" }, view.title)
+  ]
+  if (view.status !== undefined) {
+    children.push(createElement(dependencies, dependencies.ReactNative.Text, { key: "status", accessibilityLiveRegion: "polite" }, view.status))
+  }
+  if (view.message !== undefined) {
+    children.push(createElement(dependencies, dependencies.ReactNative.Text, { key: "message" }, view.message))
+  }
+  for (const action of view.actions) {
+    const intent = action.action
+    children.push(
+      createElement(
+        dependencies,
+        dependencies.ReactNative.Pressable,
+        { key: `action-${action.id}`, testID: `en-recovery-action:${action.id}`, onPress: () => runReportedIntent(report, intent, action.id) },
+        createElement(dependencies, dependencies.ReactNative.Text, { key: "label" }, action.label)
+      )
+    )
+  }
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    {
+      ...baseProps(view, mergeNativeStyles({ display: open ? "flex" : "none", flexDirection: "column" }, {})),
+      testID: "en-recovery-overlay",
+      accessibilityViewIsModal: true,
+      accessibilityRole: "none"
+    },
+    ...(open ? children : [])
+  )
+}
+
 const renderResolvedReactNativeView = (
   view: View,
   dependencies: ReactNativeDependencies,
@@ -1880,6 +2054,14 @@ const renderResolvedReactNativeView = (
       return renderNumberField(view, dependencies, report, options)
     case "FieldRow":
       return renderFieldRow(view, dependencies, report, options)
+    case "Toast":
+      return renderToast(view, dependencies, report, options)
+    case "ToastRegion":
+      return renderToastRegion(view, dependencies, report, options)
+    case "StatusBanner":
+      return renderStatusBanner(view, dependencies, report, options)
+    case "RecoveryOverlay":
+      return renderRecoveryOverlay(view, dependencies, report, options)
   }
 }
 

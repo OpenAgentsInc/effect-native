@@ -23,7 +23,7 @@ their reason so pressure is visible without weakening the catalog contract.
 
 ## Catalog Versioning Policy
 
-The current catalog marker is `effect-native/v15`, exposed by
+The current catalog marker is `effect-native/v16`, exposed by
 `CatalogVersion`. `compatibleCatalogVersions` is the decode allow-list, and
 `CompatibleViewSchema` is the schema app authors and renderers should use when
 accepting persisted or externally-authored trees.
@@ -69,7 +69,7 @@ until it has a fixture and every renderer declares and proves support for it.
 | GraphFigure | Fleet board and gym arbiter graphs need canvas plus DOM/SVG fallback | 2026-07-08 | accepted -> #37 |
 | Settings form controls | Khala settings require toggle, select, checkbox, radio, slider, and number controls beyond the base FormSpec | 2026-07-08 | shipped -> #38 (v15: `Toggle`, `Select`, `Checkbox`, `RadioGroup`, `Slider`, `NumberField` each with typed value + typed onChange, disabled/invalid state, and an optional `field` FieldBinding that drives a #12 FormSpec field exactly like TextField; plus a `FieldRow` label+control+description+error layout. DOM native controls (switch/select/checkbox/radio/range/number) with aria-invalid; RN native equivalents (Slider drag declared unsupported); headless records) |
 | Data display | Khala settings, fleet, usage, and review panes require table, chip/badge, meter/progress, divider, and stat tile | 2026-07-08 | shipped -> #39 (v9: Divider, Badge, Chip, Meter/Progress, StatTile, and non-virtualized Table with typed columns/keyed rows + onRowSelect; closed Tone set; DOM + RN + headless) |
-| Toast / status banner / recovery overlay | Khala boot-degraded, update, recovery, and notification states | 2026-07-08 | accepted -> #40 |
+| Toast / status banner / recovery overlay | Khala boot-degraded, update, recovery, and notification states | 2026-07-08 | shipped -> #40 (v16: `Toast` + `ToastRegion` (typed notification model id/tone/title/detail/action/autoDismiss, placement, aria-live role status/alert, renderer-scheduled auto-dismiss firing typed onDismiss); `StatusBanner` persistent inline tone+message+retry/dismiss; `RecoveryOverlay` full-surface blocking overlay on the modal presence lifecycle with typed recovery status + action intents. DOM full a11y/live-regions + focus trap + auto-dismiss timers; RN native live-region + pressable subset (auto-dismiss timing left to the runtime); headless records) |
 | Hotkey registry / focus management | Khala global commands, palette scope, composer scope, recent-thread hints, and focus return | 2026-07-08 | accepted -> #41 |
 | Sheet drag-to-dismiss gesture | Gesture demand not yet demonstrated beyond basic sheet presentation | 2026-07-08 | waiting |
 | Overlay animation polish | Basic presentation shipped; richer transitions need a demanding screen | 2026-07-08 | waiting |

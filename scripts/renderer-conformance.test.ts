@@ -26,10 +26,14 @@ import {
   NumberField,
   Popover,
   RadioGroup,
+  RecoveryOverlay,
   Select,
   Slider,
   StatTile,
+  StatusBanner,
   Table,
+  Toast,
+  ToastRegion,
   Toggle,
   Tooltip,
   Link,
@@ -352,6 +356,31 @@ const catalogFixturesByTag = {
     description: "Apply low-risk edits automatically.",
     controlKey: "field-row-toggle",
     control: Toggle({ key: "field-row-toggle", value: false, onChange: IntentRef("Pressed", ComponentValueBinding()) })
+  }),
+  Toast: Toast({
+    key: "toast",
+    notification: { id: "turn-failed", tone: "danger", title: "Turn failed", detail: "Connection dropped", actionLabel: "Retry", action: IntentRef("Pressed", ComponentValueBinding()) },
+    onDismiss: IntentRef("Dismissed", ComponentValueBinding())
+  }),
+  ToastRegion: ToastRegion({
+    key: "toast-region",
+    placement: "bottom-end",
+    onDismiss: IntentRef("Dismissed", ComponentValueBinding()),
+    notifications: [{ id: "saved", tone: "success", title: "Saved" }]
+  }),
+  StatusBanner: StatusBanner({
+    key: "status-banner",
+    tone: "warn",
+    message: "Boot RPC degraded.",
+    onRetry: IntentRef("Pressed", StaticPayload({ id: "retry" })),
+    onDismiss: IntentRef("Dismissed", StaticPayload({ surface: "banner" }))
+  }),
+  RecoveryOverlay: RecoveryOverlay({
+    key: "recovery-overlay",
+    open: true,
+    title: "Recovering",
+    status: "Reconnecting…",
+    actions: [{ id: "retry", label: "Retry", variant: "primary", action: IntentRef("Pressed", StaticPayload({ id: "retry" })) }]
   })
 } satisfies { readonly [Tag in (typeof componentTags)[number]]: View }
 
@@ -464,7 +493,11 @@ const catalogRendererTags = [
   "RadioGroup",
   "Slider",
   "NumberField",
-  "FieldRow"
+  "FieldRow",
+  "Toast",
+  "ToastRegion",
+  "StatusBanner",
+  "RecoveryOverlay"
 ] as const
 
 // Host (issue #23) is supported by the headless recorder and the DOM renderer

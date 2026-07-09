@@ -18,11 +18,16 @@ import {
   type FieldRowView,
   type MenuItem,
   type MeterView,
+  type NotificationModel,
   type NumberFieldView,
   type PopoverView,
   type RadioGroupView,
+  type RecoveryOverlayView,
   type SelectView,
   type SliderView,
+  type StatusBannerView,
+  type ToastRegionView,
+  type ToastView,
   type ToggleView,
   type TooltipView,
   type StatTileView,
@@ -404,6 +409,8 @@ class DomRendererState {
   // Tracks anchored-overlay (popover/menu) open state per node key so an
   // open->closed transition can return focus to the anchor (issue #28).
   readonly anchoredOpen = new Map<string, boolean>()
+  // Scheduled toast auto-dismiss timers, keyed by notification id (issue #40).
+  readonly toastTimers = new Map<string, ReturnType<typeof setTimeout>>()
   readonly hostDrivers: Map<HostKind, DomHostDriver>
   readonly hostInstances = new Map<string, { readonly kind: HostKind; readonly instance: DomHostInstance }>()
 
@@ -422,6 +429,10 @@ class DomRendererState {
   }
 
   dispose(): void {
+    for (const timer of this.toastTimers.values()) {
+      clearTimeout(timer)
+    }
+    this.toastTimers.clear()
     for (const { instance } of this.hostInstances.values()) {
       instance.unmount()
     }
@@ -2706,6 +2717,217 @@ const renderFieldRow = (view: FieldRowView, state: DomRendererState, report: Int
   return element
 }
 
+// Feedback surfaces (issue #40). Toasts/banners carry aria-live so assistive
+// tech announces them (role=alert for danger, role=status otherwise). Toast
+// auto-dismiss is scheduled by the renderer and fires the typed onDismiss;
+// delivery/enqueue is the runtime's concern. RecoveryOverlay is a full-surface
+// blocking overlay on the modal presence lifecycle.
+const liveRole = (tone: Tone): { readonly role: string; readonly live: string } =>
+  tone === "danger" ? { role: "alert", live: "assertive" } : { role: "status", live: "polite" }
+
+const scheduleToastDismiss = (
+  notification: NotificationModel,
+  state: DomRendererState,
+  report: IntentReporter,
+  onDismiss: IntentRef
+): void => {
+  if (notification.autoDismissMillis === undefined || state.toastTimers.has(notification.id)) return
+  const timer = setTimeout(() => {
+    state.toastTimers.delete(notification.id)
+    runReportedIntent(report, onDismiss, notification.id)
+  }, notification.autoDismissMillis)
+  state.toastTimers.set(notification.id, timer)
+}
+
+const renderNotificationCard = (
+  notification: NotificationModel,
+  onDismiss: IntentRef,
+  state: DomRendererState,
+  report: IntentReporter
+): HTMLElement => {
+  const document = state.root.ownerDocument
+  const card = document.createElement("div")
+  const live = liveRole(notification.tone)
+  card.setAttribute("data-en-notification", notification.id)
+  card.setAttribute("data-en-tone", notification.tone)
+  card.setAttribute("role", live.role)
+  card.setAttribute("aria-live", live.live)
+  card.style.borderLeft = `3px solid ${colorValue(toneColorToken[notification.tone])}`
+  card.style.background = "var(--en-color-surfaceRaised)"
+  card.style.padding = "var(--en-spacing-2) var(--en-spacing-3)"
+  card.style.borderRadius = "var(--en-radius-md)"
+
+  const title = document.createElement("span")
+  title.setAttribute("data-en-role", "title")
+  title.textContent = notification.title
+  card.appendChild(title)
+  if (notification.detail !== undefined) {
+    const detail = document.createElement("span")
+    detail.setAttribute("data-en-role", "detail")
+    detail.style.color = colorValue("textMuted")
+    detail.textContent = notification.detail
+    card.appendChild(detail)
+  }
+  if (notification.action !== undefined && notification.actionLabel !== undefined) {
+    const actionButton = document.createElement("button") as HTMLButtonElement
+    actionButton.type = "button"
+    actionButton.setAttribute("data-en-role", "action")
+    actionButton.textContent = notification.actionLabel
+    const action = notification.action
+    state.addListener(actionButton, "click", () => runReportedIntent(report, action, notification.id))
+    card.appendChild(actionButton)
+  }
+  const dismissButton = document.createElement("button") as HTMLButtonElement
+  dismissButton.type = "button"
+  dismissButton.setAttribute("data-en-role", "dismiss")
+  dismissButton.setAttribute("aria-label", "Dismiss")
+  dismissButton.textContent = "×"
+  state.addListener(dismissButton, "click", () => runReportedIntent(report, onDismiss, notification.id))
+  card.appendChild(dismissButton)
+
+  scheduleToastDismiss(notification, state, report, onDismiss)
+  return card
+}
+
+const renderToast = (view: ToastView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const element = state.keyedElement(view, "div")
+  state.resetListeners(element)
+  element.setAttribute("data-en-role", "toast")
+  element.replaceChildren(renderNotificationCard(view.notification, view.onDismiss, state, report))
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  return element
+}
+
+const renderToastRegion = (view: ToastRegionView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const element = state.keyedElement(view, "div")
+  state.resetListeners(element)
+  element.setAttribute("role", "region")
+  element.setAttribute("aria-label", "Notifications")
+  element.setAttribute("data-en-placement", view.placement ?? "bottom-end")
+  element.style.display = "flex"
+  element.style.flexDirection = view.placement?.startsWith("top") === true ? "column" : "column-reverse"
+  element.style.gap = "var(--en-spacing-2)"
+  element.replaceChildren(
+    ...view.notifications.map((notification) => renderNotificationCard(notification, view.onDismiss, state, report))
+  )
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  return element
+}
+
+const renderStatusBanner = (view: StatusBannerView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const element = state.keyedElement(view, "div")
+  state.resetListeners(element)
+  const live = liveRole(view.tone)
+  element.setAttribute("role", live.role)
+  element.setAttribute("aria-live", live.live)
+  element.setAttribute("data-en-tone", view.tone)
+  element.style.display = "flex"
+  element.style.alignItems = "center"
+  element.style.gap = "var(--en-spacing-2)"
+  element.style.padding = "var(--en-spacing-2) var(--en-spacing-3)"
+  element.style.background = "var(--en-color-surfaceRaised)"
+  element.style.borderLeft = `3px solid ${colorValue(toneColorToken[view.tone])}`
+  const document = element.ownerDocument
+  const message = document.createElement("span")
+  message.setAttribute("data-en-role", "message")
+  message.textContent = view.message
+  const children: Array<HTMLElement> = [message]
+  if (view.onRetry !== undefined) {
+    const retry = document.createElement("button") as HTMLButtonElement
+    retry.type = "button"
+    retry.setAttribute("data-en-role", "retry")
+    retry.textContent = "Retry"
+    const onRetry = view.onRetry
+    state.addListener(retry, "click", () => runReportedIntent(report, onRetry))
+    children.push(retry)
+  }
+  if (view.onDismiss !== undefined) {
+    const dismiss = document.createElement("button") as HTMLButtonElement
+    dismiss.type = "button"
+    dismiss.setAttribute("data-en-role", "dismiss")
+    dismiss.setAttribute("aria-label", "Dismiss")
+    dismiss.textContent = "×"
+    const onDismiss = view.onDismiss
+    state.addListener(dismiss, "click", () => runReportedIntent(report, onDismiss))
+    children.push(dismiss)
+  }
+  element.replaceChildren(...children)
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  return element
+}
+
+const renderRecoveryOverlay = (view: RecoveryOverlayView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const element = state.keyedElement(view, "div")
+  state.resetListeners(element)
+  const open = view.open === true
+  const titleId = `en-recovery-title-${cssEscape(view.key ?? "recovery")}`
+  element.setAttribute("role", "dialog")
+  element.setAttribute("aria-modal", "true")
+  element.setAttribute("aria-labelledby", titleId)
+  element.setAttribute("data-en-overlay", "recovery")
+  element.setAttribute("data-en-overlay-open", open ? "true" : "false")
+  element.tabIndex = -1
+  element.hidden = !open
+  element.style.position = "fixed"
+  element.style.inset = "0"
+  element.style.display = open ? "flex" : "none"
+  element.style.alignItems = "center"
+  element.style.justifyContent = "center"
+  element.style.backgroundColor = "rgba(15, 23, 42, 0.6)"
+
+  const panel = element.ownerDocument.createElement("section")
+  panel.setAttribute("data-en-role", "panel")
+  panel.style.background = "var(--en-color-background)"
+  panel.style.border = "1px solid var(--en-color-border)"
+  panel.style.borderRadius = "var(--en-radius-lg)"
+  panel.style.padding = "var(--en-spacing-4)"
+  const title = element.ownerDocument.createElement("h2")
+  title.id = titleId
+  title.textContent = view.title
+  title.style.margin = "0"
+  panel.appendChild(title)
+  if (view.status !== undefined) {
+    const status = element.ownerDocument.createElement("p")
+    status.setAttribute("data-en-role", "status")
+    status.setAttribute("role", "status")
+    status.textContent = view.status
+    panel.appendChild(status)
+  }
+  if (view.message !== undefined) {
+    const message = element.ownerDocument.createElement("p")
+    message.setAttribute("data-en-role", "message")
+    message.textContent = view.message
+    panel.appendChild(message)
+  }
+  const actions = element.ownerDocument.createElement("div")
+  actions.setAttribute("data-en-role", "actions")
+  actions.style.display = "flex"
+  actions.style.gap = "var(--en-spacing-2)"
+  for (const action of view.actions) {
+    const button = element.ownerDocument.createElement("button") as HTMLButtonElement
+    button.type = "button"
+    button.setAttribute("data-en-action", action.id)
+    button.setAttribute("data-en-variant", action.variant ?? "primary")
+    button.textContent = action.label
+    const intent = action.action
+    state.addListener(button, "click", () => runReportedIntent(report, intent, action.id))
+    actions.appendChild(button)
+  }
+  panel.appendChild(actions)
+  element.replaceChildren(panel)
+
+  state.addListener(element, "keydown", (event) => {
+    // Blocking overlay: trap focus, but do not dismiss on Escape.
+    trapOverlayFocus(element, event as KeyboardEvent)
+  })
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  return element
+}
+
 const renderView = (view: View, state: DomRendererState, report: IntentReporter): HTMLElement => {
   switch (view._tag) {
     case "Stack":
@@ -2784,6 +3006,14 @@ const renderView = (view: View, state: DomRendererState, report: IntentReporter)
       return renderNumberField(view, state, report)
     case "FieldRow":
       return renderFieldRow(view, state, report)
+    case "Toast":
+      return renderToast(view, state, report)
+    case "ToastRegion":
+      return renderToastRegion(view, state, report)
+    case "StatusBanner":
+      return renderStatusBanner(view, state, report)
+    case "RecoveryOverlay":
+      return renderRecoveryOverlay(view, state, report)
   }
 }
 

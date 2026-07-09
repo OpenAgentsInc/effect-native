@@ -9,6 +9,7 @@ import {
   CompatibleViewSchema,
   ComposerCatalogVersion,
   DataDisplayCatalogVersion,
+  FeedbackCatalogVersion,
   TabsCatalogVersion,
   FormCatalogVersion,
   HostCatalogVersion,
@@ -62,11 +63,12 @@ describe("catalog version compatibility", () => {
       ComboboxCatalogVersion,
       TabsCatalogVersion,
       ComposerCatalogVersion,
-      SettingsControlsCatalogVersion
+      SettingsControlsCatalogVersion,
+      FeedbackCatalogVersion
     ])
     // The current marker is the last entry; the previous marker is second-last.
-    expect(CatalogVersion).toBe(SettingsControlsCatalogVersion)
-    expect(PreviousCatalogVersion).toBe(ComposerCatalogVersion)
+    expect(CatalogVersion).toBe(FeedbackCatalogVersion)
+    expect(PreviousCatalogVersion).toBe(SettingsControlsCatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 1]).toBe(CatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 2]).toBe(PreviousCatalogVersion)
   })

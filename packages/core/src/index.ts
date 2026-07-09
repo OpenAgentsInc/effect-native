@@ -80,8 +80,9 @@ export const ComboboxCatalogVersion = "effect-native/v12" as const
 export const TabsCatalogVersion = "effect-native/v13" as const
 export const ComposerCatalogVersion = "effect-native/v14" as const
 export const SettingsControlsCatalogVersion = "effect-native/v15" as const
-export const PreviousCatalogVersion = ComposerCatalogVersion
-export const CatalogVersion = SettingsControlsCatalogVersion
+export const FeedbackCatalogVersion = "effect-native/v16" as const
+export const PreviousCatalogVersion = SettingsControlsCatalogVersion
+export const CatalogVersion = FeedbackCatalogVersion
 export const CatalogVersionSchema = Schema.Literal(CatalogVersion)
 export type CatalogVersion = typeof CatalogVersion
 export const compatibleCatalogVersions = [
@@ -99,6 +100,7 @@ export const compatibleCatalogVersions = [
   AnchoredOverlayCatalogVersion,
   ComboboxCatalogVersion,
   TabsCatalogVersion,
+  ComposerCatalogVersion,
   PreviousCatalogVersion,
   CatalogVersion
 ] as const
@@ -143,7 +145,11 @@ export const componentTags = [
   "RadioGroup",
   "Slider",
   "NumberField",
-  "FieldRow"
+  "FieldRow",
+  "Toast",
+  "ToastRegion",
+  "StatusBanner",
+  "RecoveryOverlay"
 ] as const
 export type ComponentTag = (typeof componentTags)[number]
 
@@ -2268,6 +2274,63 @@ export interface FieldRowView extends NodeBase {
   readonly style?: CardStyle
 }
 
+// Feedback surfaces (issue #40). Transient (Toast/ToastRegion) and persistent
+// (StatusBanner) status plus a full-surface blocking RecoveryOverlay on the #13
+// presence primitive. Delivery/timing is a runtime concern (enqueue via
+// intent/stream); the components render the typed state they are handed.
+export const toastPlacements = ["top-start", "top-end", "bottom-start", "bottom-end"] as const
+export type ToastPlacement = (typeof toastPlacements)[number]
+
+export interface NotificationModel {
+  readonly id: string
+  readonly tone: Tone
+  readonly title: string
+  readonly detail?: string
+  readonly actionLabel?: string
+  readonly action?: IntentRef
+  readonly autoDismissMillis?: number
+}
+
+export interface ToastView extends NodeBase {
+  readonly _tag: "Toast"
+  readonly notification: NotificationModel
+  readonly onDismiss: IntentRef
+  readonly style?: CardStyle
+}
+
+export interface ToastRegionView extends NodeBase {
+  readonly _tag: "ToastRegion"
+  readonly notifications: ReadonlyArray<NotificationModel>
+  readonly placement?: ToastPlacement
+  readonly onDismiss: IntentRef
+  readonly style?: CardStyle
+}
+
+export interface StatusBannerView extends NodeBase {
+  readonly _tag: "StatusBanner"
+  readonly tone: Tone
+  readonly message: string
+  readonly onRetry?: IntentRef
+  readonly onDismiss?: IntentRef
+  readonly style?: CardStyle
+}
+
+export interface RecoveryActionModel {
+  readonly id: string
+  readonly label: string
+  readonly action: IntentRef
+  readonly variant?: ButtonVariant
+}
+
+export interface RecoveryOverlayView extends NodeBase {
+  readonly _tag: "RecoveryOverlay"
+  readonly open: Bound<boolean>
+  readonly title: string
+  readonly message?: string
+  readonly status?: string
+  readonly actions: ReadonlyArray<RecoveryActionModel>
+}
+
 export type View =
   | StackView
   | TextView
@@ -2307,6 +2370,10 @@ export type View =
   | SliderView
   | NumberFieldView
   | FieldRowView
+  | ToastView
+  | ToastRegionView
+  | StatusBannerView
+  | RecoveryOverlayView
 
 export type KeyedView = View & { readonly key: NodeKey }
 
@@ -2985,6 +3052,57 @@ export const FieldRowSchema: Schema.Codec<FieldRowView, FieldRowView> = Schema.T
   style: CardStyleSchema.pipe(Schema.optionalKey)
 })
 
+export const NotificationModelSchema: Schema.Codec<NotificationModel, NotificationModel> = Schema.Struct({
+  id: Schema.NonEmptyString,
+  tone: ToneSchema,
+  title: Schema.String,
+  detail: Schema.String.pipe(Schema.optionalKey),
+  actionLabel: Schema.String.pipe(Schema.optionalKey),
+  action: IntentRefSchema.pipe(Schema.optionalKey),
+  autoDismissMillis: NonNegativeNumberSchema.pipe(Schema.optionalKey)
+})
+
+export const ToastSchema: Schema.Codec<ToastView, ToastView> = Schema.TaggedStruct("Toast", {
+  ...CommonFields,
+  notification: NotificationModelSchema,
+  onDismiss: IntentRefSchema,
+  style: CardStyleSchema.pipe(Schema.optionalKey)
+})
+
+export const ToastRegionSchema: Schema.Codec<ToastRegionView, ToastRegionView> = Schema.TaggedStruct("ToastRegion", {
+  ...CommonFields,
+  notifications: Schema.Array(NotificationModelSchema),
+  placement: Schema.Literals(toastPlacements).pipe(Schema.optionalKey),
+  onDismiss: IntentRefSchema,
+  style: CardStyleSchema.pipe(Schema.optionalKey)
+})
+
+export const StatusBannerSchema: Schema.Codec<StatusBannerView, StatusBannerView> = Schema.TaggedStruct("StatusBanner", {
+  ...CommonFields,
+  tone: ToneSchema,
+  message: Schema.String,
+  onRetry: IntentRefSchema.pipe(Schema.optionalKey),
+  onDismiss: IntentRefSchema.pipe(Schema.optionalKey),
+  style: CardStyleSchema.pipe(Schema.optionalKey)
+})
+
+export const RecoveryActionModelSchema: Schema.Codec<RecoveryActionModel, RecoveryActionModel> = Schema.Struct({
+  id: Schema.NonEmptyString,
+  label: Schema.String,
+  action: IntentRefSchema,
+  variant: ButtonVariantSchema.pipe(Schema.optionalKey)
+})
+
+export const RecoveryOverlaySchema: Schema.Codec<RecoveryOverlayView, RecoveryOverlayView> =
+  Schema.TaggedStruct("RecoveryOverlay", {
+    ...CommonFields,
+    open: BoundBooleanSchema,
+    title: Schema.String,
+    message: Schema.String.pipe(Schema.optionalKey),
+    status: Schema.String.pipe(Schema.optionalKey),
+    actions: Schema.Array(RecoveryActionModelSchema)
+  })
+
 export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
   Schema.Union([
     StackSchema,
@@ -3024,7 +3142,11 @@ export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
     RadioGroupSchema,
     SliderSchema,
     NumberFieldSchema,
-    FieldRowSchema
+    FieldRowSchema,
+    ToastSchema,
+    ToastRegionSchema,
+    StatusBannerSchema,
+    RecoveryOverlaySchema
   ]).check(OverlayStackFilter)
 )
 
@@ -3204,6 +3326,22 @@ export type FieldRowProps = WithoutTagAndVersion<FieldRowView>
 export const FieldRow = (props: FieldRowProps): FieldRowView =>
   FieldRowSchema.make({ _tag: "FieldRow", catalogVersion: CatalogVersion, ...props })
 
+export type ToastProps = WithoutTagAndVersion<ToastView>
+export const Toast = (props: ToastProps): ToastView =>
+  ToastSchema.make({ _tag: "Toast", catalogVersion: CatalogVersion, ...props })
+
+export type ToastRegionProps = WithoutTagAndVersion<ToastRegionView>
+export const ToastRegion = (props: ToastRegionProps): ToastRegionView =>
+  ToastRegionSchema.make({ _tag: "ToastRegion", catalogVersion: CatalogVersion, ...props })
+
+export type StatusBannerProps = WithoutTagAndVersion<StatusBannerView>
+export const StatusBanner = (props: StatusBannerProps): StatusBannerView =>
+  StatusBannerSchema.make({ _tag: "StatusBanner", catalogVersion: CatalogVersion, ...props })
+
+export type RecoveryOverlayProps = WithoutTagAndVersion<RecoveryOverlayView>
+export const RecoveryOverlay = (props: RecoveryOverlayProps): RecoveryOverlayView =>
+  RecoveryOverlaySchema.make({ _tag: "RecoveryOverlay", catalogVersion: CatalogVersion, ...props })
+
 // Normalize a composer document to its plaintext value (text runs verbatim,
 // mentions rendered as their label). This is the value renderers emit on change
 // and the app can re-parse to a typed document.
@@ -3364,9 +3502,17 @@ export const resolveView = (view: View, input: ViewResolution = {}): View => {
     case "RadioGroup":
     case "Slider":
     case "NumberField":
+    case "Toast":
+    case "ToastRegion":
+    case "StatusBanner":
       return {
         ...view,
         ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) })
+      }
+    case "RecoveryOverlay":
+      return {
+        ...view,
+        open: input.state === undefined ? view.open : resolveBoundBoolean(view.open, input.state)
       }
     case "FieldRow":
       return {
@@ -3462,7 +3608,15 @@ export const resolveBindings = <State>(view: View, state: State): View => {
     case "RadioGroup":
     case "Slider":
     case "NumberField":
+    case "Toast":
+    case "ToastRegion":
+    case "StatusBanner":
       return view
+    case "RecoveryOverlay":
+      return {
+        ...view,
+        open: resolveBoundBoolean(view.open, state)
+      }
     case "FieldRow":
       return {
         ...view,

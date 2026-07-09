@@ -50,6 +50,10 @@ const describeView = Match.type<View>().pipe(
   Match.tag("Slider", () => "control"),
   Match.tag("NumberField", () => "control"),
   Match.tag("FieldRow", () => "control"),
+  Match.tag("Toast", () => "feedback"),
+  Match.tag("ToastRegion", () => "feedback"),
+  Match.tag("StatusBanner", () => "feedback"),
+  Match.tag("RecoveryOverlay", () => "feedback"),
   Match.exhaustive
 )
 
