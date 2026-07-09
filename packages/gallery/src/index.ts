@@ -31,6 +31,7 @@ import {
   MockupFrame,
   NavBar,
   Pager,
+  SwipeableListItem,
   NumberField,
   Popover,
   PricingColumn,
@@ -1648,6 +1649,25 @@ const componentStoryMap = {
             content: Text({ key: "pager-task", content: "Describe your first task", variant: "body" })
           }
         ]
+      })
+    })
+  ],
+  SwipeableListItem: [
+    story({
+      id: "swipeable-list-item-basic",
+      component: "SwipeableListItem",
+      title: "SwipeableListItem",
+      description: "List row with typed leading/trailing actions and onAction intent.",
+      view: SwipeableListItem({
+        key: "swipeable-list-item-basic",
+        onAction: IntentRef("GalleryStory.Pressed", ComponentValueBinding()),
+        leadingActions: [{ id: "pin", label: "Pin", icon: "Check" }],
+        trailingActions: [
+          { id: "quote", label: "Quote", tone: "info" },
+          { id: "archive", label: "Archive", destructive: true, tone: "danger" }
+        ],
+        fullSwipeActionId: "archive",
+        child: Text({ key: "swipe-label", content: "Thread title", variant: "body" })
       })
     })
   ]

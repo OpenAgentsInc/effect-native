@@ -87,8 +87,9 @@ export const GraphCatalogVersion = "effect-native/v19" as const
 export const MarketingCatalogVersion = "effect-native/v20" as const
 export const PagerCatalogVersion = "effect-native/v21" as const
 export const PullToRefreshCatalogVersion = "effect-native/v22" as const
-export const PreviousCatalogVersion = PagerCatalogVersion
-export const CatalogVersion = PullToRefreshCatalogVersion
+export const SwipeableListItemCatalogVersion = "effect-native/v23" as const
+export const PreviousCatalogVersion = PullToRefreshCatalogVersion
+export const CatalogVersion = SwipeableListItemCatalogVersion
 export const CatalogVersionSchema = Schema.Literal(CatalogVersion)
 export type CatalogVersion = typeof CatalogVersion
 export const compatibleCatalogVersions = [
@@ -114,7 +115,8 @@ export const compatibleCatalogVersions = [
   GraphCatalogVersion,
   MarketingCatalogVersion,
   PagerCatalogVersion,
-  PullToRefreshCatalogVersion
+  PullToRefreshCatalogVersion,
+  SwipeableListItemCatalogVersion
 ] as const
 export type CompatibleCatalogVersion = (typeof compatibleCatalogVersions)[number]
 export const CompatibleCatalogVersionSchema = Schema.Literals(compatibleCatalogVersions)
@@ -181,7 +183,8 @@ export const componentTags = [
   "StatsBand",
   "Glow",
   "MockupFrame",
-  "Pager"
+  "Pager",
+  "SwipeableListItem"
 ] as const
 export type ComponentTag = (typeof componentTags)[number]
 
@@ -2734,6 +2737,26 @@ export interface PagerView extends NodeBase {
   readonly style?: CardStyle
 }
 
+
+// Swipe-action list row (issue #60) — composition target for List renderItem.
+export interface SwipeableListAction {
+  readonly id: string
+  readonly label: string
+  readonly icon?: IconName
+  readonly tone?: Tone
+  readonly destructive?: boolean
+}
+
+export interface SwipeableListItemView extends NodeBase {
+  readonly _tag: "SwipeableListItem"
+  readonly child: View
+  readonly leadingActions?: ReadonlyArray<SwipeableListAction>
+  readonly trailingActions?: ReadonlyArray<SwipeableListAction>
+  readonly fullSwipeActionId?: string
+  readonly onAction: IntentRef
+  readonly style?: CardStyle
+}
+
 export type View =
   | StackView
   | TextView
@@ -2797,6 +2820,7 @@ export type View =
   | GlowView
   | MockupFrameView
   | PagerView
+  | SwipeableListItemView
 
 export type KeyedView = View & { readonly key: NodeKey }
 
@@ -2846,6 +2870,8 @@ const childViewEntries = (
     case "Tabs":
     case "Pager":
       return view.panels.map((panel, index) => ({ path: ["panels", index, "content"], view: panel.content }))
+    case "SwipeableListItem":
+      return [{ path: ["child"], view: view.child }]
     case "Composer":
       return view.autocomplete === undefined
         ? []
@@ -3912,6 +3938,26 @@ export const PagerSchema: Schema.Codec<PagerView, PagerView> = Schema.TaggedStru
   style: CardStyleSchema.pipe(Schema.optionalKey)
 })
 
+
+export const SwipeableListActionSchema: Schema.Codec<SwipeableListAction, SwipeableListAction> = Schema.Struct({
+  id: Schema.NonEmptyString,
+  label: Schema.String,
+  icon: IconNameSchema.pipe(Schema.optionalKey),
+  tone: ToneSchema.pipe(Schema.optionalKey),
+  destructive: Schema.Boolean.pipe(Schema.optionalKey)
+})
+
+export const SwipeableListItemSchema: Schema.Codec<SwipeableListItemView, SwipeableListItemView> =
+  Schema.TaggedStruct("SwipeableListItem", {
+    ...CommonFields,
+    child: ViewSelf,
+    leadingActions: Schema.Array(SwipeableListActionSchema).pipe(Schema.optionalKey),
+    trailingActions: Schema.Array(SwipeableListActionSchema).pipe(Schema.optionalKey),
+    fullSwipeActionId: Schema.NonEmptyString.pipe(Schema.optionalKey),
+    onAction: IntentRefSchema,
+    style: CardStyleSchema.pipe(Schema.optionalKey)
+  })
+
 export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
   Schema.Union([
     StackSchema,
@@ -3975,7 +4021,8 @@ export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
     StatsBandSchema,
     GlowSchema,
     MockupFrameSchema,
-    PagerSchema
+    PagerSchema,
+    SwipeableListItemSchema
   ]).check(OverlayStackFilter)
 )
 
@@ -4384,6 +4431,11 @@ export type PagerProps = WithoutTagAndVersion<PagerView>
 export const Pager = (props: PagerProps): PagerView =>
   PagerSchema.make({ _tag: "Pager", catalogVersion: CatalogVersion, ...props })
 
+export type SwipeableListItemProps = WithoutTagAndVersion<SwipeableListItemView>
+export const SwipeableListItem = (props: SwipeableListItemProps): SwipeableListItemView =>
+  SwipeableListItemSchema.make({ _tag: "SwipeableListItem", catalogVersion: CatalogVersion, ...props })
+
+
 
 
 // Deterministic 2D layout for a graph figure: precomputed positions when given,
@@ -4744,6 +4796,12 @@ export const resolveView = (view: View, input: ViewResolution = {}): View => {
         ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) }),
         panels: view.panels.map((panel) => ({ ...panel, content: resolveView(panel.content, input) }))
       }
+    case "SwipeableListItem":
+      return {
+        ...view,
+        ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) }),
+        child: resolveView(view.child, input)
+      }
     case "Composer":
       return {
         ...view,
@@ -4924,6 +4982,11 @@ export const resolveBindings = <State>(view: View, state: State): View => {
         ...view,
         panels: view.panels.map((panel) => ({ ...panel, content: resolveBindings(panel.content, state) }))
       }
+    case "SwipeableListItem":
+      return {
+        ...view,
+        child: resolveBindings(view.child, state)
+      }
     case "Composer":
       return view.autocomplete === undefined
         ? view
@@ -5044,6 +5107,11 @@ export const redactSecureView = (view: View): View => {
       return {
         ...view,
         panels: view.panels.map((panel) => ({ ...panel, content: redactSecureView(panel.content) }))
+      }
+    case "SwipeableListItem":
+      return {
+        ...view,
+        child: redactSecureView(view.child)
       }
     case "FieldRow":
       return {

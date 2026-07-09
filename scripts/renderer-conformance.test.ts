@@ -39,6 +39,7 @@ import {
   Popover,
   Pager,
   PricingColumn,
+  SwipeableListItem,
   PricingTable,
   RadioGroup,
   RecoveryOverlay,
@@ -618,6 +619,14 @@ const catalogFixturesByTag = {
         content: Text({ key: "pager-task", content: "Describe the task", variant: "body" })
       }
     ]
+  }),
+  SwipeableListItem: SwipeableListItem({
+    key: "swipe-row",
+    onAction: IntentRef("Pressed", ComponentValueBinding()),
+    trailingActions: [
+      { id: "archive", label: "Archive", destructive: true, tone: "danger" }
+    ],
+    child: Text({ key: "swipe-label", content: "Swipe me", variant: "body" })
   })
 } satisfies { readonly [Tag in (typeof componentTags)[number]]: View }
 
@@ -754,7 +763,8 @@ const catalogRendererTags = [
   "StatsBand",
   "Glow",
   "MockupFrame",
-  "Pager"
+  "Pager",
+  "SwipeableListItem"
 ] as const
 
 // Host (issue #23) is supported by the headless recorder and the DOM renderer

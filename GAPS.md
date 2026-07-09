@@ -23,7 +23,7 @@ their reason so pressure is visible without weakening the catalog contract.
 
 ## Catalog Versioning Policy
 
-The current catalog marker is `effect-native/v22`, exposed by
+The current catalog marker is `effect-native/v23`, exposed by
 `CatalogVersion`. `compatibleCatalogVersions` is the decode allow-list, and
 `CompatibleViewSchema` is the schema app authors and renderers should use when
 accepting persisted or externally-authored trees.
@@ -91,7 +91,7 @@ until it has a fixture and every renderer declares and proves support for it.
 | Mobile gesture / interaction expansion | Khala Code Mobile's swipe-to-quote, pull-to-refresh, long-press, keyboard-avoidance, and safe-area need typed touch intents + runtime concerns (the mobile peer of desktop interaction expansion #24) | 2026-07-09 | accepted -> #56 |
 | RN list virtualization parity | Khala Code Mobile's thread list + streaming transcript need FlatList/SectionList-backed `List`/`SectionList`/`Transcript` at production scale | 2026-07-09 | accepted -> #57 |
 | RN foreign-`Host` drivers | Khala Code Mobile's voice/STT mic and on-device model surfaces need reviewed Scope-owned RN host drivers under the `Host` contract (#23) | 2026-07-09 | accepted -> #58 |
-| `SwipeableListItem` | Khala Code Mobile's thread rows need swipe-action list rows | 2026-07-09 | accepted -> #60 (mobile catalog) |
+| `SwipeableListItem` | Khala Code Mobile's thread rows need swipe-action list rows | 2026-07-09 | shipped -> #60 (v23: leading/trailing actions, onAction, fullSwipeActionId; DOM + RN action reveal subset; gesture-native reveal still #56) |
 | `PullToRefresh` / `RefreshControl` | Khala Code Mobile's thread list refreshes on pull | 2026-07-09 | shipped -> #61 (v22: bounded `refreshing` + `onRefresh` on `List`/`SectionList`; RN RefreshControl, DOM refresh affordance) |
 | `Pager` / onboarding stepper | Khala Code Mobile's 3-step onboarding is a linear paged flow (distinct from `Tabs` selection) | 2026-07-09 | shipped -> #62 (v21: linear steps, activeStepId, progress dots/bar, back/advance/complete intents; DOM + RN) |
 | Mobile surface treatments | Khala Code Mobile's arcade visual identity: `BackgroundGradient`/`Wallpaper`/`Spotlight`/`Frame`/`BlurredPopup` (signature visuals as catalog citizens, like Glow/Mockup #51) | 2026-07-09 | accepted -> #63 (mobile catalog) |
@@ -119,7 +119,8 @@ Mobile demand docs (#65): GAPS register rows + ROADMAP Phase 4M + [`docs/porting
 | `v19` | #37 | `GraphFigure` + `Timeline` (canvas + DOM/SVG) |
 | `v20` | #46–#51 | Marketing landing catalog (`Section`, `Hero`, `AnnouncementBadge`, `CtaSection`, `Footer`, `NavBar`, `Accordion`, `PricingColumn`, `PricingTable`, `LogoRow`, `StatsBand`, `Glow`, `MockupFrame`) |
 | `v21` | #62 | `Pager` (linear onboarding stepper) |
-| `v22` (current) | #61 | Pull-to-refresh on `List`/`SectionList` (`refreshing` + `onRefresh`) |
+| `v22` | #61 | Pull-to-refresh on `List`/`SectionList` (`refreshing` + `onRefresh`) |
+| `v23` (current) | #60 | `SwipeableListItem` (swipe-action list rows) |
 
 Non-catalog Phase 4 runtime ships (no version bump): desktop adapter (#21), canvas renderer package (#22), streaming region (#26), Keymap/focus (#41), Protoss-blue theme tokens (#25).
 

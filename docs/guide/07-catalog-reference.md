@@ -8,9 +8,9 @@ conformance-checked by
 (`bun run check:catalog-reference`) so this page cannot silently drop a shipped
 component.
 
-Current catalog marker: `CatalogVersion = "effect-native/v22"`.
+Current catalog marker: `CatalogVersion = "effect-native/v23"`.
 
-Closed component tags (`componentTags`, 62 total):
+Closed component tags (`componentTags`, 63 total):
 
 `Stack`, `Text`, `Button`, `Image`, `TextField`, `List`,
 `SectionList`, `Card`, `Spacer`, `Link`, `Modal`, `Sheet`,
@@ -22,7 +22,7 @@ Closed component tags (`componentTags`, 62 total):
 `Markdown`, `Transcript`, `CodeBlock`, `DiffView`, `GraphFigure`, `Timeline`,
 `Section`, `Hero`, `AnnouncementBadge`, `CtaSection`, `Footer`, `NavBar`,
 `Accordion`, `PricingColumn`, `PricingTable`, `LogoRow`, `StatsBand`, `Glow`,
-`MockupFrame`, `Pager`.
+`MockupFrame`, `Pager`, `SwipeableListItem`.
 
 There is no escape hatch to add an ad hoc component — growing the
 catalog is a deliberate, tracked process; see
@@ -189,6 +189,11 @@ Device/browser frame around children with optional perspective tilt (`none`/`lef
 Linear onboarding stepper — ordered steps, `activeStepId`, progress (`dots`/`bar`/`none`),
 back/advance/complete intents, panel content by step id (lazy vs keepMounted).
 
+### SwipeableListItem
+
+Swipe-action list row — one child, typed leading/trailing actions (id/label/icon/tone/destructive),
+`onAction` intent, optional full-swipe action id. Compose as a `List` item.
+
 ## Shared vocabulary
 
 ### Common fields
@@ -198,7 +203,7 @@ Every component accepts these two, inherited from `NodeBase`:
 | Field | Type | Notes |
 |---|---|---|
 | `key` | `string` (optional) | Required (enforced by the schema, not just convention) on any view placed inside a `List`/`SectionList`/`Link` children array. |
-| `catalogVersion` | `"effect-native/v22"` | Set automatically by every constructor function — you never pass this yourself. |
+| `catalogVersion` | `"effect-native/v23"` | Set automatically by every constructor function — you never pass this yourself. |
 
 ### Design tokens
 

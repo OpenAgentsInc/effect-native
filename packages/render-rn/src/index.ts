@@ -30,6 +30,7 @@ import {
   type GlowView,
   type MockupFrameView,
   type PagerView,
+  type SwipeableListItemView,
   type ComboboxOption,
   type ComboboxView,
   type CommandPaletteView,
@@ -2568,7 +2569,65 @@ const renderResolvedReactNativeView = (
       return renderMarketingShell(view, dependencies, report, options)
     case "Pager":
       return renderPager(view, dependencies, report, options)
+    case "SwipeableListItem":
+      return renderSwipeableListItem(view, dependencies, report, options)
   }
+}
+
+const renderSwipeableListItem = (
+  view: SwipeableListItemView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const theme = options.theme ?? defaultTheme
+  const actionButtons = (
+    side: "leading" | "trailing",
+    items: ReadonlyArray<{
+      readonly id: string
+      readonly label: string
+      readonly destructive?: boolean
+    }>
+  ) =>
+    items.map((action) =>
+      createElement(
+        dependencies,
+        dependencies.ReactNative.Pressable,
+        {
+          key: `${side}-${action.id}`,
+          testID: `en-swipe-action:${action.id}`,
+          onPress: () => runReportedIntent(report, view.onAction, action.id),
+          style: {
+            paddingHorizontal: spacingValue(theme, "2"),
+            justifyContent: "center",
+            backgroundColor: action.destructive === true
+              ? colorValue(theme, "danger")
+              : colorValue(theme, "surface")
+          }
+        },
+        createElement(dependencies, dependencies.ReactNative.Text, { key: "label" }, action.label)
+      )
+    )
+
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    baseProps(
+      view,
+      mergeNativeStyles(
+        { flexDirection: "row", alignItems: "stretch", gap: spacingValue(theme, "1") },
+        viewStyle(view as never, options)
+      )
+    ),
+    ...actionButtons("leading", view.leadingActions ?? []),
+    createElement(
+      dependencies,
+      dependencies.ReactNative.View,
+      { key: "body", testID: "en-swipe-body", style: { flex: 1 } },
+      renderResolvedReactNativeView(view.child, dependencies, report, options)
+    ),
+    ...actionButtons("trailing", view.trailingActions ?? [])
+  )
 }
 
 const renderPager = (
@@ -2912,6 +2971,12 @@ export const viewStructure = (view: View): ReactNativeStructure => {
           ? view.panels
           : view.panels.filter((panel) => panel.id === view.activeStepId)
         ).map((panel) => viewStructure(panel.content))
+      }
+    case "SwipeableListItem":
+      return {
+        tag: "SwipeableListItem",
+        ...(view.key === undefined ? {} : { key: view.key }),
+        children: [viewStructure(view.child)]
       }
     default:
       return {

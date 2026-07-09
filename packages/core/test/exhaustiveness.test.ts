@@ -75,6 +75,7 @@ const describeView = Match.type<View>().pipe(
   Match.tag("Glow", () => "marketing"),
   Match.tag("MockupFrame", () => "marketing"),
   Match.tag("Pager", () => "mobile"),
+  Match.tag("SwipeableListItem", () => "mobile"),
   Match.exhaustive
 )
 

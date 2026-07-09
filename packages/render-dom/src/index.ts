@@ -30,6 +30,7 @@ import {
   type GlowView,
   type MockupFrameView,
   type PagerView,
+  type SwipeableListItemView,
   Section,
   Hero,
   AnnouncementBadge,
@@ -3707,6 +3708,8 @@ const renderView = (view: View, state: DomRendererState, report: IntentReporter)
       return renderMockupFrame(view, state, report)
     case "Pager":
       return renderPager(view, state, report)
+    case "SwipeableListItem":
+      return renderSwipeableListItem(view, state, report)
   }
 }
 
@@ -3881,6 +3884,12 @@ export const viewStructure = (view: View): DomStructure => {
           ? view.panels
           : view.panels.filter((panel) => panel.id === view.activeStepId)
         ).map((panel) => viewStructure(panel.content))
+      }
+    case "SwipeableListItem":
+      return {
+        tag: "SwipeableListItem",
+        ...(view.key === undefined ? {} : { key: view.key }),
+        children: [viewStructure(view.child)]
       }
     case "FieldRow":
       return {
@@ -4442,3 +4451,58 @@ const renderPager = (view: PagerView, state: DomRendererState, report: IntentRep
   return el
 }
 
+
+const renderSwipeableListItem = (
+  view: SwipeableListItemView,
+  state: DomRendererState,
+  report: IntentReporter
+): HTMLElement => {
+  const el = state.keyedElement(view, "div")
+  state.resetListeners(el)
+  el.setAttribute("data-en-swipeable", "true")
+  if (view.fullSwipeActionId !== undefined) {
+    el.setAttribute("data-en-full-swipe", view.fullSwipeActionId)
+  }
+  el.style.display = "flex"
+  el.style.alignItems = "stretch"
+  el.style.gap = "var(--en-spacing-2)"
+
+  const actions = (
+    side: "leading" | "trailing",
+    items: ReadonlyArray<{
+      readonly id: string
+      readonly label: string
+      readonly destructive?: boolean
+      readonly tone?: string
+    }>
+  ) => {
+    if (items.length === 0) return
+    const group = el.ownerDocument.createElement("div")
+    group.setAttribute("data-en-swipe-actions", side)
+    group.style.display = "flex"
+    group.style.gap = "var(--en-spacing-1)"
+    for (const action of items) {
+      const btn = el.ownerDocument.createElement("button")
+      btn.type = "button"
+      btn.textContent = action.label
+      btn.setAttribute("data-en-swipe-action", action.id)
+      if (action.destructive === true) btn.setAttribute("data-en-destructive", "true")
+      if (action.tone !== undefined) btn.setAttribute("data-en-tone", action.tone)
+      state.addListener(btn, "click", () => runReportedIntent(report, view.onAction, action.id))
+      group.appendChild(btn)
+    }
+    el.appendChild(group)
+  }
+
+  actions("leading", view.leadingActions ?? [])
+  const body = el.ownerDocument.createElement("div")
+  body.setAttribute("data-en-role", "swipe-body")
+  body.style.flex = "1"
+  body.appendChild(renderView(view.child, state, report))
+  el.appendChild(body)
+  actions("trailing", view.trailingActions ?? [])
+
+  applyBaseStyle(el, view, state)
+  applyA11y(el, view)
+  return el
+}
