@@ -3226,6 +3226,65 @@ export type HostProps = WithoutTagAndVersion<HostView>
 export const Host = (props: HostProps): HostView =>
   HostSchema.make({ _tag: "Host", catalogVersion: CatalogVersion, ...props })
 
+// ── CodeEditor host contract (issue #33) ─────────────────────────────────────
+//
+// A CodeEditor is not a new closed-catalog tag: it is a typed constructor over
+// the reviewed `Host(kind: "code-editor")` escape hatch (#23), with bounded,
+// serializable props and a typed event union. The concrete widget (Monaco) is
+// provided by the app as a per-renderer host driver whose lifecycle is bound to
+// the surface Scope; the framework owns the typed contract + driver seam, never
+// a bundled editor engine. No Monaco types appear in the public contract.
+export interface CodeEditorHostProps {
+  readonly value: string
+  readonly language: string
+  readonly readOnly?: boolean
+  readonly wordWrap?: boolean
+  readonly minimap?: boolean
+  // Font size from the token scale (never a raw pixel number).
+  readonly fontScale?: TypeScaleToken
+}
+export const CodeEditorHostPropsSchema: Schema.Codec<CodeEditorHostProps, CodeEditorHostProps> = Schema.Struct({
+  value: Schema.String,
+  language: Schema.NonEmptyString,
+  readOnly: Schema.Boolean.pipe(Schema.optionalKey),
+  wordWrap: Schema.Boolean.pipe(Schema.optionalKey),
+  minimap: Schema.Boolean.pipe(Schema.optionalKey),
+  fontScale: TypeScaleTokenSchema.pipe(Schema.optionalKey)
+}) as unknown as Schema.Codec<CodeEditorHostProps, CodeEditorHostProps>
+export const decodeCodeEditorHostProps = Schema.decodeUnknownSync(CodeEditorHostPropsSchema)
+
+// Typed events the code-editor driver emits outward through the Host `onEvent`
+// intent (no editor types cross the boundary).
+export type CodeEditorEvent =
+  | { readonly type: "change"; readonly value: string }
+  | { readonly type: "selection"; readonly start: number; readonly end: number }
+  | { readonly type: "save"; readonly value: string }
+export const CodeEditorEventSchema: Schema.Codec<CodeEditorEvent, CodeEditorEvent> = Schema.Union([
+  Schema.Struct({ type: Schema.Literal("change"), value: Schema.String }),
+  Schema.Struct({ type: Schema.Literal("selection"), start: NonNegativeNumberSchema, end: NonNegativeNumberSchema }),
+  Schema.Struct({ type: Schema.Literal("save"), value: Schema.String })
+]) as unknown as Schema.Codec<CodeEditorEvent, CodeEditorEvent>
+
+export interface CodeEditorProps extends CodeEditorHostProps {
+  readonly key?: NodeKey
+  readonly onEvent?: IntentRef
+  readonly style?: CardStyle
+  readonly a11y?: A11y
+  readonly interactions?: Interactions
+}
+export const CodeEditor = (props: CodeEditorProps): HostView => {
+  const { key, onEvent, style, a11y, interactions, ...hostProps } = props
+  return Host({
+    ...(key === undefined ? {} : { key }),
+    ...(onEvent === undefined ? {} : { onEvent }),
+    ...(style === undefined ? {} : { style }),
+    ...(a11y === undefined ? {} : { a11y }),
+    ...(interactions === undefined ? {} : { interactions }),
+    kind: "code-editor",
+    props: CodeEditorHostPropsSchema.make(hostProps) as unknown as JsonPayload
+  })
+}
+
 export type IconProps = WithoutTagAndVersion<IconView>
 export const Icon = (props: IconProps): IconView =>
   IconSchema.make({ _tag: "Icon", catalogVersion: CatalogVersion, ...props })

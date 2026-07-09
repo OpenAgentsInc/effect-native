@@ -10,6 +10,8 @@ import {
   type ComboboxView,
   type CommandPaletteView,
   type ComposerView,
+  type CodeEditorHostProps,
+  decodeCodeEditorHostProps,
   type ContextMenuView,
   type Dimension,
   type DividerView,
@@ -112,6 +114,62 @@ export interface DomHostDriver {
   readonly decodeProps: (props: JsonPayload) => unknown
   readonly mount: (container: HTMLElement, props: unknown, context: DomHostContext) => DomHostInstance
 }
+
+// Documented minimal CodeEditor host driver (issue #33). This is the reviewed
+// escape-hatch driver for `Host(kind: "code-editor")`: a real, disposing
+// textarea-backed editor that honors the typed CodeEditorHostProps and emits the
+// typed CodeEditorEvent union through the Host `onEvent` intent. It is
+// intentionally minimal — an app swaps in a Monaco-backed driver with the same
+// contract (decodeProps / mount / update / unmount, Scope-owned lifecycle) when
+// it needs full fidelity; no Monaco types cross this boundary.
+export const makeStubCodeEditorDriver = (): DomHostDriver => ({
+  kind: "code-editor",
+  decodeProps: (props) => decodeCodeEditorHostProps(props),
+  mount: (container, props, context) => {
+    const initial = props as CodeEditorHostProps
+    const textarea = context.document.createElement("textarea")
+    textarea.setAttribute("data-en-code-editor", initial.language)
+    textarea.setAttribute("data-en-host-driver", "stub-code-editor")
+    textarea.spellcheck = false
+    textarea.value = initial.value
+    textarea.readOnly = initial.readOnly === true
+    textarea.style.width = "100%"
+    textarea.style.height = "100%"
+    textarea.style.fontFamily = "monospace"
+    textarea.style.whiteSpace = initial.wordWrap === true ? "pre-wrap" : "pre"
+    const onInput = () => context.emit({ type: "change", value: textarea.value })
+    const onSelect = () =>
+      context.emit({ type: "selection", start: textarea.selectionStart ?? 0, end: textarea.selectionEnd ?? 0 })
+    const onKeydown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
+        event.preventDefault()
+        context.emit({ type: "save", value: textarea.value })
+      }
+    }
+    textarea.addEventListener("input", onInput)
+    textarea.addEventListener("select", onSelect)
+    textarea.addEventListener("keydown", onKeydown as EventListener)
+    container.appendChild(textarea)
+    let disposed = false
+    return {
+      update: (next) => {
+        const nextProps = next as CodeEditorHostProps
+        if (textarea.ownerDocument.activeElement !== textarea) textarea.value = nextProps.value
+        textarea.readOnly = nextProps.readOnly === true
+        textarea.style.whiteSpace = nextProps.wordWrap === true ? "pre-wrap" : "pre"
+        textarea.setAttribute("data-en-code-editor", nextProps.language)
+      },
+      unmount: () => {
+        if (disposed) return
+        disposed = true
+        textarea.removeEventListener("input", onInput)
+        textarea.removeEventListener("select", onSelect)
+        textarea.removeEventListener("keydown", onKeydown as EventListener)
+        textarea.remove()
+      }
+    }
+  }
+})
 
 export interface DomRendererOptions {
   readonly document?: Document
