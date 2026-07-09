@@ -15,10 +15,11 @@ This is **not** a fully closed exit receipt yet. See **Honesty bar** below.
 | `runMainMobile` mounts on `platform: "ios" \| "android"` | **Yes** — process options only |
 | RN “pixel baselines” on both platforms | **Structural only** — `rnVisualCapture` serializes RN structure; no simulator bitmaps |
 | Desktop → mobile and mobile → desktop message convergence | **Yes under a memory hub** shaped like Khala Sync mutators/changelog |
-| Live round-trip over production Khala Sync (Cloud SQL + hub + WS) | **No** — lives in `openagents` packages; not driven here |
+| Live round-trip over production Khala Sync (Cloud SQL + hub + WS) | **No** — not driven against staging/prod |
+| Real dual-client protocol via `@openagentsinc/khala-sync-client` sessions | **Yes (in openagents)** — see below |
 | Expo/device smoke of the full proof on hardware/simulators | **No** |
 
-Until the last two rows are real (or explicitly waived by the owner), **#64 / #52 stay open**.
+Until live staging/prod Sync **or** an owner waiver of that bar, plus device/sim RN receipts (or waiver), **#64 / #52 stay open**.
 
 ## What Is Defined Once
 
@@ -71,10 +72,19 @@ dense versions, dual apply). That is **not** a substitute for a live staging
 round-trip over real Khala Sync — it is the protocol seam the live demo must
 plug into without changing either app’s view tree.
 
-**To actually close #64:** wire `examples/khala-shared-chat` mutators through
-real `khala-sync-client` (or a staging scope) so desktop and mobile clients
-exchange one live message each way, and capture device/simulator RN baselines
-(or an explicit owner waiver of pixel/device smoke).
+### Real dual-client session proof (openagents)
+
+`openagents` `packages/khala-sync-client/src/cross-app-compose-turn.test.ts`
+(main `25e2878bb1`): two real `createKhalaSyncSession` clients (`c_desktop` /
+`c_mobile`) mutate `chat.composeTurn` through a multi-socket FakeSyncServer on
+the real transport seam; both converge on `chat_turn_event` post-images.
+
+That is **protocol-honest** (overlay + push + live apply + dual durable stores).
+It is **still not** Cloud SQL / production hub / WebSocket staging.
+
+**To actually close #64:** either (a) a staging/prod round-trip receipt with the
+same mutator algebra, or (b) an explicit owner waiver of live staging; **and**
+device/sim RN pixel receipts or a waiver of that bar.
 
 ## Receipt artifacts
 
