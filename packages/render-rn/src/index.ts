@@ -6,7 +6,12 @@ import {
   type CardView,
   type CheckboxView,
   type ChipView,
+  type CodeBlockView,
+  type CodeToken,
+  type CodeTokenKind,
+  codeBlockPlainText,
   type ColorToken,
+  type DiffViewView,
   type ComboboxOption,
   type ComboboxView,
   type CommandPaletteView,
@@ -2064,6 +2069,132 @@ const renderTranscript = (
       ))
   )
 
+// CodeBlock + unified diff (issue #36) on React Native. Pre-tokenized lines and
+// pre-parsed diff rows map to colored Text runs; no highlighter/parser. The
+// review affordances render as a supported pressable subset.
+const codeTokenColor: Record<CodeTokenKind, ColorToken> = {
+  plain: "textPrimary",
+  keyword: "syntaxKeyword",
+  string: "syntaxString",
+  comment: "syntaxComment",
+  function: "syntaxFunction",
+  number: "syntaxNumber",
+  operator: "syntaxOperator"
+}
+
+const renderCodeTokens = (
+  tokens: ReadonlyArray<CodeToken>,
+  dependencies: ReactNativeDependencies,
+  theme: Theme
+): ReadonlyArray<ReactElementLike> =>
+  tokens.map((token, index) =>
+    createElement(
+      dependencies,
+      dependencies.ReactNative.Text,
+      { key: `tok-${index}`, style: { color: colorValue(theme, codeTokenColor[token.kind]), fontFamily: "monospace" } },
+      token.text
+    ))
+
+const renderCodeBlock = (
+  view: CodeBlockView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const theme = options.theme ?? defaultTheme
+  const startLine = view.startLine ?? 1
+  const children: Array<ReactElementLike> = []
+  if (view.onCopy !== undefined) {
+    const onCopy = view.onCopy
+    children.push(
+      createElement(
+        dependencies,
+        dependencies.ReactNative.Pressable,
+        { key: "copy", testID: "en-code-copy", accessibilityLabel: "Copy code", onPress: () => runReportedIntent(report, onCopy, codeBlockPlainText(view.lines)) },
+        createElement(dependencies, dependencies.ReactNative.Text, { key: "label" }, "Copy")
+      )
+    )
+  }
+  view.lines.forEach((line, index) => {
+    const parts: Array<ReactElementLike> = []
+    if (view.showLineNumbers === true) {
+      parts.push(createElement(dependencies, dependencies.ReactNative.Text, { key: "gutter", style: { color: colorValue(theme, "textMuted") } }, `${startLine + index} `))
+    }
+    parts.push(...renderCodeTokens(line.tokens, dependencies, theme))
+    children.push(createElement(dependencies, dependencies.ReactNative.Text, { key: `line-${index}`, testID: `en-code-line:${index}` }, ...parts))
+  })
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    { ...baseProps(view, mergeNativeStyles({ backgroundColor: colorValue(theme, "codeBackground") }, viewStyle(view, options))), testID: "en-code-block" },
+    ...children
+  )
+}
+
+const renderDiffView = (
+  view: DiffViewView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const theme = options.theme ?? defaultTheme
+  const children: Array<ReactElementLike> = []
+  for (const hunk of view.hunks) {
+    children.push(createElement(dependencies, dependencies.ReactNative.Text, { key: `hunk-${hunk.header}`, style: { color: colorValue(theme, "textMuted") } }, hunk.header))
+    for (const row of hunk.rows) {
+      const bg = row.kind === "add" ? colorValue(theme, "diffAdd") : row.kind === "remove" ? colorValue(theme, "diffRemove") : undefined
+      const marker = row.kind === "add" ? "+" : row.kind === "remove" ? "-" : " "
+      const rowParts: Array<ReactElementLike> = [
+        createElement(dependencies, dependencies.ReactNative.Text, { key: "marker" }, `${marker} `),
+        ...renderCodeTokens(row.tokens, dependencies, theme)
+      ]
+      if (row.id !== undefined && view.onLineVerdict !== undefined) {
+        const onLineVerdict = view.onLineVerdict
+        const rowId = row.id
+        rowParts.push(
+          createElement(
+            dependencies,
+            dependencies.ReactNative.Pressable,
+            { key: "approve", testID: `en-diff-verdict:${rowId}:approved`, onPress: () => runReportedIntent(report, onLineVerdict, { rowId, verdict: "approved" }) },
+            createElement(dependencies, dependencies.ReactNative.Text, { key: "t" }, "✓")
+          )
+        )
+      }
+      children.push(
+        createElement(
+          dependencies,
+          dependencies.ReactNative.View,
+          { key: `row-${row.id ?? `${row.oldLine}:${row.newLine}`}`, testID: row.id === undefined ? undefined : `en-diff-row:${row.id}`, style: { flexDirection: "row", ...(bg === undefined ? {} : { backgroundColor: bg }) } },
+          ...rowParts
+        )
+      )
+    }
+  }
+  if (view.actions !== undefined && view.onSourceControlAction !== undefined) {
+    const onAction = view.onSourceControlAction
+    children.push(
+      createElement(
+        dependencies,
+        dependencies.ReactNative.View,
+        { key: "actions", style: { flexDirection: "row", gap: spacingValue(theme, "2") } },
+        ...view.actions.map((action) =>
+          createElement(
+            dependencies,
+            dependencies.ReactNative.Pressable,
+            { key: `action-${action.id}`, testID: `en-diff-action:${action.id}`, onPress: () => runReportedIntent(report, onAction, action.id) },
+            createElement(dependencies, dependencies.ReactNative.Text, { key: "l" }, action.label)
+          ))
+      )
+    )
+  }
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    { ...baseProps(view, mergeNativeStyles({ backgroundColor: colorValue(theme, "codeBackground") }, viewStyle(view, options))), testID: `en-diff:${view.layout ?? "unified"}` },
+    ...children
+  )
+}
+
 const renderResolvedReactNativeView = (
   view: View,
   dependencies: ReactNativeDependencies,
@@ -2159,6 +2290,10 @@ const renderResolvedReactNativeView = (
       return renderMarkdown(view, dependencies, options)
     case "Transcript":
       return renderTranscript(view, dependencies, report, options)
+    case "CodeBlock":
+      return renderCodeBlock(view, dependencies, report, options)
+    case "DiffView":
+      return renderDiffView(view, dependencies, report, options)
   }
 }
 

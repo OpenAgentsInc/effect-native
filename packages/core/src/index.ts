@@ -82,8 +82,9 @@ export const ComposerCatalogVersion = "effect-native/v14" as const
 export const SettingsControlsCatalogVersion = "effect-native/v15" as const
 export const FeedbackCatalogVersion = "effect-native/v16" as const
 export const TranscriptCatalogVersion = "effect-native/v17" as const
-export const PreviousCatalogVersion = FeedbackCatalogVersion
-export const CatalogVersion = TranscriptCatalogVersion
+export const CodeBlockCatalogVersion = "effect-native/v18" as const
+export const PreviousCatalogVersion = TranscriptCatalogVersion
+export const CatalogVersion = CodeBlockCatalogVersion
 export const CatalogVersionSchema = Schema.Literal(CatalogVersion)
 export type CatalogVersion = typeof CatalogVersion
 export const compatibleCatalogVersions = [
@@ -103,6 +104,7 @@ export const compatibleCatalogVersions = [
   TabsCatalogVersion,
   ComposerCatalogVersion,
   SettingsControlsCatalogVersion,
+  FeedbackCatalogVersion,
   PreviousCatalogVersion,
   CatalogVersion
 ] as const
@@ -153,7 +155,9 @@ export const componentTags = [
   "StatusBanner",
   "RecoveryOverlay",
   "Markdown",
-  "Transcript"
+  "Transcript",
+  "CodeBlock",
+  "DiffView"
 ] as const
 export type ComponentTag = (typeof componentTags)[number]
 
@@ -2371,6 +2375,66 @@ export interface TranscriptMessage {
   readonly body: ReadonlyArray<View>
 }
 
+// Syntax-highlighted CodeBlock + unified diff (issue #36). The app tokenizes
+// code and parses diffs (as Khala does today via tokenizeCodeLines /
+// parseUnifiedDiff); the catalog renders the pre-tokenized model — it ships no
+// highlighter or diff parser, keeping the tree closed + deterministic. Token
+// colors come from the blue-theme syntax tokens.
+export const codeTokenKinds = ["plain", "keyword", "string", "comment", "function", "number", "operator"] as const
+export type CodeTokenKind = (typeof codeTokenKinds)[number]
+export interface CodeToken {
+  readonly kind: CodeTokenKind
+  readonly text: string
+}
+export interface CodeLine {
+  readonly tokens: ReadonlyArray<CodeToken>
+}
+
+export interface CodeBlockView extends NodeBase {
+  readonly _tag: "CodeBlock"
+  readonly language?: string
+  readonly lines: ReadonlyArray<CodeLine>
+  readonly showLineNumbers?: boolean
+  readonly startLine?: number
+  readonly onCopy?: IntentRef
+  readonly style?: CardStyle
+}
+
+export const diffRowKinds = ["context", "add", "remove"] as const
+export type DiffRowKind = (typeof diffRowKinds)[number]
+export const diffVerdicts = ["approved", "rejected", "pending"] as const
+export type DiffVerdict = (typeof diffVerdicts)[number]
+export interface DiffRow {
+  readonly kind: DiffRowKind
+  readonly tokens: ReadonlyArray<CodeToken>
+  readonly oldLine?: number
+  readonly newLine?: number
+  // Stable id for per-line review affordances (comment/verdict).
+  readonly id?: string
+  readonly verdict?: DiffVerdict
+  readonly comment?: string
+}
+export interface DiffHunk {
+  readonly header: string
+  readonly rows: ReadonlyArray<DiffRow>
+}
+export interface DiffSourceControlAction {
+  readonly id: string
+  readonly label: string
+}
+export interface DiffViewView extends NodeBase {
+  readonly _tag: "DiffView"
+  readonly language?: string
+  readonly hunks: ReadonlyArray<DiffHunk>
+  readonly layout?: "unified" | "split"
+  // Review affordances as named typed intents; review state rides the rows.
+  readonly onLineComment?: IntentRef
+  readonly onLineVerdict?: IntentRef
+  readonly onSourceControlAction?: IntentRef
+  readonly actions?: ReadonlyArray<DiffSourceControlAction>
+  readonly style?: CardStyle
+}
+
 export interface TranscriptView extends NodeBase {
   readonly _tag: "Transcript"
   readonly messages: ReadonlyArray<TranscriptMessage>
@@ -2428,6 +2492,8 @@ export type View =
   | RecoveryOverlayView
   | MarkdownView
   | TranscriptView
+  | CodeBlockView
+  | DiffViewView
 
 export type KeyedView = View & { readonly key: NodeKey }
 
@@ -3180,6 +3246,52 @@ export const MarkdownBlockSchema: Schema.Codec<MarkdownBlock, MarkdownBlock> = S
   Schema.Struct({ kind: Schema.Literal("blockquote"), children: Schema.Array(MarkdownBlockSelf) })
 ]) as unknown as Schema.Codec<MarkdownBlock, MarkdownBlock>
 
+export const CodeTokenSchema: Schema.Codec<CodeToken, CodeToken> = Schema.Struct({
+  kind: Schema.Literals(codeTokenKinds),
+  text: Schema.String
+})
+export const CodeLineSchema: Schema.Codec<CodeLine, CodeLine> = Schema.Struct({
+  tokens: Schema.Array(CodeTokenSchema)
+})
+export const CodeBlockSchema: Schema.Codec<CodeBlockView, CodeBlockView> = Schema.TaggedStruct("CodeBlock", {
+  ...CommonFields,
+  language: Schema.String.pipe(Schema.optionalKey),
+  lines: Schema.Array(CodeLineSchema),
+  showLineNumbers: Schema.Boolean.pipe(Schema.optionalKey),
+  startLine: NonNegativeNumberSchema.pipe(Schema.optionalKey),
+  onCopy: IntentRefSchema.pipe(Schema.optionalKey),
+  style: CardStyleSchema.pipe(Schema.optionalKey)
+})
+
+export const DiffRowSchema: Schema.Codec<DiffRow, DiffRow> = Schema.Struct({
+  kind: Schema.Literals(diffRowKinds),
+  tokens: Schema.Array(CodeTokenSchema),
+  oldLine: NonNegativeNumberSchema.pipe(Schema.optionalKey),
+  newLine: NonNegativeNumberSchema.pipe(Schema.optionalKey),
+  id: Schema.NonEmptyString.pipe(Schema.optionalKey),
+  verdict: Schema.Literals(diffVerdicts).pipe(Schema.optionalKey),
+  comment: Schema.String.pipe(Schema.optionalKey)
+})
+export const DiffHunkSchema: Schema.Codec<DiffHunk, DiffHunk> = Schema.Struct({
+  header: Schema.String,
+  rows: Schema.Array(DiffRowSchema)
+})
+export const DiffSourceControlActionSchema: Schema.Codec<DiffSourceControlAction, DiffSourceControlAction> = Schema.Struct({
+  id: Schema.NonEmptyString,
+  label: Schema.String
+})
+export const DiffViewSchema: Schema.Codec<DiffViewView, DiffViewView> = Schema.TaggedStruct("DiffView", {
+  ...CommonFields,
+  language: Schema.String.pipe(Schema.optionalKey),
+  hunks: Schema.Array(DiffHunkSchema),
+  layout: Schema.Literals(["unified", "split"]).pipe(Schema.optionalKey),
+  onLineComment: IntentRefSchema.pipe(Schema.optionalKey),
+  onLineVerdict: IntentRefSchema.pipe(Schema.optionalKey),
+  onSourceControlAction: IntentRefSchema.pipe(Schema.optionalKey),
+  actions: Schema.Array(DiffSourceControlActionSchema).pipe(Schema.optionalKey),
+  style: CardStyleSchema.pipe(Schema.optionalKey)
+})
+
 export const MarkdownSchema: Schema.Codec<MarkdownView, MarkdownView> = Schema.TaggedStruct("Markdown", {
   ...CommonFields,
   blocks: Schema.Array(MarkdownBlockSchema),
@@ -3248,7 +3360,9 @@ export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
     StatusBannerSchema,
     RecoveryOverlaySchema,
     MarkdownSchema,
-    TranscriptSchema
+    TranscriptSchema,
+    CodeBlockSchema,
+    DiffViewSchema
   ]).check(OverlayStackFilter)
 )
 
@@ -3568,6 +3682,18 @@ export type TranscriptProps = WithoutTagAndVersion<TranscriptView>
 export const Transcript = (props: TranscriptProps): TranscriptView =>
   TranscriptSchema.make({ _tag: "Transcript", catalogVersion: CatalogVersion, ...props })
 
+export type CodeBlockProps = WithoutTagAndVersion<CodeBlockView>
+export const CodeBlock = (props: CodeBlockProps): CodeBlockView =>
+  CodeBlockSchema.make({ _tag: "CodeBlock", catalogVersion: CatalogVersion, ...props })
+
+export type DiffViewProps = WithoutTagAndVersion<DiffViewView>
+export const DiffView = (props: DiffViewProps): DiffViewView =>
+  DiffViewSchema.make({ _tag: "DiffView", catalogVersion: CatalogVersion, ...props })
+
+// Plaintext value of a pre-tokenized code block, for the copy affordance.
+export const codeBlockPlainText = (lines: ReadonlyArray<CodeLine>): string =>
+  lines.map((line) => line.tokens.map((token) => token.text).join("")).join("\n")
+
 // Normalize a composer document to its plaintext value (text runs verbatim,
 // mentions rendered as their label). This is the value renderers emit on change
 // and the app can re-parse to a typed document.
@@ -3732,6 +3858,8 @@ export const resolveView = (view: View, input: ViewResolution = {}): View => {
     case "ToastRegion":
     case "StatusBanner":
     case "Markdown":
+    case "CodeBlock":
+    case "DiffView":
       return {
         ...view,
         ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) })
@@ -3848,6 +3976,8 @@ export const resolveBindings = <State>(view: View, state: State): View => {
     case "ToastRegion":
     case "StatusBanner":
     case "Markdown":
+    case "CodeBlock":
+    case "DiffView":
       return view
     case "RecoveryOverlay":
       return {

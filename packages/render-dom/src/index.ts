@@ -5,7 +5,12 @@ import {
   type CardView,
   type CheckboxView,
   type ChipView,
+  type CodeBlockView,
+  type CodeTokenKind,
+  codeBlockPlainText,
   type ColorToken,
+  type DiffViewView,
+  type DiffRow,
   type ComboboxOption,
   type ComboboxView,
   type CommandPaletteView,
@@ -3176,6 +3181,195 @@ const renderTranscript = (view: TranscriptView, state: DomRendererState, report:
   return element
 }
 
+// Syntax-highlighted CodeBlock + unified diff (issue #36). The app supplies
+// pre-tokenized lines and pre-parsed diff rows; the renderer only paints tokens
+// with the blue-theme syntax colors — it runs no highlighter/diff parser.
+const codeTokenColor: Record<CodeTokenKind, ColorToken> = {
+  plain: "textPrimary",
+  keyword: "syntaxKeyword",
+  string: "syntaxString",
+  comment: "syntaxComment",
+  function: "syntaxFunction",
+  number: "syntaxNumber",
+  operator: "syntaxOperator"
+}
+
+const appendCodeTokens = (
+  target: HTMLElement,
+  tokens: ReadonlyArray<{ readonly kind: CodeTokenKind; readonly text: string }>
+): void => {
+  for (const token of tokens) {
+    const span = target.ownerDocument.createElement("span")
+    span.setAttribute("data-en-token", token.kind)
+    span.style.color = colorValue(codeTokenColor[token.kind])
+    span.textContent = token.text
+    target.appendChild(span)
+  }
+}
+
+const renderCodeBlock = (view: CodeBlockView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const element = state.keyedElement(view, "figure")
+  state.resetListeners(element)
+  element.setAttribute("data-en-role", "code-block")
+  if (view.language !== undefined) element.setAttribute("data-en-language", view.language)
+  element.style.margin = "0"
+  element.style.background = colorValue("codeBackground")
+  element.style.borderRadius = "var(--en-radius-md)"
+  const document = element.ownerDocument
+
+  if (view.onCopy !== undefined) {
+    const copy = document.createElement("button") as HTMLButtonElement
+    copy.type = "button"
+    copy.setAttribute("data-en-role", "copy")
+    copy.setAttribute("aria-label", "Copy code")
+    copy.textContent = "Copy"
+    const onCopy = view.onCopy
+    state.addListener(copy, "click", () => runReportedIntent(report, onCopy, codeBlockPlainText(view.lines)))
+    element.appendChild(copy)
+  }
+
+  const pre = document.createElement("pre")
+  pre.style.margin = "0"
+  pre.style.fontFamily = "monospace"
+  pre.style.whiteSpace = "pre"
+  const startLine = view.startLine ?? 1
+  view.lines.forEach((line, index) => {
+    const lineEl = document.createElement("div")
+    lineEl.setAttribute("data-en-role", "line")
+    lineEl.style.display = "flex"
+    if (view.showLineNumbers === true) {
+      const gutter = document.createElement("span")
+      gutter.setAttribute("data-en-role", "line-number")
+      gutter.setAttribute("aria-hidden", "true")
+      gutter.style.color = colorValue("textMuted")
+      gutter.style.userSelect = "none"
+      gutter.style.paddingRight = "var(--en-spacing-2)"
+      gutter.textContent = String(startLine + index)
+      lineEl.appendChild(gutter)
+    }
+    const code = document.createElement("code")
+    appendCodeTokens(code, line.tokens)
+    lineEl.appendChild(code)
+    pre.appendChild(lineEl)
+  })
+  element.appendChild(pre)
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  return element
+}
+
+const diffRowBackground = (kind: DiffRow["kind"]): string | undefined => {
+  if (kind === "add") return colorValue("diffAdd")
+  if (kind === "remove") return colorValue("diffRemove")
+  return undefined
+}
+
+const renderDiffView = (view: DiffViewView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const element = state.keyedElement(view, "div")
+  state.resetListeners(element)
+  const layout = view.layout ?? "unified"
+  element.setAttribute("data-en-role", "diff")
+  element.setAttribute("data-en-layout", layout)
+  if (view.language !== undefined) element.setAttribute("data-en-language", view.language)
+  element.style.fontFamily = "monospace"
+  element.style.background = colorValue("codeBackground")
+  const document = element.ownerDocument
+  const hasReview = view.onLineVerdict !== undefined || view.onLineComment !== undefined
+
+  for (const hunk of view.hunks) {
+    const header = document.createElement("div")
+    header.setAttribute("data-en-role", "hunk-header")
+    header.style.color = colorValue("textMuted")
+    header.textContent = hunk.header
+    element.appendChild(header)
+
+    for (const row of hunk.rows) {
+      const rowEl = document.createElement("div")
+      rowEl.setAttribute("data-en-role", "diff-row")
+      rowEl.setAttribute("data-en-diff-kind", row.kind)
+      if (row.id !== undefined) rowEl.setAttribute("data-en-row", row.id)
+      if (row.verdict !== undefined) rowEl.setAttribute("data-en-verdict", row.verdict)
+      rowEl.style.display = "flex"
+      rowEl.style.alignItems = "baseline"
+      const bg = diffRowBackground(row.kind)
+      if (bg !== undefined) rowEl.style.background = bg
+
+      const oldGutter = document.createElement("span")
+      oldGutter.setAttribute("data-en-role", "old-line")
+      oldGutter.setAttribute("aria-hidden", "true")
+      oldGutter.style.color = colorValue("textMuted")
+      oldGutter.style.userSelect = "none"
+      oldGutter.style.width = "3ch"
+      oldGutter.textContent = row.oldLine === undefined ? "" : String(row.oldLine)
+      const newGutter = document.createElement("span")
+      newGutter.setAttribute("data-en-role", "new-line")
+      newGutter.setAttribute("aria-hidden", "true")
+      newGutter.style.color = colorValue("textMuted")
+      newGutter.style.userSelect = "none"
+      newGutter.style.width = "3ch"
+      newGutter.textContent = row.newLine === undefined ? "" : String(row.newLine)
+      const marker = document.createElement("span")
+      marker.setAttribute("data-en-role", "marker")
+      marker.textContent = row.kind === "add" ? "+" : row.kind === "remove" ? "-" : " "
+      const code = document.createElement("code")
+      appendCodeTokens(code, row.tokens)
+      rowEl.append(oldGutter, newGutter, marker, code)
+
+      if (hasReview && row.id !== undefined) {
+        const rowId = row.id
+        if (view.onLineVerdict !== undefined) {
+          const onLineVerdict = view.onLineVerdict
+          for (const verdict of ["approved", "rejected"] as const) {
+            const button = document.createElement("button") as HTMLButtonElement
+            button.type = "button"
+            button.setAttribute("data-en-verdict-action", verdict)
+            button.textContent = verdict === "approved" ? "✓" : "✕"
+            state.addListener(button, "click", () => runReportedIntent(report, onLineVerdict, { rowId, verdict }))
+            rowEl.appendChild(button)
+          }
+        }
+        if (view.onLineComment !== undefined) {
+          const onLineComment = view.onLineComment
+          const comment = document.createElement("button") as HTMLButtonElement
+          comment.type = "button"
+          comment.setAttribute("data-en-role", "comment-action")
+          comment.textContent = "Comment"
+          state.addListener(comment, "click", () => runReportedIntent(report, onLineComment, { rowId }))
+          rowEl.appendChild(comment)
+        }
+      }
+      if (row.comment !== undefined) {
+        const commentEl = document.createElement("div")
+        commentEl.setAttribute("data-en-role", "comment")
+        commentEl.textContent = row.comment
+        rowEl.appendChild(commentEl)
+      }
+      element.appendChild(rowEl)
+    }
+  }
+
+  if (view.actions !== undefined && view.actions.length > 0 && view.onSourceControlAction !== undefined) {
+    const onAction = view.onSourceControlAction
+    const bar = document.createElement("div")
+    bar.setAttribute("data-en-role", "actions")
+    bar.style.display = "flex"
+    bar.style.gap = "var(--en-spacing-2)"
+    for (const action of view.actions) {
+      const button = document.createElement("button") as HTMLButtonElement
+      button.type = "button"
+      button.setAttribute("data-en-action", action.id)
+      button.textContent = action.label
+      state.addListener(button, "click", () => runReportedIntent(report, onAction, action.id))
+      bar.appendChild(button)
+    }
+    element.appendChild(bar)
+  }
+
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  return element
+}
+
 const renderView = (view: View, state: DomRendererState, report: IntentReporter): HTMLElement => {
   switch (view._tag) {
     case "Stack":
@@ -3266,6 +3460,10 @@ const renderView = (view: View, state: DomRendererState, report: IntentReporter)
       return renderMarkdown(view, state)
     case "Transcript":
       return renderTranscript(view, state, report)
+    case "CodeBlock":
+      return renderCodeBlock(view, state, report)
+    case "DiffView":
+      return renderDiffView(view, state, report)
   }
 }
 

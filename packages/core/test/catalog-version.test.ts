@@ -5,6 +5,7 @@ import {
   AppShellCatalogVersion,
   CatalogVersion,
   ComboboxCatalogVersion,
+  CodeBlockCatalogVersion,
   CollectionCatalogVersion,
   CompatibleViewSchema,
   ComposerCatalogVersion,
@@ -66,11 +67,12 @@ describe("catalog version compatibility", () => {
       ComposerCatalogVersion,
       SettingsControlsCatalogVersion,
       FeedbackCatalogVersion,
-      TranscriptCatalogVersion
+      TranscriptCatalogVersion,
+      CodeBlockCatalogVersion
     ])
     // The current marker is the last entry; the previous marker is second-last.
-    expect(CatalogVersion).toBe(TranscriptCatalogVersion)
-    expect(PreviousCatalogVersion).toBe(FeedbackCatalogVersion)
+    expect(CatalogVersion).toBe(CodeBlockCatalogVersion)
+    expect(PreviousCatalogVersion).toBe(TranscriptCatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 1]).toBe(CatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 2]).toBe(PreviousCatalogVersion)
   })

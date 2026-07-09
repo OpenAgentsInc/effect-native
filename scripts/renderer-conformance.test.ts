@@ -6,11 +6,13 @@ import {
   Button,
   Card,
   Checkbox,
+  CodeBlock,
   Combobox,
   CommandPalette,
   Composer,
   ComponentValueBinding,
   ContextMenu,
+  DiffView,
   DropdownMenu,
   FieldBinding,
   FieldRow,
@@ -398,6 +400,27 @@ const catalogFixturesByTag = {
       { key: "m1", role: "user", body: [Text({ key: "m1-body", content: "Fix the test", variant: "body" })] },
       { key: "m2", role: "assistant", status: "streaming", body: [Text({ key: "m2-body", content: "On it", variant: "body" })] }
     ]
+  }),
+  CodeBlock: CodeBlock({
+    key: "code-block",
+    language: "typescript",
+    showLineNumbers: true,
+    onCopy: IntentRef("Pressed", ComponentValueBinding()),
+    lines: [{ tokens: [{ kind: "keyword", text: "const" }, { kind: "plain", text: " x = " }, { kind: "number", text: "1" }] }]
+  }),
+  DiffView: DiffView({
+    key: "diff-view",
+    language: "typescript",
+    onLineVerdict: IntentRef("Pressed", ComponentValueBinding()),
+    onSourceControlAction: IntentRef("Pressed", ComponentValueBinding()),
+    actions: [{ id: "approve", label: "Approve" }],
+    hunks: [{
+      header: "@@ -1 +1 @@",
+      rows: [
+        { kind: "remove", oldLine: 1, id: "r-1", tokens: [{ kind: "plain", text: "return 1" }] },
+        { kind: "add", newLine: 1, id: "r-2", tokens: [{ kind: "plain", text: "return 2" }] }
+      ]
+    }]
   })
 } satisfies { readonly [Tag in (typeof componentTags)[number]]: View }
 
@@ -516,7 +539,9 @@ const catalogRendererTags = [
   "StatusBanner",
   "RecoveryOverlay",
   "Markdown",
-  "Transcript"
+  "Transcript",
+  "CodeBlock",
+  "DiffView"
 ] as const
 
 // Host (issue #23) is supported by the headless recorder and the DOM renderer

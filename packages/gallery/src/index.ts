@@ -5,11 +5,13 @@ import {
   Card,
   Checkbox,
   Chip,
+  CodeBlock,
   Combobox,
   CommandPalette,
   Composer,
   ComponentValueBinding,
   ContextMenu,
+  DiffView,
   Divider,
   DropdownMenu,
   FieldRow,
@@ -1222,6 +1224,51 @@ const componentStoryMap = {
         messages: [
           { key: "m1", role: "user", body: [Markdown({ key: "m1-md", blocks: [{ kind: "paragraph", children: [{ kind: "text", text: "Fix the failing test." }] }] })] },
           { key: "m2", role: "assistant", status: "streaming", body: [Markdown({ key: "m2-md", blocks: [{ kind: "paragraph", children: [{ kind: "text", text: "On it — running the suite now." }] }] })] }
+        ]
+      })
+    })
+  ],
+  CodeBlock: [
+    story({
+      id: "code-block-basic",
+      component: "CodeBlock",
+      title: "CodeBlock",
+      description: "Renders pre-tokenized lines with blue-theme syntax colors and line numbers.",
+      view: CodeBlock({
+        key: "code-block-basic",
+        language: "typescript",
+        showLineNumbers: true,
+        onCopy: IntentRef("GalleryStory.Pressed", ComponentValueBinding()),
+        lines: [
+          { tokens: [{ kind: "keyword", text: "const" }, { kind: "plain", text: " x " }, { kind: "operator", text: "=" }, { kind: "plain", text: " " }, { kind: "number", text: "1" }] },
+          { tokens: [{ kind: "keyword", text: "function" }, { kind: "plain", text: " " }, { kind: "function", text: "run" }, { kind: "operator", text: "()" }] }
+        ]
+      })
+    })
+  ],
+  DiffView: [
+    story({
+      id: "diff-view-basic",
+      component: "DiffView",
+      title: "DiffView",
+      description: "A pre-parsed unified diff with add/remove theming and per-line review affordances.",
+      view: DiffView({
+        key: "diff-view-basic",
+        language: "typescript",
+        layout: "unified",
+        onLineVerdict: IntentRef("GalleryStory.Pressed", ComponentValueBinding()),
+        onLineComment: IntentRef("GalleryStory.Pressed", ComponentValueBinding()),
+        onSourceControlAction: IntentRef("GalleryStory.Pressed", ComponentValueBinding()),
+        actions: [{ id: "approve", label: "Approve" }, { id: "stage", label: "Stage" }],
+        hunks: [
+          {
+            header: "@@ -1,2 +1,2 @@",
+            rows: [
+              { kind: "context", oldLine: 1, newLine: 1, tokens: [{ kind: "keyword", text: "const" }, { kind: "plain", text: " x" }] },
+              { kind: "remove", oldLine: 2, id: "r-2", verdict: "pending", tokens: [{ kind: "plain", text: "  return 1" }] },
+              { kind: "add", newLine: 2, id: "r-3", tokens: [{ kind: "plain", text: "  return 2" }] }
+            ]
+          }
         ]
       })
     })

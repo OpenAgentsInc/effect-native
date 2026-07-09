@@ -56,6 +56,8 @@ const describeView = Match.type<View>().pipe(
   Match.tag("RecoveryOverlay", () => "feedback"),
   Match.tag("Markdown", () => "richtext"),
   Match.tag("Transcript", () => "richtext"),
+  Match.tag("CodeBlock", () => "code"),
+  Match.tag("DiffView", () => "code"),
   Match.exhaustive
 )
 
