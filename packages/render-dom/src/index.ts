@@ -11,6 +11,11 @@ import {
   type ColorToken,
   type DiffViewView,
   type DiffRow,
+  type GraphFigureView,
+  type GraphStatus,
+  graphStatusColorToken,
+  layoutGraphNodes,
+  type TimelineView,
   type ComboboxOption,
   type ComboboxView,
   type CommandPaletteView,
@@ -3370,6 +3375,159 @@ const renderDiffView = (view: DiffViewView, state: DomRendererState, report: Int
   return element
 }
 
+// GraphFigure DOM/SVG fallback + Timeline (issue #37). The canvas renderer is
+// the primary/high-fidelity path; this SVG fallback renders the same typed
+// model in a plain webview / the gallery. Node select/hover and pan/zoom are
+// named typed intents; status colors come from the theme tokens.
+const SVG_NS = "http://www.w3.org/2000/svg"
+const graphStatusColor = (status: GraphStatus | undefined): string =>
+  colorValue(graphStatusColorToken[status ?? "idle"])
+
+const renderGraphFigure = (view: GraphFigureView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const element = state.keyedElement(view, "div")
+  state.resetListeners(element)
+  element.setAttribute("data-en-role", "graph-figure")
+  element.setAttribute("data-en-layout", view.layout ?? "precomputed")
+  const width = view.width ?? 320
+  const height = view.height ?? 240
+  const camera = view.camera ?? { x: 0, y: 0, zoom: 1 }
+  element.setAttribute("data-en-zoom", String(camera.zoom))
+  const document = element.ownerDocument
+  const positions = layoutGraphNodes(view)
+
+  const svg = document.createElementNS(SVG_NS, "svg")
+  svg.setAttribute("data-en-role", "svg")
+  svg.setAttribute("width", String(width))
+  svg.setAttribute("height", String(height))
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`)
+  svg.setAttribute("role", "img")
+  if (view.a11y?.label !== undefined) svg.setAttribute("aria-label", view.a11y.label)
+
+  const root = document.createElementNS(SVG_NS, "g")
+  root.setAttribute("data-en-role", "camera")
+  root.setAttribute(
+    "transform",
+    `translate(${width / 2 + camera.x} ${height / 2 + camera.y}) scale(${camera.zoom})`
+  )
+
+  for (const edge of view.edges) {
+    const from = positions.get(edge.from)
+    const to = positions.get(edge.to)
+    if (from === undefined || to === undefined) continue
+    const lineEl = document.createElementNS(SVG_NS, "line")
+    lineEl.setAttribute("data-en-edge", edge.id)
+    lineEl.setAttribute("x1", String(from.x))
+    lineEl.setAttribute("y1", String(from.y))
+    lineEl.setAttribute("x2", String(to.x))
+    lineEl.setAttribute("y2", String(to.y))
+    lineEl.setAttribute("stroke", graphStatusColor(edge.status))
+    lineEl.setAttribute("stroke-width", "2")
+    root.appendChild(lineEl)
+  }
+
+  for (const node of view.nodes) {
+    const pos = positions.get(node.id)
+    if (pos === undefined) continue
+    const g = document.createElementNS(SVG_NS, "g")
+    g.setAttribute("data-en-node", node.id)
+    if (node.kind !== undefined) g.setAttribute("data-en-kind", node.kind)
+    if (node.status !== undefined) g.setAttribute("data-en-status", node.status)
+    g.setAttribute("transform", `translate(${pos.x} ${pos.y})`)
+    g.setAttribute("tabindex", "0")
+    g.setAttribute("role", "button")
+    g.setAttribute("aria-label", node.label)
+    const circle = document.createElementNS(SVG_NS, "circle")
+    circle.setAttribute("r", "12")
+    circle.setAttribute("fill", graphStatusColor(node.status))
+    const text = document.createElementNS(SVG_NS, "text")
+    text.setAttribute("x", "16")
+    text.setAttribute("y", "4")
+    text.setAttribute("fill", colorValue("textPrimary"))
+    text.textContent = node.label
+    g.append(circle, text)
+    if (view.onNodeSelect !== undefined) {
+      const onNodeSelect = view.onNodeSelect
+      state.addListener(g as unknown as HTMLElement, "click", () => runReportedIntent(report, onNodeSelect, node.id))
+    }
+    if (view.onNodeHover !== undefined) {
+      const onNodeHover = view.onNodeHover
+      state.addListener(g as unknown as HTMLElement, "pointerenter", () => runReportedIntent(report, onNodeHover, node.id))
+    }
+    root.appendChild(g)
+  }
+  svg.appendChild(root)
+  element.replaceChildren(svg)
+
+  if (view.onCameraChange !== undefined) {
+    const onCameraChange = view.onCameraChange
+    state.addListener(element, "wheel", (event) => {
+      event.preventDefault()
+      const delta = (event as WheelEvent).deltaY
+      const zoom = Math.max(0.1, Math.min(8, camera.zoom * (delta > 0 ? 0.9 : 1.1)))
+      runReportedIntent(report, onCameraChange, { x: camera.x, y: camera.y, zoom })
+    })
+  }
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  return element
+}
+
+const renderTimeline = (view: TimelineView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const element = state.keyedElement(view, "ol")
+  state.resetListeners(element)
+  element.setAttribute("data-en-role", "timeline")
+  element.style.listStyle = "none"
+  element.style.margin = "0"
+  element.style.padding = "0"
+  element.style.display = "flex"
+  element.style.flexDirection = "column"
+  element.style.gap = "var(--en-spacing-2)"
+  const document = element.ownerDocument
+  const items = view.events.map((graphEvent) => {
+    const li = document.createElement("li")
+    li.setAttribute("data-en-event", graphEvent.id)
+    if (graphEvent.status !== undefined) li.setAttribute("data-en-status", graphEvent.status)
+    li.style.display = "flex"
+    li.style.alignItems = "baseline"
+    li.style.gap = "var(--en-spacing-2)"
+    const dot = document.createElement("span")
+    dot.setAttribute("data-en-role", "status-dot")
+    dot.setAttribute("aria-hidden", "true")
+    dot.style.width = "8px"
+    dot.style.height = "8px"
+    dot.style.borderRadius = "999px"
+    dot.style.background = graphStatusColor(graphEvent.status)
+    const label = document.createElement("span")
+    label.setAttribute("data-en-role", "label")
+    label.textContent = graphEvent.label
+    li.append(dot, label)
+    if (graphEvent.time !== undefined) {
+      const time = document.createElement("time")
+      time.setAttribute("data-en-role", "time")
+      time.textContent = graphEvent.time
+      time.style.color = colorValue("textMuted")
+      li.appendChild(time)
+    }
+    if (graphEvent.detail !== undefined) {
+      const detail = document.createElement("span")
+      detail.setAttribute("data-en-role", "detail")
+      detail.style.color = colorValue("textMuted")
+      detail.textContent = graphEvent.detail
+      li.appendChild(detail)
+    }
+    if (view.onEventSelect !== undefined) {
+      const onEventSelect = view.onEventSelect
+      li.style.cursor = "pointer"
+      state.addListener(li, "click", () => runReportedIntent(report, onEventSelect, graphEvent.id))
+    }
+    return li
+  })
+  element.replaceChildren(...items)
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  return element
+}
+
 const renderView = (view: View, state: DomRendererState, report: IntentReporter): HTMLElement => {
   switch (view._tag) {
     case "Stack":
@@ -3464,6 +3622,10 @@ const renderView = (view: View, state: DomRendererState, report: IntentReporter)
       return renderCodeBlock(view, state, report)
     case "DiffView":
       return renderDiffView(view, state, report)
+    case "GraphFigure":
+      return renderGraphFigure(view, state, report)
+    case "Timeline":
+      return renderTimeline(view, state, report)
   }
 }
 

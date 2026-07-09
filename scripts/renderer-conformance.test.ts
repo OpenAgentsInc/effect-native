@@ -20,6 +20,7 @@ import {
   Chip,
   Divider,
   FormFieldValueBinding,
+  GraphFigure,
   Host,
   Icon,
   Image,
@@ -34,6 +35,7 @@ import {
   StatTile,
   StatusBanner,
   Table,
+  Timeline,
   Toast,
   ToastRegion,
   Toggle,
@@ -421,6 +423,21 @@ const catalogFixturesByTag = {
         { kind: "add", newLine: 1, id: "r-2", tokens: [{ kind: "plain", text: "return 2" }] }
       ]
     }]
+  }),
+  GraphFigure: GraphFigure({
+    key: "graph-figure",
+    layout: "precomputed",
+    onNodeSelect: IntentRef("Pressed", ComponentValueBinding()),
+    nodes: [
+      { id: "orrery", label: "Orrery", kind: "worker", status: "active", x: -60, y: 0 },
+      { id: "arbiter", label: "Arbiter", kind: "arbiter", status: "idle", x: 60, y: 0 }
+    ],
+    edges: [{ id: "e1", from: "orrery", to: "arbiter", kind: "flow", status: "active" }]
+  }),
+  Timeline: Timeline({
+    key: "timeline",
+    onEventSelect: IntentRef("Pressed", ComponentValueBinding()),
+    events: [{ id: "ev1", label: "Pairing opened", time: "12:00", status: "active" }]
   })
 } satisfies { readonly [Tag in (typeof componentTags)[number]]: View }
 
@@ -541,7 +558,9 @@ const catalogRendererTags = [
   "Markdown",
   "Transcript",
   "CodeBlock",
-  "DiffView"
+  "DiffView",
+  "GraphFigure",
+  "Timeline"
 ] as const
 
 // Host (issue #23) is supported by the headless recorder and the DOM renderer

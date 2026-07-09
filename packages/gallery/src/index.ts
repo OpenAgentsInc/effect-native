@@ -15,6 +15,7 @@ import {
   Divider,
   DropdownMenu,
   FieldRow,
+  GraphFigure,
   Host,
   Icon,
   Image,
@@ -29,6 +30,7 @@ import {
   StatTile,
   StatusBanner,
   Table,
+  Timeline,
   Toast,
   ToastRegion,
   Toggle,
@@ -1269,6 +1271,49 @@ const componentStoryMap = {
               { kind: "add", newLine: 2, id: "r-3", tokens: [{ kind: "plain", text: "  return 2" }] }
             ]
           }
+        ]
+      })
+    })
+  ],
+  GraphFigure: [
+    story({
+      id: "graph-figure-basic",
+      component: "GraphFigure",
+      title: "GraphFigure",
+      description: "Arbiter graph over the canvas renderer with a DOM/SVG fallback from the same typed model.",
+      view: GraphFigure({
+        key: "graph-figure-basic",
+        layout: "precomputed",
+        width: 320,
+        height: 200,
+        camera: { x: 0, y: 0, zoom: 1 },
+        onNodeSelect: IntentRef("GalleryStory.Pressed", ComponentValueBinding()),
+        onNodeHover: IntentRef("GalleryStory.Pressed", ComponentValueBinding()),
+        onCameraChange: IntentRef("GalleryStory.Pressed", ComponentValueBinding()),
+        nodes: [
+          { id: "orrery", label: "Orrery", kind: "worker", status: "active", x: -80, y: 0 },
+          { id: "whitefang", label: "Whitefang", kind: "validator", status: "success", x: 80, y: -40 },
+          { id: "arbiter", label: "Arbiter", kind: "arbiter", status: "idle", x: 0, y: 40 }
+        ],
+        edges: [
+          { id: "e1", from: "orrery", to: "arbiter", kind: "flow", status: "active" },
+          { id: "e2", from: "arbiter", to: "whitefang", kind: "pairing", status: "success" }
+        ]
+      })
+    })
+  ],
+  Timeline: [
+    story({
+      id: "timeline-basic",
+      component: "Timeline",
+      title: "Timeline",
+      description: "A run timeline of typed events beside the graph.",
+      view: Timeline({
+        key: "timeline-basic",
+        onEventSelect: IntentRef("GalleryStory.Pressed", ComponentValueBinding()),
+        events: [
+          { id: "ev1", label: "Pairing opened", time: "12:00", status: "active", refs: ["orrery", "whitefang"] },
+          { id: "ev2", label: "Validated", detail: "Whitefang accepted", time: "12:03", status: "success" }
         ]
       })
     })

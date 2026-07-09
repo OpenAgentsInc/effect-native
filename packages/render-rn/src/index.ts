@@ -12,6 +12,10 @@ import {
   codeBlockPlainText,
   type ColorToken,
   type DiffViewView,
+  type GraphFigureView,
+  type GraphStatus,
+  graphStatusColorToken,
+  type TimelineView,
   type ComboboxOption,
   type ComboboxView,
   type CommandPaletteView,
@@ -2195,6 +2199,67 @@ const renderDiffView = (
   )
 }
 
+// GraphFigure + Timeline (issue #37) on React Native — a read-only subset. RN
+// has no core SVG/canvas, so the graph renders as a selectable node list with
+// status colors (edges + pan/zoom declared unsupported); Timeline maps to a
+// list of status-tagged rows.
+const renderGraphFigure = (
+  view: GraphFigureView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const theme = options.theme ?? defaultTheme
+  const statusColor = (status: GraphStatus | undefined) => colorValue(theme, graphStatusColorToken[status ?? "idle"])
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    { ...baseProps(view, mergeNativeStyles({ flexDirection: "column" }, viewStyle(view, options))), testID: "en-graph-figure", accessibilityLabel: view.a11y?.label },
+    ...view.nodes.map((node) => {
+      const dot = createElement(dependencies, dependencies.ReactNative.View, { key: "dot", style: { width: 8, height: 8, borderRadius: 999, backgroundColor: statusColor(node.status) } })
+      const label = createElement(dependencies, dependencies.ReactNative.Text, { key: "label" }, node.label)
+      const props: Record<string, unknown> = {
+        key: `node-${node.id}`,
+        testID: `en-graph-node:${node.id}`,
+        style: { flexDirection: "row", gap: spacingValue(theme, "2") }
+      }
+      if (view.onNodeSelect !== undefined) {
+        const onNodeSelect = view.onNodeSelect
+        return createElement(dependencies, dependencies.ReactNative.Pressable, { ...props, onPress: () => runReportedIntent(report, onNodeSelect, node.id) }, dot, label)
+      }
+      return createElement(dependencies, dependencies.ReactNative.View, props, dot, label)
+    })
+  )
+}
+
+const renderTimeline = (
+  view: TimelineView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const theme = options.theme ?? defaultTheme
+  const statusColor = (status: GraphStatus | undefined) => colorValue(theme, graphStatusColorToken[status ?? "idle"])
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    { ...baseProps(view, mergeNativeStyles({ flexDirection: "column", gap: spacingValue(theme, "2") }, viewStyle(view, options))), testID: "en-timeline" },
+    ...view.events.map((graphEvent) => {
+      const parts: Array<ReactElementLike> = [
+        createElement(dependencies, dependencies.ReactNative.View, { key: "dot", style: { width: 8, height: 8, borderRadius: 999, backgroundColor: statusColor(graphEvent.status) } }),
+        createElement(dependencies, dependencies.ReactNative.Text, { key: "label" }, graphEvent.label)
+      ]
+      if (graphEvent.time !== undefined) parts.push(createElement(dependencies, dependencies.ReactNative.Text, { key: "time", style: { color: colorValue(theme, "textMuted") } }, graphEvent.time))
+      const props: Record<string, unknown> = { key: `event-${graphEvent.id}`, testID: `en-timeline-event:${graphEvent.id}`, style: { flexDirection: "row", gap: spacingValue(theme, "2") } }
+      if (view.onEventSelect !== undefined) {
+        const onEventSelect = view.onEventSelect
+        return createElement(dependencies, dependencies.ReactNative.Pressable, { ...props, onPress: () => runReportedIntent(report, onEventSelect, graphEvent.id) }, ...parts)
+      }
+      return createElement(dependencies, dependencies.ReactNative.View, props, ...parts)
+    })
+  )
+}
+
 const renderResolvedReactNativeView = (
   view: View,
   dependencies: ReactNativeDependencies,
@@ -2294,6 +2359,10 @@ const renderResolvedReactNativeView = (
       return renderCodeBlock(view, dependencies, report, options)
     case "DiffView":
       return renderDiffView(view, dependencies, report, options)
+    case "GraphFigure":
+      return renderGraphFigure(view, dependencies, report, options)
+    case "Timeline":
+      return renderTimeline(view, dependencies, report, options)
   }
 }
 

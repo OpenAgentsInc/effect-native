@@ -83,8 +83,9 @@ export const SettingsControlsCatalogVersion = "effect-native/v15" as const
 export const FeedbackCatalogVersion = "effect-native/v16" as const
 export const TranscriptCatalogVersion = "effect-native/v17" as const
 export const CodeBlockCatalogVersion = "effect-native/v18" as const
-export const PreviousCatalogVersion = TranscriptCatalogVersion
-export const CatalogVersion = CodeBlockCatalogVersion
+export const GraphCatalogVersion = "effect-native/v19" as const
+export const PreviousCatalogVersion = CodeBlockCatalogVersion
+export const CatalogVersion = GraphCatalogVersion
 export const CatalogVersionSchema = Schema.Literal(CatalogVersion)
 export type CatalogVersion = typeof CatalogVersion
 export const compatibleCatalogVersions = [
@@ -105,6 +106,7 @@ export const compatibleCatalogVersions = [
   ComposerCatalogVersion,
   SettingsControlsCatalogVersion,
   FeedbackCatalogVersion,
+  TranscriptCatalogVersion,
   PreviousCatalogVersion,
   CatalogVersion
 ] as const
@@ -157,7 +159,9 @@ export const componentTags = [
   "Markdown",
   "Transcript",
   "CodeBlock",
-  "DiffView"
+  "DiffView",
+  "GraphFigure",
+  "Timeline"
 ] as const
 export type ComponentTag = (typeof componentTags)[number]
 
@@ -2435,6 +2439,72 @@ export interface DiffViewView extends NodeBase {
   readonly style?: CardStyle
 }
 
+// GraphFigure + Timeline (issue #37). The first catalog component targeting the
+// Phase 4 canvas renderer: a typed arbiter-graph model (nodes + edges, bounded,
+// no arbitrary scene data) with a typed layout policy and status→color mapping
+// from theme tokens. It renders through the canvas renderer (primary) and a
+// DOM/SVG fallback from the same typed model. Interactions are named typed
+// intents (node select/hover, pan/zoom camera state) — no closures.
+export const graphNodeKinds = ["worker", "validator", "arbiter", "task", "generic"] as const
+export type GraphNodeKind = (typeof graphNodeKinds)[number]
+export const graphStatuses = ["idle", "active", "success", "failed", "pending"] as const
+export type GraphStatus = (typeof graphStatuses)[number]
+export const graphEdgeKinds = ["flow", "dependency", "pairing"] as const
+export type GraphEdgeKind = (typeof graphEdgeKinds)[number]
+export const graphLayouts = ["precomputed", "force", "tree"] as const
+export type GraphLayout = (typeof graphLayouts)[number]
+
+export interface GraphNodeModel {
+  readonly id: string
+  readonly label: string
+  readonly kind?: GraphNodeKind
+  readonly status?: GraphStatus
+  // Precomputed position (used when layout is "precomputed").
+  readonly x?: number
+  readonly y?: number
+}
+export interface GraphEdgeModel {
+  readonly id: string
+  readonly from: string
+  readonly to: string
+  readonly kind?: GraphEdgeKind
+  readonly status?: GraphStatus
+}
+export interface GraphCamera {
+  readonly x: number
+  readonly y: number
+  readonly zoom: number
+}
+export interface GraphFigureView extends NodeBase {
+  readonly _tag: "GraphFigure"
+  readonly nodes: ReadonlyArray<GraphNodeModel>
+  readonly edges: ReadonlyArray<GraphEdgeModel>
+  readonly layout?: GraphLayout
+  readonly camera?: GraphCamera
+  readonly width?: number
+  readonly height?: number
+  readonly onNodeSelect?: IntentRef
+  readonly onNodeHover?: IntentRef
+  readonly onCameraChange?: IntentRef
+  readonly style?: CardStyle
+}
+
+export interface TimelineEvent {
+  readonly id: string
+  readonly label: string
+  readonly detail?: string
+  readonly time?: string
+  readonly status?: GraphStatus
+  // Node ids this event refers to.
+  readonly refs?: ReadonlyArray<string>
+}
+export interface TimelineView extends NodeBase {
+  readonly _tag: "Timeline"
+  readonly events: ReadonlyArray<TimelineEvent>
+  readonly onEventSelect?: IntentRef
+  readonly style?: CardStyle
+}
+
 export interface TranscriptView extends NodeBase {
   readonly _tag: "Transcript"
   readonly messages: ReadonlyArray<TranscriptMessage>
@@ -2494,6 +2564,8 @@ export type View =
   | TranscriptView
   | CodeBlockView
   | DiffViewView
+  | GraphFigureView
+  | TimelineView
 
 export type KeyedView = View & { readonly key: NodeKey }
 
@@ -3292,6 +3364,65 @@ export const DiffViewSchema: Schema.Codec<DiffViewView, DiffViewView> = Schema.T
   style: CardStyleSchema.pipe(Schema.optionalKey)
 })
 
+const GraphNumberSchema = Schema.Number.check(Schema.isFinite({ title: "FiniteGraphNumber" }))
+export const GraphNodeModelSchema: Schema.Codec<GraphNodeModel, GraphNodeModel> = Schema.Struct({
+  id: Schema.NonEmptyString,
+  label: Schema.String,
+  kind: Schema.Literals(graphNodeKinds).pipe(Schema.optionalKey),
+  status: Schema.Literals(graphStatuses).pipe(Schema.optionalKey),
+  x: GraphNumberSchema.pipe(Schema.optionalKey),
+  y: GraphNumberSchema.pipe(Schema.optionalKey)
+})
+export const GraphEdgeModelSchema: Schema.Codec<GraphEdgeModel, GraphEdgeModel> = Schema.Struct({
+  id: Schema.NonEmptyString,
+  from: Schema.NonEmptyString,
+  to: Schema.NonEmptyString,
+  kind: Schema.Literals(graphEdgeKinds).pipe(Schema.optionalKey),
+  status: Schema.Literals(graphStatuses).pipe(Schema.optionalKey)
+})
+export const GraphCameraSchema: Schema.Codec<GraphCamera, GraphCamera> = Schema.Struct({
+  x: GraphNumberSchema,
+  y: GraphNumberSchema,
+  zoom: Schema.Number.check(Schema.isFinite({ title: "FiniteZoom" }), Schema.isGreaterThan(0, { title: "PositiveZoom" }))
+})
+export const GraphFigureSchema: Schema.Codec<GraphFigureView, GraphFigureView> = Schema.TaggedStruct("GraphFigure", {
+  ...CommonFields,
+  nodes: Schema.Array(GraphNodeModelSchema),
+  edges: Schema.Array(GraphEdgeModelSchema),
+  layout: Schema.Literals(graphLayouts).pipe(Schema.optionalKey),
+  camera: GraphCameraSchema.pipe(Schema.optionalKey),
+  width: NonNegativeNumberSchema.pipe(Schema.optionalKey),
+  height: NonNegativeNumberSchema.pipe(Schema.optionalKey),
+  onNodeSelect: IntentRefSchema.pipe(Schema.optionalKey),
+  onNodeHover: IntentRefSchema.pipe(Schema.optionalKey),
+  onCameraChange: IntentRefSchema.pipe(Schema.optionalKey),
+  style: CardStyleSchema.pipe(Schema.optionalKey)
+})
+
+export const TimelineEventSchema: Schema.Codec<TimelineEvent, TimelineEvent> = Schema.Struct({
+  id: Schema.NonEmptyString,
+  label: Schema.String,
+  detail: Schema.String.pipe(Schema.optionalKey),
+  time: Schema.String.pipe(Schema.optionalKey),
+  status: Schema.Literals(graphStatuses).pipe(Schema.optionalKey),
+  refs: Schema.Array(Schema.NonEmptyString).pipe(Schema.optionalKey)
+})
+export const TimelineSchema: Schema.Codec<TimelineView, TimelineView> = Schema.TaggedStruct("Timeline", {
+  ...CommonFields,
+  events: Schema.Array(TimelineEventSchema),
+  onEventSelect: IntentRefSchema.pipe(Schema.optionalKey),
+  style: CardStyleSchema.pipe(Schema.optionalKey)
+})
+
+// Status -> theme color-token mapping shared by graph/timeline renderers.
+export const graphStatusColorToken: Record<GraphStatus, ColorToken> = {
+  idle: "textMuted",
+  active: "info",
+  success: "success",
+  failed: "danger",
+  pending: "warning"
+}
+
 export const MarkdownSchema: Schema.Codec<MarkdownView, MarkdownView> = Schema.TaggedStruct("Markdown", {
   ...CommonFields,
   blocks: Schema.Array(MarkdownBlockSchema),
@@ -3362,7 +3493,9 @@ export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
     MarkdownSchema,
     TranscriptSchema,
     CodeBlockSchema,
-    DiffViewSchema
+    DiffViewSchema,
+    GraphFigureSchema,
+    TimelineSchema
   ]).check(OverlayStackFilter)
 )
 
@@ -3690,6 +3823,45 @@ export type DiffViewProps = WithoutTagAndVersion<DiffViewView>
 export const DiffView = (props: DiffViewProps): DiffViewView =>
   DiffViewSchema.make({ _tag: "DiffView", catalogVersion: CatalogVersion, ...props })
 
+export type GraphFigureProps = WithoutTagAndVersion<GraphFigureView>
+export const GraphFigure = (props: GraphFigureProps): GraphFigureView =>
+  GraphFigureSchema.make({ _tag: "GraphFigure", catalogVersion: CatalogVersion, ...props })
+
+export type TimelineProps = WithoutTagAndVersion<TimelineView>
+export const Timeline = (props: TimelineProps): TimelineView =>
+  TimelineSchema.make({ _tag: "Timeline", catalogVersion: CatalogVersion, ...props })
+
+// Deterministic 2D layout for a graph figure: precomputed positions when given,
+// otherwise a bounded named layout (a stable circle for "force", a simple
+// left-to-right tree by insertion order for "tree"). Renderers and the canvas
+// adapter share this so the DOM/SVG fallback and the canvas path agree.
+export const layoutGraphNodes = (
+  view: GraphFigureView
+): ReadonlyMap<string, { readonly x: number; readonly y: number }> => {
+  const layout = view.layout ?? "precomputed"
+  const positions = new Map<string, { readonly x: number; readonly y: number }>()
+  if (layout === "precomputed") {
+    view.nodes.forEach((node, index) => {
+      positions.set(node.id, { x: node.x ?? index * 100, y: node.y ?? 0 })
+    })
+    return positions
+  }
+  if (layout === "tree") {
+    view.nodes.forEach((node, index) => {
+      positions.set(node.id, { x: index * 120, y: (index % 2) * 80 })
+    })
+    return positions
+  }
+  // "force" -> a stable circle so the layout is deterministic + snapshot-safe.
+  const count = Math.max(1, view.nodes.length)
+  const radius = 120
+  view.nodes.forEach((node, index) => {
+    const angle = (2 * Math.PI * index) / count
+    positions.set(node.id, { x: Math.round(radius * Math.cos(angle)), y: Math.round(radius * Math.sin(angle)) })
+  })
+  return positions
+}
+
 // Plaintext value of a pre-tokenized code block, for the copy affordance.
 export const codeBlockPlainText = (lines: ReadonlyArray<CodeLine>): string =>
   lines.map((line) => line.tokens.map((token) => token.text).join("")).join("\n")
@@ -3860,6 +4032,8 @@ export const resolveView = (view: View, input: ViewResolution = {}): View => {
     case "Markdown":
     case "CodeBlock":
     case "DiffView":
+    case "GraphFigure":
+    case "Timeline":
       return {
         ...view,
         ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) })
@@ -3978,6 +4152,8 @@ export const resolveBindings = <State>(view: View, state: State): View => {
     case "Markdown":
     case "CodeBlock":
     case "DiffView":
+    case "GraphFigure":
+    case "Timeline":
       return view
     case "RecoveryOverlay":
       return {

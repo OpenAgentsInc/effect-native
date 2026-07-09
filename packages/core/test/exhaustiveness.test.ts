@@ -49,7 +49,8 @@ const describeView = Match.type<View>().pipe(
   Match.tag("RadioGroup", () => "control"),
   Match.tag("Slider", () => "control"),
   Match.tag("NumberField", () => "control"),
-  Match.tag("FieldRow", () => "control"),
+  Match.tag("FieldRow", () => "control")
+).pipe(
   Match.tag("Toast", () => "feedback"),
   Match.tag("ToastRegion", () => "feedback"),
   Match.tag("StatusBanner", () => "feedback"),
@@ -58,6 +59,8 @@ const describeView = Match.type<View>().pipe(
   Match.tag("Transcript", () => "richtext"),
   Match.tag("CodeBlock", () => "code"),
   Match.tag("DiffView", () => "code"),
+  Match.tag("GraphFigure", () => "figure"),
+  Match.tag("Timeline", () => "figure"),
   Match.exhaustive
 )
 

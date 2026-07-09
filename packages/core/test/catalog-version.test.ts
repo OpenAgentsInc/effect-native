@@ -11,6 +11,7 @@ import {
   ComposerCatalogVersion,
   DataDisplayCatalogVersion,
   FeedbackCatalogVersion,
+  GraphCatalogVersion,
   TranscriptCatalogVersion,
   TabsCatalogVersion,
   FormCatalogVersion,
@@ -68,11 +69,12 @@ describe("catalog version compatibility", () => {
       SettingsControlsCatalogVersion,
       FeedbackCatalogVersion,
       TranscriptCatalogVersion,
-      CodeBlockCatalogVersion
+      CodeBlockCatalogVersion,
+      GraphCatalogVersion
     ])
     // The current marker is the last entry; the previous marker is second-last.
-    expect(CatalogVersion).toBe(CodeBlockCatalogVersion)
-    expect(PreviousCatalogVersion).toBe(TranscriptCatalogVersion)
+    expect(CatalogVersion).toBe(GraphCatalogVersion)
+    expect(PreviousCatalogVersion).toBe(CodeBlockCatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 1]).toBe(CatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 2]).toBe(PreviousCatalogVersion)
   })
