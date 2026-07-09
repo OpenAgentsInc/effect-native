@@ -1,9 +1,24 @@
-# Phase 4M Mobile Proof (exit receipt #64)
+# Phase 4M Mobile Proof (#64)
 
 Khala Code Mobile core surfaces are **authored once** as typed Effect Native
-data, rendered on **iOS and Android** through `@effect-native/render-rn` +
-`runMainMobile`, and kept coherent with the desktop Effect Native chat via a
-**Khala Sync–shaped dual-client messaging proof**.
+data and checked in CI through headless / DOM / RN host-shim oracles, plus a
+**Khala Sync–shaped** dual-client mutator harness.
+
+This is **not** a fully closed exit receipt yet. See **Honesty bar** below.
+
+## Honesty bar (what is / is not proven)
+
+| Claim | Status |
+|---|---|
+| One typed mobile view tree for onboarding / threads / chat / settings | **Yes** — `examples/khala-mobile` |
+| Same scripted path: headless = DOM = RN(iOS host) = RN(Android host) | **Yes** — in-process host shims, not devices |
+| `runMainMobile` mounts on `platform: "ios" \| "android"` | **Yes** — process options only |
+| RN “pixel baselines” on both platforms | **Structural only** — `rnVisualCapture` serializes RN structure; no simulator bitmaps |
+| Desktop → mobile and mobile → desktop message convergence | **Yes under a memory hub** shaped like Khala Sync mutators/changelog |
+| Live round-trip over production Khala Sync (Cloud SQL + hub + WS) | **No** — lives in `openagents` packages; not driven here |
+| Expo/device smoke of the full proof on hardware/simulators | **No** |
+
+Until the last two rows are real (or explicitly waived by the owner), **#64 / #52 stay open**.
 
 ## What Is Defined Once
 
@@ -50,10 +65,16 @@ The owner-named headline criterion:
    post-image `chat_turn_event` log entries, dual-client apply.
 
 Production Cloud SQL / WebSocket hub wiring lives in `openagents` packages
-(`khala-sync-client` / `khala-sync-server`). This framework receipt freezes the
-**UI + mutator algebra** those packages already carry — the CI harness is the
-protocol proof; a live staging demo plugs the same mutator name into the real
-transport without changing either app’s view tree.
+(`khala-sync-client` / `khala-sync-server`). The memory hub freezes the
+**UI + mutator algebra** (`chat.composeTurn`, post-image `chat_turn_event` log,
+dense versions, dual apply). That is **not** a substitute for a live staging
+round-trip over real Khala Sync — it is the protocol seam the live demo must
+plug into without changing either app’s view tree.
+
+**To actually close #64:** wire `examples/khala-shared-chat` mutators through
+real `khala-sync-client` (or a staging scope) so desktop and mobile clients
+exchange one live message each way, and capture device/simulator RN baselines
+(or an explicit owner waiver of pixel/device smoke).
 
 ## Receipt artifacts
 
