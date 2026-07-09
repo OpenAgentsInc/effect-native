@@ -30,6 +30,7 @@ import {
   Meter,
   MockupFrame,
   NavBar,
+  Pager,
   NumberField,
   Popover,
   PricingColumn,
@@ -1611,6 +1612,43 @@ const componentStoryMap = {
         { key: "mockup-frame-browser", variant: "browser", tilt: "left" },
         [Text({ key: "mockup-child", content: "Product screenshot", variant: "body" })]
       )
+    })
+  ],
+  Pager: [
+    story({
+      id: "pager-onboarding",
+      component: "Pager",
+      title: "Pager",
+      description: "Linear onboarding stepper with progress dots and back/continue.",
+      view: Pager({
+        key: "pager-onboarding",
+        activeStepId: "welcome",
+        progress: "dots",
+        canGoBack: false,
+        canAdvance: true,
+        onStepChange: IntentRef("GalleryStory.Pressed", ComponentValueBinding()),
+        onAdvance: IntentRef("GalleryStory.Pressed", ComponentValueBinding()),
+        onComplete: IntentRef("GalleryStory.Pressed", ComponentValueBinding()),
+        steps: [
+          { id: "welcome", label: "Welcome" },
+          { id: "repo", label: "Repo" },
+          { id: "task", label: "Task" }
+        ],
+        panels: [
+          {
+            id: "welcome",
+            content: Text({ key: "pager-welcome", content: "Welcome to Effect Native", variant: "body" })
+          },
+          {
+            id: "repo",
+            content: Text({ key: "pager-repo", content: "Choose a repository", variant: "body" })
+          },
+          {
+            id: "task",
+            content: Text({ key: "pager-task", content: "Describe your first task", variant: "body" })
+          }
+        ]
+      })
     })
   ]
 } satisfies { readonly [Tag in ComponentTag]: ReadonlyArray<Story> }

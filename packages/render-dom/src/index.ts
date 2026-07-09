@@ -29,6 +29,7 @@ import {
   type StatsBandView,
   type GlowView,
   type MockupFrameView,
+  type PagerView,
   Section,
   Hero,
   AnnouncementBadge,
@@ -3678,6 +3679,8 @@ const renderView = (view: View, state: DomRendererState, report: IntentReporter)
       return renderGlow(view, state, report)
     case "MockupFrame":
       return renderMockupFrame(view, state, report)
+    case "Pager":
+      return renderPager(view, state, report)
   }
 }
 
@@ -3842,6 +3845,15 @@ export const viewStructure = (view: View): DomStructure => {
         children: (view.keepMounted === true
           ? view.panels
           : view.panels.filter((panel) => panel.id === view.selectedId)
+        ).map((panel) => viewStructure(panel.content))
+      }
+    case "Pager":
+      return {
+        tag: "Pager",
+        ...(view.key === undefined ? {} : { key: view.key }),
+        children: (view.keepMounted === true
+          ? view.panels
+          : view.panels.filter((panel) => panel.id === view.activeStepId)
         ).map((panel) => viewStructure(panel.content))
       }
     case "FieldRow":
@@ -4288,6 +4300,117 @@ const renderMockupFrame = (
     el.appendChild(chrome)
   }
   for (const child of view.children) el.appendChild(renderView(child, state, report))
+  applyBaseStyle(el, view, state)
+  applyA11y(el, view)
+  return el
+}
+
+const renderPager = (view: PagerView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const el = state.keyedElement(view, "div")
+  state.resetListeners(el)
+  el.setAttribute("data-en-pager", "true")
+  el.setAttribute("data-en-active-step", view.activeStepId)
+  el.style.display = "flex"
+  el.style.flexDirection = "column"
+  el.style.gap = "var(--en-spacing-4)"
+
+  const stepIds = view.steps.map((step) => step.id)
+  const activeIndex = Math.max(0, stepIds.indexOf(view.activeStepId))
+  const canBack = view.canGoBack !== false && activeIndex > 0
+  const canAdvance = view.canAdvance !== false && activeIndex < stepIds.length - 1
+  const isLast = activeIndex >= stepIds.length - 1
+
+  const progress = view.progress ?? "dots"
+  if (progress !== "none") {
+    const progressEl = el.ownerDocument.createElement("div")
+    progressEl.setAttribute("data-en-role", "progress")
+    progressEl.setAttribute("data-en-progress", progress)
+    progressEl.style.display = "flex"
+    progressEl.style.gap = "var(--en-spacing-2)"
+    progressEl.style.justifyContent = "center"
+    if (progress === "bar") {
+      const bar = el.ownerDocument.createElement("div")
+      bar.setAttribute("role", "progressbar")
+      bar.setAttribute("aria-valuemin", "0")
+      bar.setAttribute("aria-valuemax", String(stepIds.length))
+      bar.setAttribute("aria-valuenow", String(activeIndex + 1))
+      bar.style.height = "0.35rem"
+      bar.style.flex = "1"
+      bar.style.background = "var(--en-color-border)"
+      const fill = el.ownerDocument.createElement("div")
+      fill.style.height = "100%"
+      fill.style.width = `${((activeIndex + 1) / stepIds.length) * 100}%`
+      fill.style.background = "var(--en-color-accent)"
+      bar.appendChild(fill)
+      progressEl.appendChild(bar)
+    } else {
+      for (const [index, step] of view.steps.entries()) {
+        const dot = el.ownerDocument.createElement("button")
+        dot.type = "button"
+        dot.setAttribute("data-en-step-dot", step.id)
+        dot.setAttribute("aria-label", step.label)
+        dot.setAttribute("aria-current", index === activeIndex ? "step" : "false")
+        dot.style.width = "0.55rem"
+        dot.style.height = "0.55rem"
+        dot.style.borderRadius = "999px"
+        dot.style.border = "none"
+        dot.style.background =
+          index === activeIndex ? "var(--en-color-accent)" : "var(--en-color-border)"
+        state.addListener(dot, "click", () => runReportedIntent(report, view.onStepChange, step.id))
+        progressEl.appendChild(dot)
+      }
+    }
+    el.appendChild(progressEl)
+  }
+
+  const panels = view.keepMounted === true
+    ? view.panels
+    : view.panels.filter((panel) => panel.id === view.activeStepId)
+  for (const panel of panels) {
+    const region = el.ownerDocument.createElement("div")
+    region.setAttribute("data-en-pager-panel", panel.id)
+    region.hidden = panel.id !== view.activeStepId
+    region.appendChild(renderView(panel.content, state, report))
+    el.appendChild(region)
+  }
+
+  const nav = el.ownerDocument.createElement("div")
+  nav.setAttribute("data-en-role", "pager-nav")
+  nav.style.display = "flex"
+  nav.style.justifyContent = "space-between"
+  nav.style.gap = "var(--en-spacing-2)"
+
+  const back = el.ownerDocument.createElement("button")
+  back.type = "button"
+  back.textContent = "Back"
+  back.disabled = !canBack
+  back.setAttribute("data-en-pager-back", "true")
+  if (canBack) {
+    state.addListener(back, "click", () => {
+      const prev = stepIds[activeIndex - 1]!
+      if (view.onBack !== undefined) runReportedIntent(report, view.onBack, prev)
+      runReportedIntent(report, view.onStepChange, prev)
+    })
+  }
+  nav.appendChild(back)
+
+  const next = el.ownerDocument.createElement("button")
+  next.type = "button"
+  next.textContent = isLast ? "Done" : "Continue"
+  next.disabled = isLast ? view.onComplete === undefined && !canAdvance : !canAdvance
+  next.setAttribute("data-en-pager-next", "true")
+  state.addListener(next, "click", () => {
+    if (isLast) {
+      if (view.onComplete !== undefined) runReportedIntent(report, view.onComplete, view.activeStepId)
+      return
+    }
+    const nxt = stepIds[activeIndex + 1]!
+    if (view.onAdvance !== undefined) runReportedIntent(report, view.onAdvance, nxt)
+    runReportedIntent(report, view.onStepChange, nxt)
+  })
+  nav.appendChild(next)
+  el.appendChild(nav)
+
   applyBaseStyle(el, view, state)
   applyA11y(el, view)
   return el

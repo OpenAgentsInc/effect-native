@@ -8,9 +8,9 @@ conformance-checked by
 (`bun run check:catalog-reference`) so this page cannot silently drop a shipped
 component.
 
-Current catalog marker: `CatalogVersion = "effect-native/v20"`.
+Current catalog marker: `CatalogVersion = "effect-native/v21"`.
 
-Closed component tags (`componentTags`, 61 total):
+Closed component tags (`componentTags`, 62 total):
 
 `Stack`, `Text`, `Button`, `Image`, `TextField`, `List`,
 `SectionList`, `Card`, `Spacer`, `Link`, `Modal`, `Sheet`,
@@ -22,7 +22,7 @@ Closed component tags (`componentTags`, 61 total):
 `Markdown`, `Transcript`, `CodeBlock`, `DiffView`, `GraphFigure`, `Timeline`,
 `Section`, `Hero`, `AnnouncementBadge`, `CtaSection`, `Footer`, `NavBar`,
 `Accordion`, `PricingColumn`, `PricingTable`, `LogoRow`, `StatsBand`, `Glow`,
-`MockupFrame`.
+`MockupFrame`, `Pager`.
 
 There is no escape hatch to add an ad hoc component — growing the
 catalog is a deliberate, tracked process; see
@@ -179,6 +179,11 @@ Bounded radial accent glow behind a child slot (`sm`/`md`/`lg` intensity).
 
 Device/browser frame around children with optional perspective tilt (`none`/`left`/`right`).
 
+### Pager
+
+Linear onboarding stepper — ordered steps, `activeStepId`, progress (`dots`/`bar`/`none`),
+back/advance/complete intents, panel content by step id (lazy vs keepMounted).
+
 ## Shared vocabulary
 
 ### Common fields
@@ -188,7 +193,7 @@ Every component accepts these two, inherited from `NodeBase`:
 | Field | Type | Notes |
 |---|---|---|
 | `key` | `string` (optional) | Required (enforced by the schema, not just convention) on any view placed inside a `List`/`SectionList`/`Link` children array. |
-| `catalogVersion` | `"effect-native/v20"` | Set automatically by every constructor function — you never pass this yourself. |
+| `catalogVersion` | `"effect-native/v21"` | Set automatically by every constructor function — you never pass this yourself. |
 
 ### Design tokens
 

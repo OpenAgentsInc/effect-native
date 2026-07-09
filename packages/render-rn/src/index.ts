@@ -29,6 +29,7 @@ import {
   type StatsBandView,
   type GlowView,
   type MockupFrameView,
+  type PagerView,
   type ComboboxOption,
   type ComboboxView,
   type CommandPaletteView,
@@ -2545,7 +2546,147 @@ const renderResolvedReactNativeView = (
     case "Glow":
     case "MockupFrame":
       return renderMarketingShell(view, dependencies, report, options)
+    case "Pager":
+      return renderPager(view, dependencies, report, options)
   }
+}
+
+const renderPager = (
+  view: PagerView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const theme = options.theme ?? defaultTheme
+  const stepIds = view.steps.map((step) => step.id)
+  const activeIndex = Math.max(0, stepIds.indexOf(view.activeStepId))
+  const canBack = view.canGoBack !== false && activeIndex > 0
+  const canAdvance = view.canAdvance !== false && activeIndex < stepIds.length - 1
+  const isLast = activeIndex >= stepIds.length - 1
+  const progress = view.progress ?? "dots"
+
+  const progressKids: Array<ReactElementLike> = []
+  if (progress === "dots") {
+    for (const [index, step] of view.steps.entries()) {
+      progressKids.push(
+        createElement(
+          dependencies,
+          dependencies.ReactNative.Pressable,
+          {
+            key: `dot-${step.id}`,
+            testID: `en-pager-dot:${step.id}`,
+            onPress: () => runReportedIntent(report, view.onStepChange, step.id),
+            style: {
+              width: 8,
+              height: 8,
+              borderRadius: 999,
+              backgroundColor: index === activeIndex
+                ? colorValue(theme, "accent")
+                : colorValue(theme, "border")
+            }
+          }
+        )
+      )
+    }
+  }
+
+  const panels = (view.keepMounted === true
+    ? view.panels
+    : view.panels.filter((panel) => panel.id === view.activeStepId)
+  ).map((panel) =>
+    createElement(
+      dependencies,
+      dependencies.ReactNative.View,
+      {
+        key: `panel-${panel.id}`,
+        testID: `en-pager-panel:${panel.id}`,
+        style: { display: panel.id === view.activeStepId ? "flex" : "none" }
+      },
+      renderResolvedReactNativeView(panel.content, dependencies, report, options)
+    )
+  )
+
+  const back = createElement(
+    dependencies,
+    dependencies.ReactNative.Pressable,
+    {
+      key: "back",
+      testID: "en-pager-back",
+      disabled: !canBack,
+      ...(canBack
+        ? {
+            onPress: () => {
+              const prev = stepIds[activeIndex - 1]!
+              if (view.onBack !== undefined) runReportedIntent(report, view.onBack, prev)
+              runReportedIntent(report, view.onStepChange, prev)
+            }
+          }
+        : {}),
+      style: { opacity: canBack ? 1 : 0.4 }
+    },
+    createElement(dependencies, dependencies.ReactNative.Text, { key: "back-label" }, "Back")
+  )
+
+  const next = createElement(
+    dependencies,
+    dependencies.ReactNative.Pressable,
+    {
+      key: "next",
+      testID: "en-pager-next",
+      onPress: () => {
+        if (isLast) {
+          if (view.onComplete !== undefined) {
+            runReportedIntent(report, view.onComplete, view.activeStepId)
+          }
+          return
+        }
+        if (!canAdvance) return
+        const nxt = stepIds[activeIndex + 1]!
+        if (view.onAdvance !== undefined) runReportedIntent(report, view.onAdvance, nxt)
+        runReportedIntent(report, view.onStepChange, nxt)
+      }
+    },
+    createElement(
+      dependencies,
+      dependencies.ReactNative.Text,
+      { key: "next-label" },
+      isLast ? "Done" : "Continue"
+    )
+  )
+
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    baseProps(
+      view,
+      mergeNativeStyles(
+        { flexDirection: "column", gap: spacingValue(theme, "3") },
+        viewStyle(view as never, options)
+      )
+    ),
+    createElement(
+      dependencies,
+      dependencies.ReactNative.View,
+      {
+        key: "progress",
+        testID: "en-pager-progress",
+        style: { flexDirection: "row", gap: spacingValue(theme, "2"), justifyContent: "center" }
+      },
+      ...progressKids
+    ),
+    ...panels,
+    createElement(
+      dependencies,
+      dependencies.ReactNative.View,
+      {
+        key: "nav",
+        testID: "en-pager-nav",
+        style: { flexDirection: "row", justifyContent: "space-between", gap: spacingValue(theme, "2") }
+      },
+      back,
+      next
+    )
+  )
 }
 
 export const renderReactNativeView = (
@@ -2741,6 +2882,15 @@ export const viewStructure = (view: View): ReactNativeStructure => {
         children: (view.keepMounted === true
           ? view.panels
           : view.panels.filter((panel) => panel.id === view.selectedId)
+        ).map((panel) => viewStructure(panel.content))
+      }
+    case "Pager":
+      return {
+        tag: "Pager",
+        ...(view.key === undefined ? {} : { key: view.key }),
+        children: (view.keepMounted === true
+          ? view.panels
+          : view.panels.filter((panel) => panel.id === view.activeStepId)
         ).map((panel) => viewStructure(panel.content))
       }
     default:

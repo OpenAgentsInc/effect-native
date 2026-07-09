@@ -85,8 +85,9 @@ export const TranscriptCatalogVersion = "effect-native/v17" as const
 export const CodeBlockCatalogVersion = "effect-native/v18" as const
 export const GraphCatalogVersion = "effect-native/v19" as const
 export const MarketingCatalogVersion = "effect-native/v20" as const
-export const PreviousCatalogVersion = GraphCatalogVersion
-export const CatalogVersion = MarketingCatalogVersion
+export const PagerCatalogVersion = "effect-native/v21" as const
+export const PreviousCatalogVersion = MarketingCatalogVersion
+export const CatalogVersion = PagerCatalogVersion
 export const CatalogVersionSchema = Schema.Literal(CatalogVersion)
 export type CatalogVersion = typeof CatalogVersion
 export const compatibleCatalogVersions = [
@@ -110,7 +111,8 @@ export const compatibleCatalogVersions = [
   TranscriptCatalogVersion,
   CodeBlockCatalogVersion,
   GraphCatalogVersion,
-  MarketingCatalogVersion
+  MarketingCatalogVersion,
+  PagerCatalogVersion
 ] as const
 export type CompatibleCatalogVersion = (typeof compatibleCatalogVersions)[number]
 export const CompatibleCatalogVersionSchema = Schema.Literals(compatibleCatalogVersions)
@@ -176,7 +178,8 @@ export const componentTags = [
   "LogoRow",
   "StatsBand",
   "Glow",
-  "MockupFrame"
+  "MockupFrame",
+  "Pager"
 ] as const
 export type ComponentTag = (typeof componentTags)[number]
 
@@ -2692,6 +2695,35 @@ export interface MockupFrameView extends NodeBase {
   readonly style?: CardStyle
 }
 
+// Linear onboarding stepper (issue #62) — distinct from Tabs peer selection.
+export interface PagerStep {
+  readonly id: string
+  readonly label: string
+}
+
+export interface PagerPanel {
+  readonly id: string
+  readonly content: View
+}
+
+export type PagerProgress = "dots" | "bar" | "none"
+
+export interface PagerView extends NodeBase {
+  readonly _tag: "Pager"
+  readonly steps: ReadonlyArray<PagerStep>
+  readonly panels: ReadonlyArray<PagerPanel>
+  readonly activeStepId: string
+  readonly progress?: PagerProgress
+  readonly canGoBack?: boolean
+  readonly canAdvance?: boolean
+  readonly keepMounted?: boolean
+  readonly onStepChange: IntentRef
+  readonly onBack?: IntentRef
+  readonly onAdvance?: IntentRef
+  readonly onComplete?: IntentRef
+  readonly style?: CardStyle
+}
+
 export type View =
   | StackView
   | TextView
@@ -2754,6 +2786,7 @@ export type View =
   | StatsBandView
   | GlowView
   | MockupFrameView
+  | PagerView
 
 export type KeyedView = View & { readonly key: NodeKey }
 
@@ -2801,6 +2834,7 @@ const childViewEntries = (
     case "CommandPalette":
       return [{ path: ["combobox"], view: view.combobox }]
     case "Tabs":
+    case "Pager":
       return view.panels.map((panel, index) => ({ path: ["panels", index, "content"], view: panel.content }))
     case "Composer":
       return view.autocomplete === undefined
@@ -3836,6 +3870,34 @@ export const MockupFrameSchema: Schema.Codec<MockupFrameView, MockupFrameView> =
   }
 )
 
+export const PagerStepSchema: Schema.Codec<PagerStep, PagerStep> = Schema.Struct({
+  id: Schema.NonEmptyString,
+  label: Schema.String
+})
+
+export const PagerPanelSchema: Schema.Codec<PagerPanel, PagerPanel> = Schema.Struct({
+  id: Schema.NonEmptyString,
+  content: ViewSelf
+})
+
+export const PagerProgressSchema = Schema.Literals(["dots", "bar", "none"] as const)
+
+export const PagerSchema: Schema.Codec<PagerView, PagerView> = Schema.TaggedStruct("Pager", {
+  ...CommonFields,
+  steps: Schema.Array(PagerStepSchema).check(Schema.isMinLength(1, { title: "NonEmptyPagerSteps" })),
+  panels: Schema.Array(PagerPanelSchema),
+  activeStepId: Schema.NonEmptyString,
+  progress: PagerProgressSchema.pipe(Schema.optionalKey),
+  canGoBack: Schema.Boolean.pipe(Schema.optionalKey),
+  canAdvance: Schema.Boolean.pipe(Schema.optionalKey),
+  keepMounted: Schema.Boolean.pipe(Schema.optionalKey),
+  onStepChange: IntentRefSchema,
+  onBack: IntentRefSchema.pipe(Schema.optionalKey),
+  onAdvance: IntentRefSchema.pipe(Schema.optionalKey),
+  onComplete: IntentRefSchema.pipe(Schema.optionalKey),
+  style: CardStyleSchema.pipe(Schema.optionalKey)
+})
+
 export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
   Schema.Union([
     StackSchema,
@@ -3898,7 +3960,8 @@ export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
     LogoRowSchema,
     StatsBandSchema,
     GlowSchema,
-    MockupFrameSchema
+    MockupFrameSchema,
+    PagerSchema
   ]).check(OverlayStackFilter)
 )
 
@@ -4303,6 +4366,10 @@ export const MockupFrame = (
 ): MockupFrameView =>
   MockupFrameSchema.make({ _tag: "MockupFrame", catalogVersion: CatalogVersion, ...props, children })
 
+export type PagerProps = WithoutTagAndVersion<PagerView>
+export const Pager = (props: PagerProps): PagerView =>
+  PagerSchema.make({ _tag: "Pager", catalogVersion: CatalogVersion, ...props })
+
 
 
 // Deterministic 2D layout for a graph figure: precomputed positions when given,
@@ -4657,6 +4724,7 @@ export const resolveView = (view: View, input: ViewResolution = {}): View => {
         combobox: resolveView(view.combobox, input) as ComboboxView
       }
     case "Tabs":
+    case "Pager":
       return {
         ...view,
         ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) }),
@@ -4837,6 +4905,7 @@ export const resolveBindings = <State>(view: View, state: State): View => {
         combobox: resolveBindings(view.combobox, state) as ComboboxView
       }
     case "Tabs":
+    case "Pager":
       return {
         ...view,
         panels: view.panels.map((panel) => ({ ...panel, content: resolveBindings(panel.content, state) }))
@@ -4957,6 +5026,7 @@ export const redactSecureView = (view: View): View => {
         children: view.children.map(redactSecureView)
       }
     case "Tabs":
+    case "Pager":
       return {
         ...view,
         panels: view.panels.map((panel) => ({ ...panel, content: redactSecureView(panel.content) }))

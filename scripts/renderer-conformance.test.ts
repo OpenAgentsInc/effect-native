@@ -37,6 +37,7 @@ import {
   NavBar,
   NumberField,
   Popover,
+  Pager,
   PricingColumn,
   PricingTable,
   RadioGroup,
@@ -588,7 +589,36 @@ const catalogFixturesByTag = {
   MockupFrame: MockupFrame(
     { key: "mockup", variant: "browser", tilt: "left" },
     [Text({ key: "mockup-child", content: "Product shot", variant: "body" })]
-  )
+  ),
+  Pager: Pager({
+    key: "pager",
+    activeStepId: "welcome",
+    progress: "dots",
+    canGoBack: false,
+    canAdvance: true,
+    onStepChange: IntentRef("Pressed", ComponentValueBinding()),
+    onAdvance: IntentRef("Pressed", ComponentValueBinding()),
+    onComplete: IntentRef("Pressed", ComponentValueBinding()),
+    steps: [
+      { id: "welcome", label: "Welcome" },
+      { id: "repo", label: "Repo" },
+      { id: "task", label: "Task" }
+    ],
+    panels: [
+      {
+        id: "welcome",
+        content: Text({ key: "pager-welcome", content: "Welcome", variant: "body" })
+      },
+      {
+        id: "repo",
+        content: Text({ key: "pager-repo", content: "Pick a repo", variant: "body" })
+      },
+      {
+        id: "task",
+        content: Text({ key: "pager-task", content: "Describe the task", variant: "body" })
+      }
+    ]
+  })
 } satisfies { readonly [Tag in (typeof componentTags)[number]]: View }
 
 const allFixtureTags = Object.keys(catalogFixturesByTag).sort()
@@ -723,7 +753,8 @@ const catalogRendererTags = [
   "LogoRow",
   "StatsBand",
   "Glow",
-  "MockupFrame"
+  "MockupFrame",
+  "Pager"
 ] as const
 
 // Host (issue #23) is supported by the headless recorder and the DOM renderer
