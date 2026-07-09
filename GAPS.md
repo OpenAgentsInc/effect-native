@@ -23,7 +23,7 @@ their reason so pressure is visible without weakening the catalog contract.
 
 ## Catalog Versioning Policy
 
-The current catalog marker is `effect-native/v13`, exposed by
+The current catalog marker is `effect-native/v14`, exposed by
 `CatalogVersion`. `compatibleCatalogVersions` is the decode allow-list, and
 `CompatibleViewSchema` is the schema app authors and renderers should use when
 accepting persisted or externally-authored trees.
@@ -61,7 +61,7 @@ until it has a fixture and every renderer declares and proves support for it.
 | Command palette / combobox | Khala command palette and slash-command autocomplete | 2026-07-08 | shipped -> #29 (v12: `Combobox` typeahead with app-supplied options (id/label/subtitle/icon/group/disabled+reason/keybinding), roving aria-activedescendant, typed onQueryChange/onHighlight/onSelect, loading + empty states, grouped rendering — no keyword routing in the component; `CommandPalette` composes a Combobox in the modal-overlay presence lifecycle (focus trap + return). DOM full combobox/listbox a11y + arrow/Enter keyboard; RN TextInput + pressable grouped options subset; headless records) |
 | Tabs | Khala settings, workbench, and panel groups | 2026-07-08 | shipped -> #30 (v13: `Tabs` typed tab model (id/label/icon/disabled/badge) + typed selectedId state + onSelect intent, horizontal/vertical orientation, WAI-ARIA tablist/tab/tabpanel with roving tabindex + arrow/Home/End keyboard nav; panel association by id (data) with lazy vs keepMounted policy. DOM full a11y/keyboard; RN pressable segmented tab bar + active panel (roving nav declared unsupported); headless records) |
 | Icon | Khala nav rail, command buttons, statuses, fleet controls, and menu items | 2026-07-08 | shipped -> #31 (v8: closed IconName set + iconSizes, per-renderer registries — DOM inline SVG/currentColor, RN font glyphs — typed decorative vs meaningful a11y) |
-| Rich contenteditable composer | Khala chat composer needs multiline contenteditable text, slash commands, mentions, history, and attachments | 2026-07-08 | accepted -> #32 |
+| Rich contenteditable composer | Khala chat composer needs multiline contenteditable text, slash commands, mentions, history, and attachments | 2026-07-08 | shipped -> #32 (v14: `Composer` over a typed structured document (bounded text runs + atomic mention chips), typed mode (normal/shell), typed attachment state, and named intents onChange/onSubmit/onKeyCommand/onAttachmentDrop with a closed key-command set (submit/newline/history-previous/history-next); autocomplete triggers (slash/mention) are typed data whose candidate list renders via the #29 Combobox. DOM owns the contenteditable surface, plaintext-normalized paste, and IME composition; RN maps to a multiline TextInput on the flattened document (inline chips declared unsupported); headless records) |
 | CodeEditor host | Khala editor panel needs Monaco under the reviewed Host contract | 2026-07-08 | accepted -> #33 |
 | Terminal host | Khala terminal panel needs a Scope-owned terminal host driver | 2026-07-08 | accepted -> #34 |
 | Transcript / Markdown | Khala transcript needs typed pre-parsed markdown, roles, tool cards, status indicators, and auto-pin behavior | 2026-07-08 | accepted -> #35 |

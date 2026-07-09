@@ -8,6 +8,7 @@ import {
   type ComboboxOption,
   type ComboboxView,
   type CommandPaletteView,
+  type ComposerView,
   type ContextMenuView,
   type Dimension,
   type DividerView,
@@ -2349,6 +2350,134 @@ const renderTabs = (view: TabsView, state: DomRendererState, report: IntentRepor
   return element
 }
 
+// Rich contenteditable composer (issue #32). The contenteditable internals,
+// plaintext-normalized paste, and IME composition are owned here; the app sees
+// only the typed document + named intents. submit/newline/history key commands
+// are projected from keyboard events to the closed composerKeyCommands set.
+const renderComposer = (view: ComposerView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const element = state.keyedElement(view, "div")
+  state.resetListeners(element)
+  element.setAttribute("data-en-mode", view.mode)
+  element.style.display = "flex"
+  element.style.flexDirection = "column"
+  element.style.gap = "var(--en-spacing-1)"
+  const document = element.ownerDocument
+
+  const existingEditor = Array.from(element.children).find((child) =>
+    child.getAttribute("data-en-role") === "control"
+  ) as HTMLElement | undefined
+  const editorWasActive = existingEditor !== undefined && document.activeElement === existingEditor
+  const editor = existingEditor ?? document.createElement("div")
+  state.resetListeners(editor)
+  editor.setAttribute("data-en-role", "control")
+  editor.setAttribute("contenteditable", "true")
+  editor.setAttribute("role", "textbox")
+  editor.setAttribute("aria-multiline", "true")
+  if (view.placeholder !== undefined) editor.setAttribute("aria-placeholder", view.placeholder)
+
+  // Render the typed document: text runs as text, mentions as atomic,
+  // non-editable chips (contenteditable=false), so the caret can't split them.
+  if (!editorWasActive) {
+    editor.replaceChildren(
+      ...view.doc.map((node) => {
+        if (node.kind === "text") {
+          return document.createTextNode(node.text)
+        }
+        const chip = document.createElement("span")
+        chip.setAttribute("contenteditable", "false")
+        chip.setAttribute("data-en-mention", node.id)
+        chip.textContent = node.label
+        return chip
+      })
+    )
+  }
+
+  const emitChange = () => {
+    if (view.onChange !== undefined) runReportedIntent(report, view.onChange, editor.textContent ?? "")
+  }
+  state.addListener(editor, "input", emitChange)
+
+  state.addListener(editor, "compositionstart", () => {
+    editor.setAttribute("data-en-composing", "true")
+  })
+  state.addListener(editor, "compositionend", () => {
+    editor.removeAttribute("data-en-composing")
+  })
+
+  // Plaintext-normalized paste: never let HTML into the contenteditable surface.
+  state.addListener(editor, "paste", (event) => {
+    const clip = (event as ClipboardEvent).clipboardData
+    if (clip === null || clip === undefined) return
+    event.preventDefault()
+    const text = clip.getData("text/plain")
+    editor.textContent = `${editor.textContent ?? ""}${text}`
+    emitChange()
+  })
+
+  const keyCommand = (command: string) => {
+    if (view.onKeyCommand !== undefined) runReportedIntent(report, view.onKeyCommand, command)
+  }
+  state.addListener(editor, "keydown", (event) => {
+    const key = (event as KeyboardEvent).key
+    const composing = (event as KeyboardEvent).isComposing || editor.getAttribute("data-en-composing") === "true"
+    if (key === "Enter") {
+      if (composing) return
+      const ke = event as KeyboardEvent
+      if (ke.shiftKey && !ke.metaKey && !ke.ctrlKey) {
+        keyCommand("newline")
+        return
+      }
+      event.preventDefault()
+      keyCommand("submit")
+      if (view.onSubmit !== undefined) runReportedIntent(report, view.onSubmit, editor.textContent ?? "")
+    } else if (key === "ArrowUp") {
+      keyCommand("history-previous")
+    } else if (key === "ArrowDown") {
+      keyCommand("history-next")
+    }
+  })
+
+  if (view.onAttachmentDrop !== undefined) {
+    const onDrop = view.onAttachmentDrop
+    state.addListener(editor, "dragover", (event) => event.preventDefault())
+    state.addListener(editor, "drop", (event) => {
+      event.preventDefault()
+      runReportedIntent(report, onDrop, { items: describeDroppedItems(event as DragEvent) })
+    })
+  }
+
+  const children: Array<HTMLElement> = [editor]
+
+  if (view.attachments !== undefined && view.attachments.length > 0) {
+    const tray = document.createElement("div")
+    tray.setAttribute("data-en-role", "attachments")
+    tray.style.display = "flex"
+    tray.style.gap = "var(--en-spacing-1)"
+    for (const attachment of view.attachments) {
+      const chip = document.createElement("span")
+      chip.setAttribute("data-en-attachment", attachment.id)
+      chip.textContent = attachment.name
+      tray.appendChild(chip)
+    }
+    children.push(tray)
+  }
+
+  if (view.autocomplete !== undefined) {
+    const wrapper = document.createElement("div")
+    wrapper.setAttribute("data-en-role", "autocomplete")
+    wrapper.setAttribute("data-en-trigger", view.autocomplete.trigger)
+    wrapper.appendChild(renderCombobox(view.autocomplete.combobox, state, report))
+    children.push(wrapper)
+  }
+
+  element.replaceChildren(...children)
+  if (editorWasActive || view.a11y?.tabIndex === 0) state.requestFocus(editor)
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  applyInteractions(element, view, state, report)
+  return element
+}
+
 const renderView = (view: View, state: DomRendererState, report: IntentReporter): HTMLElement => {
   switch (view._tag) {
     case "Stack":
@@ -2411,6 +2540,8 @@ const renderView = (view: View, state: DomRendererState, report: IntentReporter)
       return renderCommandPalette(view, state, report)
     case "Tabs":
       return renderTabs(view, state, report)
+    case "Composer":
+      return renderComposer(view, state, report)
   }
 }
 

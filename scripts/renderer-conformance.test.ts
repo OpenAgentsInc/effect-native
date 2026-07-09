@@ -7,6 +7,7 @@ import {
   Card,
   Combobox,
   CommandPalette,
+  Composer,
   ComponentValueBinding,
   ContextMenu,
   DropdownMenu,
@@ -308,6 +309,16 @@ const catalogFixturesByTag = {
       { id: "chat", content: Text({ key: "tab-chat", content: "Chat panel", variant: "body" }) },
       { id: "editor", content: Text({ key: "tab-editor", content: "Editor panel", variant: "body" }) }
     ]
+  }),
+  Composer: Composer({
+    key: "composer",
+    mode: "normal",
+    placeholder: "Message…",
+    doc: [{ kind: "text", text: "Draft " }, { kind: "mention", id: "orrery", label: "@Orrery" }],
+    attachments: [{ id: "att-1", name: "diff.patch", mimeType: "text/x-patch", size: 1024 }],
+    onChange: IntentRef("Changed", ComponentValueBinding()),
+    onSubmit: IntentRef("Submitted", ComponentValueBinding()),
+    onKeyCommand: IntentRef("Pressed", ComponentValueBinding())
   })
 } satisfies { readonly [Tag in (typeof componentTags)[number]]: View }
 
@@ -412,7 +423,8 @@ const catalogRendererTags = [
   "Tooltip",
   "Combobox",
   "CommandPalette",
-  "Tabs"
+  "Tabs",
+  "Composer"
 ] as const
 
 // Host (issue #23) is supported by the headless recorder and the DOM renderer

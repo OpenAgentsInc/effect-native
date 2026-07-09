@@ -37,10 +37,12 @@ const describeView = Match.type<View>().pipe(
   Match.tag("Popover", () => "overlay"),
   Match.tag("DropdownMenu", () => "overlay"),
   Match.tag("ContextMenu", () => "overlay"),
-  Match.tag("Tooltip", () => "overlay"),
+  Match.tag("Tooltip", () => "overlay")
+).pipe(
   Match.tag("Combobox", () => "typeahead"),
   Match.tag("CommandPalette", () => "typeahead"),
   Match.tag("Tabs", () => "tabs"),
+  Match.tag("Composer", () => "composer"),
   Match.exhaustive
 )
 

@@ -9,6 +9,8 @@ import {
   type ComboboxOption,
   type ComboboxView,
   type CommandPaletteView,
+  type ComposerView,
+  composerPlainText,
   type ContextMenuView,
   type DividerView,
   type DropdownMenuView,
@@ -1525,6 +1527,66 @@ const renderTabs = (
   )
 }
 
+// Rich composer (issue #32) on React Native — a multiline TextInput bound to
+// the same typed document (flattened to plaintext via composerPlainText; inline
+// mention chips are declared unsupported and render as their label text).
+// Enter submit-vs-newline and history nav map to onSubmitEditing / typed key
+// commands; the autocomplete combobox renders below.
+const renderComposer = (
+  view: ComposerView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const theme = options.theme ?? defaultTheme
+  const input = createElement(dependencies, dependencies.ReactNative.TextInput, {
+    key: "control",
+    testID: "en-composer-input",
+    accessibilityLabel: view.placeholder,
+    multiline: true,
+    placeholder: view.placeholder,
+    value: composerPlainText(view.doc),
+    ...(view.onChange === undefined ? {} : { onChangeText: (value: string) => runReportedIntent(report, view.onChange!, value) }),
+    onSubmitEditing: (event: { readonly nativeEvent?: { readonly text?: string } }) => {
+      if (view.onKeyCommand !== undefined) runReportedIntent(report, view.onKeyCommand, "submit")
+      if (view.onSubmit !== undefined) runReportedIntent(report, view.onSubmit, event.nativeEvent?.text ?? composerPlainText(view.doc))
+    }
+  })
+  const children: Array<ReactElementLike> = [input]
+  if (view.attachments !== undefined && view.attachments.length > 0) {
+    children.push(
+      createElement(
+        dependencies,
+        dependencies.ReactNative.View,
+        { key: "attachments", testID: "en-composer-attachments", style: { flexDirection: "row", gap: spacingValue(theme, "1") } },
+        ...view.attachments.map((attachment) =>
+          createElement(
+            dependencies,
+            dependencies.ReactNative.Text,
+            { key: `attachment-${attachment.id}`, testID: `en-composer-attachment:${attachment.id}` },
+            attachment.name
+          ))
+      )
+    )
+  }
+  if (view.autocomplete !== undefined) {
+    children.push(
+      createElement(
+        dependencies,
+        dependencies.ReactNative.View,
+        { key: "autocomplete", testID: `en-composer-autocomplete:${view.autocomplete.trigger}` },
+        renderCombobox(view.autocomplete.combobox, dependencies, report, options)
+      )
+    )
+  }
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    { ...baseProps(view, mergeNativeStyles({ flexDirection: "column" }, viewStyle(view, options))), testID: `en-composer:${view.mode}` },
+    ...children
+  )
+}
+
 const renderResolvedReactNativeView = (
   view: View,
   dependencies: ReactNativeDependencies,
@@ -1592,6 +1654,8 @@ const renderResolvedReactNativeView = (
       return renderCommandPalette(view, dependencies, report, options)
     case "Tabs":
       return renderTabs(view, dependencies, report, options)
+    case "Composer":
+      return renderComposer(view, dependencies, report, options)
   }
 }
 

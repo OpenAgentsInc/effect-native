@@ -6,6 +6,7 @@ import {
   Chip,
   Combobox,
   CommandPalette,
+  Composer,
   ComponentValueBinding,
   ContextMenu,
   Divider,
@@ -937,6 +938,43 @@ const componentStoryMap = {
         ]
       }),
       controls: [booleanControl("tabs-keep-mounted", "Keep mounted", ["keepMounted"], false)]
+    })
+  ],
+  Composer: [
+    story({
+      id: "composer-basic",
+      component: "Composer",
+      title: "Composer",
+      description: "Contenteditable chat input over a typed document with slash/mention autocomplete.",
+      view: Composer({
+        key: "composer-basic",
+        mode: "normal",
+        placeholder: "Message Khala…",
+        doc: [
+          { kind: "text", text: "Ship the " },
+          { kind: "mention", id: "orrery", label: "@Orrery" },
+          { kind: "text", text: " changes" }
+        ],
+        attachments: [{ id: "att-1", name: "diff.patch", mimeType: "text/x-patch", size: 2048 }],
+        onChange: IntentRef("GalleryStory.Changed", ComponentValueBinding()),
+        onSubmit: IntentRef("GalleryStory.Submitted", ComponentValueBinding()),
+        onKeyCommand: IntentRef("GalleryStory.Pressed", ComponentValueBinding()),
+        onAttachmentDrop: IntentRef("GalleryStory.Pressed", ComponentValueBinding()),
+        autocomplete: {
+          trigger: "slash",
+          query: "run",
+          combobox: Combobox({
+            key: "composer-autocomplete",
+            query: "run",
+            highlightedId: "run-cell",
+            onSelect: IntentRef("GalleryStory.Pressed", ComponentValueBinding()),
+            options: [
+              { id: "run-cell", label: "/run", subtitle: "Run the current cell", group: "Commands" },
+              { id: "reset", label: "/reset", group: "Commands" }
+            ]
+          })
+        }
+      })
     })
   ]
 } satisfies { readonly [Tag in ComponentTag]: ReadonlyArray<Story> }

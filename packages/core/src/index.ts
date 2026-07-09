@@ -78,8 +78,9 @@ export const AppShellCatalogVersion = "effect-native/v10" as const
 export const AnchoredOverlayCatalogVersion = "effect-native/v11" as const
 export const ComboboxCatalogVersion = "effect-native/v12" as const
 export const TabsCatalogVersion = "effect-native/v13" as const
-export const PreviousCatalogVersion = ComboboxCatalogVersion
-export const CatalogVersion = TabsCatalogVersion
+export const ComposerCatalogVersion = "effect-native/v14" as const
+export const PreviousCatalogVersion = TabsCatalogVersion
+export const CatalogVersion = ComposerCatalogVersion
 export const CatalogVersionSchema = Schema.Literal(CatalogVersion)
 export type CatalogVersion = typeof CatalogVersion
 export const compatibleCatalogVersions = [
@@ -95,6 +96,7 @@ export const compatibleCatalogVersions = [
   DataDisplayCatalogVersion,
   AppShellCatalogVersion,
   AnchoredOverlayCatalogVersion,
+  ComboboxCatalogVersion,
   PreviousCatalogVersion,
   CatalogVersion
 ] as const
@@ -131,7 +133,8 @@ export const componentTags = [
   "Tooltip",
   "Combobox",
   "CommandPalette",
-  "Tabs"
+  "Tabs",
+  "Composer"
 ] as const
 export type ComponentTag = (typeof componentTags)[number]
 
@@ -2109,6 +2112,53 @@ export interface TabsView extends NodeBase {
   readonly style?: CardStyle
 }
 
+// Rich contenteditable composer (issue #32). The app sees only a typed
+// structured document (bounded inline runs + mention chips), typed attachment
+// state, and named typed intents; contenteditable internals, paste
+// normalization, and IME composition are owned by the renderer. Autocomplete
+// triggers are typed data whose candidate list is rendered via a Combobox
+// (#29) — matching/candidates are app-supplied (no keyword routing here).
+export type ComposerInline =
+  | { readonly kind: "text"; readonly text: string }
+  | { readonly kind: "mention"; readonly id: string; readonly label: string }
+
+export interface ComposerAttachment {
+  readonly id: string
+  readonly name: string
+  readonly mimeType: string
+  readonly size: number
+}
+
+export const composerTriggers = ["slash", "mention"] as const
+export type ComposerTrigger = (typeof composerTriggers)[number]
+
+export interface ComposerAutocomplete {
+  readonly trigger: ComposerTrigger
+  readonly query: string
+  readonly combobox: ComboboxView
+}
+
+export const composerKeyCommands = ["submit", "newline", "history-previous", "history-next"] as const
+export type ComposerKeyCommand = (typeof composerKeyCommands)[number]
+export type ComposerMode = "normal" | "shell"
+
+export interface ComposerView extends NodeBase {
+  readonly _tag: "Composer"
+  readonly doc: ReadonlyArray<ComposerInline>
+  readonly mode: ComposerMode
+  readonly placeholder?: string
+  readonly attachments?: ReadonlyArray<ComposerAttachment>
+  readonly autocomplete?: ComposerAutocomplete
+  // Fires with the normalized plaintext value of the document.
+  readonly onChange?: IntentRef
+  readonly onSubmit?: IntentRef
+  // Fires with one of composerKeyCommands as the payload.
+  readonly onKeyCommand?: IntentRef
+  // Fires with bounded dropped-item metadata (DnD from the interaction algebra).
+  readonly onAttachmentDrop?: IntentRef
+  readonly style?: TextFieldStyle
+}
+
 export type View =
   | StackView
   | TextView
@@ -2140,6 +2190,7 @@ export type View =
   | ComboboxView
   | CommandPaletteView
   | TabsView
+  | ComposerView
 
 export type KeyedView = View & { readonly key: NodeKey }
 
@@ -2188,6 +2239,10 @@ const childViewEntries = (
       return [{ path: ["combobox"], view: view.combobox }]
     case "Tabs":
       return view.panels.map((panel, index) => ({ path: ["panels", index, "content"], view: panel.content }))
+    case "Composer":
+      return view.autocomplete === undefined
+        ? []
+        : [{ path: ["autocomplete", "combobox"], view: view.autocomplete.combobox }]
     default:
       return []
   }
@@ -2705,6 +2760,38 @@ export const TabsSchema: Schema.Codec<TabsView, TabsView> = Schema.TaggedStruct(
   style: CardStyleSchema.pipe(Schema.optionalKey)
 })
 
+export const ComposerInlineSchema: Schema.Codec<ComposerInline, ComposerInline> = Schema.Union([
+  Schema.Struct({ kind: Schema.Literal("text"), text: Schema.String }),
+  Schema.Struct({ kind: Schema.Literal("mention"), id: Schema.NonEmptyString, label: Schema.String })
+]) as unknown as Schema.Codec<ComposerInline, ComposerInline>
+
+export const ComposerAttachmentSchema: Schema.Codec<ComposerAttachment, ComposerAttachment> = Schema.Struct({
+  id: Schema.NonEmptyString,
+  name: Schema.String,
+  mimeType: Schema.String,
+  size: NonNegativeNumberSchema
+})
+
+export const ComposerAutocompleteSchema: Schema.Codec<ComposerAutocomplete, ComposerAutocomplete> = Schema.Struct({
+  trigger: Schema.Literals(composerTriggers),
+  query: Schema.String,
+  combobox: ComboboxSchema
+})
+
+export const ComposerSchema: Schema.Codec<ComposerView, ComposerView> = Schema.TaggedStruct("Composer", {
+  ...CommonFields,
+  doc: Schema.Array(ComposerInlineSchema),
+  mode: Schema.Literals(["normal", "shell"]),
+  placeholder: Schema.String.pipe(Schema.optionalKey),
+  attachments: Schema.Array(ComposerAttachmentSchema).pipe(Schema.optionalKey),
+  autocomplete: ComposerAutocompleteSchema.pipe(Schema.optionalKey),
+  onChange: IntentRefSchema.pipe(Schema.optionalKey),
+  onSubmit: IntentRefSchema.pipe(Schema.optionalKey),
+  onKeyCommand: IntentRefSchema.pipe(Schema.optionalKey),
+  onAttachmentDrop: IntentRefSchema.pipe(Schema.optionalKey),
+  style: TextFieldStyleSchema.pipe(Schema.optionalKey)
+})
+
 export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
   Schema.Union([
     StackSchema,
@@ -2736,7 +2823,8 @@ export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
     TooltipSchema,
     ComboboxSchema,
     CommandPaletteSchema,
-    TabsSchema
+    TabsSchema,
+    ComposerSchema
   ]).check(OverlayStackFilter)
 )
 
@@ -2883,6 +2971,16 @@ export const CommandPalette = (props: CommandPaletteProps): CommandPaletteView =
 export type TabsProps = WithoutTagAndVersion<TabsView>
 export const Tabs = (props: TabsProps): TabsView =>
   TabsSchema.make({ _tag: "Tabs", catalogVersion: CatalogVersion, ...props })
+
+export type ComposerProps = WithoutTagAndVersion<ComposerView>
+export const Composer = (props: ComposerProps): ComposerView =>
+  ComposerSchema.make({ _tag: "Composer", catalogVersion: CatalogVersion, ...props })
+
+// Normalize a composer document to its plaintext value (text runs verbatim,
+// mentions rendered as their label). This is the value renderers emit on change
+// and the app can re-parse to a typed document.
+export const composerPlainText = (doc: ReadonlyArray<ComposerInline>): string =>
+  doc.map((node) => (node.kind === "text" ? node.text : node.label)).join("")
 
 export const decodeView = Schema.decodeUnknownSync(ViewSchema)
 export const encodeView = Schema.encodeSync(ViewSchema)
@@ -3082,6 +3180,14 @@ export const resolveView = (view: View, input: ViewResolution = {}): View => {
         ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) }),
         panels: view.panels.map((panel) => ({ ...panel, content: resolveView(panel.content, input) }))
       }
+    case "Composer":
+      return {
+        ...view,
+        ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) }),
+        ...(view.autocomplete === undefined
+          ? {}
+          : { autocomplete: { ...view.autocomplete, combobox: resolveView(view.autocomplete.combobox, input) as ComboboxView } })
+      }
   }
 }
 
@@ -3153,6 +3259,13 @@ export const resolveBindings = <State>(view: View, state: State): View => {
         ...view,
         panels: view.panels.map((panel) => ({ ...panel, content: resolveBindings(panel.content, state) }))
       }
+    case "Composer":
+      return view.autocomplete === undefined
+        ? view
+        : {
+            ...view,
+            autocomplete: { ...view.autocomplete, combobox: resolveBindings(view.autocomplete.combobox, state) as ComboboxView }
+          }
     case "List":
       return {
         ...view,

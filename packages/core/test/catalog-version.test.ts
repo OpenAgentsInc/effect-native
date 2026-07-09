@@ -7,6 +7,7 @@ import {
   ComboboxCatalogVersion,
   CollectionCatalogVersion,
   CompatibleViewSchema,
+  ComposerCatalogVersion,
   DataDisplayCatalogVersion,
   TabsCatalogVersion,
   FormCatalogVersion,
@@ -58,11 +59,12 @@ describe("catalog version compatibility", () => {
       AppShellCatalogVersion,
       AnchoredOverlayCatalogVersion,
       ComboboxCatalogVersion,
-      TabsCatalogVersion
+      TabsCatalogVersion,
+      ComposerCatalogVersion
     ])
     // The current marker is the last entry; the previous marker is second-last.
-    expect(CatalogVersion).toBe(TabsCatalogVersion)
-    expect(PreviousCatalogVersion).toBe(ComboboxCatalogVersion)
+    expect(CatalogVersion).toBe(ComposerCatalogVersion)
+    expect(PreviousCatalogVersion).toBe(TabsCatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 1]).toBe(CatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 2]).toBe(PreviousCatalogVersion)
   })
