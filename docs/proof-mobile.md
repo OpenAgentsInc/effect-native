@@ -86,6 +86,19 @@ It is **still not** Cloud SQL / production hub / WebSocket staging.
 same mutator algebra, or (b) an explicit owner waiver of live staging; **and**
 device/sim RN pixel receipts or a waiver of that bar.
 
+Owner directive (issue #64, 2026-07-09): live staging is **waived** for
+conversion-unblock; the pixel-receipt bar is **kept**.
+
+### Partial pixel evidence (openagents GL-1, 2026-07-10)
+
+Real **iOS simulator pixel receipts of EN-rendered production screens** exist
+in the monorepo (GL-1, openagents#8647: iPhone 17 Pro / iOS 26.5 Release
+build, catalog chrome + typed intent round-trips via idb HID taps —
+`docs/mobile/receipts/2026-07-10-gl1-*`). They capture the production
+openagents-mobile app, not this repo's `runMainMobile` proof program, and no
+Android pixel receipt exists yet — so the #64 bar remains open on those two
+residuals.
+
 ## Receipt artifacts
 
 | Artifact | Path |
