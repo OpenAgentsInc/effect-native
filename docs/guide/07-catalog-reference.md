@@ -8,7 +8,9 @@ conformance-checked by
 (`bun run check:catalog-reference`) so this page cannot silently drop a shipped
 component.
 
-Current catalog marker: `CatalogVersion = "effect-native/v29"`.
+Current catalog marker: `CatalogVersion = "effect-native/v30"` (v30 adds the
+glass-chrome icons `Menu`/`Compose`/`Mic`/`Sparkles` to the closed `IconName`
+set — GL-1 openagents#8647).
 
 Closed component tags (`componentTags`, 70 total):
 
@@ -263,7 +265,7 @@ Every component accepts these two, inherited from `NodeBase`:
 | Field | Type | Notes |
 |---|---|---|
 | `key` | `string` (optional) | Required (enforced by the schema, not just convention) on any view placed inside a `List`/`SectionList`/`Link` children array. |
-| `catalogVersion` | `"effect-native/v29"` | Set automatically by every constructor function — you never pass this yourself. |
+| `catalogVersion` | `"effect-native/v30"` | Set automatically by every constructor function — you never pass this yourself. |
 
 ### Design tokens
 

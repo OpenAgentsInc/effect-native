@@ -71,10 +71,11 @@ describe("Icon (#31) DOM renderer", () => {
   })
 
   test("an unknown icon name is a typed decode failure", () => {
+    // "Sparkles" joined the closed set in v30; "Confetti" stays outside it.
     const exit = Schema.decodeUnknownExit(CompatibleViewSchema)({
       _tag: "Icon",
       catalogVersion: "effect-native/v8",
-      name: "Sparkles"
+      name: "Confetti"
     })
     expect(Exit.isFailure(exit)).toBe(true)
   })

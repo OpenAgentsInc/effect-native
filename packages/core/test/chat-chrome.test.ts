@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test"
 import { Exit, Schema } from "effect"
 import {
-  CatalogVersion,
   ChatChromeCatalogVersion,
+  compatibleCatalogVersions,
   Composer,
   ComposerSchema,
   MarkdownLinkHrefCatalogVersion,
@@ -18,8 +18,8 @@ import {
 // submitting / clearOnSubmit) are typed catalog data, and prior-version trees
 // still decode unchanged.
 describe("chat chrome + submit lifecycle (#72, v29)", () => {
-  test("the current catalog marker is v29 and v28 trees still decode", () => {
-    expect(CatalogVersion).toBe(ChatChromeCatalogVersion)
+  test("the v29 chat-chrome marker stays compatible and v28 trees still decode", () => {
+    expect(compatibleCatalogVersions).toContain(ChatChromeCatalogVersion)
     const view = Text({ key: "t", content: "prior tree", variant: "body" })
     const encoded = { ...JSON.parse(JSON.stringify(view)), catalogVersion: MarkdownLinkHrefCatalogVersion }
     expect(decodeCompatibleView(encoded).catalogVersion).toBe(MarkdownLinkHrefCatalogVersion)
