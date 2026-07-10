@@ -12,14 +12,16 @@ import {
   Text,
   Toolbar,
   ViewSchema,
+  compatibleCatalogVersions,
   decodeView,
   encodeView
 } from "../src/index"
 
 describe("glass set catalog v27 (GL-1, openagents#8647)", () => {
-  test("the current marker is the glass version", () => {
-    expect(CatalogVersion).toBe(GlassCatalogVersion)
-    expect(CatalogVersion).toBe("effect-native/v27")
+  test("the glass version is in the compatible chain (current moved on at v28)", () => {
+    expect(GlassCatalogVersion).toBe("effect-native/v27")
+    expect(compatibleCatalogVersions).toContain(GlassCatalogVersion)
+    expect(compatibleCatalogVersions).toContain(CatalogVersion)
   })
 
   test("IconButton constructs and round-trips with the closed icon set", () => {

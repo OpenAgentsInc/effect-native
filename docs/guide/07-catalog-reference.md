@@ -8,7 +8,7 @@ conformance-checked by
 (`bun run check:catalog-reference`) so this page cannot silently drop a shipped
 component.
 
-Current catalog marker: `CatalogVersion = "effect-native/v27"`.
+Current catalog marker: `CatalogVersion = "effect-native/v28"`.
 
 Closed component tags (`componentTags`, 70 total):
 
@@ -127,6 +127,13 @@ drive the owned DOM/RN panel lowering.
 
 ### Markdown
 
+Typed, pre-parsed block+inline model (no parser, no raw HTML). Link `href`
+(v28, #71) accepts exactly: `http(s)://…` absolute URLs, same-origin rooted
+paths (`/path`, optional `?query` then `#fragment`; a leading `//` is
+rejected), and in-page `#fragment` refs. All other schemes — `javascript:`,
+`data:`, `mailto:`, custom schemes — are typed decode/construction failures
+(`MarkdownLinkHrefSchema`).
+
 ### Transcript
 
 ### CodeBlock
@@ -239,7 +246,7 @@ Every component accepts these two, inherited from `NodeBase`:
 | Field | Type | Notes |
 |---|---|---|
 | `key` | `string` (optional) | Required (enforced by the schema, not just convention) on any view placed inside a `List`/`SectionList`/`Link` children array. |
-| `catalogVersion` | `"effect-native/v27"` | Set automatically by every constructor function — you never pass this yourself. |
+| `catalogVersion` | `"effect-native/v28"` | Set automatically by every constructor function — you never pass this yourself. |
 
 ### Design tokens
 
