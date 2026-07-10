@@ -21,6 +21,7 @@ import {
   MediaVideoCatalogVersion,
   GlassCatalogVersion,
   MarkdownLinkHrefCatalogVersion,
+  ChatChromeCatalogVersion,
   TranscriptCatalogVersion,
   TabsCatalogVersion,
   FormCatalogVersion,
@@ -88,11 +89,12 @@ describe("catalog version compatibility", () => {
       MobileGesturesCatalogVersion,
       MediaVideoCatalogVersion,
       GlassCatalogVersion,
-      MarkdownLinkHrefCatalogVersion
+      MarkdownLinkHrefCatalogVersion,
+      ChatChromeCatalogVersion
     ])
     // The current marker is the last entry; the previous marker is second-last.
-    expect(CatalogVersion).toBe(MarkdownLinkHrefCatalogVersion)
-    expect(PreviousCatalogVersion).toBe(GlassCatalogVersion)
+    expect(CatalogVersion).toBe(ChatChromeCatalogVersion)
+    expect(PreviousCatalogVersion).toBe(MarkdownLinkHrefCatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 1]).toBe(CatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 2]).toBe(PreviousCatalogVersion)
   })

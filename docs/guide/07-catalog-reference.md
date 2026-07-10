@@ -8,7 +8,7 @@ conformance-checked by
 (`bun run check:catalog-reference`) so this page cannot silently drop a shipped
 component.
 
-Current catalog marker: `CatalogVersion = "effect-native/v28"`.
+Current catalog marker: `CatalogVersion = "effect-native/v29"`.
 
 Closed component tags (`componentTags`, 70 total):
 
@@ -41,6 +41,12 @@ catalog is a deliberate, tracked process; see
 ### Image
 
 ### TextField
+
+Submit lifecycle (v29, #72): `disabled` fields accept no input and dispatch no
+change/submit intents; `clearOnSubmit` makes the renderer empty the field
+locally after dispatching `onSubmit` (the app's controlled reset to `""`
+agrees with it). Focused fields still receive app-driven controlled value
+changes.
 
 ### List
 
@@ -103,6 +109,11 @@ drive the owned DOM/RN panel lowering.
 
 ### Composer
 
+Submit lifecycle (v29, #72): `disabled`, `submitting` (typing stays live for
+follow-up drafting, `onSubmit` dispatch is suppressed and the surface is marked
+busy — the typed `"submit"` key command still fires so apps can queue), and
+`clearOnSubmit` (the renderer empties the editor after dispatching `onSubmit`).
+
 ### Toggle
 
 ### Select
@@ -135,6 +146,12 @@ rejected), and in-page `#fragment` refs. All other schemes — `javascript:`,
 (`MarkdownLinkHrefSchema`).
 
 ### Transcript
+
+Message chrome (v29, #72): `TranscriptMessage` carries optional `senderLabel`
+and `timestamp` display strings. Renderers draw them in a meta row separated
+from the body — never concatenated into body text — with role-differentiated
+row treatment: `user` rows end-aligned bounded bubbles, `assistant` rows
+start-aligned prose, `system`/`tool` rows muted.
 
 ### CodeBlock
 
@@ -246,7 +263,7 @@ Every component accepts these two, inherited from `NodeBase`:
 | Field | Type | Notes |
 |---|---|---|
 | `key` | `string` (optional) | Required (enforced by the schema, not just convention) on any view placed inside a `List`/`SectionList`/`Link` children array. |
-| `catalogVersion` | `"effect-native/v28"` | Set automatically by every constructor function — you never pass this yourself. |
+| `catalogVersion` | `"effect-native/v29"` | Set automatically by every constructor function — you never pass this yourself. |
 
 ### Design tokens
 
