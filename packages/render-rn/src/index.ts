@@ -3721,25 +3721,35 @@ const renderExpoUiLeaf = (
                 ? colorValue(theme, flat.color as ColorToken)
                 : buttonLabelColor(child, theme)
             ),
-            // style.flex: the button expands to fill the container's free
-            // space and the WHOLE run hit-tests (SwiftUI buttons otherwise
-            // hug their label, leaving dead zones the island's full-capsule
-            // dispatcher never had; contentShape makes the empty run
-            // tappable).
-            ...(flat?.flex !== undefined
-              ? [
-                expoUi.modifiers.frame({ maxWidth: 100000, alignment: "leading" }),
-                ...(expoUi.modifiers.contentShape !== undefined && expoUi.modifiers.shapes !== undefined
-                  ? [expoUi.modifiers.contentShape(expoUi.modifiers.shapes.rectangle())]
-                  : [])
-              ]
-              : []),
             ...(child.disabled === true && expoUi.modifiers.disabled !== undefined
               ? [expoUi.modifiers.disabled(true)]
               : [])
           ]
         },
-        createElement(dependencies, expoUi.Text, { key: "label" }, child.label)
+        createElement(
+          dependencies,
+          expoUi.Text,
+          {
+            key: "label",
+            // style.flex: the LABEL expands across the container's free
+            // space and the whole run hit-tests. The frame must live INSIDE
+            // the Button label — a frame on the Button itself does not
+            // extend its tappable area (SwiftUI buttons hug their label,
+            // leaving dead zones the island's full-capsule dispatcher never
+            // had); contentShape makes the empty run tappable.
+            ...(flat?.flex !== undefined
+              ? {
+                modifiers: [
+                  expoUi.modifiers.frame({ maxWidth: 100000, alignment: "leading" }),
+                  ...(expoUi.modifiers.contentShape !== undefined && expoUi.modifiers.shapes !== undefined
+                    ? [expoUi.modifiers.contentShape(expoUi.modifiers.shapes.rectangle())]
+                    : [])
+                ]
+              }
+              : {})
+          },
+          child.label
+        )
       )
     }
     case "Text":
