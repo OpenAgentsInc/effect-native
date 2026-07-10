@@ -24,6 +24,7 @@ import {
   Hero,
   Host,
   Icon,
+  IconButton,
   Image,
   IntentRef,
   LogoRow,
@@ -54,6 +55,7 @@ import {
   Toast,
   ToastRegion,
   Toggle,
+  Toolbar,
   Tooltip,
   Transcript,
   IntentSchema,
@@ -1737,6 +1739,62 @@ const componentStoryMap = {
           onDismiss: IntentRef("GalleryStory.Pressed", StaticPayload({ amount: 1 }))
         },
         [Text({ key: "popup-label", content: "Long-press menu", variant: "body" })]
+      )
+    })
+  ],
+  IconButton: [
+    story({
+      id: "icon-button-glass",
+      component: "IconButton",
+      title: "IconButton",
+      description: "Circular icon-only pressable over the closed icon set; glass surface variant.",
+      view: Stack({ key: "icon-button-row", direction: "row", gap: "2", align: "center" }, [
+        IconButton({
+          key: "icon-button-plain",
+          icon: "Play",
+          accessibilityLabel: "Start",
+          onPress: IntentRef("GalleryStory.Pressed", StaticPayload({ amount: 1 }))
+        }),
+        IconButton({
+          key: "icon-button-glass",
+          icon: "Reload",
+          accessibilityLabel: "Reload",
+          surface: "glass",
+          onPress: IntentRef("GalleryStory.Pressed", StaticPayload({ amount: 1 }))
+        }),
+        IconButton({
+          key: "icon-button-disabled",
+          icon: "Stop",
+          accessibilityLabel: "Stop",
+          disabled: true,
+          onPress: IntentRef("GalleryStory.Pressed", StaticPayload({ amount: 1 }))
+        })
+      ])
+    })
+  ],
+  Toolbar: [
+    story({
+      id: "toolbar-glass",
+      component: "Toolbar",
+      title: "Toolbar",
+      description: "Floating glass action strip with icon buttons.",
+      view: Toolbar(
+        { key: "toolbar-glass", placement: "bottom-floating", surface: "glass" },
+        [
+          IconButton({
+            key: "toolbar-play",
+            icon: "Play",
+            accessibilityLabel: "Start",
+            onPress: IntentRef("GalleryStory.Pressed", StaticPayload({ amount: 1 }))
+          }),
+          IconButton({
+            key: "toolbar-pause",
+            icon: "Pause",
+            accessibilityLabel: "Pause",
+            onPress: IntentRef("GalleryStory.Pressed", StaticPayload({ amount: 1 }))
+          }),
+          Text({ key: "toolbar-hint", content: "Fleet ready", variant: "caption" })
+        ]
       )
     })
   ]

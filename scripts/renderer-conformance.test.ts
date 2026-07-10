@@ -29,6 +29,7 @@ import {
   Hero,
   Host,
   Icon,
+  IconButton,
   Image,
   IntentRef,
   LogoRow,
@@ -59,6 +60,7 @@ import {
   Toast,
   ToastRegion,
   Toggle,
+  Toolbar,
   Tooltip,
   Link,
   List,
@@ -656,6 +658,17 @@ const catalogFixturesByTag = {
       onDismiss: IntentRef("Dismissed", StaticPayload({ surface: "popup" }))
     },
     [Text({ key: "popup-child", content: "Popup", variant: "body" })]
+  ),
+  IconButton: IconButton({
+    key: "icon-button",
+    icon: "Play",
+    accessibilityLabel: "Start",
+    surface: "glass",
+    onPress: IntentRef("Pressed", StaticPayload({ amount: 1 }))
+  }),
+  Toolbar: Toolbar(
+    { key: "toolbar", placement: "bottom-floating", surface: "glass" },
+    [Text({ key: "toolbar-hint", content: "Toolbar", variant: "caption" })]
   )
 } satisfies { readonly [Tag in (typeof componentTags)[number]]: View }
 
@@ -798,7 +811,9 @@ const catalogRendererTags = [
   "Wallpaper",
   "Spotlight",
   "Frame",
-  "BlurredPopup"
+  "BlurredPopup",
+  "IconButton",
+  "Toolbar"
 ] as const
 
 // Host (issue #23) is supported by the headless recorder and the DOM renderer

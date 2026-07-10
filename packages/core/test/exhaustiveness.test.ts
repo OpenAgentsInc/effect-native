@@ -82,6 +82,8 @@ const describeView = Match.type<View>().pipe(
   Match.tag("Spotlight", () => "mobile-surface"),
   Match.tag("Frame", () => "mobile-surface"),
   Match.tag("BlurredPopup", () => "mobile-surface"),
+  Match.tag("IconButton", () => "action"),
+  Match.tag("Toolbar", () => "shell"),
   Match.exhaustive
 )
 

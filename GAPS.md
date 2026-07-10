@@ -23,7 +23,7 @@ their reason so pressure is visible without weakening the catalog contract.
 
 ## Catalog Versioning Policy
 
-The current catalog marker is `effect-native/v26`, exposed by
+The current catalog marker is `effect-native/v27`, exposed by
 `CatalogVersion`. `compatibleCatalogVersions` is the decode allow-list, and
 `CompatibleViewSchema` is the schema app authors and renderers should use when
 accepting persisted or externally-authored trees.
@@ -76,6 +76,7 @@ until it has a fixture and every renderer declares and proves support for it.
 | Avatar | None yet | 2026-07-08 | waiting |
 | Media beyond `Image` (playback: src URLs, HLS, posters) | None yet — the live-attach case split off and shipped as the `media-video` host kind below | 2026-07-08 | waiting |
 | `media-video` host kind (live `MediaStream` attach target) | OpenAgents `/sarah` avatar surface: WebRTC/`<video>` attach for the owned renderer and the LiveAvatar fallback currently mounts in a sibling container outside the EN tree (#66) | 2026-07-09 | shipped -> #67 (v26: `hostKinds` gains `media-video`; typed `MediaVideo` constructor with bounded fit/muted/mirrored props + ready/ended/error event union; DOM `makeMediaVideoDriver` hands the app a Scope-owned `<video>` via `onElement` — the stream never crosses the serializable boundary; RN stays a loud unsupported marker until a native video driver is demanded) |
+| Glass set: `IconButton`, `Toolbar`, `surface: "glass"`, Sheet native detents | OpenAgents GL-1 (openagents#8647, epic #8646): Liquid Glass-era mobile surfaces need the semantic vocabulary in the upstream catalog while the `@expo/ui` native-island lowering lands monorepo-side | 2026-07-09 | shipped -> #70 (v27: `IconButton` over the closed icon set with required a11y label; `Toolbar` floating action strip; style-level `surface: "glass"` on box-derived styles — DOM translucent bg + backdrop blur, RN honest translucent-surface + hairline-border approximation; optional `Sheet.presentationDetents` `"half"`/`"full"` pass-through; high-fidelity iOS Liquid Glass stays in the `@expo/ui` lane, not this dependency-free catalog) |
 | Streaming transcript with partial-utterance updates | OpenAgents `/sarah` voice transcript (#66) — role-tagged live-append list with in-place partial updates | 2026-07-09 | already shipped -> #35 + #26 (keyed `Transcript` messages with the closed `thinking/streaming/failed/done` status set update in place; live append rides `makeStreamRegion`; no new component needed — demand recorded so the consumer converts off `List`+`Card`) |
 | Mic state + audio level indicator | OpenAgents `/sarah` push-to-talk / VAD UI (#66): typed idle/live/denied/muted mic state plus a 0..1 level meter | 2026-07-09 | waiting (proposal: `MicIndicator` with closed state set + level; `Meter`/`Badge` (#39) compose an interim; enters when the demanding screen actually wires PTT/level metering) |
 | Handoff / checkout / receipt cards | OpenAgents `/sarah` sales tool effects (#66): typed cards for human-handoff, checkout link, and payment receipt | 2026-07-09 | waiting (today honestly composed from `Card`+`Text`+`Button` — catalog-blessed composition, not a workaround; a typed card family enters when a second surface demands the same shapes) |
@@ -127,7 +128,9 @@ Mobile demand docs (#65): GAPS register rows + ROADMAP Phase 4M + [`docs/porting
 | `v22` | #61 | Pull-to-refresh on `List`/`SectionList` (`refreshing` + `onRefresh`) |
 | `v23` | #60 | `SwipeableListItem` (swipe-action list rows) |
 | `v24` | #63 | Mobile surfaces (`BackgroundGradient`, `Wallpaper`, `Spotlight`, `Frame`, `BlurredPopup`) |
-| `v25` (current) | #56 | Mobile gesture intents on `Interactions` (`onLongPress`/`onSwipe`/`onPullToRefresh`) |
+| `v25` | #56 | Mobile gesture intents on `Interactions` (`onLongPress`/`onSwipe`/`onPullToRefresh`) |
+| `v26` | #67 | `media-video` host kind (live `MediaStream` attach target) |
+| `v27` (current) | #70 | Glass set (GL-1, openagents#8647): `IconButton`, `Toolbar`, style `surface: "glass"` on box-derived styles, `Sheet.presentationDetents` |
 
 Non-catalog Phase 4 runtime ships (no version bump): desktop adapter (#21), canvas renderer package (#22), streaming region (#26), Keymap/focus (#41), Protoss-blue theme tokens (#25).
 

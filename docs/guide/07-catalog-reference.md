@@ -8,9 +8,9 @@ conformance-checked by
 (`bun run check:catalog-reference`) so this page cannot silently drop a shipped
 component.
 
-Current catalog marker: `CatalogVersion = "effect-native/v26"`.
+Current catalog marker: `CatalogVersion = "effect-native/v27"`.
 
-Closed component tags (`componentTags`, 68 total):
+Closed component tags (`componentTags`, 70 total):
 
 `Stack`, `Text`, `Button`, `Image`, `TextField`, `List`,
 `SectionList`, `Card`, `Spacer`, `Link`, `Modal`, `Sheet`,
@@ -22,7 +22,8 @@ Closed component tags (`componentTags`, 68 total):
 `Markdown`, `Transcript`, `CodeBlock`, `DiffView`, `GraphFigure`, `Timeline`,
 `Section`, `Hero`, `AnnouncementBadge`, `CtaSection`, `Footer`, `NavBar`,
 `Accordion`, `PricingColumn`, `PricingTable`, `LogoRow`, `StatsBand`, `Glow`,
-`MockupFrame`, `Pager`, `SwipeableListItem`, `BackgroundGradient`, `Wallpaper`, `Spotlight`, `Frame`, `BlurredPopup`.
+`MockupFrame`, `Pager`, `SwipeableListItem`, `BackgroundGradient`, `Wallpaper`, `Spotlight`, `Frame`, `BlurredPopup`,
+`IconButton`, `Toolbar`.
 
 There is no escape hatch to add an ad hoc component — growing the
 catalog is a deliberate, tracked process; see
@@ -59,6 +60,10 @@ Grouped virtualized collection. Same optional `refreshing` / `onRefresh` as `Lis
 ### Modal
 
 ### Sheet
+
+Optional `presentationDetents` (`"half"`/`"full"`, GL-1) is a semantic hint for
+hosts with native sheet presentation; the required size-token `detents` still
+drive the owned DOM/RN panel lowering.
 
 ### Host
 
@@ -214,6 +219,17 @@ Arcade bordered frame (`square`/`rounded`/`arcade`).
 
 Blur-backed popup with typed `open` + `onDismiss` (overlay presence).
 
+### IconButton
+
+Circular icon-only pressable (44pt hit target) over the closed `IconName` set.
+`accessibilityLabel` is required — an icon-only button with no accessible name
+is not constructible. Optional `surface: "glass"` for the translucent material.
+
+### Toolbar
+
+Floating action strip (glass set, GL-1). Children rendered in a row; semantic
+`placement` (`bottom-floating` default, or `top`); optional `surface: "glass"`.
+
 ## Shared vocabulary
 
 ### Common fields
@@ -223,7 +239,7 @@ Every component accepts these two, inherited from `NodeBase`:
 | Field | Type | Notes |
 |---|---|---|
 | `key` | `string` (optional) | Required (enforced by the schema, not just convention) on any view placed inside a `List`/`SectionList`/`Link` children array. |
-| `catalogVersion` | `"effect-native/v26"` | Set automatically by every constructor function — you never pass this yourself. |
+| `catalogVersion` | `"effect-native/v27"` | Set automatically by every constructor function — you never pass this yourself. |
 
 ### Design tokens
 
@@ -240,6 +256,7 @@ take a token from one of these closed vocabularies
 | `TypeScaleToken` | `caption, body, label, title, heading` |
 | `BreakpointToken` | `sm, md, lg, xl` |
 | `DimensionToken` | `xs, sm, md, lg, xl, full` |
+| `SurfaceMaterial` | `glass` — style-level `surface` token on box-derived styles (GL-1): translucent blurred material on DOM, translucent theme surface + hairline border on RN core |
 
 A `Dimension` is a `DimensionToken` **or** a non-negative pixel number — used
 for `width`/`height`/`estimatedItemSize` and similar layout fields.
