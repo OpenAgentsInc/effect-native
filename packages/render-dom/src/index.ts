@@ -1016,6 +1016,30 @@ const renderButton = (view: ButtonView, state: DomRendererState, report: IntentR
   element.textContent = view.label
   element.disabled = view.disabled === true
   element.setAttribute("data-en-variant", view.variant)
+  // Variant theme lowering (parity with the render-rn fix for the #71-class
+  // bug): themed surface + label color instead of the native default button.
+  // Applied before applyBaseStyle so typed style overrides still win.
+  element.style.font = "inherit"
+  element.style.borderRadius = "var(--en-radius-md)"
+  element.style.padding = "var(--en-spacing-2) var(--en-spacing-4)"
+  element.style.border = "1px solid transparent"
+  element.style.cursor = view.disabled === true ? "default" : "pointer"
+  element.style.opacity = view.disabled === true ? "0.5" : "1"
+  switch (view.variant) {
+    case "primary":
+      element.style.background = colorValue("accent")
+      element.style.color = colorValue("textPrimary")
+      break
+    case "secondary":
+      element.style.background = colorValue("surface")
+      element.style.color = colorValue("textPrimary")
+      element.style.borderColor = colorValue("border")
+      break
+    case "ghost":
+      element.style.background = "transparent"
+      element.style.color = colorValue("accent")
+      break
+  }
   state.addListener(element, "click", () => runReportedIntent(report, view.onPress))
   applyBaseStyle(element, view, state)
   applyA11y(element, view)
