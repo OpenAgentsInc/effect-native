@@ -3538,6 +3538,10 @@ export interface ExpoUiSwiftUiRuntime {
     readonly frame: (params: Record<string, number | string>) => unknown
     readonly padding?: (params?: Record<string, number>) => unknown
     readonly disabled?: (disabled?: boolean) => unknown
+    // Hit-testing shape (SwiftUI contentShape): without it only the visible
+    // label responds to taps — a flexed button's free space would be dead.
+    readonly contentShape?: (shape: unknown) => unknown
+    readonly shapes?: { readonly rectangle: (params?: Record<string, unknown>) => unknown }
   }
 }
 
@@ -3718,11 +3722,17 @@ const renderExpoUiLeaf = (
                 : buttonLabelColor(child, theme)
             ),
             // style.flex: the button expands to fill the container's free
-            // space (the whole run is the tap target — SwiftUI buttons
-            // otherwise hug their label, leaving dead zones the island's
-            // full-capsule dispatcher never had).
+            // space and the WHOLE run hit-tests (SwiftUI buttons otherwise
+            // hug their label, leaving dead zones the island's full-capsule
+            // dispatcher never had; contentShape makes the empty run
+            // tappable).
             ...(flat?.flex !== undefined
-              ? [expoUi.modifiers.frame({ maxWidth: 100000, alignment: "leading" })]
+              ? [
+                expoUi.modifiers.frame({ maxWidth: 100000, alignment: "leading" }),
+                ...(expoUi.modifiers.contentShape !== undefined && expoUi.modifiers.shapes !== undefined
+                  ? [expoUi.modifiers.contentShape(expoUi.modifiers.shapes.rectangle())]
+                  : [])
+              ]
               : []),
             ...(child.disabled === true && expoUi.modifiers.disabled !== undefined
               ? [expoUi.modifiers.disabled(true)]
