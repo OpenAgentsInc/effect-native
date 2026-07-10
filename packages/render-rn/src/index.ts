@@ -3699,7 +3699,8 @@ const renderExpoUiLeaf = (
           color: colorValue(theme, "textPrimary")
         })
       )
-    case "Button":
+    case "Button": {
+      const flat = resolvedFlatStyle(child, options)
       return createElement(
         dependencies,
         expoUi.Button,
@@ -3711,7 +3712,18 @@ const renderExpoUiLeaf = (
             }
           },
           modifiers: [
-            expoUi.modifiers.foregroundStyle(buttonLabelColor(child, theme)),
+            expoUi.modifiers.foregroundStyle(
+              flat?.color !== undefined
+                ? colorValue(theme, flat.color as ColorToken)
+                : buttonLabelColor(child, theme)
+            ),
+            // style.flex: the button expands to fill the container's free
+            // space (the whole run is the tap target — SwiftUI buttons
+            // otherwise hug their label, leaving dead zones the island's
+            // full-capsule dispatcher never had).
+            ...(flat?.flex !== undefined
+              ? [expoUi.modifiers.frame({ maxWidth: 100000, alignment: "leading" })]
+              : []),
             ...(child.disabled === true && expoUi.modifiers.disabled !== undefined
               ? [expoUi.modifiers.disabled(true)]
               : [])
@@ -3719,6 +3731,7 @@ const renderExpoUiLeaf = (
         },
         createElement(dependencies, expoUi.Text, { key: "label" }, child.label)
       )
+    }
     case "Text":
       return createElement(
         dependencies,
@@ -3822,6 +3835,7 @@ const renderExpoUiButton = (
   options: ReactNativeRenderOptions
 ): ReactElementLike => {
   const theme = options.theme ?? defaultTheme
+  const flat = resolvedFlatStyle(view, options)
   const style = mergeNativeStyles(
     { opacity: view.disabled === true ? 0.5 : 1 },
     viewStyleWithoutSurface(view, options)
@@ -3829,6 +3843,9 @@ const renderExpoUiButton = (
   // SwiftUI owns the capsule's intrinsic size (matchContents reports it back
   // into the RN tree); an app-provided height lowers to a SwiftUI frame.
   const heightValue = typeof style.height === "number" ? style.height : undefined
+  const labelColor = flat?.color !== undefined
+    ? colorValue(theme, flat.color as ColorToken)
+    : buttonLabelColor(view, theme)
   return createElement(
     dependencies,
     dependencies.ReactNative.View,
@@ -3852,7 +3869,7 @@ const renderExpoUiButton = (
             }
           },
           modifiers: [
-            expoUi.modifiers.foregroundStyle(buttonLabelColor(view, theme)),
+            expoUi.modifiers.foregroundStyle(labelColor),
             ...(expoUi.modifiers.padding === undefined
               ? []
               : [expoUi.modifiers.padding({ horizontal: spacingValue(theme, "4") })]),
@@ -3911,7 +3928,13 @@ const renderExpoUiGlassContainer = (
     createElement(
       dependencies,
       expoUi.Host,
-      { key: "host", style: { flex: 1 } },
+      // Without an app-provided height the RN wrapper has no intrinsic size;
+      // matchContents reports the SwiftUI layout back so the container stays
+      // hit-testable (glassEffect overdraw LOOKS right even at zero height —
+      // taps do not).
+      style.height !== undefined
+        ? { key: "host", style: { flex: 1 } }
+        : { key: "host", matchContents: true },
       createElement(
         dependencies,
         stackType,
