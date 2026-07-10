@@ -68,6 +68,7 @@ import {
   type StatTileView,
   type TableView,
   type Tone,
+  type HostKind,
   type HostView,
   type IconName,
   type IconSize,
@@ -187,6 +188,16 @@ export interface ReactNativeRenderOptions {
   readonly theme?: Theme
   readonly platform?: ReactNativePlatform
   readonly viewport?: ViewportInput | Viewport
+  // Registered host drivers (issue #70 ask 2, GL-1 openagents#8647): the only
+  // injection point through which native/imperative views mount behind the
+  // typed `Host` catalog contract. `EffectNativeSurface` and
+  // `makeReactNativeRenderer` build a Scope-bound instance runtime from this
+  // list automatically; a bare `renderReactNativeView` call mounts transient
+  // per-emission instances (unit-test posture — no retained native state).
+  readonly hostDrivers?: ReadonlyArray<ReactNativeHostDriver>
+  // Per-surface Scope-bound host-instance runtime. Created internally by the
+  // surface entrypoints from `hostDrivers`; apps normally never construct one.
+  readonly hostRuntime?: ReactNativeHostRuntime
 }
 
 export interface EffectNativeSurfaceProps extends ReactNativeRenderOptions {
@@ -226,6 +237,142 @@ const loadPeerDependencies = (): ReactNativeDependencies => {
   return {
     React: require("react") as ReactRuntime,
     ReactNative: require("react-native") as ReactNativeRuntime
+  }
+}
+
+// ── Scope-bound host-driver registry (issue #70 ask 2; mirrors render-dom's
+// DomHostDriver contract for the declarative RN element tree) ────────────────
+//
+// A driver is the ONLY place imperative/native-module view code lives on RN
+// (SwiftUI islands, native video, editors). Its lifecycle is owned by the
+// renderer and bound to the surface Scope: `mount` when the Host node first
+// appears, `render` on every typed prop emission, `unmount` on Scope exit or
+// when the node leaves the tree. Props enter through `decodeProps` (Schema
+// decode — throwing surfaces as a loud host error marker, never a silent
+// no-op) and events leave only through `emit`, which dispatches the Host
+// node's `onEvent` as a typed intent through the surface's IntentReporter.
+
+export interface ReactNativeHostContext {
+  readonly dependencies: ReactNativeDependencies
+  readonly report: IntentReporter
+  // Emit a typed host event outward as the Host node's `onEvent` intent. The
+  // binding always targets the CURRENT view emission's `onEvent`, not the one
+  // captured at mount.
+  readonly emit: (payload: JsonPayload) => void
+}
+
+export interface ReactNativeHostInstance {
+  // Produce the React element for the current decoded props. Called once per
+  // view emission while the Host node stays mounted; React reconciles the
+  // returned elements, the driver owns any imperative native state behind them.
+  readonly render: (props: unknown) => ReactElementLike
+  readonly unmount: () => void
+}
+
+export interface ReactNativeHostDriver {
+  readonly kind: HostKind
+  // Decode/validate the opaque props payload for this host kind. Throwing here
+  // surfaces as a loud host error marker, never a silent no-op.
+  readonly decodeProps: (props: JsonPayload) => unknown
+  readonly mount: (props: unknown, context: ReactNativeHostContext) => ReactNativeHostInstance
+}
+
+interface HostInstanceRecord {
+  readonly kind: HostKind
+  instance: ReactNativeHostInstance
+  // Latest emission's event binding — `emit` reads these at dispatch time.
+  onEvent: IntentRef | undefined
+  report: IntentReporter
+  seen: boolean
+}
+
+export interface ReactNativeHostRuntime {
+  readonly resolve: (kind: HostKind) => ReactNativeHostDriver | undefined
+  // Get-or-mount the instance for this Host node (keyed kind + view key, the
+  // same identity rule as render-dom) and render the current decoded props.
+  readonly render: (
+    view: HostView,
+    driver: ReactNativeHostDriver,
+    decoded: unknown,
+    dependencies: ReactNativeDependencies,
+    report: IntentReporter
+  ) => ReactElementLike
+  // Unmount every instance not rendered since the previous sweep (the node
+  // left the tree). Surface entrypoints call this after each full render pass.
+  readonly sweep: () => void
+  // Unmount everything — bound to the surface Scope / React unmount cleanup.
+  readonly dispose: () => void
+}
+
+const hostInstanceKey = (view: HostView): string => `${view.kind}:${view.key ?? ""}`
+
+export const makeReactNativeHostRuntime = (
+  drivers: ReadonlyArray<ReactNativeHostDriver>
+): ReactNativeHostRuntime => {
+  const byKind = new Map<HostKind, ReactNativeHostDriver>(drivers.map((driver) => [driver.kind, driver] as const))
+  const instances = new Map<string, HostInstanceRecord>()
+
+  const unmountRecord = (record: HostInstanceRecord): void => {
+    try {
+      record.instance.unmount()
+    } catch {
+      // Driver teardown must stay total: one faulty driver never breaks the
+      // surface's Scope close or the other instances' teardown.
+    }
+  }
+
+  return {
+    resolve: (kind) => byKind.get(kind),
+    render: (view, driver, decoded, dependencies, report) => {
+      const key = hostInstanceKey(view)
+      let record = instances.get(key)
+      if (record !== undefined && record.kind !== view.kind) {
+        unmountRecord(record)
+        instances.delete(key)
+        record = undefined
+      }
+      if (record === undefined) {
+        const created: HostInstanceRecord = {
+          kind: view.kind,
+          instance: undefined as unknown as ReactNativeHostInstance,
+          onEvent: view.onEvent,
+          report,
+          seen: true
+        }
+        const context: ReactNativeHostContext = {
+          dependencies,
+          report,
+          emit: (payload) => {
+            if (created.onEvent !== undefined) {
+              runReportedIntent(created.report, created.onEvent, payload)
+            }
+          }
+        }
+        created.instance = driver.mount(decoded, context)
+        instances.set(key, created)
+        return created.instance.render(decoded)
+      }
+      record.onEvent = view.onEvent
+      record.report = report
+      record.seen = true
+      return record.instance.render(decoded)
+    },
+    sweep: () => {
+      for (const [key, record] of instances) {
+        if (!record.seen) {
+          unmountRecord(record)
+          instances.delete(key)
+        } else {
+          record.seen = false
+        }
+      }
+    },
+    dispose: () => {
+      for (const record of instances.values()) {
+        unmountRecord(record)
+      }
+      instances.clear()
+    }
   }
 }
 
@@ -1003,16 +1150,67 @@ const renderSpacer = (
   )
 }
 
-// Foreign-host escape hatch on React Native (issue #23/#58). Desktop host kinds
-// (code-editor/terminal/canvas) remain loud unsupported markers. Mobile kinds
-// voice-input / on-device-model ship a minimal structural surface so apps can
-// swap in real native modules under the same Host contract.
+// Foreign-host escape hatch on React Native (issue #23/#58/#70). A registered
+// host driver is consulted FIRST: it Schema-decodes the props (malformed props
+// fail closed to a loud error marker), mounts through the Scope-bound host
+// runtime, and maps native events to the Host node's typed `onEvent` intent.
+// Without a driver, desktop host kinds (code-editor/terminal/canvas) remain
+// loud unsupported markers and mobile kinds voice-input / on-device-model ship
+// the minimal structural surface so apps can swap in real native modules under
+// the same Host contract.
 const renderHost = (
   view: HostView,
   dependencies: ReactNativeDependencies,
+  report: IntentReporter,
   options: ReactNativeRenderOptions
 ): ReactElementLike => {
   const theme = options.theme ?? defaultTheme
+  const driver = options.hostRuntime?.resolve(view.kind) ??
+    options.hostDrivers?.find((candidate) => candidate.kind === view.kind)
+  if (driver !== undefined) {
+    let decoded: unknown
+    try {
+      decoded = driver.decodeProps(view.props)
+    } catch (error) {
+      // Fail closed and loud: malformed host props render an error marker that
+      // fails the conformance suite, never a silently-empty native mount.
+      return createElement(
+        dependencies,
+        dependencies.ReactNative.View,
+        {
+          ...baseProps(view, viewStyle(view, options)),
+          testID: `en-host-error:${view.kind}`,
+          accessibilityLabel: `Invalid ${view.kind} host props: ${String(error)}`
+        }
+      )
+    }
+    const embedded = options.hostRuntime !== undefined
+      ? options.hostRuntime.render(view, driver, decoded, dependencies, report)
+      : (() => {
+        // No Scope-bound runtime (bare renderReactNativeView call): mount a
+        // transient per-emission instance. Unit-test posture only — the
+        // surface entrypoints always provide the retained runtime.
+        const context: ReactNativeHostContext = {
+          dependencies,
+          report,
+          emit: (payload) => {
+            if (view.onEvent !== undefined) {
+              runReportedIntent(report, view.onEvent, payload)
+            }
+          }
+        }
+        return driver.mount(decoded, context).render(decoded)
+      })()
+    return createElement(
+      dependencies,
+      dependencies.ReactNative.View,
+      {
+        ...baseProps(view, viewStyle(view, options)),
+        testID: `en-host:${view.kind}`
+      },
+      embedded
+    )
+  }
   if (view.kind === "voice-input" || view.kind === "on-device-model") {
     const props = typeof view.props === "object" && view.props !== null && !Array.isArray(view.props)
       ? view.props as Record<string, unknown>
@@ -3151,7 +3349,7 @@ const renderResolvedReactNativeView = (
     case "Spacer":
       return renderSpacer(view, dependencies, options)
     case "Host":
-      return renderHost(view, dependencies, options)
+      return renderHost(view, dependencies, report, options)
     case "Icon":
       return renderIcon(view, dependencies, options)
     case "Divider":
@@ -3845,6 +4043,15 @@ export const createEffectNativeSurface = (
 
   return function EffectNativeSurfaceWithDependencies(props: EffectNativeSurfaceProps): ReactNodeLike {
     const [view, setView] = useState<View | undefined>(() => props.initialView)
+    // One Scope-equivalent host runtime per surface component instance:
+    // driver instances mount on first appearance, update per emission, and
+    // unmount on React unmount (the component's lifecycle IS the surface
+    // scope on this entrypoint).
+    const [hostRuntime] = useState<ReactNativeHostRuntime | undefined>(() =>
+      props.hostDrivers === undefined || props.hostDrivers.length === 0
+        ? undefined
+        : makeReactNativeHostRuntime(props.hostDrivers)
+    )
 
     useEffect(() => {
       const fiber = Effect.runFork(
@@ -3864,15 +4071,25 @@ export const createEffectNativeSurface = (
       }
     }, [props.viewStream])
 
+    useEffect(() => () => {
+      hostRuntime?.dispose()
+    }, [hostRuntime])
+
     const renderOptions: ReactNativeRenderOptions = {
       ...(props.theme === undefined ? {} : { theme: props.theme }),
       ...(props.platform === undefined ? {} : { platform: props.platform }),
-      ...(props.viewport === undefined ? {} : { viewport: props.viewport })
+      ...(props.viewport === undefined ? {} : { viewport: props.viewport }),
+      ...(props.hostDrivers === undefined ? {} : { hostDrivers: props.hostDrivers }),
+      ...(hostRuntime === undefined ? {} : { hostRuntime })
     }
 
-    return view === undefined
-      ? null
-      : renderReactNativeView(view, dependencies, props.report, renderOptions)
+    if (view === undefined) {
+      return null
+    }
+    const element = renderReactNativeView(view, dependencies, props.report, renderOptions)
+    // Instances whose Host node left the tree this pass unmount now.
+    hostRuntime?.sweep()
+    return element
   }
 }
 
@@ -3894,6 +4111,22 @@ export const makeReactNativeRenderer = (
 
       return yield* Scope.provide(surfaceScope)(Effect.gen(function*() {
         const dependencies = options.dependencies ?? loadPeerDependencies()
+        // Host-driver instances are Scope-owned (issue #70): mounted on first
+        // Host appearance, swept when the node leaves the tree, and all
+        // unmounted when the surface scope closes.
+        const hostRuntime = options.hostDrivers === undefined || options.hostDrivers.length === 0
+          ? undefined
+          : makeReactNativeHostRuntime(options.hostDrivers)
+        if (hostRuntime !== undefined) {
+          yield* Effect.addFinalizer(() =>
+            Effect.sync(() => {
+              hostRuntime.dispose()
+            })
+          )
+        }
+        const renderOptions: ReactNativeRenderOptions = hostRuntime === undefined
+          ? options
+          : { ...options, hostRuntime }
         const viewport = yield* makeViewportService(
           options.viewport ?? readReactNativeViewport(dependencies),
           options.theme === undefined ? {} : { theme: options.theme }
@@ -3941,7 +4174,8 @@ export const makeReactNativeRenderer = (
         yield* resolvedViewStream.pipe(
           Stream.runForEach((view) =>
             Effect.gen(function*() {
-              const element = renderResolvedReactNativeView(view, dependencies, report, options)
+              const element = renderResolvedReactNativeView(view, dependencies, report, renderOptions)
+              hostRuntime?.sweep()
               yield* Ref.set(current, view)
               yield* Ref.set(currentElement, element)
               yield* Effect.sync(() => {
