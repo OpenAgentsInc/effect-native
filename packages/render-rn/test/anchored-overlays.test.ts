@@ -79,6 +79,14 @@ describe("anchored overlays (#28) React Native renderer", () => {
     expect(menu.props.accessibilityRole).toBe("menu")
     const rename = find(menu, (e) => e.props.testID === "en-menu-item:rename")
     expect(rename?.type).toBe("Pressable")
+    // #71-class regression: menu-row glyph/label must be THEMED — RN Text
+    // does not inherit color and would render default-black on dark surfaces.
+    const renameChildren = (Array.isArray(rename?.props.children)
+      ? rename?.props.children
+      : [rename?.props.children]) as ReadonlyArray<{ props: { style?: { color?: string } } }>
+    for (const part of renameChildren) {
+      expect(part.props.style?.color).toBeDefined()
+    }
     ;(rename?.props.onPress as (() => void) | undefined)?.()
     await new Promise((resolve) => setTimeout(resolve, 0))
     expect(selected).toEqual(["rename"])

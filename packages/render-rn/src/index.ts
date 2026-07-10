@@ -1710,13 +1710,28 @@ const renderMenuRows = (
   report: IntentReporter
 ): ReadonlyArray<ReactElementLike> =>
   items.flatMap((item) => {
+    // #71-class bug: RN Text does not inherit color — menu rows must theme
+    // their glyph/label/keybinding or they render default-black on the dark
+    // theme surface panel.
+    const rowColor = colorValue(theme, item.danger === true ? "danger" : "textPrimary")
     const parts: Array<ReactElementLike> = []
     if (item.icon !== undefined) {
-      parts.push(createElement(dependencies, dependencies.ReactNative.Text, { key: "icon" }, iconGlyphs[item.icon]))
+      parts.push(
+        createElement(dependencies, dependencies.ReactNative.Text, { key: "icon", style: { color: rowColor } }, iconGlyphs[item.icon])
+      )
     }
-    parts.push(createElement(dependencies, dependencies.ReactNative.Text, { key: "label" }, item.label))
+    parts.push(
+      createElement(dependencies, dependencies.ReactNative.Text, { key: "label", style: { color: rowColor } }, item.label)
+    )
     if (item.keybinding !== undefined) {
-      parts.push(createElement(dependencies, dependencies.ReactNative.Text, { key: "kbd" }, item.keybinding))
+      parts.push(
+        createElement(
+          dependencies,
+          dependencies.ReactNative.Text,
+          { key: "kbd", style: { color: colorValue(theme, "textMuted") } },
+          item.keybinding
+        )
+      )
     }
     const row = createElement(
       dependencies,
@@ -1730,8 +1745,9 @@ const renderMenuRows = (
         style: {
           flexDirection: "row",
           gap: spacingValue(theme, "2"),
+          paddingVertical: spacingValue(theme, "2"),
           paddingLeft: spacingValue(theme, "2") * (depth + 1),
-          ...(item.danger === true ? { } : {})
+          opacity: item.disabled === true ? 0.5 : 1
         },
         ...(item.disabled === true
           ? {}
@@ -3810,7 +3826,9 @@ const renderExpoUiButton = (
     { opacity: view.disabled === true ? 0.5 : 1 },
     viewStyleWithoutSurface(view, options)
   )
-  const hasExplicitSize = style.width !== undefined || style.height !== undefined
+  // SwiftUI owns the capsule's intrinsic size (matchContents reports it back
+  // into the RN tree); an app-provided height lowers to a SwiftUI frame.
+  const heightValue = typeof style.height === "number" ? style.height : undefined
   return createElement(
     dependencies,
     dependencies.ReactNative.View,
@@ -3822,7 +3840,7 @@ const renderExpoUiButton = (
     createElement(
       dependencies,
       expoUi.Host,
-      hasExplicitSize ? { key: "host", style: { flex: 1 } } : { key: "host", matchContents: true },
+      { key: "host", matchContents: true },
       createElement(
         dependencies,
         expoUi.Button,
@@ -3835,6 +3853,10 @@ const renderExpoUiButton = (
           },
           modifiers: [
             expoUi.modifiers.foregroundStyle(buttonLabelColor(view, theme)),
+            ...(expoUi.modifiers.padding === undefined
+              ? []
+              : [expoUi.modifiers.padding({ horizontal: spacingValue(theme, "4") })]),
+            ...(heightValue === undefined ? [] : [expoUi.modifiers.frame({ height: heightValue })]),
             expoUi.modifiers.glassEffect({
               glass: { variant: "regular", interactive: true },
               shape: "capsule"
@@ -3900,6 +3922,9 @@ const renderExpoUiGlassContainer = (
             ...(expoUi.modifiers.padding === undefined
               ? []
               : [expoUi.modifiers.padding({ horizontal: spacingValue(theme, "3"), vertical: spacingValue(theme, "2") })]),
+            // Fill the host width so the shared glass shape spans the bar
+            // (SwiftUI stacks otherwise hug their content, centered).
+            expoUi.modifiers.frame(direction === "row" ? { maxWidth: 100000 } : { maxWidth: 100000, maxHeight: 100000 }),
             expoUi.modifiers.glassEffect({
               glass: { variant: "regular", interactive: true },
               ...shape
