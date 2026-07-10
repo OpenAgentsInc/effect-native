@@ -12,8 +12,10 @@ import {
   codeBlockPlainText,
   type ColorToken,
   type DiffViewView,
+  type GraphEdgeStatus,
   type GraphFigureView,
   type GraphStatus,
+  graphEdgeStatusColorToken,
   graphStatusColorToken,
   type TimelineView,
   type SectionView,
@@ -3099,6 +3101,7 @@ const renderGraphFigure = (
 ): ReactElementLike => {
   const theme = options.theme ?? defaultTheme
   const statusColor = (status: GraphStatus | undefined) => colorValue(theme, graphStatusColorToken[status ?? "idle"])
+  const edgeStatusColor = (status: GraphEdgeStatus) => colorValue(theme, graphEdgeStatusColorToken[status])
   const camera = view.camera ?? { x: 0, y: 0, zoom: 1 }
   const cameraControls =
     view.onCameraChange === undefined
@@ -3152,16 +3155,86 @@ const renderGraphFigure = (
       ...view.nodes.map((node) => {
         const dot = createElement(dependencies, dependencies.ReactNative.View, { key: "dot", style: { width: 8, height: 8, borderRadius: 999, backgroundColor: statusColor(node.status) } })
         const label = createElement(dependencies, dependencies.ReactNative.Text, { key: "label" }, node.label)
-        const props: Record<string, unknown> = {
-          key: `node-${node.id}`,
+        // Domain-neutral badge slot (issue #68): semantics as typed data, not
+        // new node kinds. Tone maps through the shared theme tokens.
+        const badge =
+          node.badge === undefined
+            ? undefined
+            : createElement(
+                dependencies,
+                dependencies.ReactNative.Text,
+                {
+                  key: "badge",
+                  testID: `en-graph-badge:${node.id}`,
+                  style: { color: colorValue(theme, toneColorToken[node.badge.tone ?? "neutral"]), fontSize: 11 }
+                },
+                node.badge.label
+              )
+        const rowChildren = badge === undefined ? [dot, label] : [dot, label, badge]
+        const rowProps: Record<string, unknown> = {
+          key: "row",
           testID: `en-graph-node:${node.id}`,
           style: { flexDirection: "row", gap: spacingValue(theme, "2") }
         }
-        if (view.onNodeSelect !== undefined) {
-          const onNodeSelect = view.onNodeSelect
-          return createElement(dependencies, dependencies.ReactNative.Pressable, { ...props, onPress: () => runReportedIntent(report, onNodeSelect, node.id) }, dot, label)
+        const row =
+          view.onNodeSelect === undefined
+            ? createElement(dependencies, dependencies.ReactNative.View, rowProps, ...rowChildren)
+            : createElement(
+                dependencies,
+                dependencies.ReactNative.Pressable,
+                { ...rowProps, onPress: () => runReportedIntent(report, view.onNodeSelect!, node.id) },
+                ...rowChildren
+              )
+        // Provenance/evidence/datum chips (issue #68): pressable typed refs
+        // below the node row dispatching the typed onChipSelect payload.
+        const chips = (node.chips ?? []).map((chip) => {
+          const chipProps: Record<string, unknown> = {
+            key: `chip-${chip.id}`,
+            testID: `en-graph-chip:${chip.id}`,
+            style: { marginLeft: spacingValue(theme, "4") }
+          }
+          const chipLabel = createElement(
+            dependencies,
+            dependencies.ReactNative.Text,
+            { key: "label", style: { color: colorValue(theme, "textMuted"), fontSize: 11 } },
+            chip.label
+          )
+          if (view.onChipSelect === undefined) {
+            return createElement(dependencies, dependencies.ReactNative.View, chipProps, chipLabel)
+          }
+          return createElement(
+            dependencies,
+            dependencies.ReactNative.Pressable,
+            {
+              ...chipProps,
+              accessibilityRole: "button",
+              accessibilityLabel: chip.label,
+              // Payload shape: GraphChipSelectPayload.
+              onPress: () =>
+                runReportedIntent(report, view.onChipSelect!, {
+                  nodeId: node.id,
+                  chipId: chip.id,
+                  ...(chip.ref === undefined ? {} : { ref: chip.ref })
+                })
+            },
+            chipLabel
+          )
+        })
+        if (chips.length === 0) {
+          return createElement(
+            dependencies,
+            dependencies.ReactNative.View,
+            { key: `node-${node.id}`, style: { flexDirection: "column" } },
+            row
+          )
         }
-        return createElement(dependencies, dependencies.ReactNative.View, props, dot, label)
+        return createElement(
+          dependencies,
+          dependencies.ReactNative.View,
+          { key: `node-${node.id}`, style: { flexDirection: "column", gap: spacingValue(theme, "0.5") } },
+          row,
+          ...chips
+        )
       })
     ),
     createElement(
@@ -3175,7 +3248,16 @@ const renderGraphFigure = (
           {
             key: `edge-${edge.id}`,
             testID: `en-graph-edge:${edge.id}`,
-            style: { color: colorValue(theme, "textMuted") }
+            // evidence_backed and the other edge statuses color through the
+            // shared edge-status tokens (issue #68); statusless edges stay
+            // muted. Node-entry animation is a declared RN no-op (policy is
+            // typed data; native animation enters with a canvas/Skia host).
+            style: {
+              color:
+                edge.status === undefined
+                  ? colorValue(theme, "textMuted")
+                  : edgeStatusColor(edge.status)
+            }
           },
           `${edge.from} → ${edge.to}`
         )

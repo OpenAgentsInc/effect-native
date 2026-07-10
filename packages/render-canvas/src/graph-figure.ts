@@ -1,10 +1,14 @@
 import {
   defaultTheme,
+  graphEdgeStatusColorToken,
   graphStatusColorToken,
   layoutGraphNodes,
+  type ColorToken,
+  type GraphEdgeStatus,
   type GraphFigureView,
   type GraphStatus,
-  type Theme
+  type Theme,
+  type Tone
 } from "@effect-native/core"
 import {
   basicMaterial,
@@ -26,6 +30,12 @@ import {
  * (`layoutGraphNodes`) keeps the canvas path and the DOM/SVG fallback in
  * agreement. Status colors resolve to hex through the theme tokens.
  *
+ * Provenance vocabulary (issue #68): node badges render as tone-colored labels
+ * above the node, provenance/evidence/datum chips as muted labels below it,
+ * and `evidence_backed` edges draw in the accent color at width 3. The node
+ * entry-animation policy is carried as typed data; scene-level entry animation
+ * is a declared no-op here until the frame loop demands it.
+ *
  * This is the documented adapter the canvas renderer consumes; it is exercised
  * against the headless canvas backend (no GPU) exactly like the DOM/RN headless
  * renderers, and against the live Three.js backend.
@@ -37,6 +47,19 @@ export interface GraphFigureSceneOptions {
 
 const statusHex = (theme: Theme, status: GraphStatus | undefined): string =>
   theme.color[graphStatusColorToken[status ?? "idle"]]
+
+const edgeStatusHex = (theme: Theme, status: GraphEdgeStatus | undefined): string =>
+  theme.color[graphEdgeStatusColorToken[status ?? "idle"]]
+
+// Badge tones map onto the same theme roles the DOM/RN data-display tone maps
+// use (issue #68).
+const toneColorToken: Record<Tone, ColorToken> = {
+  neutral: "textMuted",
+  info: "info",
+  success: "success",
+  warn: "warning",
+  danger: "danger"
+}
 
 export const graphFigureToScene = (
   view: GraphFigureView,
@@ -58,8 +81,9 @@ export const graphFigureToScene = (
           [from.x, from.y, 0],
           [to.x, to.y, 0]
         ],
-        color: statusHex(theme, edge.status),
-        width: 2
+        color: edgeStatusHex(theme, edge.status),
+        // evidence_backed provenance links draw heavier than generic statuses.
+        width: edge.status === "evidence_backed" ? 3 : 2
       })
     )
   }
@@ -85,6 +109,30 @@ export const graphFigureToScene = (
         position: [pos.x + 16, pos.y, 0]
       })
     )
+    if (node.badge !== undefined) {
+      children.push(
+        label({
+          key: `badge-${node.id}`,
+          text: node.badge.label,
+          color: theme.color[toneColorToken[node.badge.tone ?? "neutral"]],
+          fontSize: 10,
+          anchor: "start",
+          position: [pos.x + 16, pos.y - 14, 0]
+        })
+      )
+    }
+    ;(node.chips ?? []).forEach((chip, index) => {
+      children.push(
+        label({
+          key: `chip-${node.id}-${chip.id}`,
+          text: chip.label,
+          color: theme.color.textMuted,
+          fontSize: 10,
+          anchor: "start",
+          position: [pos.x + 16, pos.y + 14 + index * 12, 0]
+        })
+      )
+    })
   }
 
   const frustum = Math.max(1, 240 / camera.zoom)

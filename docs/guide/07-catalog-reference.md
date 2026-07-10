@@ -8,9 +8,10 @@ conformance-checked by
 (`bun run check:catalog-reference`) so this page cannot silently drop a shipped
 component.
 
-Current catalog marker: `CatalogVersion = "effect-native/v30"` (v30 adds the
-glass-chrome icons `Menu`/`Compose`/`Mic`/`Sparkles` to the closed `IconName`
-set — GL-1 openagents#8647).
+Current catalog marker: `CatalogVersion = "effect-native/v31"` (v31 adds the
+GraphFigure provenance vocabulary — node badges, provenance/evidence/datum
+chips with the `onChipSelect` intent, the typed `nodeEntry` policy, and the
+`evidence_backed` edge status — issue #68, Sarah Blueprint map).
 
 Closed component tags (`componentTags`, 70 total):
 
@@ -161,6 +162,19 @@ start-aligned prose, `system`/`tool` rows muted.
 
 ### GraphFigure
 
+Typed arbiter-graph model: nodes (`id`/`label`/closed `kind`+`status` sets,
+optional precomputed `x`/`y`), edges (endpoints, closed `kind` set, edge
+`status` extends node statuses with `evidence_backed` — provenance-backed
+links draw in the accent color), typed layout policy and pan/zoom camera
+state. Provenance vocabulary (v31): each node may carry a domain-neutral
+`badge` (`label` + `tone` — app semantics as data, never new node kinds) and
+typed `chips` (`provenance`/`evidence`/`datum` + opaque `ref`) whose
+activation dispatches `onChipSelect` with `{ nodeId, chipId, ref? }`;
+`nodeEntry` (`none`/`fade`/`pop`) is the typed entry treatment for keyed
+nodes newly observed after the first commit (DOM applies it; RN/canvas carry
+it as a declared no-op). Intents: `onNodeSelect`, `onNodeHover`,
+`onChipSelect`, `onCameraChange`.
+
 ### Timeline
 
 ### Section
@@ -265,7 +279,7 @@ Every component accepts these two, inherited from `NodeBase`:
 | Field | Type | Notes |
 |---|---|---|
 | `key` | `string` (optional) | Required (enforced by the schema, not just convention) on any view placed inside a `List`/`SectionList`/`Link` children array. |
-| `catalogVersion` | `"effect-native/v30"` | Set automatically by every constructor function — you never pass this yourself. |
+| `catalogVersion` | `"effect-native/v31"` | Set automatically by every constructor function — you never pass this yourself. |
 
 ### Design tokens
 

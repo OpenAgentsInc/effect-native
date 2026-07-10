@@ -100,3 +100,76 @@ describe("GraphFigure + Timeline (#37) React Native renderer", () => {
     expect(events).toEqual(["ev1"])
   })
 })
+
+// Issue #68 (v31, RN subset): tone-colored badges, pressable provenance chips
+// dispatching the typed payload, and evidence_backed edge coloring. Node entry
+// animation is a declared RN no-op (typed policy data only).
+describe("GraphFigure provenance vocabulary (#68) React Native renderer", () => {
+  test("badge, chip select payload, and evidence_backed edge color", async () => {
+    const chips: Array<unknown> = []
+    const selected: Array<unknown> = []
+    const report: IntentReporter = (ref, value) =>
+      Effect.sync(() => {
+        if (ref.name === "Chip") chips.push(value)
+        if (ref.name === "Select") selected.push(value)
+      })
+
+    const graph = renderReactNativeView(
+      GraphFigure({
+        key: "graph",
+        nodeEntry: "fade",
+        onNodeSelect: IntentRef("Select"),
+        onChipSelect: IntentRef("Chip"),
+        nodes: [
+          {
+            id: "acct",
+            label: "Account",
+            status: "active",
+            badge: { label: "account", tone: "info" },
+            chips: [
+              { id: "d1", label: "intake call", kind: "provenance", ref: "datum:intake" },
+              { id: "d2", label: "usage report" }
+            ]
+          }
+        ],
+        edges: [
+          { id: "e1", from: "acct", to: "acct", status: "evidence_backed" },
+          { id: "e2", from: "acct", to: "acct", status: "active" }
+        ]
+      }) as View,
+      dependencies,
+      report
+    )
+
+    // badge renders tone-colored next to the label
+    const badge = find(graph, (e) => e.props.testID === "en-graph-badge:acct")
+    expect(badge?.props.children).toBe("account")
+    const badgeStyle = badge?.props.style as { color: string }
+    expect(typeof badgeStyle.color).toBe("string")
+
+    // chip press dispatches the typed payload; node select does not fire
+    const chip = find(graph, (e) => e.props.testID === "en-graph-chip:d1")
+    expect(chip?.props.accessibilityRole).toBe("button")
+    ;(chip?.props.onPress as (() => void) | undefined)?.()
+    await wait()
+    expect(chips).toEqual([{ nodeId: "acct", chipId: "d1", ref: "datum:intake" }])
+    expect(selected).toEqual([])
+    const chipWithoutRef = find(graph, (e) => e.props.testID === "en-graph-chip:d2")
+    ;(chipWithoutRef?.props.onPress as (() => void) | undefined)?.()
+    await wait()
+    expect(chips[1]).toEqual({ nodeId: "acct", chipId: "d2" })
+
+    // evidence_backed edge colors differently from a generic active edge
+    const evidenceEdge = find(graph, (e) => e.props.testID === "en-graph-edge:e1")
+    const activeEdge = find(graph, (e) => e.props.testID === "en-graph-edge:e2")
+    const evidenceColor = (evidenceEdge?.props.style as { color: string }).color
+    const activeColor = (activeEdge?.props.style as { color: string }).color
+    expect(evidenceColor).not.toBe(activeColor)
+
+    // node row still selectable with badge + chips present
+    const node = find(graph, (e) => e.props.testID === "en-graph-node:acct")
+    ;(node?.props.onPress as (() => void) | undefined)?.()
+    await wait()
+    expect(selected).toEqual(["acct"])
+  })
+})

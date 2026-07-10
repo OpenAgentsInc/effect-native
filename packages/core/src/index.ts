@@ -90,8 +90,9 @@ export const GlassCatalogVersion = "effect-native/v27" as const
 export const MarkdownLinkHrefCatalogVersion = "effect-native/v28" as const
 export const ChatChromeCatalogVersion = "effect-native/v29" as const
 export const GlassChromeIconsCatalogVersion = "effect-native/v30" as const
-export const PreviousCatalogVersion = ChatChromeCatalogVersion
-export const CatalogVersion = GlassChromeIconsCatalogVersion
+export const GraphProvenanceCatalogVersion = "effect-native/v31" as const
+export const PreviousCatalogVersion = GlassChromeIconsCatalogVersion
+export const CatalogVersion = GraphProvenanceCatalogVersion
 export const CatalogVersionSchema = Schema.Literal(CatalogVersion)
 export type CatalogVersion = typeof CatalogVersion
 export const compatibleCatalogVersions = [
@@ -125,7 +126,8 @@ export const compatibleCatalogVersions = [
   GlassCatalogVersion,
   MarkdownLinkHrefCatalogVersion,
   ChatChromeCatalogVersion,
-  GlassChromeIconsCatalogVersion
+  GlassChromeIconsCatalogVersion,
+  GraphProvenanceCatalogVersion
 ] as const
 export type CompatibleCatalogVersion = (typeof compatibleCatalogVersions)[number]
 export const CompatibleCatalogVersionSchema = Schema.Literals(compatibleCatalogVersions)
@@ -2591,11 +2593,46 @@ export type GraphEdgeKind = (typeof graphEdgeKinds)[number]
 export const graphLayouts = ["precomputed", "force", "tree"] as const
 export type GraphLayout = (typeof graphLayouts)[number]
 
+// Provenance-era graph vocabulary (issue #68, v31 — demand: the Sarah
+// Blueprint map on the existing GraphFigure). Domain-neutral: a badge/accent
+// slot carries app semantics (fact vs need vs offering vs account) as data
+// instead of new node kinds; chips carry inline provenance/evidence/datum refs
+// (the arbiter-effect `GraphDatum` idea without app-specific UI); edges gain a
+// distinct `evidence_backed` status; and node entry animation is a typed
+// policy, not renderer-private behavior.
+export const graphEdgeStatuses = [...graphStatuses, "evidence_backed"] as const
+export type GraphEdgeStatus = (typeof graphEdgeStatuses)[number]
+export const graphChipKinds = ["provenance", "evidence", "datum"] as const
+export type GraphChipKind = (typeof graphChipKinds)[number]
+export const graphNodeEntryPolicies = ["none", "fade", "pop"] as const
+export type GraphNodeEntryPolicy = (typeof graphNodeEntryPolicies)[number]
+
+export interface GraphNodeBadge {
+  readonly label: string
+  readonly tone?: Tone
+}
+export interface GraphNodeChip {
+  readonly id: string
+  readonly label: string
+  readonly kind?: GraphChipKind
+  // Opaque app-side reference (e.g. a datum/evidence id) echoed back in the
+  // onChipSelect payload. Never interpreted by renderers.
+  readonly ref?: string
+}
+// Payload shape delivered to `onChipSelect`.
+export interface GraphChipSelectPayload {
+  readonly nodeId: string
+  readonly chipId: string
+  readonly ref?: string
+}
+
 export interface GraphNodeModel {
   readonly id: string
   readonly label: string
   readonly kind?: GraphNodeKind
   readonly status?: GraphStatus
+  readonly badge?: GraphNodeBadge
+  readonly chips?: ReadonlyArray<GraphNodeChip>
   // Precomputed position (used when layout is "precomputed").
   readonly x?: number
   readonly y?: number
@@ -2605,7 +2642,7 @@ export interface GraphEdgeModel {
   readonly from: string
   readonly to: string
   readonly kind?: GraphEdgeKind
-  readonly status?: GraphStatus
+  readonly status?: GraphEdgeStatus
 }
 export interface GraphCamera {
   readonly x: number
@@ -2620,8 +2657,16 @@ export interface GraphFigureView extends NodeBase {
   readonly camera?: GraphCamera
   readonly width?: number
   readonly height?: number
+  // Entry treatment for keyed nodes newly observed after the first commit
+  // (live events adding nodes). Policy is typed data: the DOM/SVG path applies
+  // it (marker attribute + Web Animations where available); RN/canvas carry it
+  // as a declared no-op until a native/scene animation host demands it.
+  readonly nodeEntry?: GraphNodeEntryPolicy
   readonly onNodeSelect?: IntentRef
   readonly onNodeHover?: IntentRef
+  // Fires with a GraphChipSelectPayload when a provenance/evidence chip is
+  // activated.
+  readonly onChipSelect?: IntentRef
   readonly onCameraChange?: IntentRef
   readonly style?: CardStyle
 }
@@ -3861,11 +3906,28 @@ export const DiffViewSchema: Schema.Codec<DiffViewView, DiffViewView> = Schema.T
 })
 
 const GraphNumberSchema = Schema.Number.check(Schema.isFinite({ title: "FiniteGraphNumber" }))
+export const GraphNodeBadgeSchema: Schema.Codec<GraphNodeBadge, GraphNodeBadge> = Schema.Struct({
+  label: Schema.NonEmptyString,
+  tone: ToneSchema.pipe(Schema.optionalKey)
+})
+export const GraphNodeChipSchema: Schema.Codec<GraphNodeChip, GraphNodeChip> = Schema.Struct({
+  id: Schema.NonEmptyString,
+  label: Schema.String,
+  kind: Schema.Literals(graphChipKinds).pipe(Schema.optionalKey),
+  ref: Schema.String.pipe(Schema.optionalKey)
+})
+export const GraphChipSelectPayloadSchema: Schema.Codec<GraphChipSelectPayload, GraphChipSelectPayload> = Schema.Struct({
+  nodeId: Schema.NonEmptyString,
+  chipId: Schema.NonEmptyString,
+  ref: Schema.String.pipe(Schema.optionalKey)
+})
 export const GraphNodeModelSchema: Schema.Codec<GraphNodeModel, GraphNodeModel> = Schema.Struct({
   id: Schema.NonEmptyString,
   label: Schema.String,
   kind: Schema.Literals(graphNodeKinds).pipe(Schema.optionalKey),
   status: Schema.Literals(graphStatuses).pipe(Schema.optionalKey),
+  badge: GraphNodeBadgeSchema.pipe(Schema.optionalKey),
+  chips: Schema.Array(GraphNodeChipSchema).pipe(Schema.optionalKey),
   x: GraphNumberSchema.pipe(Schema.optionalKey),
   y: GraphNumberSchema.pipe(Schema.optionalKey)
 })
@@ -3874,7 +3936,7 @@ export const GraphEdgeModelSchema: Schema.Codec<GraphEdgeModel, GraphEdgeModel> 
   from: Schema.NonEmptyString,
   to: Schema.NonEmptyString,
   kind: Schema.Literals(graphEdgeKinds).pipe(Schema.optionalKey),
-  status: Schema.Literals(graphStatuses).pipe(Schema.optionalKey)
+  status: Schema.Literals(graphEdgeStatuses).pipe(Schema.optionalKey)
 })
 export const GraphCameraSchema: Schema.Codec<GraphCamera, GraphCamera> = Schema.Struct({
   x: GraphNumberSchema,
@@ -3889,8 +3951,10 @@ export const GraphFigureSchema: Schema.Codec<GraphFigureView, GraphFigureView> =
   camera: GraphCameraSchema.pipe(Schema.optionalKey),
   width: NonNegativeNumberSchema.pipe(Schema.optionalKey),
   height: NonNegativeNumberSchema.pipe(Schema.optionalKey),
+  nodeEntry: Schema.Literals(graphNodeEntryPolicies).pipe(Schema.optionalKey),
   onNodeSelect: IntentRefSchema.pipe(Schema.optionalKey),
   onNodeHover: IntentRefSchema.pipe(Schema.optionalKey),
+  onChipSelect: IntentRefSchema.pipe(Schema.optionalKey),
   onCameraChange: IntentRefSchema.pipe(Schema.optionalKey),
   style: CardStyleSchema.pipe(Schema.optionalKey)
 })
@@ -3917,6 +3981,13 @@ export const graphStatusColorToken: Record<GraphStatus, ColorToken> = {
   success: "success",
   failed: "danger",
   pending: "warning"
+}
+// Edge statuses extend node statuses with `evidence_backed` (issue #68):
+// provenance-backed links render in the accent color, distinct from the
+// generic active/success statuses, across DOM/canvas/RN.
+export const graphEdgeStatusColorToken: Record<GraphEdgeStatus, ColorToken> = {
+  ...graphStatusColorToken,
+  evidence_backed: "accent"
 }
 
 export const MarkdownSchema: Schema.Codec<MarkdownView, MarkdownView> = Schema.TaggedStruct("Markdown", {

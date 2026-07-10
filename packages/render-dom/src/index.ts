@@ -11,8 +11,10 @@ import {
   type ColorToken,
   type DiffViewView,
   type DiffRow,
+  type GraphEdgeStatus,
   type GraphFigureView,
   type GraphStatus,
+  graphEdgeStatusColorToken,
   graphStatusColorToken,
   layoutGraphNodes,
   type TimelineView,
@@ -3643,6 +3645,8 @@ const renderDiffView = (view: DiffViewView, state: DomRendererState, report: Int
 const SVG_NS = "http://www.w3.org/2000/svg"
 const graphStatusColor = (status: GraphStatus | undefined): string =>
   colorValue(graphStatusColorToken[status ?? "idle"])
+const graphEdgeStatusColor = (status: GraphEdgeStatus | undefined): string =>
+  colorValue(graphEdgeStatusColorToken[status ?? "idle"])
 
 const renderGraphFigure = (view: GraphFigureView, state: DomRendererState, report: IntentReporter): HTMLElement => {
   const element = state.keyedElement(view, "div")
@@ -3677,14 +3681,25 @@ const renderGraphFigure = (view: GraphFigureView, state: DomRendererState, repor
     if (from === undefined || to === undefined) continue
     const lineEl = document.createElementNS(SVG_NS, "line")
     lineEl.setAttribute("data-en-edge", edge.id)
+    if (edge.status !== undefined) lineEl.setAttribute("data-en-status", edge.status)
     lineEl.setAttribute("x1", String(from.x))
     lineEl.setAttribute("y1", String(from.y))
     lineEl.setAttribute("x2", String(to.x))
     lineEl.setAttribute("y2", String(to.y))
-    lineEl.setAttribute("stroke", graphStatusColor(edge.status))
-    lineEl.setAttribute("stroke-width", "2")
+    lineEl.setAttribute("stroke", graphEdgeStatusColor(edge.status))
+    // evidence_backed links (issue #68) draw heavier than generic statuses so
+    // provenance-backed structure reads at a glance.
+    lineEl.setAttribute("stroke-width", edge.status === "evidence_backed" ? "3" : "2")
     root.appendChild(lineEl)
   }
+
+  // Node entry policy (issue #68): nodes newly observed after the first commit
+  // get a marker attribute + a Web Animations entry (where the host supports
+  // it). First paint never animates. Seen ids persist on the keyed element.
+  const entryPolicy = view.nodeEntry ?? "none"
+  const seenAttribute = element.getAttribute("data-en-seen-nodes")
+  const previouslySeen = new Set(seenAttribute === null || seenAttribute === "" ? [] : seenAttribute.split(" "))
+  const isFirstCommit = seenAttribute === null
 
   for (const node of view.nodes) {
     const pos = positions.get(node.id)
@@ -3706,6 +3721,67 @@ const renderGraphFigure = (view: GraphFigureView, state: DomRendererState, repor
     text.setAttribute("fill", colorValue("textPrimary"))
     text.textContent = node.label
     g.append(circle, text)
+    // Domain-neutral badge/accent slot (issue #68): semantics ride typed data
+    // (label + tone), never new node kinds.
+    if (node.badge !== undefined) {
+      const badge = document.createElementNS(SVG_NS, "text")
+      badge.setAttribute("data-en-role", "node-badge")
+      badge.setAttribute("data-en-badge", node.badge.label)
+      badge.setAttribute("data-en-tone", node.badge.tone ?? "neutral")
+      badge.setAttribute("x", "16")
+      badge.setAttribute("y", "-10")
+      badge.setAttribute("font-size", "10")
+      badge.setAttribute("fill", colorValue(toneColorToken[node.badge.tone ?? "neutral"]))
+      badge.textContent = node.badge.label
+      g.appendChild(badge)
+    }
+    // Provenance/evidence/datum chips (issue #68): inline typed refs below the
+    // label; activation dispatches the typed onChipSelect payload.
+    if (node.chips !== undefined) {
+      node.chips.forEach((chip, index) => {
+        const chipEl = document.createElementNS(SVG_NS, "text")
+        chipEl.setAttribute("data-en-chip", chip.id)
+        chipEl.setAttribute("data-en-chip-kind", chip.kind ?? "datum")
+        chipEl.setAttribute("x", "16")
+        chipEl.setAttribute("y", String(18 + index * 13))
+        chipEl.setAttribute("font-size", "10")
+        chipEl.setAttribute("fill", colorValue("textMuted"))
+        chipEl.textContent = chip.label
+        if (view.onChipSelect !== undefined) {
+          const onChipSelect = view.onChipSelect
+          chipEl.setAttribute("role", "button")
+          chipEl.setAttribute("tabindex", "0")
+          chipEl.setAttribute("aria-label", chip.label)
+          chipEl.setAttribute("cursor", "pointer")
+          state.addListener(chipEl as unknown as HTMLElement, "click", (clickEvent) => {
+            // A chip activation is not a node selection.
+            clickEvent.stopPropagation()
+            // Payload shape: GraphChipSelectPayload.
+            runReportedIntent(report, onChipSelect, {
+              nodeId: node.id,
+              chipId: chip.id,
+              ...(chip.ref === undefined ? {} : { ref: chip.ref })
+            })
+          })
+        }
+        g.appendChild(chipEl)
+      })
+    }
+    if (entryPolicy !== "none" && !isFirstCommit && !previouslySeen.has(node.id)) {
+      g.setAttribute("data-en-entry", entryPolicy)
+      const animate = (g as unknown as {
+        animate?: (keyframes: ReadonlyArray<Record<string, unknown>>, options: Record<string, unknown>) => unknown
+      }).animate
+      if (typeof animate === "function") {
+        animate.call(
+          g,
+          entryPolicy === "pop"
+            ? [{ opacity: 0, transform: "scale(0.6)" }, { opacity: 1, transform: "scale(1)" }]
+            : [{ opacity: 0 }, { opacity: 1 }],
+          { duration: 180, easing: "ease-out" }
+        )
+      }
+    }
     if (view.onNodeSelect !== undefined) {
       const onNodeSelect = view.onNodeSelect
       state.addListener(g as unknown as HTMLElement, "click", () => runReportedIntent(report, onNodeSelect, node.id))
@@ -3716,6 +3792,7 @@ const renderGraphFigure = (view: GraphFigureView, state: DomRendererState, repor
     }
     root.appendChild(g)
   }
+  element.setAttribute("data-en-seen-nodes", view.nodes.map((node) => node.id).join(" "))
   svg.appendChild(root)
   element.replaceChildren(svg)
 
