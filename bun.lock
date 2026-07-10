@@ -9,6 +9,7 @@
         "@effect-native/devtools": "workspace:*",
         "@effect-native/gallery": "workspace:*",
         "@effect-native/platform-desktop": "workspace:*",
+        "@effect-native/platform-electron": "workspace:*",
         "@effect-native/platform-mobile": "workspace:*",
         "@effect-native/render-canvas": "workspace:*",
         "@effect-native/render-dom": "workspace:*",
@@ -60,6 +61,16 @@
         "effect": "4.0.0-beta.94",
       },
     },
+    "packages/platform-electron": {
+      "name": "@effect-native/platform-electron",
+      "version": "0.0.0",
+      "dependencies": {
+        "@effect-native/core": "workspace:*",
+        "@effect-native/platform-desktop": "workspace:*",
+        "@effect-native/render-dom": "workspace:*",
+        "effect": "4.0.0-beta.94",
+      },
+    },
     "packages/platform-mobile": {
       "name": "@effect-native/platform-mobile",
       "version": "0.0.0",
@@ -97,10 +108,12 @@
         "@effect-native/tokens": "workspace:*",
       },
       "peerDependencies": {
+        "@expo/ui": "*",
         "react": "*",
         "react-native": "*",
       },
       "optionalPeers": [
+        "@expo/ui",
         "react",
         "react-native",
       ],
@@ -145,6 +158,8 @@
     "@effect-native/gallery": ["@effect-native/gallery@workspace:packages/gallery"],
 
     "@effect-native/platform-desktop": ["@effect-native/platform-desktop@workspace:packages/platform-desktop"],
+
+    "@effect-native/platform-electron": ["@effect-native/platform-electron@workspace:packages/platform-electron"],
 
     "@effect-native/platform-mobile": ["@effect-native/platform-mobile@workspace:packages/platform-mobile"],
 

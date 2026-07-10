@@ -33,6 +33,7 @@
     "@effect-native/devtools": "workspace:*",
     "@effect-native/gallery": "workspace:*",
     "@effect-native/platform-desktop": "workspace:*",
+    "@effect-native/platform-electron": "workspace:*",
     "@effect-native/platform-mobile": "workspace:*",
     "@effect-native/render-canvas": "workspace:*",
     "@effect-native/render-dom": "workspace:*",
