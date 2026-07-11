@@ -70,7 +70,7 @@ describe("app shell (#27) React Native renderer", () => {
             id: "panes",
             label: "Workbench",
             items: [
-              { id: "chat", label: "Chat", icon: "Circle" },
+              { id: "chat", label: "Chat", icon: "Circle", meta: "now", badge: "3", accessibilityLabel: "Open Chat" },
               { id: "editor", label: "Editor", icon: "Play" },
               { id: "term", label: "Terminal", disabled: true }
             ]
@@ -83,6 +83,9 @@ describe("app shell (#27) React Native renderer", () => {
 
     const chatItem = find(nav, (e) => e.props.testID === "en-nav-item:chat")
     expect(chatItem?.type).toBe("Pressable")
+    expect(chatItem?.props.accessibilityLabel).toBe("Open Chat")
+    expect(find(chatItem, (e) => e.props.children === "now")).not.toBeUndefined()
+    expect(find(chatItem, (e) => e.props.children === "3")).not.toBeUndefined()
     const editorItem = find(nav, (e) => e.props.testID === "en-nav-item:editor")
     ;(editorItem?.props.onPress as (() => void) | undefined)?.()
     await new Promise((resolve) => setTimeout(resolve, 0))

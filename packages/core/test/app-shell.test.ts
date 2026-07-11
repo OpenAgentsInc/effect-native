@@ -53,7 +53,7 @@ const shellView = (state: ShellState): View =>
               id: "panes",
               label: "Workbench",
               items: [
-                { id: "chat", label: "Chat", icon: "Circle" },
+                { id: "chat", label: "Chat", icon: "Circle", meta: "now", badge: "3", accessibilityLabel: "Open Chat" },
                 { id: "editor", label: "Editor", icon: "Play" }
               ]
             }
@@ -84,6 +84,14 @@ const activePane = (view: View): string => {
 describe("app shell (#27)", () => {
   test("shell tree round-trips through the schema as serializable data", () => {
     const view = shellView({ activePaneId: "chat", sidebarSize: 240 })
+    expect(decodeView(encodeView(view))).toEqual(view)
+  })
+
+  test("nav items carry compact sidebar metadata and item-local intents", () => {
+    const view = NavRail({
+      key: "mixed-sidebar",
+      sections: [{ id: "actions", layout: "row", items: [{ id: "settings", label: "Settings", icon: "Menu", meta: "⌘,", badge: "1", accessibilityLabel: "Open settings", onSelect: IntentRef("OpenSettings") }] }]
+    })
     expect(decodeView(encodeView(view))).toEqual(view)
   })
 

@@ -55,7 +55,7 @@ describe("app shell (#27) DOM renderer", () => {
                     id: "panes",
                     label: "Workbench",
                     items: [
-                      { id: "chat", label: "Chat", icon: "Circle" },
+                      { id: "chat", label: "Chat", icon: "Circle", meta: "now", badge: "3", accessibilityLabel: "Open Chat", onSelect: IntentRef("OpenChat") },
                       { id: "editor", label: "Editor", icon: "Play" },
                       { id: "term", label: "Terminal", disabled: true }
                     ]
@@ -94,6 +94,10 @@ describe("app shell (#27) DOM renderer", () => {
       expect((railPane?.firstElementChild as HTMLElement | null)?.style.flex).not.toBe("")
       const nav = container.querySelector('[data-en-key="rail-nav"]')
       expect(nav?.querySelectorAll("[data-en-nav-item]").length).toBe(3)
+      const chat = nav?.querySelector('[data-en-nav-item="chat"]')
+      expect(chat?.getAttribute("aria-label")).toBe("Open Chat")
+      expect(chat?.querySelector('[data-en-role="badge"]')?.textContent).toBe("3")
+      expect(chat?.querySelector('[data-en-role="meta"]')?.textContent).toBe("now")
 
       // workbench shows only the active pane by default
       const bench = container.querySelector('[data-en-key="bench"]') as HTMLElement | null
@@ -108,6 +112,10 @@ describe("app shell (#27) DOM renderer", () => {
       // selecting a nav item dispatches its id
       const editorItem = nav?.querySelector('[data-en-nav-item="editor"]') as HTMLElement | null
       editorItem?.dispatchEvent(new window.MouseEvent("click", { bubbles: true }) as unknown as Event)
+      yield* nextTask
+      expect(selected).toEqual(["editor"])
+
+      chat?.dispatchEvent(new window.MouseEvent("click", { bubbles: true }) as unknown as Event)
       yield* nextTask
       expect(selected).toEqual(["editor"])
 
