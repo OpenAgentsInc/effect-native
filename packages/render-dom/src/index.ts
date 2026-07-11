@@ -2078,6 +2078,7 @@ const renderNavRail = (view: NavRailView, state: DomRendererState, report: Inten
       button.disabled = item.disabled === true
       const active = item.selected ?? view.activeId === item.id
       button.setAttribute("data-en-active", active ? "true" : "false")
+      button.setAttribute("aria-selected", active ? "true" : "false")
       if (active) button.setAttribute("aria-current", "page")
       button.style.display = "flex"
       button.style.alignItems = "center"

@@ -96,6 +96,7 @@ describe("app shell (#27) DOM renderer", () => {
       expect(nav?.querySelectorAll("[data-en-nav-item]").length).toBe(3)
       const chat = nav?.querySelector('[data-en-nav-item="chat"]')
       expect(chat?.getAttribute("aria-label")).toBe("Open Chat")
+      expect(chat?.getAttribute("aria-selected")).toBe("true")
       expect(chat?.querySelector('[data-en-role="badge"]')?.textContent).toBe("3")
       expect(chat?.querySelector('[data-en-role="meta"]')?.textContent).toBe("now")
 
