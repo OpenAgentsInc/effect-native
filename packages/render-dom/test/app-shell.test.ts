@@ -120,7 +120,7 @@ describe("app shell (#27) DOM renderer", () => {
 
       yield* SubscriptionRef.set(state, "editor")
       yield* nextTask
-      expect((nav?.querySelector('[data-en-section="panes"]') as HTMLElement | null)?.scrollTop).toBe(48)
+      expect((container.querySelector('[data-en-key="rail-nav"] [data-en-section="panes"]') as HTMLElement | null)?.scrollTop).toBe(48)
 
       chat?.dispatchEvent(new window.MouseEvent("click", { bubbles: true }) as unknown as Event)
       yield* nextTask

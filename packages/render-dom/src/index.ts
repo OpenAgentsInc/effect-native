@@ -2057,19 +2057,12 @@ const renderNavRail = (view: NavRailView, state: DomRendererState, report: Inten
   element.style.flexDirection = "column"
   element.setAttribute("role", view.role ?? "navigation")
   const document = element.ownerDocument
-  const sectionScrollPositions = new Map(
-    Array.from(element.querySelectorAll<HTMLElement>("[data-en-section]")).map((section) => [
-      section.getAttribute("data-en-section") ?? "",
-      section.scrollTop
-    ])
-  )
   const sections = view.sections.map((section) => {
     const sectionEl = document.createElement("div")
     sectionEl.setAttribute("data-en-section", section.id)
     sectionEl.setAttribute("data-en-key", section.id)
     sectionEl.setAttribute("data-en-layout", section.layout ?? "column")
     sectionEl.setAttribute("role", "group")
-    sectionEl.scrollTop = sectionScrollPositions.get(section.id) ?? 0
     if (section.label !== undefined) {
       const label = document.createElement("span")
       label.setAttribute("data-en-role", "section-label")
@@ -2136,10 +2129,6 @@ const renderNavRail = (view: NavRailView, state: DomRendererState, report: Inten
     return sectionEl
   })
   element.replaceChildren(...sections)
-  for (const section of sections) {
-    const id = section.getAttribute("data-en-section") ?? ""
-    section.scrollTop = sectionScrollPositions.get(id) ?? 0
-  }
   applyBaseStyle(element, view, state)
   applyA11y(element, view)
   applyInteractions(element, view, state, report)
@@ -4075,10 +4064,23 @@ const renderView = (view: View, state: DomRendererState, report: IntentReporter)
 
 const commitView = (view: View, state: DomRendererState, report: IntentReporter): void => {
   const activeBefore = state.root.ownerDocument.activeElement as HTMLElement | null
+  const sectionScrollPositions = new Map(
+    Array.from(state.root.querySelectorAll<HTMLElement>("[data-en-section]")).map((section) => [
+      section.getAttribute("data-en-section") ?? "",
+      { top: section.scrollTop, left: section.scrollLeft }
+    ])
+  )
   state.clearFocusRequest()
   state.styles.beginRender()
   const element = renderView(view, state, report)
   state.root.replaceChildren(element)
+  for (const section of Array.from(state.root.querySelectorAll<HTMLElement>("[data-en-section]"))) {
+    const position = sectionScrollPositions.get(section.getAttribute("data-en-section") ?? "")
+    if (position !== undefined) {
+      section.scrollTop = position.top
+      section.scrollLeft = position.left
+    }
+  }
   const focusRequest = state.consumeFocusRequest()
   const overlayFocus = state.syncOverlayLifecycle(
     state.root.querySelector('[data-en-overlay-open="true"]') !== null,
