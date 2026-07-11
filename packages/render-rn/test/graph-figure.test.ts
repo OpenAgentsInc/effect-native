@@ -87,6 +87,7 @@ describe("GraphFigure + Timeline (#37) React Native renderer", () => {
     const timeline = renderReactNativeView(
       Timeline({
         key: "timeline",
+        selectedId: "event-1",
         onEventSelect: IntentRef("Event"),
         events: [{ id: "ev1", label: "Pairing opened", time: "12:00", status: "active" }]
       }) as View,

@@ -90,7 +90,8 @@ describe("app shell (#27)", () => {
   test("nav items carry compact sidebar metadata and item-local intents", () => {
     const view = NavRail({
       key: "mixed-sidebar",
-      sections: [{ id: "actions", layout: "row", items: [{ id: "settings", label: "Settings", icon: "Menu", meta: "⌘,", badge: "1", accessibilityLabel: "Open settings", onSelect: IntentRef("OpenSettings") }] }]
+      role: "tree",
+      sections: [{ id: "actions", layout: "row", items: [{ id: "settings", label: "Settings", icon: "Menu", meta: "⌘,", badge: "1", accessibilityLabel: "Open settings", selected: true, depth: 1, expanded: false, positionInSet: 1, setSize: 1, onSelect: IntentRef("OpenSettings") }] }]
     })
     expect(decodeView(encodeView(view))).toEqual(view)
   })

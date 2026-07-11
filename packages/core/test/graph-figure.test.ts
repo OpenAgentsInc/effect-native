@@ -30,8 +30,9 @@ describe("GraphFigure + Timeline (#37)", () => {
     })
     const timeline = Timeline({
       key: "timeline",
+      selectedId: "ev1",
       onEventSelect: IntentRef("Event"),
-      events: [{ id: "ev1", label: "Pairing opened", time: "12:00", status: "active", refs: ["orrery", "arbiter"] }]
+      events: [{ id: "ev1", key: "timeline-event-ev1", label: "Pairing opened", accessibilityLabel: "Pairing opened at noon", time: "12:00", status: "active", refs: ["orrery", "arbiter"] }]
     })
     expect(decodeView(encodeView(graph))).toEqual(graph)
     expect(decodeView(encodeView(timeline))).toEqual(timeline)
