@@ -1,7 +1,7 @@
-# Porting map — Khala Code Mobile → Effect Native
+# Porting map — OpenAgents mobile on Effect Native
 
-Stub map for the mobile epic #52 / docs issue #65. This is a **migration of the
-UI substrate**, not a rewrite of Khala's mobile backend. Khala Sync, auth,
+Completed framework map for mobile epic #52 / docs issue #65. This was a
+**migration of the UI substrate**, not a rewrite of the app backend. Khala Sync, auth,
 credits, the owned OTA layer, push registration, and native voice / on-device
 model modules stay owned by the OpenAgents monorepo app. Effect Native owns
 typed views, intents, runtime, and the React Native renderer.
