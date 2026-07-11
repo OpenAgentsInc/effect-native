@@ -4081,6 +4081,19 @@ const commitView = (view: View, state: DomRendererState, report: IntentReporter)
       section.scrollLeft = position.left
     }
   }
+  for (const active of Array.from(state.root.querySelectorAll<HTMLElement>('[data-en-nav-item][data-en-active="true"]'))) {
+    const section = active.closest<HTMLElement>("[data-en-section]")
+    if (section === null || section.clientHeight <= 0) continue
+    const rows = Array.from(section.querySelectorAll<HTMLElement>("[data-en-nav-item]"))
+    const index = rows.indexOf(active)
+    if (index < 0) continue
+    const measuredHeight = rows.map((row) => row.getBoundingClientRect().height).find((height) => height > 0) ?? 32
+    const labelHeight = section.querySelector<HTMLElement>('[data-en-role="section-label"]')?.getBoundingClientRect().height ?? 0
+    const estimatedTop = labelHeight + index * measuredHeight
+    const estimatedBottom = estimatedTop + measuredHeight
+    if (estimatedTop < section.scrollTop) section.scrollTop = estimatedTop
+    else if (estimatedBottom > section.scrollTop + section.clientHeight) section.scrollTop = estimatedBottom - section.clientHeight
+  }
   const focusRequest = state.consumeFocusRequest()
   const overlayFocus = state.syncOverlayLifecycle(
     state.root.querySelector('[data-en-overlay-open="true"]') !== null,
