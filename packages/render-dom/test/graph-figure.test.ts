@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { Effect, SubscriptionRef } from "effect"
 import { Window } from "happy-dom"
-import { GraphFigure, IntentRef, Stack, Timeline, makeViewProgramFromState, type IntentReporter, type View } from "@effect-native/core"
+import { GraphFigure, IntentRef, SplitPane, Stack, Timeline, makeViewProgramFromState, type IntentReporter, type View } from "@effect-native/core"
 import { makeDomRenderer } from "../src/index"
 
 const createDom = () => {
@@ -29,7 +29,7 @@ describe("GraphFigure DOM/SVG fallback + Timeline (#37)", () => {
     await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
       const state = yield* SubscriptionRef.make(0)
       const view = (revision: number): View =>
-        Stack({ key: "root", direction: "row" }, [
+        SplitPane({ key: "split", orientation: "row", panes: [{ id: "main", content: Stack({ key: "root", direction: "row" }, [
           GraphFigure({
             key: "graph",
             layout: "precomputed",
@@ -54,7 +54,7 @@ describe("GraphFigure DOM/SVG fallback + Timeline (#37)", () => {
               { id: "ev1", key: "timeline-event-ev1", label: `Pairing opened ${revision}`, detail: "Child is checking tests", accessibilityLabel: "Pairing opened at noon", time: "12:00", status: "active", variant: "agent", icon: "Play", onSelect: IntentRef("OpenAgent") }
             ]
           })
-        ])
+        ]) }] })
       const program = makeViewProgramFromState(state, view)
       const report: IntentReporter = (ref, runtimeValue) =>
         Effect.sync(() => {

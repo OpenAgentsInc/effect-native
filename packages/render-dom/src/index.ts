@@ -4070,6 +4070,12 @@ const renderView = (view: View, state: DomRendererState, report: IntentReporter)
 
 const commitView = (view: View, state: DomRendererState, report: IntentReporter): void => {
   const activeBefore = state.root.ownerDocument.activeElement as HTMLElement | null
+  const timelineScrollPositions = new Map(
+    Array.from(state.root.querySelectorAll<HTMLElement>('[data-en-role="timeline"][data-en-key]')).map((timeline) => [
+      timeline.getAttribute("data-en-key") ?? "",
+      { top: timeline.scrollTop, left: timeline.scrollLeft }
+    ])
+  )
   const sectionScrollPositions = new Map(
     Array.from(state.root.querySelectorAll<HTMLElement>("[data-en-section]")).map((section) => [
       section.getAttribute("data-en-section") ?? "",
@@ -4080,6 +4086,13 @@ const commitView = (view: View, state: DomRendererState, report: IntentReporter)
   state.styles.beginRender()
   const element = renderView(view, state, report)
   state.root.replaceChildren(element)
+  for (const timeline of Array.from(state.root.querySelectorAll<HTMLElement>('[data-en-role="timeline"][data-en-key]'))) {
+    const position = timelineScrollPositions.get(timeline.getAttribute("data-en-key") ?? "")
+    if (position !== undefined) {
+      timeline.scrollTop = position.top
+      timeline.scrollLeft = position.left
+    }
+  }
   for (const section of Array.from(state.root.querySelectorAll<HTMLElement>("[data-en-section]"))) {
     const position = sectionScrollPositions.get(section.getAttribute("data-en-section") ?? "")
     if (position !== undefined) {
