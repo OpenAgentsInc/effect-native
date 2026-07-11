@@ -178,8 +178,11 @@ a **UI migration, not a backend rewrite**. Catalog demand through
 `effect-native/v31` is shipped (marketing landing, mobile Pager/pull-to-refresh/SwipeableListItem, the media-video live attach host, the GL-1 glass set, the Forum markdown-link href grammar, the OpenAgents Desktop chat chrome + composer submit lifecycle, the Sarah Blueprint-map GraphFigure provenance vocabulary); the chat vertical-slice proof is in
 [`docs/proof-desktop.md`](./docs/proof-desktop.md). The foreign-host exception
 is documented in [`docs/foreign-host.md`](./docs/foreign-host.md); the short
-porting map is [`docs/porting-map.md`](./docs/porting-map.md). The exit
-receipt for the full shell cutover remains [#42](https://github.com/OpenAgentsInc/effect-native/issues/42).
+porting map is [`docs/porting-map.md`](./docs/porting-map.md). Desktop receipt
+[#42](https://github.com/OpenAgentsInc/effect-native/issues/42) and mobile
+receipts [#64](https://github.com/OpenAgentsInc/effect-native/issues/64) / [#52](https://github.com/OpenAgentsInc/effect-native/issues/52)
+are complete; live service and product cutover acceptance stay in the consuming
+OpenAgents application roadmap.
 
 See the **[roadmap](./ROADMAP.md)** for what we're building and in what
 order — web and mobile are the priority targets. The planned

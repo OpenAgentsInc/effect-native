@@ -81,7 +81,14 @@ describe("chat chrome + submit lifecycle (#72, v29) React Native renderer", () =
     const renderItem = list?.props.renderItem as (input: { readonly item: TranscriptMessage }) => ReactElementLike
     const row = renderItem({ item: userMessage })
 
-    expect((row.props.style as { readonly alignSelf?: string }).alignSelf).toBe("flex-end")
+    expect(row.props.testID).toBe("en-message-row:m1")
+    expect((row.props.style as { readonly width?: string; readonly justifyContent?: string })).toMatchObject({
+      width: "100%",
+      justifyContent: "flex-end"
+    })
+    const message = find(row, (el) => el.props.testID === "en-message:m1")
+    expect(message).toBeDefined()
+    expect(message?.props.style).toMatchObject({ maxWidth: "82%", minWidth: 0, flexShrink: 1 })
     const sender = find(row, (el) => el.props.testID === "en-message-sender:m1")
     expect(sender?.props.children).toBe("YOU")
     const timestamp = find(row, (el) => el.props.testID === "en-message-timestamp:m1")
@@ -93,6 +100,27 @@ describe("chat chrome + submit lifecycle (#72, v29) React Native renderer", () =
     const bodyText = find(body!, (el) => el.props.children === "rofl")
     expect(bodyText).toBeDefined()
     expect(find(body!, (el) => el.props.children === "YOU")).toBeUndefined()
+  })
+
+  test("long unbreakable content stays inside a full-width row and shrinkable bubble", () => {
+    const longMessage: TranscriptMessage = {
+      ...userMessage,
+      key: "long",
+      body: [Text({ key: "long-token", content: "x".repeat(4096), variant: "body" })]
+    }
+    const transcript = renderReactNativeView(
+      Transcript({ key: "transcript", messages: [longMessage] }),
+      dependencies,
+      noop
+    )
+    const list = find(transcript, (el) => el.props.testID === "en-transcript")
+    const renderItem = list?.props.renderItem as (input: { readonly item: TranscriptMessage }) => ReactElementLike
+    const row = renderItem({ item: longMessage })
+    const bubble = find(row, (el) => el.props.testID === "en-message:long")
+
+    expect(row.props.style).toMatchObject({ width: "100%", minWidth: 0, flexDirection: "row" })
+    expect(bubble?.props.style).toMatchObject({ maxWidth: "82%", minWidth: 0, flexShrink: 1 })
+    expect(find(bubble!, (el) => el.props.children === "x".repeat(4096))).toBeDefined()
   })
 
   test("disabled TextField is not editable and dispatches no submit", () => {

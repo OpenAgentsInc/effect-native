@@ -1,7 +1,7 @@
-# Porting map — Khala Code Mobile → Effect Native
+# Porting map — OpenAgents mobile on Effect Native
 
-Stub map for the mobile epic #52 / docs issue #65. This is a **migration of the
-UI substrate**, not a rewrite of Khala's mobile backend. Khala Sync, auth,
+Completed framework map for mobile epic #52 / docs issue #65. This was a
+**migration of the UI substrate**, not a rewrite of the app backend. Khala Sync, auth,
 credits, the owned OTA layer, push registration, and native voice / on-device
 model modules stay owned by the OpenAgents monorepo app. Effect Native owns
 typed views, intents, runtime, and the React Native renderer.
@@ -66,7 +66,10 @@ subsets** or **loud unsupported markers**. Closing the matrix is issue #53:
 6. **RN parity promotions** — close the subset matrix against real screens (#53)
 7. **RN Host drivers** — voice/STT + on-device model (#58)
 8. **RN pixel baselines** — iOS + Android visual capture (#59)
-9. **Exit receipt** — core screens on both platforms + cross-app Khala Sync messaging test (#64 open; UI/oracle + memory-hub scaffold in `docs/proof-mobile.md`; live Sync + device receipts still required)
+9. **Exit receipt** — shipped in #64: core screens and cross-renderer oracles,
+   real two-session Khala Sync protocol convergence, and real active-consumer
+   iOS + Android simulator build/pixel/interaction receipts. Live staging Sync
+   remains an OpenAgents product dogfood gate, not a framework conversion gate.
 
 ## Non-goals of this map
 

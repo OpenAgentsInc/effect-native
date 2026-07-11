@@ -1,10 +1,12 @@
 # Phase 4M Mobile Proof (#64)
 
-Khala Code Mobile core surfaces are **authored once** as typed Effect Native
+The framework mobile proof surfaces are **authored once** as typed Effect Native
 data and checked in CI through headless / DOM / RN host-shim oracles, plus a
 **Khala Sync–shaped** dual-client mutator harness.
 
-This is **not** a fully closed exit receipt yet. See **Honesty bar** below.
+This is a closed framework exit receipt. The deterministic proof program owns
+the cross-renderer algebra; the active OpenAgents production app owns the real
+iOS and Android simulator pixels. See the honesty boundary below.
 
 ## Honesty bar (what is / is not proven)
 
@@ -17,9 +19,14 @@ This is **not** a fully closed exit receipt yet. See **Honesty bar** below.
 | Desktop → mobile and mobile → desktop message convergence | **Yes under a memory hub** shaped like Khala Sync mutators/changelog |
 | Live round-trip over production Khala Sync (Cloud SQL + hub + WS) | **No** — not driven against staging/prod |
 | Real dual-client protocol via `@openagentsinc/khala-sync-client` sessions | **Yes (in openagents)** — see below |
-| Expo/device smoke of the full proof on hardware/simulators | **No** |
+| Real RN production consumer on iOS simulator | **Yes** — OpenAgents GL-1 receipts |
+| Real RN production consumer on Android simulator | **Yes** — OpenAgents `da890eea8a` receipt |
 
-Until live staging/prod Sync **or** an owner waiver of that bar, plus device/sim RN receipts (or waiver), **#64 / #52 stay open**.
+The framework bar is met: live staging/prod Sync was explicitly waived for
+conversion, the real two-session protocol path is covered in `openagents`, and
+both renderer platforms now have production-consumer simulator pixel evidence.
+Physical-device and live-service dogfood remain product acceptance, not claims
+made by this receipt.
 
 ## What Is Defined Once
 
@@ -82,22 +89,32 @@ the real transport seam; both converge on `chat_turn_event` post-images.
 That is **protocol-honest** (overlay + push + live apply + dual durable stores).
 It is **still not** Cloud SQL / production hub / WebSocket staging.
 
-**To actually close #64:** either (a) a staging/prod round-trip receipt with the
-same mutator algebra, or (b) an explicit owner waiver of live staging; **and**
-device/sim RN pixel receipts or a waiver of that bar.
+The live-service residual is intentionally carried by the OpenAgents product
+roadmap. It does not reopen the renderer conversion receipt.
 
 Owner directive (issue #64, 2026-07-09): live staging is **waived** for
 conversion-unblock; the pixel-receipt bar is **kept**.
 
-### Partial pixel evidence (openagents GL-1, 2026-07-10)
+### Production pixel evidence (OpenAgents, 2026-07-10)
 
 Real **iOS simulator pixel receipts of EN-rendered production screens** exist
 in the monorepo (GL-1, openagents#8647: iPhone 17 Pro / iOS 26.5 Release
 build, catalog chrome + typed intent round-trips via idb HID taps —
 `docs/mobile/receipts/2026-07-10-gl1-*`). They capture the production
-openagents-mobile app, not this repo's `runMainMobile` proof program, and no
-Android pixel receipt exists yet — so the #64 bar remains open on those two
-residuals.
+OpenAgents mobile app, not this repo's `runMainMobile` proof program. Android
+evidence was still missing at that point.
+
+The Android half landed in OpenAgents commit
+`da890eea8a50fb80ed78975043dac06ef72ba3e0`: a local release APK built without
+Expo/EAS cloud, installed and cold-launched on a Pixel 7 Android 15 arm64 AVD,
+then submitted a long unbroken token through the real composer. The resulting
+`TranscriptMessage` remained viewport-bounded and the assistant pending state
+remained visible. Exact environment, screenshot SHA-256, and acceptance boundary:
+[`docs/mobile/2026-07-10-effect-native-64-android-receipt.md`](https://github.com/OpenAgentsInc/openagents/blob/da890eea8a50fb80ed78975043dac06ef72ba3e0/docs/mobile/2026-07-10-effect-native-64-android-receipt.md).
+
+These production-app receipts supersede requiring a second synthetic Expo app
+whose only purpose would be to wrap `examples/khala-mobile`; the in-repo proof
+program remains the deterministic structural/intent oracle.
 
 ## Receipt artifacts
 
