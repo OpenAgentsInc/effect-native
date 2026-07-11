@@ -57,10 +57,12 @@ describe("GraphFigure + Timeline (#37) React Native renderer", () => {
   test("selectable graph nodes and timeline events dispatch typed intents", async () => {
     const selected: Array<unknown> = []
     const events: Array<unknown> = []
+    const openedAgents: Array<unknown> = []
     const report: IntentReporter = (ref, value) =>
       Effect.sync(() => {
         if (ref.name === "Select") selected.push(value)
         if (ref.name === "Event") events.push(value)
+        if (ref.name === "OpenAgent") openedAgents.push(value)
       })
 
     const graph = renderReactNativeView(
@@ -89,18 +91,20 @@ describe("GraphFigure + Timeline (#37) React Native renderer", () => {
         key: "timeline",
         selectedId: "event-1",
         onEventSelect: IntentRef("Event"),
-        events: [{ id: "ev1", label: "Pairing opened", time: "12:00", status: "active", variant: "tool", icon: "Play" }]
+        events: [{ id: "ev1", label: "Pairing opened", detail: "Child is checking tests", time: "12:00", status: "active", variant: "agent", icon: "Play", onSelect: IntentRef("OpenAgent") }]
       }) as View,
       dependencies,
       report
     )
     expect(timeline.props.testID).toBe("en-timeline")
     const ev = find(timeline, (e) => e.props.testID === "en-timeline-event:ev1")
-    expect(ev?.props.accessibilityHint).toBe("tool")
+    expect(ev?.props.accessibilityHint).toBe("agent")
     expect(find(ev, (e) => e.props.children === "▶")).toBeDefined()
+    expect(find(ev, (e) => e.props.children === "Child is checking tests")).toBeDefined()
     ;(ev?.props.onPress as (() => void) | undefined)?.()
     await wait()
-    expect(events).toEqual(["ev1"])
+    expect(events).toEqual([])
+    expect(openedAgents).toEqual(["ev1"])
   })
 })
 

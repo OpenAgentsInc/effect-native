@@ -24,6 +24,7 @@ describe("GraphFigure DOM/SVG fallback + Timeline (#37)", () => {
     const hovered: Array<unknown> = []
     const cameras: Array<unknown> = []
     const events: Array<unknown> = []
+    const openedAgents: Array<unknown> = []
 
     await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
       const state = yield* SubscriptionRef.make(0)
@@ -50,7 +51,7 @@ describe("GraphFigure DOM/SVG fallback + Timeline (#37)", () => {
             selectedId: "ev1",
             onEventSelect: IntentRef("Event"),
             events: [
-              { id: "ev1", key: "timeline-event-ev1", label: "Pairing opened", accessibilityLabel: "Pairing opened at noon", time: "12:00", status: "active", variant: "tool", icon: "Play" }
+              { id: "ev1", key: "timeline-event-ev1", label: "Pairing opened", detail: "Child is checking tests", accessibilityLabel: "Pairing opened at noon", time: "12:00", status: "active", variant: "agent", icon: "Play", onSelect: IntentRef("OpenAgent") }
             ]
           })
         ])
@@ -61,6 +62,7 @@ describe("GraphFigure DOM/SVG fallback + Timeline (#37)", () => {
           if (ref.name === "Hover") hovered.push(runtimeValue)
           if (ref.name === "Camera") cameras.push(runtimeValue)
           if (ref.name === "Event") events.push(runtimeValue)
+          if (ref.name === "OpenAgent") openedAgents.push(runtimeValue)
         })
       const surface = yield* makeDomRenderer({ document }).mount(container, program.viewStream, report)
 
@@ -94,12 +96,14 @@ describe("GraphFigure DOM/SVG fallback + Timeline (#37)", () => {
       expect(ev?.getAttribute("data-en-key")).toBe("timeline-event-ev1")
       expect(ev?.getAttribute("aria-selected")).toBe("true")
       expect(ev?.getAttribute("aria-label")).toBe("Pairing opened at noon")
-      expect(ev?.getAttribute("data-en-variant")).toBe("tool")
+      expect(ev?.getAttribute("data-en-variant")).toBe("agent")
       expect(ev?.querySelector('[data-en-role="event-icon"]')?.getAttribute("data-en-icon")).toBe("Play")
       expect(ev?.querySelector('[data-en-role="time"]')?.textContent).toBe("12:00")
+      expect(ev?.querySelector('[data-en-role="detail"]')?.textContent).toBe("Child is checking tests")
       ev?.dispatchEvent(new window.MouseEvent("click", { bubbles: true }) as unknown as Event)
       yield* nextTask
-      expect(events).toEqual(["ev1"])
+      expect(events).toEqual([])
+      expect(openedAgents).toEqual(["ev1"])
 
       yield* surface.unmount
     })))
