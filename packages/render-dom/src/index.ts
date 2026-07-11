@@ -2057,12 +2057,19 @@ const renderNavRail = (view: NavRailView, state: DomRendererState, report: Inten
   element.style.flexDirection = "column"
   element.setAttribute("role", view.role ?? "navigation")
   const document = element.ownerDocument
+  const sectionScrollPositions = new Map(
+    Array.from(element.querySelectorAll<HTMLElement>("[data-en-section]")).map((section) => [
+      section.getAttribute("data-en-section") ?? "",
+      section.scrollTop
+    ])
+  )
   const sections = view.sections.map((section) => {
     const sectionEl = document.createElement("div")
     sectionEl.setAttribute("data-en-section", section.id)
     sectionEl.setAttribute("data-en-key", section.id)
     sectionEl.setAttribute("data-en-layout", section.layout ?? "column")
     sectionEl.setAttribute("role", "group")
+    sectionEl.scrollTop = sectionScrollPositions.get(section.id) ?? 0
     if (section.label !== undefined) {
       const label = document.createElement("span")
       label.setAttribute("data-en-role", "section-label")
@@ -2129,6 +2136,10 @@ const renderNavRail = (view: NavRailView, state: DomRendererState, report: Inten
     return sectionEl
   })
   element.replaceChildren(...sections)
+  for (const section of sections) {
+    const id = section.getAttribute("data-en-section") ?? ""
+    section.scrollTop = sectionScrollPositions.get(id) ?? 0
+  }
   applyBaseStyle(element, view, state)
   applyA11y(element, view)
   applyInteractions(element, view, state, report)
@@ -3865,6 +3876,7 @@ const renderTimeline = (view: TimelineView, state: DomRendererState, report: Int
   const items = view.events.map((graphEvent) => {
     const li = document.createElement("li")
     li.setAttribute("data-en-event", graphEvent.id)
+    if (graphEvent.variant !== undefined) li.setAttribute("data-en-variant", graphEvent.variant)
     if (graphEvent.key !== undefined) li.setAttribute("data-en-key", graphEvent.key)
     li.setAttribute("aria-label", graphEvent.accessibilityLabel ?? graphEvent.label)
     const selected = view.selectedId === graphEvent.id
@@ -3873,17 +3885,23 @@ const renderTimeline = (view: TimelineView, state: DomRendererState, report: Int
     li.style.display = "flex"
     li.style.alignItems = "baseline"
     li.style.gap = "var(--en-spacing-2)"
-    const dot = document.createElement("span")
-    dot.setAttribute("data-en-role", "status-dot")
-    dot.setAttribute("aria-hidden", "true")
-    dot.style.width = "8px"
-    dot.style.height = "8px"
-    dot.style.borderRadius = "999px"
-    dot.style.background = graphStatusColor(graphEvent.status)
+    const marker = document.createElement("span")
+    marker.setAttribute("data-en-role", graphEvent.icon === undefined ? "status-dot" : "event-icon")
+    marker.setAttribute("aria-hidden", "true")
+    if (graphEvent.icon === undefined) {
+      marker.style.width = "8px"
+      marker.style.height = "8px"
+      marker.style.borderRadius = "999px"
+      marker.style.background = graphStatusColor(graphEvent.status)
+    } else {
+      marker.setAttribute("data-en-icon", graphEvent.icon)
+      marker.style.display = "inline-flex"
+      marker.innerHTML = iconSvg(graphEvent.icon, iconSizePixels.sm)
+    }
     const label = document.createElement("span")
     label.setAttribute("data-en-role", "label")
     label.textContent = graphEvent.label
-    li.append(dot, label)
+    li.append(marker, label)
     if (graphEvent.time !== undefined) {
       const time = document.createElement("time")
       time.setAttribute("data-en-role", "time")

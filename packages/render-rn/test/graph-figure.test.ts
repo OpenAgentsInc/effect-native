@@ -89,13 +89,15 @@ describe("GraphFigure + Timeline (#37) React Native renderer", () => {
         key: "timeline",
         selectedId: "event-1",
         onEventSelect: IntentRef("Event"),
-        events: [{ id: "ev1", label: "Pairing opened", time: "12:00", status: "active" }]
+        events: [{ id: "ev1", label: "Pairing opened", time: "12:00", status: "active", variant: "tool", icon: "Play" }]
       }) as View,
       dependencies,
       report
     )
     expect(timeline.props.testID).toBe("en-timeline")
     const ev = find(timeline, (e) => e.props.testID === "en-timeline-event:ev1")
+    expect(ev?.props.accessibilityHint).toBe("tool")
+    expect(find(ev, (e) => e.props.children === "▶")).toBeDefined()
     ;(ev?.props.onPress as (() => void) | undefined)?.()
     await wait()
     expect(events).toEqual(["ev1"])

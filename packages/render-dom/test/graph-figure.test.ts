@@ -50,7 +50,7 @@ describe("GraphFigure DOM/SVG fallback + Timeline (#37)", () => {
             selectedId: "ev1",
             onEventSelect: IntentRef("Event"),
             events: [
-              { id: "ev1", key: "timeline-event-ev1", label: "Pairing opened", accessibilityLabel: "Pairing opened at noon", time: "12:00", status: "active" }
+              { id: "ev1", key: "timeline-event-ev1", label: "Pairing opened", accessibilityLabel: "Pairing opened at noon", time: "12:00", status: "active", variant: "tool", icon: "Play" }
             ]
           })
         ])
@@ -94,6 +94,8 @@ describe("GraphFigure DOM/SVG fallback + Timeline (#37)", () => {
       expect(ev?.getAttribute("data-en-key")).toBe("timeline-event-ev1")
       expect(ev?.getAttribute("aria-selected")).toBe("true")
       expect(ev?.getAttribute("aria-label")).toBe("Pairing opened at noon")
+      expect(ev?.getAttribute("data-en-variant")).toBe("tool")
+      expect(ev?.querySelector('[data-en-role="event-icon"]')?.getAttribute("data-en-icon")).toBe("Play")
       expect(ev?.querySelector('[data-en-role="time"]')?.textContent).toBe("12:00")
       ev?.dispatchEvent(new window.MouseEvent("click", { bubbles: true }) as unknown as Event)
       yield* nextTask

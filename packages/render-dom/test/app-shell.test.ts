@@ -94,6 +94,8 @@ describe("app shell (#27) DOM renderer", () => {
       expect((railPane?.firstElementChild as HTMLElement | null)?.style.flex).not.toBe("")
       const nav = container.querySelector('[data-en-key="rail-nav"]')
       expect(nav?.querySelectorAll("[data-en-nav-item]").length).toBe(3)
+      const navSection = nav?.querySelector('[data-en-section="panes"]') as HTMLElement | null
+      if (navSection !== null) navSection.scrollTop = 48
       const chat = nav?.querySelector('[data-en-nav-item="chat"]')
       expect(chat?.getAttribute("aria-label")).toBe("Open Chat")
       expect(chat?.getAttribute("aria-selected")).toBe("true")
@@ -115,6 +117,10 @@ describe("app shell (#27) DOM renderer", () => {
       editorItem?.dispatchEvent(new window.MouseEvent("click", { bubbles: true }) as unknown as Event)
       yield* nextTask
       expect(selected).toEqual(["editor"])
+
+      yield* SubscriptionRef.set(state, "editor")
+      yield* nextTask
+      expect((nav?.querySelector('[data-en-section="panes"]') as HTMLElement | null)?.scrollTop).toBe(48)
 
       chat?.dispatchEvent(new window.MouseEvent("click", { bubbles: true }) as unknown as Event)
       yield* nextTask
