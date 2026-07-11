@@ -70,15 +70,27 @@ describe("khalaTheme (Protoss-blue dark theme)", () => {
       background: "#05070d",
       surface: "#0b1220",
       surfaceRaised: "#141f36",
+      surfaceOverlay: "#182640",
       textPrimary: "#eef3ff",
       textMuted: "#93a4c3",
+      textFaint: "#6b7ca1",
+      textInverse: "#05070d",
+      textDisabled: "#55648a",
       accent: "#3b82f6",
+      accentHover: "#5c96f8",
+      accentActive: "#2f6fe0",
       danger: "#f87171",
       border: "#1f2b45",
+      borderSubtle: "#16203a",
+      borderStrong: "#2c3d63",
       focus: "#60a5fa",
       info: "#38bdf8",
       success: "#22c55e",
       warning: "#f59e0b",
+      stateHover: "#8fb3ff14",
+      stateActive: "#8fb3ff21",
+      stateSelected: "#3b82f629",
+      scrim: "#02040adb",
       codeBackground: "#0a0f1c",
       diffAdd: "#4ade80",
       diffRemove: "#f87171",
@@ -89,6 +101,56 @@ describe("khalaTheme (Protoss-blue dark theme)", () => {
       syntaxNumber: "#fbbf24",
       syntaxOperator: "#93a4c3"
     })
+  })
+
+  test("pins the chrome physics groups (motion, elevation, control lattice)", () => {
+    // The application-chrome design language (apps-sdk-ui port, EP250):
+    // 150ms basic transitions, 350ms strong-ease-out overlay enters, 200ms
+    // exits; overlays = shadow + hairline ring; a trimmed 4-step control
+    // lattice (no 22px or 48px control use-cases in Khala surfaces).
+    expect(khalaTheme.motion).toEqual({
+      durationFastMs: 150,
+      durationEnterMs: 350,
+      durationExitMs: 200,
+      easeBasic: "ease",
+      easeEnter: "cubic-bezier(0.19, 1, 0.22, 1)",
+      easeExit: "cubic-bezier(0.8, 0, 0.4, 1)"
+    })
+    expect(khalaTheme.elevation).toEqual({
+      overlayShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.6), 0 4px 6px -4px rgba(0, 0, 0, 0.6)",
+      hairlineWidth: 1
+    })
+    expect(khalaTheme.control).toEqual({
+      sm: { height: 24, gutter: 8, icon: 14 },
+      md: { height: 28, gutter: 10, icon: 16 },
+      lg: { height: 32, gutter: 12, icon: 18 },
+      xl: { height: 40, gutter: 14, icon: 20 }
+    })
+  })
+
+  test("records UI-component contrast for the third dim level and disabled text", () => {
+    // textFaint (hints, chevrons, placeholders) and textDisabled are
+    // UI-component-class content (WCAG 1.4.11, 3:1), deliberately below the
+    // body-text bar so the three-level dim ladder reads as hierarchy.
+    expect(contrastRatio(khalaTheme.color.textFaint, khalaTheme.color.background)).toBeGreaterThanOrEqual(3)
+    expect(contrastRatio(khalaTheme.color.textFaint, khalaTheme.color.surface)).toBeGreaterThanOrEqual(3)
+    expect(contrastRatio(khalaTheme.color.textDisabled, khalaTheme.color.background)).toBeGreaterThanOrEqual(3)
+    // The ladder must actually descend: primary > muted > faint > disabled.
+    const onBackground = (hex: string) => contrastRatio(hex, khalaTheme.color.background)
+    expect(onBackground(khalaTheme.color.textPrimary)).toBeGreaterThan(onBackground(khalaTheme.color.textMuted))
+    expect(onBackground(khalaTheme.color.textMuted)).toBeGreaterThan(onBackground(khalaTheme.color.textFaint))
+    expect(onBackground(khalaTheme.color.textFaint)).toBeGreaterThan(onBackground(khalaTheme.color.textDisabled))
+  })
+
+  test("state overlays are translucent overlays of one base family, never opaque hues", () => {
+    // The alpha-overlay engine: hover/active are blue-tinted white at fixed
+    // alphas; selected is the accent at 16%. All 8-digit hex (with alpha).
+    for (const role of ["stateHover", "stateActive", "stateSelected", "scrim"] as const) {
+      expect(khalaTheme.color[role]).toMatch(/^#[0-9a-f]{8}$/i)
+    }
+    // stateActive is strictly deeper than stateHover.
+    const alpha = (hex: string) => Number.parseInt(hex.slice(7, 9), 16)
+    expect(alpha(khalaTheme.color.stateActive)).toBeGreaterThan(alpha(khalaTheme.color.stateHover))
   })
 
   test("records WCAG AA contrast for core text/surface pairs", () => {

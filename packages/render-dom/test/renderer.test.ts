@@ -702,6 +702,37 @@ describe("DOM renderer", () => {
       expect(rootRule).toContain("--en-color-syntaxNumber:#fbbf24;")
       expect(rootRule).toContain("--en-color-syntaxOperator:#93a4c3;")
 
+      // Chrome-language roles (apps-sdk-ui port): the alpha-overlay state
+      // engine, the extended surface/text/border ladders, and the motion/
+      // elevation/control-lattice custom properties all lower into :root.
+      expect(rootRule).toContain("--en-color-surfaceOverlay:#182640;")
+      expect(rootRule).toContain("--en-color-textFaint:#6b7ca1;")
+      expect(rootRule).toContain("--en-color-textInverse:#05070d;")
+      expect(rootRule).toContain("--en-color-textDisabled:#55648a;")
+      expect(rootRule).toContain("--en-color-accentHover:#5c96f8;")
+      expect(rootRule).toContain("--en-color-accentActive:#2f6fe0;")
+      expect(rootRule).toContain("--en-color-borderSubtle:#16203a;")
+      expect(rootRule).toContain("--en-color-borderStrong:#2c3d63;")
+      expect(rootRule).toContain("--en-color-stateHover:#8fb3ff14;")
+      expect(rootRule).toContain("--en-color-stateActive:#8fb3ff21;")
+      expect(rootRule).toContain("--en-color-stateSelected:#3b82f629;")
+      expect(rootRule).toContain("--en-color-scrim:#02040adb;")
+      expect(rootRule).toContain("--en-motion-fast:150ms;")
+      expect(rootRule).toContain("--en-motion-enter:350ms;")
+      expect(rootRule).toContain("--en-motion-exit:200ms;")
+      expect(rootRule).toContain("--en-ease-enter:cubic-bezier(0.19, 1, 0.22, 1);")
+      expect(rootRule).toContain("--en-elevation-overlay-shadow:0 10px 15px -3px rgba(0, 0, 0, 0.6), 0 4px 6px -4px rgba(0, 0, 0, 0.6);")
+      expect(rootRule).toContain("--en-elevation-hairline:0 0 0 1px var(--en-color-borderSubtle);")
+      expect(rootRule).toContain("--en-control-md-height:28px;")
+      expect(rootRule).toContain("--en-control-md-icon:16px;")
+
+      // The chrome base ruleset (state overlays, focus ring, nav-item
+      // physics) ships with every DOM surface and resolves only through
+      // theme variables.
+      expect(css).toContain('button[data-en-variant="ghost"]:hover:not(:disabled):not(:active){background-color:var(--en-color-stateHover) !important;}')
+      expect(css).toContain('[data-en-nav-item][data-en-active="true"]{background-color:var(--en-color-stateSelected);color:var(--en-color-textPrimary);}')
+      expect(css).toContain("outline:2px solid var(--en-color-focus);outline-offset:2px;")
+
       // The card/text/button atomic declarations resolve through the same
       // theme (no hardcoded colors, no light/dark branch).
       expect(css).toContain("background-color:var(--en-color-surface);")
