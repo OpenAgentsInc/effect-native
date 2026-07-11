@@ -66,7 +66,10 @@ subsets** or **loud unsupported markers**. Closing the matrix is issue #53:
 6. **RN parity promotions** — close the subset matrix against real screens (#53)
 7. **RN Host drivers** — voice/STT + on-device model (#58)
 8. **RN pixel baselines** — iOS + Android visual capture (#59)
-9. **Exit receipt** — core screens on both platforms + cross-app Khala Sync messaging test (#64 open; UI/oracle + memory-hub scaffold in `docs/proof-mobile.md`; live Sync + device receipts still required)
+9. **Exit receipt** — shipped in #64: core screens and cross-renderer oracles,
+   real two-session Khala Sync protocol convergence, and real active-consumer
+   iOS + Android simulator build/pixel/interaction receipts. Live staging Sync
+   remains an OpenAgents product dogfood gate, not a framework conversion gate.
 
 ## Non-goals of this map
 

@@ -206,7 +206,7 @@ Only what a real mobile screen demands beyond the RN-side reality of existing
 components: `SwipeableListItem` (#60 shipped), `PullToRefresh` (#61 shipped), `Pager` (#62 shipped),
 and mobile surface treatments (#63 shipped).
 
-### Exit receipt (#64 — open; partial scaffold shipped)
+### Exit receipt (#64 — complete)
 
 Khala Code Mobile's core screens (thread list, streaming transcript, composer with
 inline mention chips, onboarding pager, settings) authored once as typed Effect
@@ -217,11 +217,14 @@ in **Khala Code Mobile**, and a mobile-sent message appears on desktop — **liv
 over Khala Sync, both UIs rendered by Effect Native**, from one shared typed
 transcript view + intent/mutator vocabulary.
 
-**Scaffold shipped (not full close):** mobile oracle + Khala Sync–**shaped**
+**Framework proof shipped:** mobile oracle + Khala Sync–**shaped**
 memory-hub dual-client harness (`examples/khala-shared-chat`,
-`scripts/khala-cross-app-sync-oracle.test.ts`). **Still required:** live staging
-Khala Sync round-trip + real device/sim RN baselines (or explicit owner waiver).
-Honesty bar: [`docs/proof-mobile.md`](./docs/proof-mobile.md). Docs: #65 shipped —
+`scripts/khala-cross-app-sync-oracle.test.ts`). The active OpenAgents mobile
+consumer supplies real iOS and Android simulator pixels/build/interaction
+receipts; production-app evidence supersedes a second synthetic Expo wrapper.
+The real two-session Khala Sync protocol oracle ships in `openagents`; live
+staging was explicitly waived as a framework conversion gate and remains a
+product dogfood gate. Honesty bar: [`docs/proof-mobile.md`](./docs/proof-mobile.md). Docs: #65 shipped —
 [`docs/porting-map-mobile.md`](./docs/porting-map-mobile.md).
 
 ## Phase 5 — True native renderers (the fidelity upgrade)
