@@ -103,8 +103,9 @@ describe("transcript / markdown (#35) React Native renderer", () => {
     const streaming = renderItem!({
       item: message("m2", "assistant", "On it", "streaming")
     })
-    expect(streaming.props.testID).toBe("en-message:m2")
-    expect(streaming.props.accessibilityState).toMatchObject({ busy: true })
+    expect(streaming.props.testID).toBe("en-message-row:m2")
+    const streamingMessage = find(streaming, (e) => e.props.testID === "en-message:m2")
+    expect(streamingMessage?.props.accessibilityState).toMatchObject({ busy: true })
     expect(find(streaming, (e) => e.props.children === "On it")).not.toBeUndefined()
   })
 
