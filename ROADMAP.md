@@ -233,6 +233,14 @@ this is a migration, never a rewrite — and it can proceed one component at
 a time. This phase starts only once the catalog is stable and a real screen
 proves it needs native.
 
+The first SwiftUI-island demand was resolved inside `render-rn`: the
+Scope-owned RN host-driver seam and internal `@expo/ui` Liquid Glass lowering
+shipped under #70, and the consumer deleted its app-owned island. The proposed
+general `render-swiftui` lane has no active demanding screen and is deliberately
+not open work. A future native lowering starts from a new bounded per-component
+issue with measured fidelity or performance evidence; Phase 5 is not a standing
+speculative implementation program.
+
 This is the insurance the whole architecture exists to enable: the day a
 dependency churns or a screen needs more than RN can give, the path is a
 contained per-component project, not a platform rewrite.
