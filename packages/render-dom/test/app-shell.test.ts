@@ -89,6 +89,9 @@ describe("app shell (#27) DOM renderer", () => {
       expect(shell?.getAttribute("data-en-tag")).toBe("SplitPane")
       const railPane = shell?.querySelector('[data-en-pane="rail"]') as HTMLElement | null
       expect(railPane?.style.width).toContain("240")
+      expect(railPane?.style.display).toBe("flex")
+      expect(railPane?.style.minHeight).toBe("0")
+      expect((railPane?.firstElementChild as HTMLElement | null)?.style.flex).not.toBe("")
       const nav = container.querySelector('[data-en-key="rail-nav"]')
       expect(nav?.querySelectorAll("[data-en-nav-item]").length).toBe(3)
 
