@@ -28,7 +28,7 @@ describe("GraphFigure DOM/SVG fallback + Timeline (#37)", () => {
 
     await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
       const state = yield* SubscriptionRef.make(0)
-      const view = (): View =>
+      const view = (revision: number): View =>
         Stack({ key: "root", direction: "row" }, [
           GraphFigure({
             key: "graph",
@@ -51,7 +51,7 @@ describe("GraphFigure DOM/SVG fallback + Timeline (#37)", () => {
             selectedId: "ev1",
             onEventSelect: IntentRef("Event"),
             events: [
-              { id: "ev1", key: "timeline-event-ev1", label: "Pairing opened", detail: "Child is checking tests", accessibilityLabel: "Pairing opened at noon", time: "12:00", status: "active", variant: "agent", icon: "Play", onSelect: IntentRef("OpenAgent") }
+              { id: "ev1", key: "timeline-event-ev1", label: `Pairing opened ${revision}`, detail: "Child is checking tests", accessibilityLabel: "Pairing opened at noon", time: "12:00", status: "active", variant: "agent", icon: "Play", onSelect: IntentRef("OpenAgent") }
             ]
           })
         ])
@@ -104,6 +104,18 @@ describe("GraphFigure DOM/SVG fallback + Timeline (#37)", () => {
       yield* nextTask
       expect(events).toEqual([])
       expect(openedAgents).toEqual(["ev1"])
+
+      // An unrelated state update rebuilds the timeline children but must not
+      // move the reader's position inside the keyed scroll container.
+      const scrollableTimeline = timeline as HTMLElement
+      scrollableTimeline.scrollTop = 144
+      scrollableTimeline.scrollLeft = 12
+      yield* SubscriptionRef.set(state, 1)
+      yield* nextTask
+      const updatedTimeline = container.querySelector('[data-en-key="timeline"]') as HTMLElement | null
+      expect(updatedTimeline?.querySelector('[data-en-event="ev1"] [data-en-role="label"]')?.textContent).toBe("Pairing opened 1")
+      expect(updatedTimeline?.scrollTop).toBe(144)
+      expect(updatedTimeline?.scrollLeft).toBe(12)
 
       yield* surface.unmount
     })))

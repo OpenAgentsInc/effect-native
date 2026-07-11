@@ -3853,6 +3853,7 @@ const renderGraphFigure = (view: GraphFigureView, state: DomRendererState, repor
 
 const renderTimeline = (view: TimelineView, state: DomRendererState, report: IntentReporter): HTMLElement => {
   const element = state.keyedElement(view, "ol")
+  const scrollPosition = { top: element.scrollTop, left: element.scrollLeft }
   state.resetListeners(element)
   element.setAttribute("data-en-role", "timeline")
   element.style.listStyle = "none"
@@ -3915,6 +3916,11 @@ const renderTimeline = (view: TimelineView, state: DomRendererState, report: Int
     return li
   })
   element.replaceChildren(...items)
+  // Replacing a scroll container's children can make Chromium briefly clamp
+  // its offset to zero even when the keyed element itself is retained. A
+  // sibling state change must not move the reader's place in the timeline.
+  element.scrollTop = scrollPosition.top
+  element.scrollLeft = scrollPosition.left
   applyBaseStyle(element, view, state)
   applyA11y(element, view)
   return element
