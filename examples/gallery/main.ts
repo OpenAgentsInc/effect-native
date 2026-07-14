@@ -27,6 +27,11 @@ const storyIdFromLocation = (location: Location): string | undefined => {
   return undefined
 }
 
+const pageIdFromLocation = (location: Location): string | undefined => {
+  const queryPage = new URL(location.href).searchParams.get("page")?.trim()
+  return queryPage !== undefined && queryPage.length > 0 ? queryPage : undefined
+}
+
 const themeFor = (state: GalleryState) =>
   galleryThemes.find((theme) => theme.id === state.activeThemeId)?.theme ?? galleryThemes[0].theme
 
@@ -44,6 +49,13 @@ const boot = Effect.gen(function*() {
   if (linkedStory !== undefined) {
     yield* runtime.registry.dispatch(resolveIntentRef(
       IntentRef("Gallery.StorySelected", StaticPayload(linkedStory))
+    ))
+    yield* Effect.yieldNow
+  }
+  const linkedPage = pageIdFromLocation(globalThis.location)
+  if (linkedPage !== undefined) {
+    yield* runtime.registry.dispatch(resolveIntentRef(
+      IntentRef("Gallery.PageSelected", StaticPayload(linkedPage))
     ))
     yield* Effect.yieldNow
   }

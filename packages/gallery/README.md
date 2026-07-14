@@ -26,6 +26,27 @@ const runtime = await Effect.runPromise(makeGalleryRuntime())
 console.log(proofScreenBaselineStories.map((story) => story.id))
 ```
 
+## Documentation pages
+
+Beyond the story browser, the gallery ships typed documentation pages
+(no Storybook or MDX tooling — every page is Effect Native view data):
+
+- one docs page per catalog component (`component:<Tag>`, e.g.
+  `component:Button`) rendering the component's summary plus every live story
+  with its variant option sets spelled out as text, and
+- five foundation pages: `design-tokens`, `colors`, `typography`, `icons`,
+  and `responsive`, rendering the token scales and live `khalaTheme` values.
+
+Pages are reachable in-app ("Docs & foundations" in the component nav, "Open
+… docs page" in the story nav) or by deep link with `?page=<id>`, e.g.
+`?page=colors` or `?page=component:Button`.
+
+Completeness is enforced mechanically: `componentPageSummaries` must satisfy
+`Record<ComponentTag, string>` (a new component tag fails the build until it
+is documented) and the test suite asserts `galleryPageCoverage().missing` is
+empty (every tag needs a page with a non-empty summary and at least one live
+story).
+
 Run the browser gallery from the repository root:
 
 ```sh

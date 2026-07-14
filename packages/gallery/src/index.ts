@@ -100,7 +100,15 @@ import {
   type ViewProgram,
   type ViewportInput
 } from "@effect-native/core"
-import { ThemeSchema, khalaTheme } from "@effect-native/tokens"
+import {
+  ThemeSchema,
+  breakpointTokens,
+  controlTokens,
+  dimensionTokens,
+  khalaTheme,
+  radiusTokens,
+  spacingTokens
+} from "@effect-native/tokens"
 
 export const packageName = "@effect-native/gallery" as const
 
@@ -1856,6 +1864,505 @@ export const proofScreenBaselineStories = proofScreenBaselineComponents.map((com
   return storyItem
 })
 
+// ---------------------------------------------------------------------------
+// Documentation pages (issue #87).
+//
+// Mirrors the Apps SDK UI Storybook docs *discipline* — one docs page per
+// catalog component rendering its live variants, plus foundation pages for
+// tokens/colors/typography/icons/responsive — without any Storybook or MDX
+// tooling. Every page is typed Effect Native view data rendered by the same
+// gallery app, so agents and humans can answer "what exists, what are its
+// variants" without reading source.
+// ---------------------------------------------------------------------------
+
+/**
+ * One-line documentation summary per catalog component. The `satisfies`
+ * constraint is the compile-time half of the completeness gate: a new
+ * componentTag fails the gallery build until it is documented here (the
+ * runtime half is `galleryPageCoverage` + the gallery test suite).
+ */
+export const componentPageSummaries = {
+  Stack: "Flex layout primitive: typed direction, gap, alignment, and responsive direction/spacing per breakpoint.",
+  Text: "Typography primitive over the closed type scale (caption/body/label/title/heading) with token colors and weights.",
+  Button: "Pressable action with variants primary / secondary / ghost, disabled state, and a typed onPress intent.",
+  Image: "Media box with fit contain / cover / fill, alt text, and token radius.",
+  TextField: "Single- or multi-line text input with label, placeholder, secure mode, focus state, and typed change/submit intents.",
+  List: "Keyed vertical collection with optional virtualization and estimated item size.",
+  SectionList: "Grouped keyed collection with sticky headers and optional virtualization.",
+  Card: "Bordered surface container with token padding and radius.",
+  Spacer: "Layout gap: fixed token size or flex to absorb remaining space.",
+  Link: "Typed navigation to a path or anchor destination.",
+  Modal: "Centered dialog with typed size, open state, and dismiss intent.",
+  Sheet: "Edge-anchored panel (bottom / side) with detents and dismiss intent.",
+  Host: "Foreign-host escape hatch: serializable kind + props, driver-owned widget.",
+  Icon: "Closed icon-name registry rendered at token sizes with token colors.",
+  Divider: "Horizontal or vertical separator line.",
+  Badge: "Status/count pill over the closed tone set.",
+  Chip: "Label + value pill for dense status strips.",
+  Meter: "Determinate progress/capacity readout with tone.",
+  StatTile: "Label + strong value summary cell.",
+  Table: "Typed columns and keyed rows of arbitrary cell views.",
+  SplitPane: "Resizable split layout with typed pane sizes and resize/collapse intents.",
+  NavRail: "Sectioned navigation rail with selectable items and a typed selection intent.",
+  Workbench: "Named panes with typed active-pane swapping — no mount/unmount closures.",
+  Popover: "Anchored floating surface with typed placement and dismiss intent.",
+  DropdownMenu: "Keyboard-navigable menu from a typed item model.",
+  ContextMenu: "Pointer-anchored menu at a typed position, same item model as DropdownMenu.",
+  Tooltip: "Hover/focus label wrapping exactly one target.",
+  Combobox: "Typeahead input with app-supplied options, highlight state, and typed intents.",
+  CommandPalette: "Modal overlay composing a Combobox on the presence primitive.",
+  Tabs: "WAI-ARIA tablist with typed tab items, badges, and panel association by id.",
+  Composer: "Chat input over a typed document model with mentions, attachments, and slash/mention autocomplete.",
+  Toggle: "Boolean switch with typed value and onChange intent.",
+  Select: "Single choice from a typed option list.",
+  Checkbox: "Multi-select boolean with typed checked state.",
+  RadioGroup: "Exclusive choice group with typed value.",
+  Slider: "Bounded numeric range input with step.",
+  NumberField: "Bounded numeric input with step/min/max.",
+  FieldRow: "Label + control + description + error layout for settings panels.",
+  Toast: "Single transient notification with live region and dismiss.",
+  ToastRegion: "Stacked, placement-aware notification region.",
+  StatusBanner: "Persistent inline banner with typed tone plus retry/dismiss intents.",
+  RecoveryOverlay: "Full-surface blocking overlay with typed recovery actions.",
+  Markdown: "Pre-parsed typed block+inline document model — no parser, no raw HTML.",
+  Transcript: "Append-optimized log of role-styled messages with typed status.",
+  CodeBlock: "Pre-tokenized code lines with theme syntax colors and line numbers.",
+  DiffView: "Pre-parsed unified diff with add/remove theming and per-line review intents.",
+  GraphFigure: "Typed node/edge graph over the canvas renderer with DOM/SVG fallback.",
+  Timeline: "Run timeline of typed events.",
+  Section: "Marketing layout band with contained width and vertical padding.",
+  Hero: "Display-scale headline, subhead, CTA row, and optional media slot.",
+  AnnouncementBadge: "Outlined pill above a hero with optional action intent.",
+  CtaSection: "Headline, supporting copy, and action row for mid-page conversion.",
+  Footer: "Brand slot, typed link columns, and legal row.",
+  NavBar: "Marketing top navigation with brand, links, actions, and collapse toggle.",
+  Accordion: "Disclosure list with typed expanded ids and toggle intent.",
+  PricingColumn: "Named plan, price, feature list, and CTA intent.",
+  PricingTable: "Side-by-side pricing columns.",
+  LogoRow: "Trusted-by logo strip.",
+  StatsBand: "Metric band of values and labels.",
+  Glow: "Bounded radial accent glow behind a child slot.",
+  MockupFrame: "Browser/device frame with optional perspective tilt.",
+  Pager: "Linear stepper with progress dots and typed advance/complete intents.",
+  SwipeableListItem: "List row with typed leading/trailing swipe actions.",
+  BackgroundGradient: "Token gradient backdrop.",
+  Wallpaper: "Bounded wallpaper variant behind children.",
+  Spotlight: "Focus glow treatment around a child slot.",
+  Frame: "Decorative bordered frame around content.",
+  BlurredPopup: "Blur-backed popup on the overlay presence lifecycle.",
+  IconButton: "Circular icon-only pressable over the closed icon set with glass surface variant.",
+  Toolbar: "Floating action strip (glass surface) hosting icon buttons."
+} as const satisfies Record<ComponentTag, string>
+
+export const foundationPageIds = [
+  "design-tokens",
+  "colors",
+  "typography",
+  "icons",
+  "responsive"
+] as const
+export type FoundationPageId = (typeof foundationPageIds)[number]
+
+export type GalleryPageKind = "component" | "foundation"
+
+export interface GalleryPage {
+  readonly id: string
+  readonly title: string
+  readonly kind: GalleryPageKind
+  readonly description: string
+  readonly view: View
+}
+
+export const componentPageId = (tag: ComponentTag): string => `component:${tag}`
+
+const pageSectionTitle = (key: string, content: string): View =>
+  Text({ key, content, variant: "title", color: "textPrimary", style: { marginTop: "2" } })
+
+const pageCaption = (key: string, content: string): View =>
+  Text({ key, content, variant: "caption", color: "textMuted" })
+
+/**
+ * Enumerated variant facts for a story: every enum/token control is listed
+ * with its full option set so a page answers "what variants exist" in text,
+ * not just pixels.
+ */
+const storyVariantFacts = (storyItem: Story): ReadonlyArray<View> =>
+  storyItem.controls
+    .filter((control) => (control.options?.length ?? 0) > 0)
+    .map((control) =>
+      pageCaption(
+        `page-facts-${storyItem.id}-${control.id}`,
+        `${control.label}: ${(control.options ?? []).join(" / ")}`
+      )
+    )
+
+const componentPageView = (tag: ComponentTag): View => {
+  const stories = componentStoryMap[tag]
+  return Stack({ key: `page-component-${tag}`, direction: "column", gap: "4" }, [
+    Stack({ key: `page-component-${tag}-head`, direction: "column", gap: "1" }, [
+      Text({ key: `page-component-${tag}-title`, content: tag, variant: "heading", color: "textPrimary" }),
+      Text({
+        key: `page-component-${tag}-summary`,
+        content: componentPageSummaries[tag],
+        variant: "body",
+        color: "textMuted"
+      }),
+      pageCaption(
+        `page-component-${tag}-count`,
+        `${stories.length} ${stories.length === 1 ? "story" : "stories"} · live from the typed story fixtures`
+      )
+    ]),
+    ...stories.map((storyItem) =>
+      Card({
+        key: `page-story-${storyItem.id}`,
+        padding: "4",
+        radius: "lg",
+        style: { backgroundColor: "surface", borderColor: "border", borderWidth: 1 }
+      }, [
+        Stack({ key: `page-story-${storyItem.id}-stack`, direction: "column", gap: "2" }, [
+          Stack({ key: `page-story-${storyItem.id}-head`, direction: "row", gap: "2", align: "center" }, [
+            Text({
+              key: `page-story-${storyItem.id}-title`,
+              content: storyItem.title,
+              variant: "title",
+              color: "textPrimary"
+            }),
+            Badge({
+              key: `page-story-${storyItem.id}-kind`,
+              label: storyItem.kind,
+              tone: storyItem.kind === "hand-authored" ? "info" : "neutral"
+            })
+          ]),
+          Text({
+            key: `page-story-${storyItem.id}-description`,
+            content: storyItem.description,
+            variant: "body",
+            color: "textMuted"
+          }),
+          ...storyVariantFacts(storyItem),
+          Card({
+            key: `page-story-${storyItem.id}-canvas`,
+            padding: "4",
+            radius: "md",
+            style: { backgroundColor: "background", borderColor: "borderSubtle", borderWidth: 1 }
+          }, [storyItem.view])
+        ])
+      ])
+    )
+  ])
+}
+
+const designTokensPageView: View = Stack({ key: "page-design-tokens", direction: "column", gap: "3" }, [
+  Text({ key: "page-design-tokens-title", content: "Design tokens", variant: "heading", color: "textPrimary" }),
+  Text({
+    key: "page-design-tokens-summary",
+    content: "Every themable value in Effect Native is a closed token scale resolved through the single khalaTheme. Values below are the live khalaTheme numbers.",
+    variant: "body",
+    color: "textMuted"
+  }),
+  pageSectionTitle("page-tokens-spacing-title", `Spacing (${spacingTokens.length} steps)`),
+  ...spacingTokens.map((token) =>
+    Stack({ key: `page-spacing-${token}`, direction: "row", gap: "3", align: "center" }, [
+      Text({
+        key: `page-spacing-${token}-name`,
+        content: token,
+        variant: "label",
+        color: "textPrimary",
+        style: { width: 64 }
+      }),
+      Card({
+        key: `page-spacing-${token}-bar`,
+        radius: "sm",
+        style: { width: khalaTheme.spacing[token], height: 8, backgroundColor: "accent" }
+      }),
+      pageCaption(`page-spacing-${token}-value`, `${khalaTheme.spacing[token]}px`)
+    ])
+  ),
+  pageSectionTitle("page-tokens-radius-title", `Radius (${radiusTokens.length} steps)`),
+  ...radiusTokens.map((token) =>
+    Stack({ key: `page-radius-${token}`, direction: "row", gap: "3", align: "center" }, [
+      Text({
+        key: `page-radius-${token}-name`,
+        content: token,
+        variant: "label",
+        color: "textPrimary",
+        style: { width: 64 }
+      }),
+      Card({
+        key: `page-radius-${token}-swatch`,
+        style: {
+          width: 48,
+          height: 28,
+          backgroundColor: "surfaceRaised",
+          borderColor: "borderStrong",
+          borderWidth: 1,
+          borderRadius: token
+        }
+      }),
+      pageCaption(`page-radius-${token}-value`, `${khalaTheme.radius[token]}px`)
+    ])
+  ),
+  pageSectionTitle("page-tokens-dimension-title", `Dimension (${dimensionTokens.length} steps)`),
+  ...dimensionTokens.map((token) =>
+    Stack({ key: `page-dimension-${token}`, direction: "row", gap: "3", align: "center" }, [
+      Text({
+        key: `page-dimension-${token}-name`,
+        content: token,
+        variant: "label",
+        color: "textPrimary",
+        style: { width: 64 }
+      }),
+      pageCaption(
+        `page-dimension-${token}-value`,
+        typeof khalaTheme.dimension[token] === "number"
+          ? `${khalaTheme.dimension[token]}px`
+          : String(khalaTheme.dimension[token])
+      )
+    ])
+  ),
+  pageSectionTitle("page-tokens-control-title", `Control lattice (${controlTokens.length} sizes)`),
+  ...controlTokens.map((token) =>
+    Stack({ key: `page-control-${token}`, direction: "row", gap: "3", align: "center" }, [
+      Text({
+        key: `page-control-${token}-name`,
+        content: token,
+        variant: "label",
+        color: "textPrimary",
+        style: { width: 64 }
+      }),
+      pageCaption(
+        `page-control-${token}-value`,
+        `height ${khalaTheme.control[token].height}px · gutter ${khalaTheme.control[token].gutter}px · icon ${khalaTheme.control[token].icon}px`
+      )
+    ])
+  ),
+  pageSectionTitle("page-tokens-motion-title", "Motion"),
+  pageCaption(
+    "page-motion-durations",
+    `durations: fast ${khalaTheme.motion.durationFastMs}ms · enter ${khalaTheme.motion.durationEnterMs}ms · exit ${khalaTheme.motion.durationExitMs}ms`
+  ),
+  pageCaption("page-motion-ease-basic", `easeBasic: ${khalaTheme.motion.easeBasic}`),
+  pageCaption("page-motion-ease-enter", `easeEnter: ${khalaTheme.motion.easeEnter}`),
+  pageCaption("page-motion-ease-exit", `easeExit: ${khalaTheme.motion.easeExit}`),
+  pageSectionTitle("page-tokens-elevation-title", "Elevation"),
+  pageCaption("page-elevation-shadow", `overlayShadow: ${khalaTheme.elevation.overlayShadow}`),
+  pageCaption("page-elevation-hairline", `hairlineWidth: ${khalaTheme.elevation.hairlineWidth}px`)
+])
+
+const colorsPageView: View = Stack({ key: "page-colors", direction: "column", gap: "3" }, [
+  Text({ key: "page-colors-title", content: "Colors", variant: "heading", color: "textPrimary" }),
+  Text({
+    key: "page-colors-summary",
+    content: `All ${colorTokens.length} semantic color roles. Swatches render live under the mounted theme; hex values are the khalaTheme (Protoss blue, dark-only) assignments.`,
+    variant: "body",
+    color: "textMuted"
+  }),
+  ...colorTokens.map((name) =>
+    Stack({ key: `page-color-${name}`, direction: "row", gap: "3", align: "center" }, [
+      Card({
+        key: `page-color-${name}-swatch`,
+        radius: "md",
+        style: {
+          width: 56,
+          height: 28,
+          backgroundColor: name,
+          borderColor: "borderSubtle",
+          borderWidth: 1
+        }
+      }),
+      Text({
+        key: `page-color-${name}-name`,
+        content: name,
+        variant: "label",
+        color: "textPrimary",
+        style: { width: 160 }
+      }),
+      pageCaption(`page-color-${name}-value`, khalaTheme.color[name])
+    ])
+  )
+])
+
+const typographyPageView: View = Stack({ key: "page-typography", direction: "column", gap: "4" }, [
+  Text({ key: "page-typography-title", content: "Typography", variant: "heading", color: "textPrimary" }),
+  Text({
+    key: "page-typography-summary",
+    content: `The closed ${typeScaleTokens.length}-step type scale. Specimens render live; metrics are the khalaTheme values.`,
+    variant: "body",
+    color: "textMuted"
+  }),
+  ...typeScaleTokens.map((variant) =>
+    Stack({ key: `page-type-${variant}`, direction: "column", gap: "1" }, [
+      Text({
+        key: `page-type-${variant}-specimen`,
+        content: "The quick brown fox jumps over the lazy dog",
+        variant,
+        color: "textPrimary"
+      }),
+      pageCaption(
+        `page-type-${variant}-meta`,
+        `${variant} — ${khalaTheme.typeScale[variant].fontSize}px / ${khalaTheme.typeScale[variant].lineHeight}px line height / weight ${khalaTheme.typeScale[variant].fontWeight}`
+      )
+    ])
+  )
+])
+
+const iconsPageView: View = Stack({ key: "page-icons", direction: "column", gap: "3" }, [
+  Text({ key: "page-icons-title", content: "Icons", variant: "heading", color: "textPrimary" }),
+  Text({
+    key: "page-icons-summary",
+    content: `The full closed icon registry: ${iconNames.length} names at sizes ${iconSizes.join(" / ")}. Color comes from the token system.`,
+    variant: "body",
+    color: "textMuted"
+  }),
+  ...iconNames.map((name) =>
+    Stack({ key: `page-icon-${name}`, direction: "row", gap: "3", align: "center" }, [
+      ...iconSizes.map((size) =>
+        Icon({
+          key: `page-icon-${name}-${size}`,
+          name,
+          size,
+          color: "textPrimary",
+          label: `${name} (${size})`
+        })
+      ),
+      Text({ key: `page-icon-${name}-name`, content: name, variant: "label", color: "textPrimary" })
+    ])
+  )
+])
+
+const responsivePageView: View = Stack({ key: "page-responsive", direction: "column", gap: "3" }, [
+  Text({ key: "page-responsive-title", content: "Responsive", variant: "heading", color: "textPrimary" }),
+  Text({
+    key: "page-responsive-summary",
+    content: "Responsive behavior is typed data: any responsive prop takes per-breakpoint values ({ base, sm, md, lg, xl }) resolved against the theme breakpoints below.",
+    variant: "body",
+    color: "textMuted"
+  }),
+  pageSectionTitle("page-responsive-breakpoints-title", `Breakpoints (${breakpointTokens.length})`),
+  ...breakpointTokens.map((token) =>
+    Stack({ key: `page-breakpoint-${token}`, direction: "row", gap: "3", align: "center" }, [
+      Text({
+        key: `page-breakpoint-${token}-name`,
+        content: token,
+        variant: "label",
+        color: "textPrimary",
+        style: { width: 64 }
+      }),
+      pageCaption(`page-breakpoint-${token}-value`, `${khalaTheme.breakpoint[token]}px and up`)
+    ])
+  ),
+  pageSectionTitle("page-responsive-viewports-title", "Gallery preview viewports"),
+  ...galleryViewports.map((entry) =>
+    Stack({ key: `page-viewport-${entry.id}`, direction: "row", gap: "3", align: "center" }, [
+      Text({
+        key: `page-viewport-${entry.id}-name`,
+        content: entry.label,
+        variant: "label",
+        color: "textPrimary",
+        style: { width: 64 }
+      }),
+      pageCaption(
+        `page-viewport-${entry.id}-value`,
+        `${entry.viewport.width} × ${entry.viewport.height}`
+      )
+    ])
+  ),
+  pageSectionTitle("page-responsive-demo-title", "Live demo: column below md, row at md and up"),
+  Stack({
+    key: "page-responsive-demo",
+    direction: { base: "column", md: "row" },
+    gap: { base: "2", md: "4" },
+    padding: "3",
+    style: {
+      borderColor: "border",
+      borderWidth: 1,
+      variants: { breakpoint: { md: { backgroundColor: "surface" } } }
+    }
+  }, [
+    Card({ key: "page-responsive-demo-a", padding: "3", radius: "md" }, [
+      Text({ key: "page-responsive-demo-a-copy", content: "Mobile first", variant: "body", color: "textPrimary" })
+    ]),
+    Card({ key: "page-responsive-demo-b", padding: "3", radius: "md" }, [
+      Text({ key: "page-responsive-demo-b-copy", content: "Desktop row", variant: "body", color: "textPrimary" })
+    ])
+  ])
+])
+
+const foundationPageViews: Record<FoundationPageId, View> = {
+  "design-tokens": designTokensPageView,
+  colors: colorsPageView,
+  typography: typographyPageView,
+  icons: iconsPageView,
+  responsive: responsivePageView
+}
+
+const foundationPageMeta: Record<FoundationPageId, { readonly title: string; readonly description: string }> = {
+  "design-tokens": {
+    title: "Design tokens",
+    description: "Spacing, radius, dimension, control-lattice, motion, and elevation scales with live khalaTheme values."
+  },
+  colors: {
+    title: "Colors",
+    description: "The full semantic color-role matrix with live swatches and khalaTheme hex values."
+  },
+  typography: {
+    title: "Typography",
+    description: "Type-scale specimens with khalaTheme font metrics."
+  },
+  icons: {
+    title: "Icons",
+    description: "The full closed icon registry with names and every token size."
+  },
+  responsive: {
+    title: "Responsive",
+    description: "Breakpoint tokens, gallery viewports, and a live responsive layout demo."
+  }
+}
+
+export const foundationPages: ReadonlyArray<GalleryPage> = foundationPageIds.map((id) => ({
+  id,
+  title: foundationPageMeta[id].title,
+  kind: "foundation" as const,
+  description: foundationPageMeta[id].description,
+  view: foundationPageViews[id]
+}))
+
+export const componentPages: ReadonlyArray<GalleryPage> = componentTags.map((tag) => ({
+  id: componentPageId(tag),
+  title: tag,
+  kind: "component" as const,
+  description: componentPageSummaries[tag],
+  view: componentPageView(tag)
+}))
+
+export const galleryPages: ReadonlyArray<GalleryPage> = [...foundationPages, ...componentPages]
+
+export const galleryPageById = (pageId: string): GalleryPage | undefined =>
+  galleryPages.find((page) => page.id === pageId)
+
+/**
+ * Mechanical completeness check: every catalog componentTag must have a
+ * component docs page with a non-empty summary and at least one live story.
+ * The gallery test suite asserts `missing` is empty, so future components
+ * fail the gallery until they are documented.
+ */
+export const galleryPageCoverage = (): {
+  readonly missing: ReadonlyArray<ComponentTag>
+  readonly covered: ReadonlyArray<ComponentTag>
+} => {
+  const documented = new Set(
+    galleryPages
+      .filter((page) => page.kind === "component" && page.description.trim().length > 0)
+      .map((page) => page.id)
+  )
+  const hasPage = (tag: ComponentTag): boolean =>
+    documented.has(componentPageId(tag)) && storiesForComponent(tag).length > 0
+  return {
+    covered: componentTags.filter(hasPage),
+    missing: componentTags.filter((tag) => !hasPage(tag))
+  }
+}
+
 export const serializeStory = (input: Story): string =>
   JSON.stringify(Schema.encodeSync(StorySchema)(input), null, 2)
 
@@ -1933,6 +2440,8 @@ export const ViewportSelected = defineIntent(
   Schema.Literals(["phone", "tablet", "desktop"] as const)
 )
 export const SerializedStoryChanged = defineIntent("Gallery.SerializedStoryChanged", Schema.String)
+/** Select a documentation page by id; the empty string returns to the story browser. */
+export const PageSelected = defineIntent("Gallery.PageSelected", Schema.String)
 
 export const galleryIntentDefinitions = [
   StorySelected,
@@ -1940,7 +2449,8 @@ export const galleryIntentDefinitions = [
   ControlValueChanged,
   ThemeSelected,
   ViewportSelected,
-  SerializedStoryChanged
+  SerializedStoryChanged,
+  PageSelected
 ] as const
 
 export const GalleryStateSchema = Schema.Struct({
@@ -1949,6 +2459,8 @@ export const GalleryStateSchema = Schema.Struct({
   activeStoryId: Schema.NonEmptyString,
   activeThemeId: Schema.Literals(["default", "dark"] as const),
   activeViewportId: Schema.Literals(["phone", "tablet", "desktop"] as const),
+  /** Active documentation page id; the empty string means the story browser. */
+  activePageId: Schema.String,
   controlValues: Schema.Record(Schema.String, Schema.Record(Schema.String, JsonPayloadSchema)),
   pressedCount: Schema.Number,
   changedValue: Schema.String,
@@ -1971,6 +2483,7 @@ export const initialGalleryState = (
     activeStoryId: firstStory.id,
     activeThemeId: "default",
     activeViewportId: "desktop",
+    activePageId: "",
     controlValues: {},
     pressedCount: 0,
     changedValue: "",
@@ -2092,6 +2605,13 @@ const componentNavigation = (state: GalleryState): View =>
   }, [
     Stack({ key: "component-nav-stack", direction: "column", gap: "2" }, [
       Text({ key: "component-nav-title", content: "Components", variant: "title", color: "textPrimary" }),
+      Button({
+        key: "component-nav-docs",
+        label: "Docs & foundations",
+        variant: "ghost",
+        onPress: IntentRef("Gallery.PageSelected", StaticPayload(foundationPageIds[0])),
+        style: { borderColor: "border", borderWidth: 1, borderRadius: "md", padding: "2", textAlign: "left" }
+      }),
       List({ key: "component-list" }, state.storybook.groups.map((group) =>
         keyed(Button({
           key: `component-${group.component}`,
@@ -2114,6 +2634,13 @@ const storyNavigation = (state: GalleryState): View => {
   }, [
     Stack({ key: "story-nav-stack", direction: "column", gap: "2" }, [
       Text({ key: "story-nav-title", content: group.title, variant: "title", color: "textPrimary" }),
+      Button({
+        key: "story-nav-docs-page",
+        label: `Open ${group.component} docs page`,
+        variant: "ghost",
+        onPress: IntentRef("Gallery.PageSelected", StaticPayload(componentPageId(group.component))),
+        style: { borderColor: "border", borderWidth: 1, borderRadius: "md", padding: "2", textAlign: "left" }
+      }),
       List({ key: "story-list" }, group.stories.map((storyItem) =>
         keyed(Button({
           key: `story-${storyItem.id}`,
@@ -2126,6 +2653,70 @@ const storyNavigation = (state: GalleryState): View => {
     ])
   ])
 }
+
+const pagesNavigation = (state: GalleryState): View =>
+  Card({
+    key: "pages-nav",
+    padding: "3",
+    radius: "lg",
+    style: { backgroundColor: "surface", borderColor: "border", borderWidth: 1, width: 240 }
+  }, [
+    Stack({ key: "pages-nav-stack", direction: "column", gap: "2" }, [
+      Text({ key: "pages-nav-title", content: "Docs", variant: "title", color: "textPrimary" }),
+      Button({
+        key: "pages-nav-browser",
+        label: "Back to story browser",
+        variant: "ghost",
+        onPress: IntentRef("Gallery.PageSelected", StaticPayload("")),
+        style: { borderColor: "border", borderWidth: 1, borderRadius: "md", padding: "2", textAlign: "left" }
+      }),
+      Text({ key: "pages-nav-foundations", content: "Foundations", variant: "caption", color: "textMuted" }),
+      ...foundationPages.map((page) =>
+        Button({
+          key: `pages-nav-${page.id}`,
+          label: page.title,
+          variant: state.activePageId === page.id ? "secondary" : "ghost",
+          onPress: IntentRef("Gallery.PageSelected", StaticPayload(page.id)),
+          style: { borderRadius: "md", padding: "2", textAlign: "left" }
+        })
+      ),
+      Text({ key: "pages-nav-components", content: "Components", variant: "caption", color: "textMuted" }),
+      List({ key: "pages-nav-component-list" }, componentPages.map((page) =>
+        keyed(Button({
+          key: `pages-nav-${page.id}`,
+          label: page.title,
+          variant: state.activePageId === page.id ? "secondary" : "ghost",
+          onPress: IntentRef("Gallery.PageSelected", StaticPayload(page.id)),
+          style: { borderRadius: "md", padding: "2", textAlign: "left" }
+        }))
+      ))
+    ])
+  ])
+
+const pageMain = (state: GalleryState, page: GalleryPage): View =>
+  Stack({ key: "gallery-main", direction: "column", gap: "3", style: { flex: 1, minWidth: 0 } }, [
+    Stack({ key: "gallery-head", direction: "column", gap: "2" }, [
+      Text({
+        key: "gallery-title",
+        content: "Effect Native component gallery",
+        variant: "heading",
+        color: "textPrimary"
+      }),
+      Text({
+        key: "gallery-subtitle",
+        content: page.description,
+        variant: "body",
+        color: "textMuted"
+      }),
+      toolbar(state)
+    ]),
+    Card({
+      key: "page-canvas",
+      padding: "4",
+      radius: "lg",
+      style: { backgroundColor: "background", borderColor: "border", borderWidth: 1, minHeight: 260 }
+    }, [page.view])
+  ])
 
 const toolbar = (state: GalleryState): View =>
   Stack({ key: "gallery-toolbar", direction: "row", gap: "2", align: "center" }, [
@@ -2240,21 +2831,36 @@ const serializedPanel = (state: GalleryState): View => {
   ])
 }
 
-export const galleryView = (state: GalleryState): View =>
-  Stack({
+const galleryRootStyle = {
+  minHeight: "full",
+  backgroundColor: "background",
+  variants: {
+    platform: {
+      ios: { paddingTop: "16" }
+    }
+  }
+} as const
+
+export const galleryView = (state: GalleryState): View => {
+  const page = state.activePageId === "" ? undefined : galleryPageById(state.activePageId)
+  if (page !== undefined) {
+    return Stack({
+      key: "gallery-root",
+      direction: { base: "column", lg: "row" },
+      gap: "3",
+      padding: "3",
+      style: galleryRootStyle
+    }, [
+      pagesNavigation(state),
+      pageMain(state, page)
+    ])
+  }
+  return Stack({
     key: "gallery-root",
     direction: { base: "column", lg: "row" },
     gap: "3",
     padding: "3",
-    style: {
-      minHeight: "full",
-      backgroundColor: "background",
-      variants: {
-        platform: {
-          ios: { paddingTop: "16" }
-        }
-      }
-    }
+    style: galleryRootStyle
   }, [
     componentNavigation(state),
     storyNavigation(state),
@@ -2285,6 +2891,7 @@ export const galleryView = (state: GalleryState): View =>
       ])
     ])
   ])
+}
 
 export interface GalleryRuntime {
   readonly state: SubscriptionRef.SubscriptionRef<GalleryState>
@@ -2339,7 +2946,13 @@ export const makeGalleryRuntime = (
         SubscriptionRef.update(state, (current) => ({ ...current, activeThemeId: themeId })),
       "Gallery.ViewportSelected": (viewportId) =>
         SubscriptionRef.update(state, (current) => ({ ...current, activeViewportId: viewportId })),
-      "Gallery.SerializedStoryChanged": () => Effect.void
+      "Gallery.SerializedStoryChanged": () => Effect.void,
+      "Gallery.PageSelected": (pageId) =>
+        SubscriptionRef.update(state, (current) =>
+          pageId === "" || galleryPageById(pageId) !== undefined
+            ? { ...current, activePageId: pageId }
+            : current
+        )
     }
     const registry = yield* makeIntentRegistry(galleryIntentDefinitions, handlers, { now: () => 0 })
     const report: IntentReporter = (ref, runtimeValue) =>
