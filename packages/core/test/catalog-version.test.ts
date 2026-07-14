@@ -3,6 +3,7 @@ import { Exit, Schema } from "effect"
 import {
   AnchoredOverlayCatalogVersion,
   AppShellCatalogVersion,
+  AvatarCatalogVersion,
   CatalogVersion,
   ComboboxCatalogVersion,
   CodeBlockCatalogVersion,
@@ -98,11 +99,12 @@ describe("catalog version compatibility", () => {
       GlassChromeIconsCatalogVersion,
       GraphProvenanceCatalogVersion,
       EmptyMessageCatalogVersion,
-      IconExpansionCatalogVersion
+      IconExpansionCatalogVersion,
+      AvatarCatalogVersion
     ])
     // The current marker is the last entry; the previous marker is second-last.
-    expect(CatalogVersion).toBe(IconExpansionCatalogVersion)
-    expect(PreviousCatalogVersion).toBe(EmptyMessageCatalogVersion)
+    expect(CatalogVersion).toBe(AvatarCatalogVersion)
+    expect(PreviousCatalogVersion).toBe(IconExpansionCatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 1]).toBe(CatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 2]).toBe(PreviousCatalogVersion)
   })

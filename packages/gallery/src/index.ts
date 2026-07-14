@@ -2,6 +2,8 @@ import { Effect, Schema, SubscriptionRef } from "effect"
 import {
   Accordion,
   AnnouncementBadge,
+  Avatar,
+  AvatarGroup,
   Badge,
   Button,
   Card,
@@ -85,6 +87,7 @@ import {
   hostKinds,
   iconNames,
   iconSizes,
+  avatarVariants,
   tones,
   defineIntent,
   makeIntentRegistry,
@@ -1839,6 +1842,55 @@ const componentStoryMap = {
         )
       ]
     })
+  ],
+  Avatar: [
+    story({
+      id: "avatar-fallback-chain",
+      component: "Avatar",
+      title: "Avatar",
+      description: "Identity mark with the typed image -> initials -> icon fallback chain on the control lattice.",
+      view: Stack({ key: "avatar-wrap", direction: "row", gap: "2", align: "center" }, [
+        Avatar({
+          key: "avatar-image",
+          image: "https://example.com/assets/operator.png",
+          initials: "OR",
+          size: "lg",
+          tone: "info",
+          label: "Orrery"
+        }),
+        Avatar({ key: "avatar-initials", initials: "WF", size: "lg", tone: "success", variant: "solid", label: "Whitefang" }),
+        Avatar({ key: "avatar-icon", icon: "Circle", size: "lg", tone: "neutral" })
+      ]),
+      controls: [
+        enumControl("avatar-size", "Size", ["children", 1, "size"], "lg", controlTokens),
+        enumControl("avatar-tone", "Tone", ["children", 1, "tone"], "success", tones),
+        enumControl("avatar-variant", "Variant", ["children", 1, "variant"], "solid", avatarVariants)
+      ]
+    })
+  ],
+  AvatarGroup: [
+    story({
+      id: "avatar-group-overflow",
+      component: "AvatarGroup",
+      title: "AvatarGroup",
+      description: "Overlapping keyed avatars with a cutout ring and a +N overflow count past `max`.",
+      view: AvatarGroup({
+        key: "avatar-group",
+        max: 3,
+        size: "md",
+        tone: "info",
+        avatars: [
+          keyed(Avatar({ key: "member-a", initials: "OR", label: "Orrery" })),
+          keyed(Avatar({ key: "member-b", initials: "WF", label: "Whitefang" })),
+          keyed(Avatar({ key: "member-c", icon: "Circle" })),
+          keyed(Avatar({ key: "member-d", initials: "TR", label: "Trigger" }))
+        ]
+      }),
+      controls: [
+        enumControl("avatar-group-size", "Size", ["size"], "md", controlTokens),
+        enumControl("avatar-group-tone", "Tone", ["tone"], "info", tones)
+      ]
+    })
   ]
 } satisfies { readonly [Tag in ComponentTag]: ReadonlyArray<Story> }
 
@@ -1988,7 +2040,9 @@ export const componentPageSummaries = {
   BlurredPopup: "Blur-backed popup on the overlay presence lifecycle.",
   IconButton: "Circular icon-only pressable over the closed icon set with glass surface variant.",
   Toolbar: "Floating action strip (glass surface) hosting icon buttons.",
-  EmptyMessage: "Centered empty-state block: icon badge (bounded tone/size), title, description, and a typed Button action slot."
+  EmptyMessage: "Centered empty-state block: icon badge (bounded tone/size), title, description, and a typed Button action slot.",
+  Avatar: "Identity mark with the typed image -> initials -> icon fallback chain, lattice size, and tone soft/solid variants.",
+  AvatarGroup: "Overlapping keyed avatars with a cutout ring and a +N overflow count past max."
 } as const satisfies Record<ComponentTag, string>
 
 export const foundationPageIds = [

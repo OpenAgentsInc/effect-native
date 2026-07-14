@@ -40,6 +40,10 @@ import {
   type BlurredPopupView,
   type IconButtonView,
   type ToolbarView,
+  type AvatarGroupView,
+  type AvatarVariant,
+  type AvatarView,
+  type ControlToken,
   type SurfaceMaterial,
   type ComboboxOption,
   type ComboboxView,
@@ -2109,6 +2113,166 @@ const renderEmptyMessage = (view: EmptyMessageView, state: DomRendererState, rep
     action.style.marginTop = "var(--en-spacing-4)"
     action.appendChild(renderView(view.action, state, report))
     children.push(action)
+  }
+  element.replaceChildren(...children)
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  return element
+}
+
+// Avatar + AvatarGroup (issue #80). The typed fallback chain is layered DOM:
+// the initials/icon fallback always renders beneath and the app-supplied
+// image sits absolutely on top, so a failed image load (onerror hides the
+// img) reveals the fallback without any renderer-side state. Sizes ride the
+// shared control lattice from the theme; tones reuse the closed Tone set
+// with a soft (tinted translucent fill) or solid (tone fill + inverse text)
+// variant. No remote fetching or identicon generation happens here.
+interface AvatarDefaults {
+  readonly size?: ControlToken
+  readonly tone?: Tone
+  readonly variant?: AvatarVariant
+}
+
+const applyAvatarSurface = (
+  element: HTMLElement,
+  size: ControlToken,
+  tone: Tone,
+  variant: AvatarVariant,
+  state: DomRendererState
+): void => {
+  const height = state.theme.control[size].height
+  element.setAttribute("data-en-avatar-size", size)
+  element.setAttribute("data-en-tone", tone)
+  element.setAttribute("data-en-avatar-variant", variant)
+  element.style.position = "relative"
+  element.style.display = "inline-flex"
+  element.style.alignItems = "center"
+  element.style.justifyContent = "center"
+  element.style.flexShrink = "0"
+  element.style.overflow = "hidden"
+  element.style.width = `${height}px`
+  element.style.height = `${height}px`
+  element.style.borderRadius = "50%"
+  element.style.fontSize = `${Math.round(height * 0.42)}px`
+  const toneColor = colorValue(toneColorToken[tone])
+  if (variant === "solid") {
+    element.style.background = toneColor
+    element.style.color = colorValue("textInverse")
+  } else {
+    element.style.background = `color-mix(in srgb, ${toneColor} 18%, transparent)`
+    element.style.color = toneColor
+  }
+}
+
+const renderAvatarElement = (
+  view: AvatarView,
+  state: DomRendererState,
+  defaults: AvatarDefaults = {}
+): HTMLElement => {
+  const element = state.keyedElement(view, "span")
+  state.resetListeners(element)
+  applyAvatarSurface(
+    element,
+    view.size ?? defaults.size ?? "md",
+    view.tone ?? defaults.tone ?? "neutral",
+    view.variant ?? defaults.variant ?? "soft",
+    state
+  )
+  const document = element.ownerDocument
+  const children: Array<HTMLElement> = []
+  // Fallback layer: initials over icon (the chain past the image).
+  if (view.initials !== undefined) {
+    const initials = document.createElement("span")
+    initials.setAttribute("data-en-role", "initials")
+    initials.style.fontWeight = "600"
+    initials.style.lineHeight = "1"
+    initials.style.userSelect = "none"
+    initials.textContent = view.initials
+    children.push(initials)
+  } else if (view.icon !== undefined) {
+    const icon = document.createElement("span")
+    icon.setAttribute("data-en-role", "icon")
+    icon.setAttribute("data-en-icon", view.icon)
+    icon.style.display = "inline-flex"
+    // Icon conventions (#85): the 1em glyph sizes from font-size — pin it to
+    // the control-lattice icon step for this avatar size.
+    icon.style.fontSize = `${state.theme.control[view.size ?? defaults.size ?? "md"].icon}px`
+    icon.innerHTML = iconSvg(view.icon)
+    children.push(icon)
+  }
+  if (view.image !== undefined) {
+    const image = document.createElement("img")
+    image.setAttribute("data-en-role", "image")
+    image.setAttribute("src", view.image)
+    image.setAttribute("alt", "")
+    image.style.position = "absolute"
+    image.style.inset = "0"
+    image.style.width = "100%"
+    image.style.height = "100%"
+    image.style.objectFit = "cover"
+    // A failed load reveals the initials/icon layer beneath — the typed
+    // fallback chain needs no renderer state.
+    image.addEventListener("error", () => {
+      image.style.display = "none"
+    })
+    children.push(image)
+  }
+  element.replaceChildren(...children)
+  if (view.label === undefined) {
+    element.setAttribute("aria-hidden", "true")
+  } else {
+    element.setAttribute("role", "img")
+    element.setAttribute("aria-label", view.label)
+  }
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  return element
+}
+
+const renderAvatar = (view: AvatarView, state: DomRendererState): HTMLElement =>
+  renderAvatarElement(view, state)
+
+const renderAvatarGroup = (view: AvatarGroupView, state: DomRendererState): HTMLElement => {
+  const element = state.keyedElement(view, "span")
+  state.resetListeners(element)
+  const size = view.size ?? "md"
+  const tone = view.tone ?? "neutral"
+  const variant = view.variant ?? "soft"
+  element.setAttribute("data-en-avatar-size", size)
+  element.style.display = "inline-flex"
+  element.style.alignItems = "center"
+  const visible = view.max === undefined ? view.avatars : view.avatars.slice(0, view.max)
+  const overflow = view.avatars.length - visible.length
+  const overlap = `${-Math.round(state.theme.control[size].height * 0.25)}px`
+  const children: Array<HTMLElement> = []
+  visible.forEach((avatar, index) => {
+    const child = renderAvatarElement(avatar, state, { size, tone, variant })
+    // Cutout overlap: a background-colored ring separates stacked marks;
+    // earlier avatars stay on top.
+    child.style.boxShadow = `0 0 0 2px ${colorValue("background")}`
+    child.style.zIndex = String(visible.length + (overflow > 0 ? 1 : 0) - index)
+    if (index > 0) {
+      child.style.marginLeft = overlap
+    }
+    children.push(child)
+  })
+  if (overflow > 0) {
+    const more = element.ownerDocument.createElement("span")
+    more.setAttribute("data-en-role", "overflow")
+    applyAvatarSurface(more, size, tone, variant, state)
+    more.style.boxShadow = `0 0 0 2px ${colorValue("background")}`
+    more.style.zIndex = "0"
+    if (children.length > 0) {
+      more.style.marginLeft = overlap
+    }
+    const label = more.ownerDocument.createElement("span")
+    label.style.fontWeight = "600"
+    label.style.lineHeight = "1"
+    label.style.userSelect = "none"
+    label.textContent = `+${overflow}`
+    more.replaceChildren(label)
+    more.setAttribute("aria-label", `${overflow} more`)
+    children.push(more)
   }
   element.replaceChildren(...children)
   applyBaseStyle(element, view, state)
@@ -4299,6 +4463,10 @@ const renderView = (view: View, state: DomRendererState, report: IntentReporter)
       return renderToolbar(view, state, report)
     case "EmptyMessage":
       return renderEmptyMessage(view, state, report)
+    case "Avatar":
+      return renderAvatar(view, state)
+    case "AvatarGroup":
+      return renderAvatarGroup(view, state)
   }
 }
 
@@ -4542,6 +4710,12 @@ export const viewStructure = (view: View): DomStructure => {
         tag: "EmptyMessage",
         ...(view.key === undefined ? {} : { key: view.key }),
         ...(view.action === undefined ? {} : { children: [viewStructure(view.action)] })
+      }
+    case "AvatarGroup":
+      return {
+        tag: "AvatarGroup",
+        ...(view.key === undefined ? {} : { key: view.key }),
+        children: view.avatars.map(viewStructure)
       }
     default:
       return {

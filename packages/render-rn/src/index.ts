@@ -40,6 +40,10 @@ import {
   type BlurredPopupView,
   type IconButtonView,
   type ToolbarView,
+  type AvatarGroupView,
+  type AvatarVariant,
+  type AvatarView,
+  type ControlToken,
   type ComboboxOption,
   type ComboboxView,
   type CommandPaletteView,
@@ -1683,6 +1687,191 @@ const renderEmptyMessage = (
       )
     ),
     ...children
+  )
+}
+
+// Avatar + AvatarGroup (issue #80) on React Native. The typed fallback chain
+// is layered honestly without renderer state: the initials/icon fallback
+// renders beneath and the app-supplied image sits absolutely on top, so a
+// failed image load (RN Image renders nothing) reveals the fallback. Sizes
+// ride the shared control lattice from the theme; the soft variant tints the
+// tone color to a translucent fill, solid paints the tone with inverse text.
+interface AvatarDefaults {
+  readonly size?: ControlToken
+  readonly tone?: Tone
+  readonly variant?: AvatarVariant
+}
+
+// Bounded translucent tint of a theme hex color (#rgb / #rrggbb / #rrggbbaa).
+const avatarSoftFill = (color: string): string => {
+  if (/^#[0-9a-f]{3}$/i.test(color)) {
+    const [r, g, b] = color.slice(1)
+    return `#${r}${r}${g}${g}${b}${b}2e`
+  }
+  if (/^#[0-9a-f]{6}$/i.test(color)) {
+    return `${color}2e`
+  }
+  return color
+}
+
+const renderAvatarView = (
+  view: AvatarView,
+  dependencies: ReactNativeDependencies,
+  options: ReactNativeRenderOptions,
+  defaults: AvatarDefaults = {},
+  groupStyle: ReactNativeStyle = {}
+): ReactElementLike => {
+  const theme = options.theme ?? defaultTheme
+  const size = view.size ?? defaults.size ?? "md"
+  const tone = view.tone ?? defaults.tone ?? "neutral"
+  const variant = view.variant ?? defaults.variant ?? "soft"
+  const height = theme.control[size].height
+  const toneColor = colorValue(theme, toneColorToken[tone])
+  const textColor = variant === "solid" ? colorValue(theme, "textInverse") : toneColor
+  const style = mergeNativeStyles(
+    {
+      position: "relative",
+      width: height,
+      height,
+      borderRadius: height / 2,
+      overflow: "hidden",
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: variant === "solid" ? toneColor : avatarSoftFill(toneColor)
+    },
+    groupStyle,
+    viewStyle(view, options)
+  )
+  const parts: Array<ReactElementLike> = []
+  if (view.initials !== undefined) {
+    parts.push(
+      createElement(
+        dependencies,
+        dependencies.ReactNative.Text,
+        {
+          key: "initials",
+          testID: "en-avatar-initials",
+          style: { color: textColor, fontSize: Math.round(height * 0.42), fontWeight: "600" }
+        },
+        view.initials
+      )
+    )
+  } else if (view.icon !== undefined) {
+    parts.push(
+      createElement(
+        dependencies,
+        dependencies.ReactNative.Text,
+        {
+          key: "icon",
+          testID: `en-avatar-icon:${view.icon}`,
+          style: { color: textColor, fontSize: theme.control[size].icon }
+        },
+        iconGlyphs[view.icon]
+      )
+    )
+  }
+  if (view.image !== undefined) {
+    parts.push(
+      createElement(dependencies, dependencies.ReactNative.Image, {
+        key: "image",
+        testID: "en-avatar-image",
+        source: { uri: view.image },
+        resizeMode: "cover",
+        style: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }
+      })
+    )
+  }
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    {
+      ...baseProps(view, style),
+      testID: `en-avatar:${tone}:${variant}`,
+      ...(view.label === undefined
+        ? { accessibilityElementsHidden: true, importantForAccessibility: "no-hide-descendants" }
+        : { accessibilityRole: "image", accessibilityLabel: view.label })
+    },
+    ...parts
+  )
+}
+
+const renderAvatar = (
+  view: AvatarView,
+  dependencies: ReactNativeDependencies,
+  options: ReactNativeRenderOptions
+): ReactElementLike => renderAvatarView(view, dependencies, options)
+
+const renderAvatarGroup = (
+  view: AvatarGroupView,
+  dependencies: ReactNativeDependencies,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const theme = options.theme ?? defaultTheme
+  const size = view.size ?? "md"
+  const tone = view.tone ?? "neutral"
+  const variant = view.variant ?? "soft"
+  const height = theme.control[size].height
+  const visible = view.max === undefined ? view.avatars : view.avatars.slice(0, view.max)
+  const overflow = view.avatars.length - visible.length
+  const overlap = -Math.round(height * 0.25)
+  const ring = {
+    borderWidth: 2,
+    borderColor: colorValue(theme, "background")
+  }
+  const parts: Array<ReactElementLike> = visible.map((avatar, index) =>
+    renderAvatarView(avatar, dependencies, options, { size, tone, variant }, {
+      ...ring,
+      zIndex: visible.length + (overflow > 0 ? 1 : 0) - index,
+      ...(index === 0 ? {} : { marginLeft: overlap })
+    })
+  )
+  if (overflow > 0) {
+    const toneColor = colorValue(theme, toneColorToken[tone])
+    parts.push(
+      createElement(
+        dependencies,
+        dependencies.ReactNative.View,
+        {
+          key: "overflow",
+          testID: "en-avatar-overflow",
+          accessibilityLabel: `${overflow} more`,
+          style: {
+            width: height,
+            height,
+            borderRadius: height / 2,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: variant === "solid" ? toneColor : avatarSoftFill(toneColor),
+            ...ring,
+            zIndex: 0,
+            ...(parts.length === 0 ? {} : { marginLeft: overlap })
+          }
+        },
+        createElement(
+          dependencies,
+          dependencies.ReactNative.Text,
+          {
+            key: "count",
+            style: {
+              color: variant === "solid" ? colorValue(theme, "textInverse") : toneColor,
+              fontSize: Math.round(height * 0.42),
+              fontWeight: "600"
+            }
+          },
+          `+${overflow}`
+        )
+      )
+    )
+  }
+  const style = mergeNativeStyles(
+    { flexDirection: "row", alignItems: "center" },
+    viewStyle(view, options)
+  )
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    { ...baseProps(view, style), testID: "en-avatar-group" },
+    ...parts
   )
 }
 
@@ -3836,6 +4025,10 @@ const renderResolvedReactNativeView = (
       return renderToolbar(view, dependencies, report, options)
     case "EmptyMessage":
       return renderEmptyMessage(view, dependencies, report, options)
+    case "Avatar":
+      return renderAvatar(view, dependencies, options)
+    case "AvatarGroup":
+      return renderAvatarGroup(view, dependencies, options)
   }
 }
 
@@ -4992,6 +5185,12 @@ export const viewStructure = (view: View): ReactNativeStructure => {
         tag: "EmptyMessage",
         ...(view.key === undefined ? {} : { key: view.key }),
         ...(view.action === undefined ? {} : { children: [viewStructure(view.action)] })
+      }
+    case "AvatarGroup":
+      return {
+        tag: "AvatarGroup",
+        ...(view.key === undefined ? {} : { key: view.key }),
+        children: view.avatars.map(viewStructure)
       }
     default:
       return {

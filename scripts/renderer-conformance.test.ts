@@ -19,6 +19,8 @@ import {
   FieldRow,
   Accordion,
   AnnouncementBadge,
+  Avatar,
+  AvatarGroup,
   Badge,
   Chip,
   CtaSection,
@@ -682,6 +684,27 @@ const catalogFixturesByTag = {
       variant: "secondary",
       onPress: IntentRef("Pressed", StaticPayload({ amount: 1 }))
     })
+  }),
+  Avatar: Avatar({
+    key: "avatar",
+    image: "https://example.com/operator.png",
+    initials: "OR",
+    icon: "Circle",
+    size: "lg",
+    tone: "info",
+    variant: "soft",
+    label: "Orrery"
+  }),
+  AvatarGroup: AvatarGroup({
+    key: "avatar-group",
+    max: 2,
+    size: "md",
+    tone: "info",
+    avatars: [
+      keyed(Avatar({ key: "avatar-a", initials: "OR", label: "Orrery" })),
+      keyed(Avatar({ key: "avatar-b", initials: "WF", label: "Whitefang" })),
+      keyed(Avatar({ key: "avatar-c", icon: "Circle" }))
+    ]
   })
 } satisfies { readonly [Tag in (typeof componentTags)[number]]: View }
 
@@ -827,7 +850,9 @@ const catalogRendererTags = [
   "BlurredPopup",
   "IconButton",
   "Toolbar",
-  "EmptyMessage"
+  "EmptyMessage",
+  "Avatar",
+  "AvatarGroup"
 ] as const
 
 // Host (issue #23) is supported by the headless recorder and the DOM renderer

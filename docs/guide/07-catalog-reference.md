@@ -8,17 +8,19 @@ conformance-checked by
 (`bun run check:catalog-reference`) so this page cannot silently drop a shipped
 component.
 
-Current catalog marker: `CatalogVersion = "effect-native/v33"` (v33 expands the
-closed `IconName` set from 16 to 101 semantic PascalCase names from the
-OpenAgents Desktop demand audit — desktop shell parity plus arrows, status,
-git, files, edit, transcript, search, fleet/connectivity, account/security,
-payments, and common chrome — and normalizes every glyph to the Apps SDK UI
-conventions: 1em × 1em box, `viewBox 0 0 24 24`, `currentColor` paint, size
-from the `--en-icon-size-*` tokens — issue #85, harmonization P2.12. v32
-added `EmptyMessage`, the typed centered empty-state block — issue #82,
-harmonization P2.9).
+Current catalog marker: `CatalogVersion = "effect-native/v34"` (v34 adds
+`Avatar` + `AvatarGroup` — typed identity marks with the image -> initials ->
+icon fallback chain, control-lattice sizes, Tone soft/solid variants, and
+cutout-overlap groups with a max/overflow count — issue #80, harmonization
+P2.7. v33 expanded the closed `IconName` set from 16 to 101 semantic
+PascalCase names from the OpenAgents Desktop demand audit — desktop shell
+parity plus arrows, status, git, files, edit, transcript, search,
+fleet/connectivity, account/security, payments, and common chrome — and
+normalized every glyph to the Apps SDK UI conventions: 1em × 1em box,
+`viewBox 0 0 24 24`, `currentColor` paint, size from the `--en-icon-size-*`
+tokens — issue #85, harmonization P2.12).
 
-Closed component tags (`componentTags`, 71 total):
+Closed component tags (`componentTags`, 73 total):
 
 `Stack`, `Text`, `Button`, `Image`, `TextField`, `List`,
 `SectionList`, `Card`, `Spacer`, `Link`, `Modal`, `Sheet`,
@@ -31,7 +33,7 @@ Closed component tags (`componentTags`, 71 total):
 `Section`, `Hero`, `AnnouncementBadge`, `CtaSection`, `Footer`, `NavBar`,
 `Accordion`, `PricingColumn`, `PricingTable`, `LogoRow`, `StatsBand`, `Glow`,
 `MockupFrame`, `Pager`, `SwipeableListItem`, `BackgroundGradient`, `Wallpaper`, `Spotlight`, `Frame`, `BlurredPopup`,
-`IconButton`, `Toolbar`, `EmptyMessage`.
+`IconButton`, `Toolbar`, `EmptyMessage`, `Avatar`, `AvatarGroup`.
 
 There is no escape hatch to add an ad hoc component — growing the
 catalog is a deliberate, tracked process; see
@@ -285,6 +287,26 @@ default `md`); required `title`; optional muted `description`; optional
 a decode failure). Layout is a centered column on spacing tokens. No
 illustrations/images and no loading state (Spinner/Shimmer is #83).
 
+### Avatar
+
+Identity mark (v34, #80) with the typed fallback chain `image` (app-supplied
+src — the catalog does no remote fetching or identicon generation) ->
+`initials` (bounded to 3 characters) -> `icon` (closed `IconName` set). At
+least one source is required — an empty avatar is not constructible. `size`
+is a `ControlToken` on the shared control lattice; `tone` is the closed Tone
+set with a `variant` of `soft` (tinted translucent fill, default) or `solid`
+(tone fill + inverse text). A `label` present means meaningful (aria-label /
+role img); absent means decorative. Renderers layer the image absolutely over
+the fallback so a failed load reveals it without renderer state.
+
+### AvatarGroup
+
+Overlapping keyed `avatars` (cutout ring against the background color, first
+on top) with an optional positive-integer `max`; the remainder collapses into
+a `+N` overflow count in the same treatment. Group-level `size`/`tone`/
+`variant` are defaults applied to children without their own value and to the
+overflow count.
+
 ## Shared vocabulary
 
 ### Common fields
@@ -294,7 +316,7 @@ Every component accepts these two, inherited from `NodeBase`:
 | Field | Type | Notes |
 |---|---|---|
 | `key` | `string` (optional) | Required (enforced by the schema, not just convention) on any view placed inside a `List`/`SectionList`/`Link` children array. |
-| `catalogVersion` | `"effect-native/v33"` | Set automatically by every constructor function — you never pass this yourself. |
+| `catalogVersion` | `"effect-native/v34"` | Set automatically by every constructor function — you never pass this yourself. |
 
 ### Design tokens
 
@@ -311,6 +333,7 @@ take a token from one of these closed vocabularies
 | `TypeScaleToken` | `caption, body, label, title, heading` |
 | `BreakpointToken` | `sm, md, lg, xl` |
 | `DimensionToken` | `xs, sm, md, lg, xl, full` |
+| `ControlToken` | `sm, md, lg, xl` — the shared control size lattice (fixed height, gutter, icon size per step); sizes `Avatar`/`AvatarGroup` |
 | `SurfaceMaterial` | `glass` — style-level `surface` token on box-derived styles (GL-1): translucent blurred material on DOM, translucent theme surface + hairline border on RN core |
 
 A `Dimension` is a `DimensionToken` **or** a non-negative pixel number — used

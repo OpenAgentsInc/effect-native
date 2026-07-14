@@ -17,6 +17,7 @@ import {
 import {
   BreakpointTokenSchema,
   ColorTokenSchema,
+  ControlTokenSchema,
   DimensionTokenSchema,
   RadiusTokenSchema,
   SpacingTokenSchema,
@@ -26,6 +27,7 @@ import {
   type BreakpointTheme,
   type BreakpointToken,
   type ColorToken,
+  type ControlToken,
   type DimensionToken,
   type RadiusToken,
   type SpacingToken,
@@ -36,12 +38,14 @@ import {
 export {
   BreakpointTokenSchema,
   ColorTokenSchema,
+  ControlTokenSchema,
   DimensionTokenSchema,
   RadiusTokenSchema,
   SpacingTokenSchema,
   TypeScaleTokenSchema,
   breakpointTokens,
   colorTokens,
+  controlTokens,
   defaultTheme,
   defineTheme,
   dimensionTokens,
@@ -50,6 +54,7 @@ export {
   typeScaleTokens,
   type BreakpointToken,
   type ColorToken,
+  type ControlToken,
   type DimensionToken,
   type RadiusToken,
   type SpacingToken,
@@ -93,8 +98,9 @@ export const GlassChromeIconsCatalogVersion = "effect-native/v30" as const
 export const GraphProvenanceCatalogVersion = "effect-native/v31" as const
 export const EmptyMessageCatalogVersion = "effect-native/v32" as const
 export const IconExpansionCatalogVersion = "effect-native/v33" as const
-export const PreviousCatalogVersion = EmptyMessageCatalogVersion
-export const CatalogVersion = IconExpansionCatalogVersion
+export const AvatarCatalogVersion = "effect-native/v34" as const
+export const PreviousCatalogVersion = IconExpansionCatalogVersion
+export const CatalogVersion = AvatarCatalogVersion
 export const CatalogVersionSchema = Schema.Literal(CatalogVersion)
 export type CatalogVersion = typeof CatalogVersion
 export const compatibleCatalogVersions = [
@@ -131,7 +137,8 @@ export const compatibleCatalogVersions = [
   GlassChromeIconsCatalogVersion,
   GraphProvenanceCatalogVersion,
   EmptyMessageCatalogVersion,
-  IconExpansionCatalogVersion
+  IconExpansionCatalogVersion,
+  AvatarCatalogVersion
 ] as const
 export type CompatibleCatalogVersion = (typeof compatibleCatalogVersions)[number]
 export const CompatibleCatalogVersionSchema = Schema.Literals(compatibleCatalogVersions)
@@ -207,7 +214,9 @@ export const componentTags = [
   "BlurredPopup",
   "IconButton",
   "Toolbar",
-  "EmptyMessage"
+  "EmptyMessage",
+  "Avatar",
+  "AvatarGroup"
 ] as const
 export type ComponentTag = (typeof componentTags)[number]
 
@@ -3146,6 +3155,52 @@ export interface EmptyMessageView extends NodeBase {
   readonly style?: CardStyle
 }
 
+// Avatar + AvatarGroup (issue #80, harmonization P2.7). Identity marks for
+// sidebar accounts, fleet operator rows, and forum identity. The fallback
+// chain is typed data — `image` (an app-supplied src; the catalog does no
+// remote fetching or identicon generation) renders over `initials`, which
+// render over the closed-set `icon` — and at least one source must be
+// present, so an empty avatar is not constructible. `size` rides the shared
+// control lattice; `tone` is the closed Tone set with a soft (tinted text on
+// a translucent fill) or solid (inverse text on a tone fill) variant.
+export const avatarVariants = ["soft", "solid"] as const
+export const AvatarVariantSchema = Schema.Literals(avatarVariants)
+export type AvatarVariant = (typeof avatarVariants)[number]
+
+export interface AvatarView extends NodeBase {
+  readonly _tag: "Avatar"
+  /** App-supplied image src. On load failure renderers reveal the fallback. */
+  readonly image?: string
+  /** Bounded 1-3 character initials fallback. */
+  readonly initials?: string
+  /** Closed-set icon fallback (defaults to no icon; the chain ends here). */
+  readonly icon?: IconName
+  readonly size?: ControlToken
+  readonly tone?: Tone
+  readonly variant?: AvatarVariant
+  // Meaningful vs decorative is typed, mirroring Icon: a `label` present
+  // means the avatar names its entity (aria-label / role img); absent means
+  // decorative (aria-hidden).
+  readonly label?: string
+  readonly style?: CardStyle
+}
+
+export type KeyedAvatarView = AvatarView & { readonly key: NodeKey }
+
+export interface AvatarGroupView extends NodeBase {
+  readonly _tag: "AvatarGroup"
+  /** Keyed child avatars drawn with a cutout overlap, first on top. */
+  readonly avatars: ReadonlyArray<KeyedAvatarView>
+  // Show at most `max` avatars; the remainder collapses into a "+N" overflow
+  // count rendered in the same size/tone treatment.
+  readonly max?: number
+  /** Group-level defaults applied to children without their own value and to the overflow count. */
+  readonly size?: ControlToken
+  readonly tone?: Tone
+  readonly variant?: AvatarVariant
+  readonly style?: CardStyle
+}
+
 export type View =
   | StackView
   | TextView
@@ -3218,6 +3273,8 @@ export type View =
   | IconButtonView
   | ToolbarView
   | EmptyMessageView
+  | AvatarView
+  | AvatarGroupView
 
 export type KeyedView = View & { readonly key: NodeKey }
 
@@ -3325,6 +3382,8 @@ const childViewEntries = (
       return view.columns.map((child, index) => ({ path: ["columns", index], view: child }))
     case "EmptyMessage":
       return view.action === undefined ? [] : [{ path: ["action"], view: view.action }]
+    case "AvatarGroup":
+      return view.avatars.map((avatar, index) => ({ path: ["avatars", index], view: avatar }))
     default:
       return []
   }
@@ -4501,6 +4560,56 @@ export const EmptyMessageSchema: Schema.Codec<EmptyMessageView, EmptyMessageView
   }
 )
 
+// Avatar (issue #80). The bounded initials keep the mark legible at every
+// lattice size, and the source filter makes an empty avatar unconstructible:
+// the typed fallback chain image -> initials -> icon must have a first link.
+const AvatarInitialsSchema = Schema.NonEmptyString.check(
+  Schema.isMaxLength(3, { title: "AvatarInitialsMaxLength" })
+)
+
+const AvatarSourceFilter = Schema.makeFilter<AvatarView>((view) =>
+  view.image === undefined && view.initials === undefined && view.icon === undefined
+    ? { path: ["image"], issue: "Avatar requires at least one of image, initials, or icon" }
+    : undefined
+)
+
+export const AvatarSchema: Schema.Codec<AvatarView, AvatarView> = Schema.TaggedStruct("Avatar", {
+  ...CommonFields,
+  image: Schema.NonEmptyString.pipe(Schema.optionalKey),
+  initials: AvatarInitialsSchema.pipe(Schema.optionalKey),
+  icon: IconNameSchema.pipe(Schema.optionalKey),
+  size: ControlTokenSchema.pipe(Schema.optionalKey),
+  tone: ToneSchema.pipe(Schema.optionalKey),
+  variant: AvatarVariantSchema.pipe(Schema.optionalKey),
+  label: Schema.String.pipe(Schema.optionalKey),
+  style: CardStyleSchema.pipe(Schema.optionalKey)
+}).check(AvatarSourceFilter)
+
+const KeyedAvatarArraySchema = Schema.Array(AvatarSchema).check(
+  Schema.makeFilter<ReadonlyArray<AvatarView>>((items) => {
+    const unkeyedIndex = items.findIndex((item) => item.key === undefined)
+    return unkeyedIndex === -1
+      ? undefined
+      : { path: [unkeyedIndex, "key"], issue: "AvatarGroup avatars require explicit keys" }
+  })
+) as Schema.Codec<ReadonlyArray<KeyedAvatarView>, ReadonlyArray<KeyedAvatarView>>
+
+const AvatarGroupMaxSchema = Schema.Number.check(
+  Schema.isInt(),
+  Schema.isGreaterThan(0, { title: "AvatarGroupMaxPositive" })
+)
+
+export const AvatarGroupSchema: Schema.Codec<AvatarGroupView, AvatarGroupView> =
+  Schema.TaggedStruct("AvatarGroup", {
+    ...CommonFields,
+    avatars: KeyedAvatarArraySchema,
+    max: AvatarGroupMaxSchema.pipe(Schema.optionalKey),
+    size: ControlTokenSchema.pipe(Schema.optionalKey),
+    tone: ToneSchema.pipe(Schema.optionalKey),
+    variant: AvatarVariantSchema.pipe(Schema.optionalKey),
+    style: CardStyleSchema.pipe(Schema.optionalKey)
+  })
+
 export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
   Schema.Union([
     StackSchema,
@@ -4573,7 +4682,9 @@ export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
     BlurredPopupSchema,
     IconButtonSchema,
     ToolbarSchema,
-    EmptyMessageSchema
+    EmptyMessageSchema,
+    AvatarSchema,
+    AvatarGroupSchema
   ]).check(OverlayStackFilter)
 )
 
@@ -5178,6 +5289,14 @@ export type EmptyMessageProps = WithoutTagAndVersion<EmptyMessageView>
 export const EmptyMessage = (props: EmptyMessageProps): EmptyMessageView =>
   EmptyMessageSchema.make({ _tag: "EmptyMessage", catalogVersion: CatalogVersion, ...props })
 
+export type AvatarProps = WithoutTagAndVersion<AvatarView>
+export const Avatar = (props: AvatarProps): AvatarView =>
+  AvatarSchema.make({ _tag: "Avatar", catalogVersion: CatalogVersion, ...props })
+
+export type AvatarGroupProps = WithoutTagAndVersion<AvatarGroupView>
+export const AvatarGroup = (props: AvatarGroupProps): AvatarGroupView =>
+  AvatarGroupSchema.make({ _tag: "AvatarGroup", catalogVersion: CatalogVersion, ...props })
+
 
 
 
@@ -5388,9 +5507,16 @@ export const resolveView = (view: View, input: ViewResolution = {}): View => {
     case "AnnouncementBadge":
     case "LogoRow":
     case "PricingColumn":
+    case "Avatar":
       return {
         ...view,
         ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) })
+      }
+    case "AvatarGroup":
+      return {
+        ...view,
+        ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) }),
+        avatars: view.avatars.map((avatar) => resolveView(avatar, input) as KeyedAvatarView)
       }
     case "IconButton":
       return {
@@ -5617,6 +5743,8 @@ export const resolveBindings = <State>(view: View, state: State): View => {
     case "LogoRow":
     case "PricingColumn":
     case "IconButton":
+    case "Avatar":
+    case "AvatarGroup":
       return view
     case "Section":
     case "Glow":

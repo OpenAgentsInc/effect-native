@@ -85,6 +85,8 @@ const describeView = Match.type<View>().pipe(
   Match.tag("IconButton", () => "action"),
   Match.tag("Toolbar", () => "shell"),
   Match.tag("EmptyMessage", () => "status"),
+  Match.tag("Avatar", () => "identity"),
+  Match.tag("AvatarGroup", () => "identity"),
   Match.exhaustive
 )
 
