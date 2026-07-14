@@ -39,8 +39,9 @@ describe("Avatar + AvatarGroup (#80) catalog contract", () => {
       label: "Orrery"
     })
     // Constructors always stamp the current catalog marker, not the marker
-    // the component shipped under (#84/#81 bumped the catalog past Avatar's
-    // #80 — Avatar's own historical marker still decodes via compatibility).
+    // the component shipped under (later bumps, including #78's
+    // ButtonMatrixCatalogVersion, move the marker past Avatar's #80 — its own
+    // historical marker still decodes via compatibility).
     expect(avatar.catalogVersion).toBe(CatalogVersion)
     expect(avatar.size).toBe("lg")
     expect(avatarVariants).toEqual(["soft", "solid"])

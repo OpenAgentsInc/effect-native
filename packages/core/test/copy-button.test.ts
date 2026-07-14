@@ -40,9 +40,10 @@ describe("CopyButton (#84, v35)", () => {
     })
     expect(view._tag).toBe("CopyButton")
     // Constructors always stamp the current catalog marker, not the marker
-    // the component shipped under (#81 bumped the catalog past CopyButton's
-    // #84 — CopyButton's own historical marker still decodes via
-    // compatibility, see catalog-version.test.ts).
+    // the component shipped under (later bumps, including #78's
+    // ButtonMatrixCatalogVersion, move the marker past CopyButton's #84 —
+    // its own historical marker still decodes via compatibility, see
+    // catalog-version.test.ts).
     expect(view.catalogVersion).toBe(CatalogVersion)
     expect(copyButtonDefaultResetMillis).toBe(2000)
   })

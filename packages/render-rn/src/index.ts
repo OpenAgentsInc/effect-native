@@ -121,6 +121,8 @@ import {
   makeViewport,
   makeViewportService,
   makeNavigateIntent,
+  resolveButtonAppearance,
+  type ResolvedButtonAppearance,
   resolveResponsiveValue,
   resolveView,
   resolveStyle
@@ -736,29 +738,23 @@ const renderText = (
   )
 }
 
-// Button variant lowering (openagents #8597 escalation): RN Text does NOT
-// inherit color and Pressable has no default surface, so a Button without
-// explicit theme lowering renders a default-black label on whatever the app
-// background is — invisible on dark themes. Variants lower to theme tokens:
-// primary = accent surface, secondary = surface + border, ghost = accent
-// text on transparent. App-level `view.style` still wins via merge order.
-const buttonVariantStyle = (view: ButtonView, theme: Theme): ReactNativeStyle => {
-  switch (view.variant) {
-    case "primary":
-      return { backgroundColor: colorValue(theme, "accent") }
-    case "secondary":
-      return {
-        backgroundColor: colorValue(theme, "surface"),
-        borderColor: colorValue(theme, "border"),
-        borderWidth: 1
-      }
-    case "ghost":
-      return { backgroundColor: "transparent" }
-  }
-}
+// Button tone/variant/size lowering (harmonization #78; extends the
+// #8597/#71-class fix): RN Text does NOT inherit color and Pressable has no
+// default surface, so the renderer — not the app — resolves the matrix +
+// control lattice into concrete style values.
+// `resolveButtonAppearance` (core, #78) normalizes pre-#78 legacy variant
+// tokens ("primary"/"secondary"/"ghost") onto their exact tone+variant
+// equivalents first, so the same matrix lookup renders old and new trees
+// identically: "primary" -> accent/solid, "secondary" -> secondary/solid,
+// "ghost" -> accent/ghost (unchanged token). App-level `view.style` still
+// wins via merge order.
+const buttonAppearanceCell = (theme: Theme, appearance: ResolvedButtonAppearance) =>
+  theme.colorMatrix[appearance.tone][appearance.variant].rest
 
+// Shared by the Expo UI / Liquid Glass button lowering below, which draws its
+// own SwiftUI label and only needs the resolved matrix text color.
 const buttonLabelColor = (view: ButtonView, theme: Theme): string =>
-  view.variant === "ghost" ? colorValue(theme, "accent") : colorValue(theme, "textPrimary")
+  buttonAppearanceCell(theme, resolveButtonAppearance(view)).text
 
 const renderButton = (
   view: ButtonView,
@@ -773,15 +769,28 @@ const renderButton = (
     }
   }
   const theme = options.theme ?? defaultTheme
+  const appearance = resolveButtonAppearance(view)
+  const cell = buttonAppearanceCell(theme, appearance)
+  const control = theme.control[appearance.size]
+  const loading = view.loading === true
+  const disabled = view.disabled === true || loading
+  const selected = view.selected === true
+  const backgroundColor = selected
+    ? theme.colorMatrix[appearance.tone][appearance.variant].selected.background
+    : cell.background
+
   const style = mergeNativeStyles(
     {
-      ...buttonVariantStyle(view, theme),
-      paddingVertical: spacingValue(theme, "2.5"),
-      paddingHorizontal: spacingValue(theme, "4"),
-      borderRadius: radiusValue(theme, "md"),
+      backgroundColor,
+      borderColor: cell.border,
+      borderWidth: 1,
+      borderRadius: view.pill === true ? radiusValue(theme, "full") : control.radius,
+      minHeight: control.height,
+      paddingHorizontal: control.gutter,
       alignItems: "center",
       justifyContent: "center",
-      opacity: view.disabled === true ? 0.5 : 1
+      opacity: disabled ? 0.5 : 1,
+      ...(view.block === true ? { alignSelf: "stretch" as const, width: "100%" } : {})
     },
     viewStyle(view, options)
   )
@@ -792,10 +801,14 @@ const renderButton = (
     {
       ...baseProps(view, style),
       accessibilityRole: "button",
-      accessibilityState: { disabled: view.disabled === true },
-      disabled: view.disabled === true,
+      accessibilityState: {
+        disabled,
+        busy: loading,
+        ...(view.selected === undefined ? {} : { selected })
+      },
+      disabled,
       onPress: () => {
-        if (view.disabled !== true) {
+        if (!disabled) {
           runReportedIntent(report, view.onPress)
         }
       }
@@ -804,10 +817,12 @@ const renderButton = (
       dependencies,
       dependencies.ReactNative.Text,
       {
-        style: mergeNativeStyles(
-          typeScaleValue(theme, "label"),
-          { color: buttonLabelColor(view, theme) }
-        )
+        style: {
+          fontSize: control.fontSize,
+          fontWeight: typeScaleValue(theme, "label").fontWeight,
+          lineHeight: typeScaleValue(theme, "label").lineHeight,
+          color: cell.text
+        }
       },
       view.label
     )

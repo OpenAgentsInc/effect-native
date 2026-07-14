@@ -89,7 +89,10 @@ describe("render-rn Button variant theme lowering", () => {
 
   test("ghost: transparent background with accent label", () => {
     const element = render("ghost")
-    expect(pressableStyle(element).backgroundColor).toBe("transparent")
+    // The matrix's transparent cells carry the explicit 8-digit hex-alpha
+    // value (harmonization #78's `transparentColor`), not the CSS keyword —
+    // functionally identical (fully transparent) in React Native.
+    expect(pressableStyle(element).backgroundColor).toBe(khalaTheme.colorMatrix.accent.ghost.rest.background)
     expect(labelStyle(element).color).toBe(khalaTheme.color.accent)
   })
 
@@ -107,5 +110,110 @@ describe("render-rn Button variant theme lowering", () => {
       { theme: khalaTheme, platform: "ios" }
     )
     expect(pressableStyle(element).backgroundColor).toBe(khalaTheme.color.surfaceRaised)
+  })
+})
+
+// Full tone/variant/size matrix (harmonization #78). The legacy `variant`
+// literal tests above prove the pre-#78 back-compat mapping; these prove the
+// new typed axes render byte-identically to their legacy equivalents and that
+// the new pill/block/loading/selected flags lower correctly.
+describe("render-rn Button tone/variant/size matrix (#78)", () => {
+  const renderMatrix = (props: Record<string, unknown>): ReactElementLike =>
+    renderReactNativeView(
+      Button({
+        key: "btn-matrix",
+        label: "Press",
+        onPress: IntentRef("Pressed", StaticPayload({ amount: 1 })),
+        ...props
+      }),
+      dependencies,
+      report as never,
+      { theme: khalaTheme, platform: "ios" }
+    )
+
+  test("explicit tone+variant renders the exact matrix cell", () => {
+    const element = renderMatrix({ tone: "danger", variant: "soft" })
+    const cell = khalaTheme.colorMatrix.danger.soft.rest
+    expect(pressableStyle(element).backgroundColor).toBe(cell.background)
+    expect(pressableStyle(element).borderColor).toBe(cell.border)
+    expect(labelStyle(element).color).toBe(cell.text)
+  })
+
+  test("legacy `variant: \"primary\"` and the equivalent `tone: \"accent\", variant: \"solid\"` render identically", () => {
+    const legacy = render("primary")
+    const matrix = renderMatrix({ tone: "accent", variant: "solid" })
+    expect(pressableStyle(matrix)).toEqual(pressableStyle(legacy))
+    expect(labelStyle(matrix)).toEqual(labelStyle(legacy))
+  })
+
+  test("legacy `variant: \"secondary\"` and the equivalent `tone: \"secondary\", variant: \"solid\"` render identically", () => {
+    const legacy = render("secondary")
+    const matrix = renderMatrix({ tone: "secondary", variant: "solid" })
+    expect(pressableStyle(matrix)).toEqual(pressableStyle(legacy))
+    expect(labelStyle(matrix)).toEqual(labelStyle(legacy))
+  })
+
+  test("default size is md: height/gutter/radius/fontSize come from the control lattice", () => {
+    const element = renderMatrix({})
+    const control = khalaTheme.control.md
+    expect(pressableStyle(element).minHeight).toBe(control.height)
+    expect(pressableStyle(element).paddingHorizontal).toBe(control.gutter)
+    expect(pressableStyle(element).borderRadius).toBe(control.radius)
+    expect(labelStyle(element).fontSize).toBe(control.fontSize)
+  })
+
+  test("size resolves to a different lattice step", () => {
+    const element = renderMatrix({ size: "xl" })
+    const control = khalaTheme.control.xl
+    expect(pressableStyle(element).minHeight).toBe(control.height)
+    expect(pressableStyle(element).paddingHorizontal).toBe(control.gutter)
+    expect(pressableStyle(element).borderRadius).toBe(control.radius)
+    expect(labelStyle(element).fontSize).toBe(control.fontSize)
+  })
+
+  test("pill overrides the lattice radius with the full radius token", () => {
+    const element = renderMatrix({ pill: true })
+    expect(pressableStyle(element).borderRadius).toBe(khalaTheme.radius.full)
+  })
+
+  test("block stretches to full width", () => {
+    const element = renderMatrix({ block: true })
+    expect(pressableStyle(element).alignSelf).toBe("stretch")
+    expect(pressableStyle(element).width).toBe("100%")
+  })
+
+  test("loading disables press, dims the control, and marks accessibilityState.busy", () => {
+    const element = renderMatrix({ loading: true })
+    expect(pressableStyle(element).opacity).toBe(0.5)
+    expect(element.props.disabled).toBe(true)
+    expect((element.props.accessibilityState as Record<string, unknown>).busy).toBe(true)
+    expect((element.props.accessibilityState as Record<string, unknown>).disabled).toBe(true)
+  })
+
+  test("selected renders the matrix's selected background and marks accessibilityState.selected", () => {
+    const element = renderMatrix({ selected: true })
+    expect(pressableStyle(element).backgroundColor).toBe(khalaTheme.colorMatrix.accent.solid.selected.background)
+    expect((element.props.accessibilityState as Record<string, unknown>).selected).toBe(true)
+  })
+
+  test("loading and disabled both suppress onPress", () => {
+    let dispatched = false
+    const throwingReport = () => {
+      dispatched = true
+    }
+    const element = renderReactNativeView(
+      Button({
+        key: "btn-loading-press",
+        label: "Press",
+        loading: true,
+        onPress: IntentRef("Pressed", StaticPayload({ amount: 1 }))
+      }),
+      dependencies,
+      throwingReport as never,
+      { theme: khalaTheme, platform: "ios" }
+    )
+    const onPress = element.props.onPress as () => void
+    onPress()
+    expect(dispatched).toBe(false)
   })
 })

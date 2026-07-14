@@ -21,9 +21,13 @@ import {
   DimensionTokenSchema,
   RadiusTokenSchema,
   SpacingTokenSchema,
+  ToneTokenSchema,
+  ToneVariantTokenSchema,
   TypeScaleTokenSchema,
   breakpointTokens,
   defaultTheme,
+  toneTokens,
+  toneVariantTokens,
   type BreakpointTheme,
   type BreakpointToken,
   type ColorToken,
@@ -32,6 +36,8 @@ import {
   type RadiusToken,
   type SpacingToken,
   type Theme,
+  type ToneToken,
+  type ToneVariantToken,
   type TypeScaleToken
 } from "@effect-native/tokens"
 
@@ -42,6 +48,8 @@ export {
   DimensionTokenSchema,
   RadiusTokenSchema,
   SpacingTokenSchema,
+  ToneTokenSchema,
+  ToneVariantTokenSchema,
   TypeScaleTokenSchema,
   breakpointTokens,
   colorTokens,
@@ -51,6 +59,8 @@ export {
   dimensionTokens,
   radiusTokens,
   spacingTokens,
+  toneTokens,
+  toneVariantTokens,
   typeScaleTokens,
   type BreakpointToken,
   type ColorToken,
@@ -59,6 +69,8 @@ export {
   type RadiusToken,
   type SpacingToken,
   type Theme,
+  type ToneToken,
+  type ToneVariantToken,
   type TypeScaleToken
 } from "@effect-native/tokens"
 
@@ -101,8 +113,9 @@ export const IconExpansionCatalogVersion = "effect-native/v33" as const
 export const AvatarCatalogVersion = "effect-native/v34" as const
 export const CopyButtonCatalogVersion = "effect-native/v35" as const
 export const SegmentedControlCatalogVersion = "effect-native/v36" as const
-export const PreviousCatalogVersion = CopyButtonCatalogVersion
-export const CatalogVersion = SegmentedControlCatalogVersion
+export const ButtonMatrixCatalogVersion = "effect-native/v37" as const
+export const PreviousCatalogVersion = SegmentedControlCatalogVersion
+export const CatalogVersion = ButtonMatrixCatalogVersion
 export const CatalogVersionSchema = Schema.Literal(CatalogVersion)
 export type CatalogVersion = typeof CatalogVersion
 export const compatibleCatalogVersions = [
@@ -142,7 +155,8 @@ export const compatibleCatalogVersions = [
   IconExpansionCatalogVersion,
   AvatarCatalogVersion,
   CopyButtonCatalogVersion,
-  SegmentedControlCatalogVersion
+  SegmentedControlCatalogVersion,
+  ButtonMatrixCatalogVersion
 ] as const
 export type CompatibleCatalogVersion = (typeof compatibleCatalogVersions)[number]
 export const CompatibleCatalogVersionSchema = Schema.Literals(compatibleCatalogVersions)
@@ -1954,10 +1968,29 @@ export interface TextView extends NodeBase {
   readonly style?: TextStyle
 }
 
+/**
+ * The Button `variant` field accepts the current matrix variant vocabulary
+ * plus the two pre-#78 legacy tokens that named a tone+variant pairing before
+ * the matrix existed ("primary"/"secondary"; "ghost" is unchanged and needs
+ * no alias). `resolveButtonAppearance` is the one normalizer every renderer
+ * calls to turn either shape into a canonical `{ tone, variant, size }`.
+ */
 export interface ButtonView extends NodeBase {
   readonly _tag: "Button"
   readonly label: string
-  readonly variant: ButtonVariant
+  /** Matrix tone (harmonization #78). Resolves to "accent" when omitted. */
+  readonly tone?: ToneToken
+  readonly variant?: ToneVariantToken | ButtonVariant
+  /** Control-lattice size (harmonization #78, #76). Resolves to "md" when omitted. */
+  readonly size?: ControlToken
+  /** Fully rounded corners (radius token "full"). */
+  readonly pill?: boolean
+  /** Busy/submitting state: disables press, marks aria-busy, dims the label. */
+  readonly loading?: boolean
+  /** Full-width layout. */
+  readonly block?: boolean
+  /** Persistent pressed/active-looking state (e.g. a segmented choice). */
+  readonly selected?: boolean
   readonly disabled?: boolean
   readonly onPress: IntentRef
   readonly style?: ButtonStyle
@@ -3584,14 +3617,75 @@ export const TextSchema: Schema.Codec<TextView, TextView> = Schema.TaggedStruct(
   style: TextStyleSchema.pipe(Schema.optionalKey)
 })
 
+// The prior-version decoder for Button (harmonization #78): a `variant` of
+// "primary"/"secondary"/"ghost" with no `tone`/`size` is exactly the shape a
+// pre-#78 tree carries, and this union lets it keep decoding under the same
+// field name the matrix now uses for a different vocabulary. See
+// `resolveButtonAppearance` for the normalization every renderer applies.
+export const ButtonVariantInputSchema = Schema.Union([ToneVariantTokenSchema, ButtonVariantSchema])
+export type ButtonVariantInput = Schema.Schema.Type<typeof ButtonVariantInputSchema>
+
 export const ButtonSchema: Schema.Codec<ButtonView, ButtonView> = Schema.TaggedStruct("Button", {
   ...CommonFields,
   label: Schema.String,
-  variant: ButtonVariantSchema,
+  tone: ToneTokenSchema.pipe(Schema.optionalKey),
+  variant: ButtonVariantInputSchema.pipe(Schema.optionalKey),
+  size: ControlTokenSchema.pipe(Schema.optionalKey),
+  pill: Schema.Boolean.pipe(Schema.optionalKey),
+  loading: Schema.Boolean.pipe(Schema.optionalKey),
+  block: Schema.Boolean.pipe(Schema.optionalKey),
+  selected: Schema.Boolean.pipe(Schema.optionalKey),
   disabled: Schema.Boolean.pipe(Schema.optionalKey),
   onPress: IntentRefSchema,
   style: ButtonStyleSchema.pipe(Schema.optionalKey)
 })
+
+/** The fully resolved appearance every renderer consumes for a Button. */
+export interface ResolvedButtonAppearance {
+  readonly tone: ToneToken
+  readonly variant: ToneVariantToken
+  readonly size: ControlToken
+}
+
+// Legacy tone implied by a pre-#78 variant token when no explicit `tone` is
+// given. Preserves the exact pre-#78 rendering: "primary" was the accent
+// solid recipe, "secondary" was the neutral solid recipe. "ghost" already
+// names a matrix variant, so it needs no tone table entry — it falls through
+// to the default branch below with its implied tone of "accent" unchanged.
+const legacyButtonToneByVariant: Record<"primary" | "secondary", ToneToken> = {
+  primary: "accent",
+  secondary: "secondary"
+}
+
+/**
+ * Resolves a ButtonView's `tone`/`variant`/`size` onto the matrix + control
+ * lattice, normalizing pre-#78 legacy variant tokens onto their exact
+ * tone+variant equivalents. Every renderer (DOM, React Native, headless)
+ * calls this single resolver instead of branching on legacy strings itself,
+ * so the mapping stays in one place:
+ *
+ * - `variant: "primary"`   -> `{ tone: "accent", variant: "solid" }`
+ * - `variant: "secondary"` -> `{ tone: "secondary", variant: "solid" }`
+ * - `variant: "ghost"`     -> `{ tone: "accent", variant: "ghost" }` (already
+ *   a matrix token; unchanged)
+ * - anything else (a matrix variant, or omitted) resolves tone/variant/size
+ *   to their explicit values or the "accent"/"solid"/"md" defaults.
+ */
+export const resolveButtonAppearance = (view: ButtonView): ResolvedButtonAppearance => {
+  const rawVariant = view.variant
+  if (rawVariant === "primary" || rawVariant === "secondary") {
+    return {
+      tone: view.tone ?? legacyButtonToneByVariant[rawVariant],
+      variant: "solid",
+      size: view.size ?? "md"
+    }
+  }
+  return {
+    tone: view.tone ?? "accent",
+    variant: rawVariant ?? "solid",
+    size: view.size ?? "md"
+  }
+}
 
 export const ImageSchema: Schema.Codec<ImageView, ImageView> = Schema.TaggedStruct("Image", {
   ...CommonFields,

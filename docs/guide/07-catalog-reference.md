@@ -8,25 +8,35 @@ conformance-checked by
 (`bun run check:catalog-reference`) so this page cannot silently drop a shipped
 component.
 
-Current catalog marker: `CatalogVersion = "effect-native/v36"` (v36 adds
-`SegmentedControl` — a single-choice INPUT control distinct from `Tabs` (no
-panel association): typed options (id/label/icon?/disabled?), a typed `value`
-+ `onChange`, lattice `size`, `gutterSize`, and `pill`. DOM renders an
-animated selection thumb measured via `ResizeObserver` against the selected
-segment's live bounds, sliding with the #76 named `move` easing token, plus
-WAI-ARIA radiogroup/radio semantics with roving tabindex and arrow/Home/End
-keyboard nav; React Native renders pressable segments with a static
-(non-animated) selection highlight — issue #81, harmonization P2.8. v35 added
-`CopyButton` — the typed copy-to-clipboard control with the injected
-`Clipboard` service, copied-state feedback, and the typed `onCopy` /
-`onCopiedReset` intents — issue #84, harmonization P2.11. v34 added
-`Avatar` + `AvatarGroup` — typed identity marks with the image -> initials ->
-icon fallback chain, control-lattice sizes, Tone soft/solid variants, and
-cutout-overlap groups with a max/overflow count — issue #80, harmonization
-P2.7. v33 expanded the closed `IconName` set from 16 to 101 semantic
-PascalCase names on the Apps SDK UI conventions — issue #85, harmonization
-P2.12. v32 added `EmptyMessage`, the typed centered empty-state block —
-issue #82, harmonization P2.9).
+Current catalog marker: `CatalogVersion = "effect-native/v37"` (v37 gives
+`Button` the full tone x variant x size matrix — `tone` (the 6 matrix tones,
+default `"accent"`), `variant` (`solid`/`soft`/`outline`/`ghost`, default
+`"solid"`), `size` (the control lattice, default `"md"`), plus `pill`,
+`loading`, `block`, and `selected` — issue #78, harmonization P1.5. Pre-v37
+trees using the old `variant: "primary"|"secondary"|"ghost"` still decode:
+`resolveButtonAppearance` normalizes them onto their exact tone+variant
+equivalents (`"primary"` -> accent/solid, `"secondary"` -> secondary/solid,
+`"ghost"` -> accent/ghost). v36 added `SegmentedControl` — a single-choice
+INPUT control distinct from `Tabs` (no panel association): typed options
+(id/label/icon?/disabled?), a typed `value` + `onChange`, lattice `size`,
+`gutterSize`, and `pill`. DOM renders an animated selection thumb measured
+via `ResizeObserver` against the selected segment's live bounds, sliding
+with the #76 named `move` easing token, plus WAI-ARIA radiogroup/radio
+semantics with roving tabindex and arrow/Home/End keyboard nav; React Native
+renders pressable segments with a static (non-animated) selection highlight
+— issue #81, harmonization P2.8. v35 added `CopyButton` — the typed
+copy-to-clipboard control with the injected `Clipboard` service, copied-state
+feedback, and the typed `onCopy` / `onCopiedReset` intents — issue #84,
+harmonization P2.11. v34 added `Avatar` + `AvatarGroup` — typed identity
+marks with the image -> initials -> icon fallback chain, control-lattice
+sizes, Tone soft/solid variants, and cutout-overlap groups with a
+max/overflow count — issue #80, harmonization P2.7. v33 expanded the closed
+`IconName` set from 16 to 101 semantic PascalCase names from the OpenAgents
+Desktop demand audit — desktop shell parity plus arrows, status, git, files,
+edit, transcript, search, fleet/connectivity, account/security, payments,
+and common chrome — and normalized every glyph to the Apps SDK UI
+conventions: 1em × 1em box, `viewBox 0 0 24 24`, `currentColor` paint, size
+from the `--en-icon-size-*` tokens — issue #85, harmonization P2.12).
 
 Closed component tags (`componentTags`, 75 total):
 
@@ -56,6 +66,27 @@ catalog is a deliberate, tracked process; see
 ### Text
 
 ### Button
+
+The tone x variant x size matrix (v37, issue #78): `tone` is one of the 6
+matrix tones (`accent`, `secondary`, `danger`, `success`, `warning`, `info`,
+default `"accent"`); `variant` is `solid`/`soft`/`outline`/`ghost` (default
+`"solid"`); `size` is a control-lattice step (`2xs`/`xs`/`sm`/`md`/`lg`/`xl`,
+default `"md"`) that coherently sizes height, horizontal gutter, corner
+radius, label font size, and — while `loading` — the spinner glyph. `pill`
+forces the fully-rounded radius token; `block` stretches to full width;
+`loading` disables press, marks `aria-busy`/`accessibilityState.busy`, and
+(DOM only) draws a lattice-icon-sized spinner in place of the label; `selected`
+renders the matrix's `selected` state and sets `aria-pressed`/
+`accessibilityState.selected`.
+
+Back-compat: the pre-v37 `variant: "primary"|"secondary"|"ghost"` tokens are
+still accepted and normalize onto their exact tone+variant equivalents via
+`resolveButtonAppearance` (exported from `@effect-native/core`): `"primary"`
+-> `{ tone: "accent", variant: "solid" }`, `"secondary"` ->
+`{ tone: "secondary", variant: "solid" }`, `"ghost"` ->
+`{ tone: "accent", variant: "ghost" }` (already a matrix token, unchanged).
+Every renderer calls this one resolver instead of branching on the legacy
+strings itself.
 
 ### Image
 
@@ -143,7 +174,7 @@ busy — the typed `"submit"` key command still fires so apps can queue), and
 
 ### SegmentedControl
 
-A single-choice INPUT control (v35, #81) — distinct from `Tabs`: there is no
+A single-choice INPUT control (v36, #81) — distinct from `Tabs`: there is no
 associated panel/content, only a typed `value` + `onChange`. `options` is a
 bounded list (minimum two) of `{ id, label, icon?, disabled? }`; `size` rides
 the shared control lattice (#76) so height/gutter/radius/font/icon size
@@ -360,7 +391,7 @@ Every component accepts these two, inherited from `NodeBase`:
 | Field | Type | Notes |
 |---|---|---|
 | `key` | `string` (optional) | Required (enforced by the schema, not just convention) on any view placed inside a `List`/`SectionList`/`Link` children array. |
-| `catalogVersion` | `"effect-native/v34"` | Set automatically by every constructor function — you never pass this yourself. |
+| `catalogVersion` | `"effect-native/v37"` | Set automatically by every constructor function — you never pass this yourself. |
 
 ### Design tokens
 

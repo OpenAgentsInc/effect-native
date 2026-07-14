@@ -49,6 +49,8 @@ import {
   clipboardWriteError,
   copyButtonDefaultResetMillis,
   makeClipboardLayer,
+  resolveButtonAppearance,
+  type ResolvedButtonAppearance,
   type SurfaceMaterial,
   type ComboboxOption,
   type ComboboxView,
@@ -142,6 +144,9 @@ import {
   type RadiusToken,
   type SpacingToken,
   type Theme,
+  toneTokens,
+  toneVariantTokens,
+  controlTokens,
   type TypeScaleToken
 } from "@effect-native/tokens"
 
@@ -602,23 +607,70 @@ const styleDeclarations = (key: string, value: unknown): ReadonlyArray<readonly 
 // interactive state fills use `!important` deliberately, because the state
 // engine is uniform chrome physics that must beat the inline variant colors
 // the renderer sets at rest.
-// Component-token tier (C1 tier 3 + C4 data-* lowering, issue #77): the
-// apps-sdk-ui indirection chain — semantic/matrix token → component-local
-// custom property → CSS property — translated to render-dom's data-attribute
-// + generated-CSS mechanism. `data-en-component="button"` base rule consumes
-// only `--en-button-*` local vars (defaulted in :root above); each
-// `data-en-variant` selector re-points those vars, never a raw theme value.
-// This mirrors, and replaces the inline per-variant style assignment that
-// `renderButton` used to perform — same resolved output, now expressed as
-// the indirection chain so a later `size`/`tone` axis (#78/#79) only adds
-// more re-pointing selectors, never more JS branches.
+// Button tone x variant color-matrix selectors (harmonization #78): every
+// {tone, variant} cell re-points --en-button-background(-hover/-active/
+// -selected), --en-button-text, and --en-button-border from the already-
+// lowered --en-matrix-<tone>-<variant>-<state>-<role> vars (#75/#77) — never
+// a raw theme value. Only `background` genuinely varies across rest/hover/
+// active/selected within one cell (border/text/ring stay constant — see
+// `toneCells` in @effect-native/tokens), so one selector carries all four
+// background flavors instead of four separate state selectors per cell.
+// `resolveButtonAppearance` (the pre-#78 legacy-variant normalizer, #78) is
+// what guarantees `data-en-tone`/`data-en-variant` are always one of these
+// generated combinations, never a legacy "primary"/"secondary" token.
+const buttonToneVariantRules = toneTokens.flatMap((tone) =>
+  toneVariantTokens.map((variant) =>
+    `[data-effect-native-surface="dom"] [data-en-component="button"][data-en-tone="${tone}"][data-en-variant="${variant}"]{` +
+    `--en-button-background:var(--en-matrix-${tone}-${variant}-rest-background);` +
+    `--en-button-background-hover:var(--en-matrix-${tone}-${variant}-hover-background);` +
+    `--en-button-background-active:var(--en-matrix-${tone}-${variant}-active-background);` +
+    `--en-button-background-selected:var(--en-matrix-${tone}-${variant}-selected-background);` +
+    `--en-button-text:var(--en-matrix-${tone}-${variant}-rest-text);` +
+    `--en-button-border:var(--en-matrix-${tone}-${variant}-rest-border);` +
+    "}"
+  )
+).join("")
+
+// Button control-lattice size selectors (harmonization #78, C3/#76): one
+// `size` prop coherently sizes height, horizontal gutter, corner radius,
+// label font size, and (while loading) the spinner glyph from the same
+// lattice step — the apps-sdk-ui `--control-*` indirection extended to
+// Button's own local vars.
+const buttonSizeRules = controlTokens.map((size) =>
+  `[data-effect-native-surface="dom"] [data-en-component="button"][data-en-size="${size}"]{` +
+  `--en-button-height:var(--en-control-${size}-height);` +
+  `--en-button-gutter:var(--en-control-${size}-gutter);` +
+  `--en-button-radius:var(--en-control-${size}-radius);` +
+  `--en-button-font-size:var(--en-control-${size}-font-size);` +
+  `--en-button-icon-size:var(--en-control-${size}-icon);` +
+  "}"
+).join("")
+
+// Component-token tier (C1 tier 3 + C4 data-* lowering, issue #77, extended by
+// #78's tone/variant/size matrix): the apps-sdk-ui indirection chain —
+// semantic/matrix token → component-local custom property → CSS property —
+// translated to render-dom's data-attribute + generated-CSS mechanism.
+// `data-en-component="button"` base rule consumes only `--en-button-*` local
+// vars (defaulted in :root above); the tone/variant/size selectors above
+// re-point those vars, never a raw theme value. `pill`/`block`/`loading` are
+// generic convenience selectors layered after the size rules so they always
+// win a specificity tie (equal attribute-selector count, later source wins).
 const componentBaseRules = [
-  ':where([data-effect-native-surface="dom"]) :where([data-en-component="button"]){font:inherit;background-color:var(--en-button-background);color:var(--en-button-text);border-width:1px;border-style:solid;border-color:var(--en-button-border);border-radius:var(--en-button-radius);padding-block:var(--en-button-padding-block);padding-inline:var(--en-button-padding-inline);}',
-  '[data-effect-native-surface="dom"] [data-en-component="button"][data-en-variant="primary"]{--en-button-background:var(--en-color-accent);--en-button-text:var(--en-color-textPrimary);--en-button-border:transparent;}',
-  '[data-effect-native-surface="dom"] [data-en-component="button"][data-en-variant="secondary"]{--en-button-background:var(--en-color-surface);--en-button-text:var(--en-color-textPrimary);--en-button-border:var(--en-color-border);}',
-  '[data-effect-native-surface="dom"] [data-en-component="button"][data-en-variant="ghost"]{--en-button-background:transparent;--en-button-text:var(--en-color-accent);--en-button-border:transparent;}',
+  ':where([data-effect-native-surface="dom"]) :where([data-en-component="button"]){font:inherit;font-size:var(--en-button-font-size);position:relative;display:inline-flex;align-items:center;justify-content:center;gap:var(--en-button-gutter);background-color:var(--en-button-background);color:var(--en-button-text);border-width:1px;border-style:solid;border-color:var(--en-button-border);border-radius:var(--en-button-radius);min-height:var(--en-button-height);padding-inline:var(--en-button-gutter);}',
+  buttonToneVariantRules,
+  buttonSizeRules,
   '[data-effect-native-surface="dom"] [data-en-component="button"][data-en-disabled="true"]{cursor:not-allowed;opacity:0.5;}',
-  '[data-effect-native-surface="dom"] [data-en-component="button"]:not([data-en-disabled="true"]){cursor:pointer;}'
+  '[data-effect-native-surface="dom"] [data-en-component="button"]:not([data-en-disabled="true"]){cursor:pointer;}',
+  '[data-effect-native-surface="dom"] [data-en-component="button"][data-en-pill="true"]{--en-button-radius:var(--en-radius-full);}',
+  '[data-effect-native-surface="dom"] [data-en-component="button"][data-en-block="true"]{display:flex;width:var(--en-dimension-full);}',
+  // Loading (harmonization #78): the label text hides (color:transparent, so
+  // layout is unaffected and no separate label element is needed) and a
+  // lattice-icon-sized spinner glyph draws over it via ::before — the one
+  // icon-shaped element Button draws, sized from the control lattice's icon
+  // sub-token and nothing beyond that (non-goal: no general icon-autosizing).
+  '[data-effect-native-surface="dom"] [data-en-component="button"][data-en-loading="true"]{color:transparent;cursor:wait;pointer-events:none;}',
+  '[data-effect-native-surface="dom"] [data-en-component="button"][data-en-loading="true"]::before{content:"";position:absolute;top:50%;left:50%;width:var(--en-button-icon-size);height:var(--en-button-icon-size);margin:calc(var(--en-button-icon-size) / -2) 0 0 calc(var(--en-button-icon-size) / -2);border-radius:var(--en-radius-full);border:2px solid var(--en-button-text);border-right-color:transparent;border-bottom-color:transparent;animation:en-button-spin 0.6s linear infinite;}',
+  "@keyframes en-button-spin{to{transform:rotate(360deg);}}"
 ].join("")
 
 // SegmentedControl (issue #81) component-token tier: the container's track
@@ -656,9 +708,11 @@ const motionBaseRules = [
 // pointer contexts never get sticky hover (the apps-sdk-ui mixin discipline).
 // `:active` rules stay ungated — press feedback is valid on touch.
 const chromeHoverRules = [
-  '[data-effect-native-surface="dom"] button[data-en-variant="ghost"]:hover:not(:disabled):not(:active){background-color:var(--en-color-stateHover) !important;}',
-  '[data-effect-native-surface="dom"] button[data-en-variant="primary"]:hover:not(:disabled):not(:active){background-color:var(--en-color-accentHover) !important;}',
-  '[data-effect-native-surface="dom"] button[data-en-variant="secondary"]:hover:not(:disabled){background-color:var(--en-color-surfaceRaised) !important;}',
+  // Button hover (harmonization #78): one generic rule keyed on the
+  // component attribute, consuming the tone/variant-repointed
+  // `--en-button-background-hover` var instead of branching per legacy
+  // variant literal.
+  '[data-effect-native-surface="dom"] [data-en-component="button"]:hover:not(:disabled):not(:active){background-color:var(--en-button-background-hover) !important;}',
   '[data-effect-native-surface="dom"] [data-en-nav-item]:hover:not(:disabled){background-color:var(--en-color-stateHover);color:var(--en-color-textPrimary);}'
 ].join("")
 
@@ -678,8 +732,11 @@ const chromeBaseRules = [
   '[data-effect-native-surface="dom"] :is(button,a,input,textarea,[tabindex]):focus-visible{outline:2px solid var(--en-color-focus);outline-offset:2px;}',
   '[data-effect-native-surface="dom"] button:disabled{cursor:not-allowed;}',
   `@media (hover:hover) and (pointer:fine){${chromeHoverRules}}`,
-  '[data-effect-native-surface="dom"] button[data-en-variant="ghost"]:active:not(:disabled){background-color:var(--en-color-stateActive) !important;}',
-  '[data-effect-native-surface="dom"] button[data-en-variant="primary"]:active:not(:disabled){background-color:var(--en-color-accentActive) !important;}',
+  // Button active/selected (harmonization #78): generic rules keyed on the
+  // component attribute, consuming the tone/variant-repointed
+  // `--en-button-background-active`/`-selected` vars.
+  '[data-effect-native-surface="dom"] [data-en-component="button"]:active:not(:disabled){background-color:var(--en-button-background-active) !important;}',
+  '[data-effect-native-surface="dom"] [data-en-component="button"][data-en-selected="true"]:not(:disabled){background-color:var(--en-button-background-selected) !important;}',
   ':where([data-effect-native-surface="dom"]) :where([data-en-nav-item]){display:flex;align-items:center;background:transparent;border:0;border-radius:var(--en-radius-md);padding:var(--en-spacing-1) var(--en-spacing-2);color:var(--en-color-textMuted);font:inherit;font-size:var(--en-type-label-fontSize);line-height:var(--en-type-label-lineHeight);cursor:pointer;text-align:left;}',
   '[data-effect-native-surface="dom"] [data-en-nav-item]:active:not(:disabled){background-color:var(--en-color-stateActive);}',
   '[data-effect-native-surface="dom"] [data-en-nav-item][data-en-active="true"]{background-color:var(--en-color-stateSelected);color:var(--en-color-textPrimary);}',
@@ -798,17 +855,26 @@ class AtomicStyleSheet {
             )
         )
       ),
-      // Component-token tier (C1 tier 3, issue #77): default component-local
-      // vars a component's rest-state CSS rule consumes; variant/tone/size
-      // attribute selectors below re-point these per instance, mirroring the
-      // apps-sdk-ui `--button-*` indirection chain. These are renderer-owned
-      // chrome, not part of the typed authoring style contract.
+      // Component-token tier (C1 tier 3, issue #77; extended by #78's tone/
+      // variant/size matrix): default component-local vars a component's
+      // rest-state CSS rule consumes; tone/variant/size attribute selectors
+      // below re-point these per instance, mirroring the apps-sdk-ui
+      // `--button-*` indirection chain. These are renderer-owned chrome, not
+      // part of the typed authoring style contract. Defaults resolve to the
+      // "accent"/"solid"/"md" resting cell — `resolveButtonAppearance`'s
+      // defaults — so an (unexpected) unattributed button still renders a
+      // sane resting chrome.
       "--en-button-background:transparent;",
+      "--en-button-background-hover:transparent;",
+      "--en-button-background-active:transparent;",
+      "--en-button-background-selected:transparent;",
       "--en-button-text:var(--en-color-textPrimary);",
       "--en-button-border:transparent;",
-      "--en-button-radius:var(--en-radius-md);",
-      "--en-button-padding-block:var(--en-spacing-2);",
-      "--en-button-padding-inline:var(--en-spacing-4);",
+      "--en-button-height:var(--en-control-md-height);",
+      "--en-button-gutter:var(--en-control-md-gutter);",
+      "--en-button-radius:var(--en-control-md-radius);",
+      "--en-button-font-size:var(--en-control-md-font-size);",
+      "--en-button-icon-size:var(--en-control-md-icon);",
       // SegmentedControl (#81): defaults to the md lattice step; the
       // data-en-size/data-en-pill selectors in segmentedControlBaseRules
       // re-point --en-segmented-radius per instance.
@@ -1235,22 +1301,40 @@ const renderButton = (view: ButtonView, state: DomRendererState, report: IntentR
   state.resetListeners(element)
   element.type = "button"
   element.textContent = view.label
-  element.disabled = view.disabled === true
+  const appearance: ResolvedButtonAppearance = resolveButtonAppearance(view)
+  const loading = view.loading === true
+  const disabled = view.disabled === true || loading
+  element.disabled = disabled
   // Component-token tier lowering (C1 tier 3 + C4 data-* lowering, issue
-  // #77): the themed surface + label color + radius + padding + disabled
+  // #77; extended to the full tone/variant/size matrix by #78): the themed
+  // surface + label color + radius + sizing + disabled/pill/block/loading
   // chrome are expressed as the `data-en-component="button"` base rule plus
-  // `data-en-variant`/`data-en-disabled` re-pointing rules in the generated
-  // stylesheet (`componentBaseRules`) instead of inline styles — same
-  // resolved visual output as the previous per-variant inline recipe (parity
-  // with the render-rn fix for the #71-class bug: themed surface + label
-  // color instead of the native default button), now expressed through the
-  // apps-sdk-ui indirection chain so a later size/tone axis (#78/#79) only
-  // adds selectors, never more JS branches. `:where()`-zero-specificity base
-  // rule keeps typed style overrides (applyBaseStyle) able to win.
+  // `data-en-tone`/`data-en-variant`/`data-en-size`/`data-en-disabled`/
+  // `data-en-pill`/`data-en-block`/`data-en-loading`/`data-en-selected`
+  // re-pointing rules in the generated stylesheet (`componentBaseRules`)
+  // instead of inline styles or JS branching. `resolveButtonAppearance` is
+  // the single normalizer that turns a pre-#78 legacy `variant` token (or an
+  // omitted tone/variant/size) into the canonical matrix cell every renderer
+  // consumes, so `data-en-variant` here is always one of the matrix's own
+  // tokens (solid/soft/outline/ghost), never a legacy "primary"/"secondary".
+  // `:where()`-zero-specificity base rule keeps typed style overrides
+  // (applyBaseStyle) able to win.
   element.setAttribute("data-en-component", "button")
-  element.setAttribute("data-en-variant", view.variant)
-  element.setAttribute("data-en-disabled", view.disabled === true ? "true" : "false")
-  state.addListener(element, "click", () => runReportedIntent(report, view.onPress))
+  element.setAttribute("data-en-tone", appearance.tone)
+  element.setAttribute("data-en-variant", appearance.variant)
+  element.setAttribute("data-en-size", appearance.size)
+  element.setAttribute("data-en-disabled", disabled ? "true" : "false")
+  element.setAttribute("data-en-pill", view.pill === true ? "true" : "false")
+  element.setAttribute("data-en-block", view.block === true ? "true" : "false")
+  element.setAttribute("data-en-loading", loading ? "true" : "false")
+  element.setAttribute("data-en-selected", view.selected === true ? "true" : "false")
+  if (loading) element.setAttribute("aria-busy", "true")
+  else element.removeAttribute("aria-busy")
+  if (view.selected !== undefined) element.setAttribute("aria-pressed", String(view.selected))
+  else element.removeAttribute("aria-pressed")
+  state.addListener(element, "click", () => {
+    if (!disabled) runReportedIntent(report, view.onPress)
+  })
   applyBaseStyle(element, view, state)
   applyA11y(element, view)
   applyInteractions(element, view, state, report)

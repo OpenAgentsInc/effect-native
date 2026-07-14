@@ -729,7 +729,9 @@ describe("DOM renderer", () => {
       // The chrome base ruleset (state overlays, focus ring, nav-item
       // physics) ships with every DOM surface and resolves only through
       // theme variables.
-      expect(css).toContain('button[data-en-variant="ghost"]:hover:not(:disabled):not(:active){background-color:var(--en-color-stateHover) !important;}')
+      expect(css).toContain(
+        '[data-en-component="button"]:hover:not(:disabled):not(:active){background-color:var(--en-button-background-hover) !important;}'
+      )
       expect(css).toContain('[data-en-nav-item][data-en-active="true"]{background-color:var(--en-color-stateSelected);color:var(--en-color-textPrimary);}')
       expect(css).toContain("outline:2px solid var(--en-color-focus);outline-offset:2px;")
 

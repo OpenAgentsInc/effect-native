@@ -4,6 +4,7 @@ import {
   AnchoredOverlayCatalogVersion,
   AppShellCatalogVersion,
   AvatarCatalogVersion,
+  ButtonMatrixCatalogVersion,
   CatalogVersion,
   ComboboxCatalogVersion,
   CodeBlockCatalogVersion,
@@ -104,11 +105,12 @@ describe("catalog version compatibility", () => {
       IconExpansionCatalogVersion,
       AvatarCatalogVersion,
       CopyButtonCatalogVersion,
-      SegmentedControlCatalogVersion
+      SegmentedControlCatalogVersion,
+      ButtonMatrixCatalogVersion
     ])
     // The current marker is the last entry; the previous marker is second-last.
-    expect(CatalogVersion).toBe(SegmentedControlCatalogVersion)
-    expect(PreviousCatalogVersion).toBe(CopyButtonCatalogVersion)
+    expect(CatalogVersion).toBe(ButtonMatrixCatalogVersion)
+    expect(PreviousCatalogVersion).toBe(SegmentedControlCatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 1]).toBe(CatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 2]).toBe(PreviousCatalogVersion)
   })
