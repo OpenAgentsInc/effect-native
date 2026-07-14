@@ -136,9 +136,25 @@ const surface = yield* makeReactDomRenderer({ theme }).mount(
 )
 ```
 
-`makeReactDomRenderer().mount` has the same first-commit readiness and Scope
-semantics as `makeDomRenderer().mount`: it resolves only after the first View
-is visible, and unmount closes both the React root and nested renderer. React
-and React DOM are optional peers so direct-DOM consumers do not install them.
-Portable Effect Native programs still import no React types, JSX, callbacks,
-or class strings.
+The backend is a whole-surface decision:
+
+```ts
+makeReactDomRenderer({ backend: "compatibility", theme }) // complete catalog
+makeReactDomRenderer({ backend: "react", theme })         // declared React subset
+```
+
+`compatibility` is the default and preserves the complete direct-DOM catalog
+beneath one React root. `react` opens the Effect stream once in the mounting
+Scope, exposes one stable synchronous snapshot through `useSyncExternalStore`,
+and lowers supported portable nodes to ordinary semantic React elements. Its
+foundation subset is `Stack`, `Text`, `Button`, `Card`, `Spacer`, and
+`Divider`; unsupported tags render a public incompatible state instead of
+silently nesting or switching backends.
+
+Both modes have the same first-visible-commit and Scope semantics. Unmount is
+idempotent and closes the selected backend, subscription, React root, and
+canonical token stylesheet. React Strict Mode may replay component listener
+attachment, but it cannot reopen the upstream Effect stream or duplicate an
+intent dispatch. React and React DOM remain optional peers for direct-DOM
+consumers. Portable Effect Native programs still import no React types, JSX,
+callbacks, or class strings.
