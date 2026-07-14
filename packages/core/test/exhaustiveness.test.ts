@@ -48,7 +48,8 @@ const describeView = Match.type<View>().pipe(
   Match.tag("RadioGroup", () => "control"),
   Match.tag("Slider", () => "control"),
   Match.tag("NumberField", () => "control"),
-  Match.tag("FieldRow", () => "control")
+  Match.tag("FieldRow", () => "control"),
+  Match.tag("SegmentedControl", () => "control")
 ).pipe(
   Match.tag("Toast", () => "feedback"),
   Match.tag("ToastRegion", () => "feedback"),

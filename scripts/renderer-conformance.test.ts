@@ -54,6 +54,7 @@ import {
   RadioGroup,
   RecoveryOverlay,
   Section,
+  SegmentedControl,
   Select,
   Slider,
   StatTile,
@@ -712,6 +713,17 @@ const catalogFixturesByTag = {
     content: "conformance copy content",
     accessibilityLabel: "Copy content",
     onCopy: IntentRef("Changed", ComponentValueBinding())
+  }),
+  SegmentedControl: SegmentedControl({
+    key: "segmented-control",
+    value: "review",
+    size: "md",
+    onChange: IntentRef("Changed", ComponentValueBinding()),
+    options: [
+      { id: "review", label: "Review", icon: "Circle" },
+      { id: "auto", label: "Autonomous" },
+      { id: "shadow", label: "Shadow", disabled: true }
+    ]
   })
 } satisfies { readonly [Tag in (typeof componentTags)[number]]: View }
 
@@ -860,7 +872,8 @@ const catalogRendererTags = [
   "EmptyMessage",
   "Avatar",
   "AvatarGroup",
-  "CopyButton"
+  "CopyButton",
+  "SegmentedControl"
 ] as const
 
 // Host (issue #23) is supported by the headless recorder and the DOM renderer

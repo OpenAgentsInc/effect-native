@@ -100,8 +100,9 @@ export const EmptyMessageCatalogVersion = "effect-native/v32" as const
 export const IconExpansionCatalogVersion = "effect-native/v33" as const
 export const AvatarCatalogVersion = "effect-native/v34" as const
 export const CopyButtonCatalogVersion = "effect-native/v35" as const
-export const PreviousCatalogVersion = AvatarCatalogVersion
-export const CatalogVersion = CopyButtonCatalogVersion
+export const SegmentedControlCatalogVersion = "effect-native/v36" as const
+export const PreviousCatalogVersion = CopyButtonCatalogVersion
+export const CatalogVersion = SegmentedControlCatalogVersion
 export const CatalogVersionSchema = Schema.Literal(CatalogVersion)
 export type CatalogVersion = typeof CatalogVersion
 export const compatibleCatalogVersions = [
@@ -140,7 +141,8 @@ export const compatibleCatalogVersions = [
   EmptyMessageCatalogVersion,
   IconExpansionCatalogVersion,
   AvatarCatalogVersion,
-  CopyButtonCatalogVersion
+  CopyButtonCatalogVersion,
+  SegmentedControlCatalogVersion
 ] as const
 export type CompatibleCatalogVersion = (typeof compatibleCatalogVersions)[number]
 export const CompatibleCatalogVersionSchema = Schema.Literals(compatibleCatalogVersions)
@@ -219,7 +221,8 @@ export const componentTags = [
   "EmptyMessage",
   "Avatar",
   "AvatarGroup",
-  "CopyButton"
+  "CopyButton",
+  "SegmentedControl"
 ] as const
 export type ComponentTag = (typeof componentTags)[number]
 
@@ -3254,6 +3257,36 @@ export interface CopyButtonView extends NodeBase {
   readonly style?: ButtonStyle
 }
 
+// SegmentedControl (issue #81, harmonization P2.8). Distinct from Tabs: a
+// single-choice INPUT control with an animated selection thumb, not a peer
+// selector for associated panels — there is no panel/content association at
+// all. Options are typed data (id/label/icon?/disabled?); `value` is the
+// selected option id; `onChange` is the one typed intent. `size` rides the
+// shared control lattice (#76) so height/gutter/radius/font/icon size
+// coherently from one step; `gutterSize` is the token gap between segments
+// (0 renders the classic touching-segments look); `pill` renders full radius
+// instead of the lattice step's radius. DOM renders an animated sliding thumb
+// measured via ResizeObserver; React Native renders a static (non-animated)
+// selection highlight — see the render-rn `renderSegmentedControl` comment
+// for the honest fidelity-limitation note.
+export interface SegmentedOption {
+  readonly id: string
+  readonly label: string
+  readonly icon?: IconName
+  readonly disabled?: boolean
+}
+
+export interface SegmentedControlView extends NodeBase {
+  readonly _tag: "SegmentedControl"
+  readonly options: ReadonlyArray<SegmentedOption>
+  readonly value: string
+  readonly size?: ControlToken
+  readonly gutterSize?: SpacingToken
+  readonly pill?: boolean
+  readonly onChange: IntentRef
+  readonly style?: CardStyle
+}
+
 export type View =
   | StackView
   | TextView
@@ -3329,6 +3362,7 @@ export type View =
   | AvatarView
   | AvatarGroupView
   | CopyButtonView
+  | SegmentedControlView
 
 export type KeyedView = View & { readonly key: NodeKey }
 
@@ -4682,6 +4716,31 @@ export const CopyButtonSchema: Schema.Codec<CopyButtonView, CopyButtonView> =
     style: ButtonStyleSchema.pipe(Schema.optionalKey)
   })
 
+export const SegmentedOptionSchema: Schema.Codec<SegmentedOption, SegmentedOption> = Schema.Struct({
+  id: Schema.NonEmptyString,
+  label: Schema.String,
+  icon: IconNameSchema.pipe(Schema.optionalKey),
+  disabled: Schema.Boolean.pipe(Schema.optionalKey)
+})
+
+export const SegmentedControlSchema: Schema.Codec<SegmentedControlView, SegmentedControlView> = Schema.TaggedStruct(
+  "SegmentedControl",
+  {
+    ...CommonFields,
+    // A single-choice control needs at least two choices to mean anything;
+    // one option is a mislabeled static chip, not a segmented control.
+    options: Schema.Array(SegmentedOptionSchema).check(
+      Schema.isMinLength(2, { title: "SegmentedControlNeedsAtLeastTwoOptions" })
+    ),
+    value: Schema.NonEmptyString,
+    size: ControlTokenSchema.pipe(Schema.optionalKey),
+    gutterSize: SpacingTokenSchema.pipe(Schema.optionalKey),
+    pill: Schema.Boolean.pipe(Schema.optionalKey),
+    onChange: IntentRefSchema,
+    style: CardStyleSchema.pipe(Schema.optionalKey)
+  }
+)
+
 export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
   Schema.Union([
     StackSchema,
@@ -4757,7 +4816,8 @@ export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
     EmptyMessageSchema,
     AvatarSchema,
     AvatarGroupSchema,
-    CopyButtonSchema
+    CopyButtonSchema,
+    SegmentedControlSchema
   ]).check(OverlayStackFilter)
 )
 
@@ -5374,6 +5434,10 @@ export type AvatarGroupProps = WithoutTagAndVersion<AvatarGroupView>
 export const AvatarGroup = (props: AvatarGroupProps): AvatarGroupView =>
   AvatarGroupSchema.make({ _tag: "AvatarGroup", catalogVersion: CatalogVersion, ...props })
 
+export type SegmentedControlProps = WithoutTagAndVersion<SegmentedControlView>
+export const SegmentedControl = (props: SegmentedControlProps): SegmentedControlView =>
+  SegmentedControlSchema.make({ _tag: "SegmentedControl", catalogVersion: CatalogVersion, ...props })
+
 
 
 
@@ -5585,6 +5649,7 @@ export const resolveView = (view: View, input: ViewResolution = {}): View => {
     case "LogoRow":
     case "PricingColumn":
     case "Avatar":
+    case "SegmentedControl":
       return {
         ...view,
         ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) })
@@ -5824,6 +5889,7 @@ export const resolveBindings = <State>(view: View, state: State): View => {
     case "Avatar":
     case "AvatarGroup":
     case "CopyButton":
+    case "SegmentedControl":
       return view
     case "Section":
     case "Glow":

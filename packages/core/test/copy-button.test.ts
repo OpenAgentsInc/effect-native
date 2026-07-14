@@ -5,7 +5,6 @@ import {
   Clipboard,
   ComponentValueBinding,
   CopyButton,
-  CopyButtonCatalogVersion,
   CopyButtonSchema,
   IntentRef,
   IntentRegistry,
@@ -34,14 +33,17 @@ import {
 describe("CopyButton (#84, v35)", () => {
   test("is a catalog tag and its constructor stamps the current version", () => {
     expect(componentTags).toContain("CopyButton")
-    expect(CatalogVersion).toBe(CopyButtonCatalogVersion)
     const view = CopyButton({
       key: "copy-cmd",
       content: "bun install effect",
       onCopy: IntentRef("Copied")
     })
     expect(view._tag).toBe("CopyButton")
-    expect(view.catalogVersion).toBe(CopyButtonCatalogVersion)
+    // Constructors always stamp the current catalog marker, not the marker
+    // the component shipped under (#81 bumped the catalog past CopyButton's
+    // #84 — CopyButton's own historical marker still decodes via
+    // compatibility, see catalog-version.test.ts).
+    expect(view.catalogVersion).toBe(CatalogVersion)
     expect(copyButtonDefaultResetMillis).toBe(2000)
   })
 

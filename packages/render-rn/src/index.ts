@@ -67,6 +67,7 @@ import {
   type PopoverView,
   type RadioGroupView,
   type RecoveryOverlayView,
+  type SegmentedControlView,
   type SelectView,
   type SliderView,
   type StatusBannerView,
@@ -2891,6 +2892,109 @@ const renderRadioGroup = (
   )
 }
 
+// SegmentedControl (issue #81, harmonization P2.8). Pressable segments with a
+// typed onChange, mirroring Tabs' accessibilityActions increment/decrement for
+// switch-control-style OS navigation.
+//
+// Fidelity limitation, declared honestly: the DOM renderer measures the
+// selected segment's live bounds via ResizeObserver and slides a shared thumb
+// with the #76 "move" easing token. This catalog has no Reanimated/
+// gesture-handler dependency to drive an equivalent cross-segment layout
+// animation on React Native, so the selected segment instead gets a static
+// background highlight applied directly to it — no shared/sliding element.
+// This is a real fidelity gap versus DOM, not a workaround; a future
+// Reanimated-backed render-rn could close it without changing the typed
+// contract.
+const renderSegmentedControl = (
+  view: SegmentedControlView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const theme = options.theme ?? defaultTheme
+  const control = theme.control[view.size ?? "md"]
+  const gutter = view.gutterSize === undefined ? 0 : spacingValue(theme, view.gutterSize)
+  const radius = view.pill === true ? 9999 : control.radius
+  const enabledIds = view.options.filter((option) => option.disabled !== true).map((option) => option.id)
+  const move = (direction: 1 | -1) => {
+    if (enabledIds.length === 0) return
+    const index = enabledIds.indexOf(view.value)
+    const next = enabledIds[(index + direction + enabledIds.length) % enabledIds.length]!
+    runReportedIntent(report, view.onChange, next)
+  }
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    {
+      ...baseProps(view, mergeNativeStyles(
+        {
+          flexDirection: "row",
+          backgroundColor: colorValue(theme, "surface"),
+          borderRadius: radius,
+          padding: gutter,
+          gap: gutter
+        },
+        viewStyle(view, options)
+      )),
+      testID: "en-segmented-control",
+      accessibilityRole: "radiogroup",
+      accessibilityActions: [{ name: "increment" }, { name: "decrement" }],
+      onAccessibilityAction: (event: { readonly nativeEvent: { readonly actionName: string } }) => {
+        if (event.nativeEvent.actionName === "increment") move(1)
+        if (event.nativeEvent.actionName === "decrement") move(-1)
+      }
+    },
+    ...view.options.map((option) => {
+      const selected = view.value === option.id
+      const parts: Array<ReactElementLike> = []
+      if (option.icon !== undefined) {
+        parts.push(
+          createElement(
+            dependencies,
+            dependencies.ReactNative.Text,
+            { key: "icon", style: { fontSize: control.icon, color: colorValue(theme, "textPrimary") } },
+            iconGlyphs[option.icon]
+          )
+        )
+      }
+      parts.push(
+        createElement(
+          dependencies,
+          dependencies.ReactNative.Text,
+          { key: "label", style: { fontSize: control.fontSize, color: colorValue(theme, "textPrimary") } },
+          option.label
+        )
+      )
+      return createElement(
+        dependencies,
+        dependencies.ReactNative.Pressable,
+        {
+          key: `segment-${option.id}`,
+          testID: `en-segment:${option.id}`,
+          accessibilityRole: "radio",
+          accessibilityState: { selected, disabled: option.disabled === true },
+          disabled: option.disabled === true,
+          style: {
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: spacingValue(theme, "1"),
+            height: control.height,
+            paddingHorizontal: control.gutter,
+            borderRadius: radius,
+            opacity: option.disabled === true ? 0.5 : 1,
+            ...(selected ? { backgroundColor: colorValue(theme, "surfaceRaised") } : {})
+          },
+          ...(option.disabled === true
+            ? {}
+            : { onPress: () => runReportedIntent(report, view.onChange, option.id) })
+        },
+        ...parts
+      )
+    })
+  )
+}
+
 const renderSlider = (
   view: SliderView,
   dependencies: ReactNativeDependencies,
@@ -4040,6 +4144,8 @@ const renderResolvedReactNativeView = (
       return renderAvatarGroup(view, dependencies, options)
     case "CopyButton":
       return renderCopyButton(view, dependencies, report, options)
+    case "SegmentedControl":
+      return renderSegmentedControl(view, dependencies, report, options)
   }
 }
 

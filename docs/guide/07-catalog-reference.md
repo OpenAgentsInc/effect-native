@@ -8,7 +8,15 @@ conformance-checked by
 (`bun run check:catalog-reference`) so this page cannot silently drop a shipped
 component.
 
-Current catalog marker: `CatalogVersion = "effect-native/v35"` (v35 adds
+Current catalog marker: `CatalogVersion = "effect-native/v36"` (v36 adds
+`SegmentedControl` — a single-choice INPUT control distinct from `Tabs` (no
+panel association): typed options (id/label/icon?/disabled?), a typed `value`
++ `onChange`, lattice `size`, `gutterSize`, and `pill`. DOM renders an
+animated selection thumb measured via `ResizeObserver` against the selected
+segment's live bounds, sliding with the #76 named `move` easing token, plus
+WAI-ARIA radiogroup/radio semantics with roving tabindex and arrow/Home/End
+keyboard nav; React Native renders pressable segments with a static
+(non-animated) selection highlight — issue #81, harmonization P2.8. v35 added
 `CopyButton` — the typed copy-to-clipboard control with the injected
 `Clipboard` service, copied-state feedback, and the typed `onCopy` /
 `onCopiedReset` intents — issue #84, harmonization P2.11. v34 added
@@ -20,7 +28,7 @@ PascalCase names on the Apps SDK UI conventions — issue #85, harmonization
 P2.12. v32 added `EmptyMessage`, the typed centered empty-state block —
 issue #82, harmonization P2.9).
 
-Closed component tags (`componentTags`, 74 total):
+Closed component tags (`componentTags`, 75 total):
 
 `Stack`, `Text`, `Button`, `Image`, `TextField`, `List`,
 `SectionList`, `Card`, `Spacer`, `Link`, `Modal`, `Sheet`,
@@ -33,7 +41,8 @@ Closed component tags (`componentTags`, 74 total):
 `Section`, `Hero`, `AnnouncementBadge`, `CtaSection`, `Footer`, `NavBar`,
 `Accordion`, `PricingColumn`, `PricingTable`, `LogoRow`, `StatsBand`, `Glow`,
 `MockupFrame`, `Pager`, `SwipeableListItem`, `BackgroundGradient`, `Wallpaper`, `Spotlight`, `Frame`, `BlurredPopup`,
-`IconButton`, `Toolbar`, `EmptyMessage`, `Avatar`, `AvatarGroup`, `CopyButton`.
+`IconButton`, `Toolbar`, `EmptyMessage`, `Avatar`, `AvatarGroup`, `CopyButton`,
+`SegmentedControl`.
 
 There is no escape hatch to add an ad hoc component — growing the
 catalog is a deliberate, tracked process; see
@@ -131,6 +140,22 @@ busy — the typed `"submit"` key command still fires so apps can queue), and
 ### Checkbox
 
 ### RadioGroup
+
+### SegmentedControl
+
+A single-choice INPUT control (v35, #81) — distinct from `Tabs`: there is no
+associated panel/content, only a typed `value` + `onChange`. `options` is a
+bounded list (minimum two) of `{ id, label, icon?, disabled? }`; `size` rides
+the shared control lattice (#76) so height/gutter/radius/font/icon size
+coherently from one step; `gutterSize` is the token gap between segments;
+`pill` renders full radius instead of the lattice step's radius. DOM renders
+an animated sliding thumb measured via `ResizeObserver` against the selected
+segment's live bounds, transitioning with the named `move` easing token, plus
+WAI-ARIA radiogroup/radio semantics with roving tabindex and arrow/Home/End
+keyboard nav. React Native renders pressable segments with a static
+(non-animated) selection highlight applied directly to the selected
+segment — a real fidelity gap versus DOM's shared sliding thumb, declared
+rather than faked.
 
 ### Slider
 
@@ -352,7 +377,7 @@ take a token from one of these closed vocabularies
 | `TypeScaleToken` | `caption, body, label, title, heading` |
 | `BreakpointToken` | `sm, md, lg, xl` |
 | `DimensionToken` | `xs, sm, md, lg, xl, full` |
-| `ControlToken` | `sm, md, lg, xl` — the shared control size lattice (fixed height, gutter, icon size per step); sizes `Avatar`/`AvatarGroup` |
+| `ControlToken` | `2xs, xs, sm, md, lg, xl` — the shared control size lattice (paired height, gutter, radius, font size, icon size per step, #76); sizes `Avatar`/`AvatarGroup`/`SegmentedControl` |
 | `SurfaceMaterial` | `glass` — style-level `surface` token on box-derived styles (GL-1): translucent blurred material on DOM, translucent theme surface + hairline border on RN core |
 
 A `Dimension` is a `DimensionToken` **or** a non-negative pixel number — used

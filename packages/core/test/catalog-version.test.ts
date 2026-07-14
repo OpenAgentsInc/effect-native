@@ -40,6 +40,7 @@ import {
   PreviousCatalogVersion,
   ResponsiveCatalogVersion,
   SettingsControlsCatalogVersion,
+  SegmentedControlCatalogVersion,
   Text,
   compatibleCatalogVersions,
   decodeCompatibleView
@@ -102,11 +103,12 @@ describe("catalog version compatibility", () => {
       EmptyMessageCatalogVersion,
       IconExpansionCatalogVersion,
       AvatarCatalogVersion,
-      CopyButtonCatalogVersion
+      CopyButtonCatalogVersion,
+      SegmentedControlCatalogVersion
     ])
     // The current marker is the last entry; the previous marker is second-last.
-    expect(CatalogVersion).toBe(CopyButtonCatalogVersion)
-    expect(PreviousCatalogVersion).toBe(AvatarCatalogVersion)
+    expect(CatalogVersion).toBe(SegmentedControlCatalogVersion)
+    expect(PreviousCatalogVersion).toBe(CopyButtonCatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 1]).toBe(CatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 2]).toBe(PreviousCatalogVersion)
   })

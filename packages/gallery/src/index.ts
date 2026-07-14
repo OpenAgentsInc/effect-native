@@ -51,6 +51,7 @@ import {
   RadioGroup,
   RecoveryOverlay,
   Section,
+  SegmentedControl,
   Select,
   Slider,
   StatTile,
@@ -1099,6 +1100,29 @@ const componentStoryMap = {
       })
     })
   ],
+  SegmentedControl: [
+    story({
+      id: "segmented-control-basic",
+      component: "SegmentedControl",
+      title: "SegmentedControl",
+      description: "Single-choice control with an animated selection thumb; lattice size, gutterSize, and pill.",
+      view: SegmentedControl({
+        key: "segmented-control-basic",
+        value: "review",
+        size: "md",
+        onChange: IntentRef("GalleryStory.Changed", ComponentValueBinding()),
+        options: [
+          { id: "review", label: "Review", icon: "Circle" },
+          { id: "auto", label: "Autonomous" },
+          { id: "shadow", label: "Shadow", disabled: true }
+        ]
+      }),
+      controls: [
+        enumControl("segmented-control-size", "Size", ["size"], "md", controlTokens),
+        booleanControl("segmented-control-pill", "Pill", ["pill"], false)
+      ]
+    })
+  ],
   Slider: [
     story({
       id: "slider-basic",
@@ -2043,6 +2067,7 @@ export const componentPageSummaries = {
   Select: "Single choice from a typed option list.",
   Checkbox: "Multi-select boolean with typed checked state.",
   RadioGroup: "Exclusive choice group with typed value.",
+  SegmentedControl: "Single-choice control with an animated selection thumb (DOM); lattice size, gutterSize, and pill.",
   Slider: "Bounded numeric range input with step.",
   NumberField: "Bounded numeric input with step/min/max.",
   FieldRow: "Label + control + description + error layout for settings panels.",

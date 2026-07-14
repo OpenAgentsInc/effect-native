@@ -77,6 +77,7 @@ import {
   type PopoverView,
   type RadioGroupView,
   type RecoveryOverlayView,
+  type SegmentedControlView,
   type SelectView,
   type SliderView,
   type StatusBannerView,
@@ -620,6 +621,23 @@ const componentBaseRules = [
   '[data-effect-native-surface="dom"] [data-en-component="button"]:not([data-en-disabled="true"]){cursor:pointer;}'
 ].join("")
 
+// SegmentedControl (issue #81) component-token tier: the container's track
+// background and corner radius resolve through `--en-segmented-*` local vars;
+// `data-en-size` re-points the radius to the matching control-lattice step
+// and `data-en-pill` overrides it to the full radius — same indirection chain
+// as Button, just re-pointed by size/pill instead of variant.
+const segmentedControlBaseRules = [
+  ':where([data-effect-native-surface="dom"]) :where([data-en-component="segmented-control"]){background-color:var(--en-segmented-background);border-radius:var(--en-segmented-radius);}',
+  '[data-effect-native-surface="dom"] [data-en-component="segmented-control"][data-en-size="2xs"]{--en-segmented-radius:var(--en-control-2xs-radius);}',
+  '[data-effect-native-surface="dom"] [data-en-component="segmented-control"][data-en-size="xs"]{--en-segmented-radius:var(--en-control-xs-radius);}',
+  '[data-effect-native-surface="dom"] [data-en-component="segmented-control"][data-en-size="sm"]{--en-segmented-radius:var(--en-control-sm-radius);}',
+  '[data-effect-native-surface="dom"] [data-en-component="segmented-control"][data-en-size="md"]{--en-segmented-radius:var(--en-control-md-radius);}',
+  '[data-effect-native-surface="dom"] [data-en-component="segmented-control"][data-en-size="lg"]{--en-segmented-radius:var(--en-control-lg-radius);}',
+  '[data-effect-native-surface="dom"] [data-en-component="segmented-control"][data-en-size="xl"]{--en-segmented-radius:var(--en-control-xl-radius);}',
+  '[data-effect-native-surface="dom"] [data-en-component="segmented-control"][data-en-pill="true"]{--en-segmented-radius:var(--en-radius-full);}',
+  '[data-effect-native-surface="dom"] [data-en-component="segmented-control"] [data-en-role="segment"]:disabled{cursor:not-allowed;}'
+].join("")
+
 // Motion lowering (C6, issue #77): generic `data-entering`/`data-exiting`
 // presence-transition infra, consuming the named easing + duration tokens.
 // `pointer-events:none` while exiting matches the apps-sdk-ui contract. This
@@ -791,6 +809,11 @@ class AtomicStyleSheet {
       "--en-button-radius:var(--en-radius-md);",
       "--en-button-padding-block:var(--en-spacing-2);",
       "--en-button-padding-inline:var(--en-spacing-4);",
+      // SegmentedControl (#81): defaults to the md lattice step; the
+      // data-en-size/data-en-pill selectors in segmentedControlBaseRules
+      // re-point --en-segmented-radius per instance.
+      "--en-segmented-background:var(--en-color-surface);",
+      "--en-segmented-radius:var(--en-control-md-radius);",
       "}"
     ].join("")
     const atomicRules = Array.from(this.#rules.entries())
@@ -803,7 +826,7 @@ class AtomicStyleSheet {
       })
       .join("")
     this.element.textContent =
-      `${themeRules}${componentBaseRules}${motionBaseRules}${chromeBaseRules}${atomicRules}`
+      `${themeRules}${componentBaseRules}${segmentedControlBaseRules}${motionBaseRules}${chromeBaseRules}${atomicRules}`
   }
 
   dispose(): void {
@@ -839,6 +862,12 @@ class DomRendererState {
   readonly clipboard: Clipboard
   readonly hostDrivers: Map<HostKind, DomHostDriver>
   readonly hostInstances = new Map<string, { readonly kind: HostKind; readonly instance: DomHostInstance }>()
+  // SegmentedControl (#81): one ResizeObserver per mounted control instance,
+  // keyed by its root element, keeping the sliding thumb aligned to the
+  // selected segment's measured bounds across layout changes. Disconnected on
+  // re-render (a fresh observer is attached to the current segment set) and on
+  // surface disposal.
+  readonly segmentedControlObservers = new Map<HTMLElement, ResizeObserver>()
 
   constructor(
     container: Element,
@@ -865,6 +894,10 @@ class DomRendererState {
       clearTimeout(timer)
     }
     this.copyFeedbackTimers.clear()
+    for (const observer of this.segmentedControlObservers.values()) {
+      observer.disconnect()
+    }
+    this.segmentedControlObservers.clear()
     for (const { instance } of this.hostInstances.values()) {
       instance.unmount()
     }
@@ -3562,6 +3595,180 @@ const renderRadioGroup = (view: RadioGroupView, state: DomRendererState, report:
   return element
 }
 
+// SegmentedControl (issue #81, harmonization P2.8). A single-choice INPUT
+// control — WAI-ARIA radiogroup/radio semantics with roving tabindex/arrow-key
+// nav (the Tabs keyboard model), plus an animated sliding thumb measured via
+// ResizeObserver against the selected segment's live bounds (component-token
+// tier + data-* lowering, issue #77: `data-en-component="segmented-control"`,
+// `data-en-size`, `data-en-pill` re-point `--en-segmented-*` local vars).
+const positionSegmentedThumb = (
+  container: HTMLElement,
+  thumb: HTMLElement,
+  selected: HTMLElement | undefined
+): void => {
+  if (selected === undefined) {
+    thumb.style.opacity = "0"
+    return
+  }
+  const containerRect = container.getBoundingClientRect()
+  const selectedRect = selected.getBoundingClientRect()
+  thumb.style.opacity = "1"
+  thumb.style.width = `${selectedRect.width}px`
+  thumb.style.height = `${selectedRect.height}px`
+  thumb.style.transform = `translate(${selectedRect.left - containerRect.left}px,${
+    selectedRect.top - containerRect.top
+  }px)`
+}
+
+const renderSegmentedControl = (
+  view: SegmentedControlView,
+  state: DomRendererState,
+  report: IntentReporter
+): HTMLElement => {
+  const element = state.keyedElement(view, "div")
+  state.resetListeners(element)
+  const size = view.size ?? "md"
+  element.setAttribute("role", "radiogroup")
+  element.setAttribute("data-en-component", "segmented-control")
+  element.setAttribute("data-en-size", size)
+  element.setAttribute("data-en-pill", view.pill === true ? "true" : "false")
+  element.style.position = "relative"
+  element.style.display = "inline-flex"
+  element.style.gap = view.gutterSize === undefined ? "0" : `var(--en-spacing-${cssEscape(view.gutterSize)})`
+  element.style.padding = view.gutterSize === undefined ? "0" : `var(--en-spacing-${cssEscape(view.gutterSize)})`
+  // Background + radius resolve through the component-token tier
+  // (segmentedControlBaseRules): the data-en-size/data-en-pill attributes
+  // above re-point --en-segmented-radius; no inline recipe here.
+  const document = element.ownerDocument
+
+  // The thumb element is created once and reused across renders (the
+  // container itself is key-stable via `keyedElement`), so its CSS transition
+  // animates between the previous and next measured position instead of
+  // popping.
+  let thumb = element.querySelector('[data-en-role="thumb"]') as HTMLElement | null
+  if (thumb === null) {
+    thumb = document.createElement("div")
+    thumb.setAttribute("data-en-role", "thumb")
+    thumb.setAttribute("aria-hidden", "true")
+    thumb.style.position = "absolute"
+    thumb.style.top = "0"
+    thumb.style.left = "0"
+    thumb.style.zIndex = "0"
+    thumb.style.pointerEvents = "none"
+    // The #76 named "move" easing token: on-screen positional transitions.
+    thumb.style.transitionProperty = "transform,width,height"
+    thumb.style.transitionDuration = "var(--en-motion-fast)"
+    thumb.style.transitionTimingFunction = "var(--en-ease-move)"
+    thumb.style.backgroundColor = "var(--en-color-surfaceRaised)"
+    thumb.style.borderRadius = "inherit"
+  }
+
+  const enabledIds = view.options.filter((option) => option.disabled !== true).map((option) => option.id)
+  const moveSelection = (direction: 1 | -1) => {
+    if (enabledIds.length === 0) return
+    const index = enabledIds.indexOf(view.value)
+    const nextId = enabledIds[(index + direction + enabledIds.length) % enabledIds.length]!
+    runReportedIntent(report, view.onChange, nextId)
+  }
+
+  // Reused per option id (not just the thumb): preserves focus and gives the
+  // ResizeObserver stable element identity across re-renders, same reuse
+  // discipline as the thumb above.
+  const existingSegments = new Map(
+    Array.from(element.querySelectorAll('[data-en-role="segment"]')).map((segmentEl) =>
+      [segmentEl.getAttribute("data-en-segment"), segmentEl as HTMLButtonElement] as const
+    )
+  )
+
+  const optionEls = view.options.map((option) => {
+    const button = existingSegments.get(option.id) ?? (document.createElement("button") as HTMLButtonElement)
+    button.replaceChildren()
+    button.type = "button"
+    button.setAttribute("role", "radio")
+    button.setAttribute("data-en-role", "segment")
+    button.setAttribute("data-en-segment", option.id)
+    const selected = view.value === option.id
+    button.setAttribute("aria-checked", selected ? "true" : "false")
+    button.tabIndex = selected ? 0 : -1
+    button.disabled = option.disabled === true
+    button.style.position = "relative"
+    button.style.zIndex = "1"
+    button.style.display = "inline-flex"
+    button.style.alignItems = "center"
+    button.style.justifyContent = "center"
+    button.style.gap = "var(--en-spacing-1)"
+    button.style.background = "transparent"
+    button.style.border = "0"
+    button.style.font = "inherit"
+    button.style.fontSize = `var(--en-control-${cssEscape(size)}-font-size)`
+    button.style.color = "var(--en-color-textPrimary)"
+    button.style.padding = `0 var(--en-control-${cssEscape(size)}-gutter)`
+    button.style.height = `var(--en-control-${cssEscape(size)}-height)`
+    button.style.cursor = option.disabled === true ? "not-allowed" : "pointer"
+    button.style.opacity = option.disabled === true ? "0.5" : "1"
+    if (option.icon !== undefined) {
+      const iconEl = document.createElement("span")
+      iconEl.setAttribute("aria-hidden", "true")
+      iconEl.style.display = "inline-flex"
+      iconEl.style.fontSize = `var(--en-control-${cssEscape(size)}-icon)`
+      iconEl.innerHTML = iconSvg(option.icon)
+      button.appendChild(iconEl)
+    }
+    const label = document.createElement("span")
+    label.setAttribute("data-en-role", "label")
+    label.textContent = option.label
+    button.appendChild(label)
+
+    state.resetListeners(button)
+    if (option.disabled !== true) {
+      state.addListener(button, "click", () => runReportedIntent(report, view.onChange, option.id))
+    }
+    state.addListener(button, "keydown", (event) => {
+      const key = (event as KeyboardEvent).key
+      if (key === "ArrowRight" || key === "ArrowDown") {
+        event.preventDefault()
+        moveSelection(1)
+      } else if (key === "ArrowLeft" || key === "ArrowUp") {
+        event.preventDefault()
+        moveSelection(-1)
+      } else if (key === "Home") {
+        event.preventDefault()
+        if (enabledIds.length > 0) runReportedIntent(report, view.onChange, enabledIds[0]!)
+      } else if (key === "End") {
+        event.preventDefault()
+        if (enabledIds.length > 0) runReportedIntent(report, view.onChange, enabledIds[enabledIds.length - 1]!)
+      }
+    })
+    return button
+  })
+
+  element.replaceChildren(thumb, ...optionEls)
+
+  const selectedIndex = view.options.findIndex((option) => option.id === view.value)
+  const selectedButton = selectedIndex === -1 ? undefined : optionEls[selectedIndex]
+  const reposition = () => positionSegmentedThumb(element, thumb!, selectedButton)
+  reposition()
+
+  // ResizeObserver (issue #81): keeps the thumb aligned to the selected
+  // segment's live bounds across layout changes (container resize, font
+  // loading, content reflow) that don't otherwise trigger a re-render.
+  state.segmentedControlObservers.get(element)?.disconnect()
+  const observerWindow = element.ownerDocument.defaultView as unknown as
+    | { readonly ResizeObserver?: typeof ResizeObserver }
+    | null
+  if (observerWindow?.ResizeObserver !== undefined) {
+    const observer = new observerWindow.ResizeObserver(() => reposition())
+    observer.observe(element)
+    for (const optionEl of optionEls) observer.observe(optionEl)
+    state.segmentedControlObservers.set(element, observer)
+  }
+
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  applyInteractions(element, view, state, report)
+  return element
+}
+
 const renderSlider = (view: SliderView, state: DomRendererState, report: IntentReporter): HTMLElement => {
   const element = state.keyedElement(view, "input") as HTMLInputElement
   state.resetListeners(element)
@@ -4600,6 +4807,8 @@ const renderView = (view: View, state: DomRendererState, report: IntentReporter)
       return renderAvatar(view, state)
     case "AvatarGroup":
       return renderAvatarGroup(view, state)
+    case "SegmentedControl":
+      return renderSegmentedControl(view, state, report)
   }
 }
 
