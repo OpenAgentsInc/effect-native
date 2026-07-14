@@ -57,6 +57,9 @@ import {
   SegmentedControl,
   Select,
   Slider,
+  Spinner,
+  LoadingDots,
+  ShimmerText,
   StatTile,
   StatsBand,
   StatusBanner,
@@ -724,6 +727,23 @@ const catalogFixturesByTag = {
       { id: "auto", label: "Autonomous" },
       { id: "shadow", label: "Shadow", disabled: true }
     ]
+  }),
+  Spinner: Spinner({
+    key: "spinner",
+    size: "lg",
+    tone: "info",
+    label: "Loading"
+  }),
+  LoadingDots: LoadingDots({
+    key: "loading-dots",
+    size: "lg",
+    tone: "info",
+    label: "Loading"
+  }),
+  ShimmerText: ShimmerText({
+    key: "shimmer-text",
+    text: "Reading file…",
+    label: "Reading file"
   })
 } satisfies { readonly [Tag in (typeof componentTags)[number]]: View }
 
@@ -873,7 +893,10 @@ const catalogRendererTags = [
   "Avatar",
   "AvatarGroup",
   "CopyButton",
-  "SegmentedControl"
+  "SegmentedControl",
+  "Spinner",
+  "LoadingDots",
+  "ShimmerText"
 ] as const
 
 // Host (issue #23) is supported by the headless recorder and the DOM renderer

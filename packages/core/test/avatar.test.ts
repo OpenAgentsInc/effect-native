@@ -2,11 +2,13 @@ import { describe, expect, test } from "bun:test"
 import { Effect, Exit, Schema } from "effect"
 import {
   Avatar,
+  AvatarCatalogVersion,
   AvatarGroup,
   CatalogVersion,
   CompatibleViewSchema,
   GraphProvenanceCatalogVersion,
   avatarVariants,
+  compatibleCatalogVersions,
   decodeCompatibleView,
   decodeView,
   encodeView,
@@ -39,10 +41,13 @@ describe("Avatar + AvatarGroup (#80) catalog contract", () => {
       label: "Orrery"
     })
     // Constructors always stamp the current catalog marker, not the marker
-    // the component shipped under (later bumps, including #78's
-    // ButtonMatrixCatalogVersion, move the marker past Avatar's #80 — its own
-    // historical marker still decodes via compatibility).
+    // the component shipped under — Avatar shipped at v34; later bumps
+    // (#84 CopyButton, #81 SegmentedControl, #78 ButtonMatrix, #83
+    // Spinner/LoadingDots/ShimmerText) have since moved the marker forward.
+    // Avatar's own historical marker still decodes via compatibility.
     expect(avatar.catalogVersion).toBe(CatalogVersion)
+    expect(avatar.catalogVersion).not.toBe(AvatarCatalogVersion)
+    expect(compatibleCatalogVersions).toContain(AvatarCatalogVersion)
     expect(avatar.size).toBe("lg")
     expect(avatarVariants).toEqual(["soft", "solid"])
 

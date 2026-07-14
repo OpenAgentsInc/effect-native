@@ -114,8 +114,9 @@ export const AvatarCatalogVersion = "effect-native/v34" as const
 export const CopyButtonCatalogVersion = "effect-native/v35" as const
 export const SegmentedControlCatalogVersion = "effect-native/v36" as const
 export const ButtonMatrixCatalogVersion = "effect-native/v37" as const
-export const PreviousCatalogVersion = SegmentedControlCatalogVersion
-export const CatalogVersion = ButtonMatrixCatalogVersion
+export const LoadingIndicatorCatalogVersion = "effect-native/v38" as const
+export const PreviousCatalogVersion = ButtonMatrixCatalogVersion
+export const CatalogVersion = LoadingIndicatorCatalogVersion
 export const CatalogVersionSchema = Schema.Literal(CatalogVersion)
 export type CatalogVersion = typeof CatalogVersion
 export const compatibleCatalogVersions = [
@@ -156,7 +157,8 @@ export const compatibleCatalogVersions = [
   AvatarCatalogVersion,
   CopyButtonCatalogVersion,
   SegmentedControlCatalogVersion,
-  ButtonMatrixCatalogVersion
+  ButtonMatrixCatalogVersion,
+  LoadingIndicatorCatalogVersion
 ] as const
 export type CompatibleCatalogVersion = (typeof compatibleCatalogVersions)[number]
 export const CompatibleCatalogVersionSchema = Schema.Literals(compatibleCatalogVersions)
@@ -236,7 +238,10 @@ export const componentTags = [
   "Avatar",
   "AvatarGroup",
   "CopyButton",
-  "SegmentedControl"
+  "SegmentedControl",
+  "Spinner",
+  "LoadingDots",
+  "ShimmerText"
 ] as const
 export type ComponentTag = (typeof componentTags)[number]
 
@@ -1148,6 +1153,47 @@ export const makeViewportServiceLayer = (
   initial: ViewportInput = defaultViewportInput,
   options?: { readonly theme?: Theme }
 ) => Layer.effect(ViewportService, makeViewportService(initial, options))
+
+// Reduced-motion runtime signal (issue #83, harmonization audit §7 "typed
+// data not CSS runtime"): mirrors `ViewportService` exactly so DOM/RN/mobile
+// hosts detect `prefers-reduced-motion` (or a native equivalent) in ONE
+// place at the surface boundary and thread a typed boolean through
+// `ViewResolution.reducedMotion`, rather than every animated component
+// checking a media query on its own. `Spinner`/`LoadingDots`/`ShimmerText`
+// resolve this as their default when the app has not set an explicit
+// `reduceMotion` override.
+export const MotionPreferenceInputSchema = Schema.Struct({
+  reduced: Schema.Boolean
+})
+export type MotionPreferenceInput = Schema.Schema.Type<typeof MotionPreferenceInputSchema>
+export const defaultMotionPreferenceInput: MotionPreferenceInput = { reduced: false }
+
+export interface MotionPreferenceService {
+  readonly current: Effect.Effect<MotionPreferenceInput>
+  readonly stream: Stream.Stream<MotionPreferenceInput>
+  readonly set: (input: MotionPreferenceInput) => Effect.Effect<void>
+}
+
+export const MotionPreferenceService = Context.Service<MotionPreferenceService>(
+  "@effect-native/core/MotionPreferenceService"
+)
+
+export const makeMotionPreferenceService = (
+  initial: MotionPreferenceInput = defaultMotionPreferenceInput
+): Effect.Effect<MotionPreferenceService> =>
+  Effect.gen(function*() {
+    const ref = yield* SubscriptionRef.make(initial)
+
+    return {
+      current: SubscriptionRef.get(ref),
+      stream: SubscriptionRef.changes(ref),
+      set: (input) => SubscriptionRef.set(ref, input)
+    }
+  })
+
+export const makeMotionPreferenceServiceLayer = (
+  initial: MotionPreferenceInput = defaultMotionPreferenceInput
+) => Layer.effect(MotionPreferenceService, makeMotionPreferenceService(initial))
 
 export const OpacitySchema = Schema.Number.check(
   Schema.isFinite({ title: "FiniteNumber" }),
@@ -3320,6 +3366,56 @@ export interface SegmentedControlView extends NodeBase {
   readonly style?: CardStyle
 }
 
+// Loading indicators (issue #83, harmonization P2.10: Desktop transcript
+// streaming states, tool-card wait states, pending text). `Spinner` is a
+// compact indeterminate in-flight mark — determinate circular progress stays
+// a `Meter` variant (its existing `indeterminate` flag already covers
+// unknown-duration bars); this does not duplicate that. `LoadingDots` is a
+// 3-dot pulse. `ShimmerText` sweeps either a skeleton placeholder (`width`,
+// no content yet) or real pending text (`text`) — not a full skeleton-screen
+// layout system (no simulated-progress percentage logic belongs here either;
+// that stays an app/runtime concern feeding a `Meter`).
+//
+// All three honor reduced motion the same way: an explicit `reduceMotion`
+// always wins; otherwise the renderer bakes in the resolved OS-level
+// preference via `ViewResolution.reducedMotion` / `MotionPreferenceService`
+// so no component reaches for a raw media query itself. `size` rides the
+// shared control lattice (its icon sub-token from #76); `tone` is the closed
+// Tone set.
+export interface SpinnerView extends NodeBase {
+  readonly _tag: "Spinner"
+  readonly size?: ControlToken
+  readonly tone?: Tone
+  // Meaningful vs decorative is typed, mirroring Icon/Avatar: a `label`
+  // present means meaningful (role status + aria-live); absent means
+  // decorative (aria-hidden) — the surrounding context (a button's loading
+  // state, a status row) usually carries the meaning instead.
+  readonly label?: string
+  readonly reduceMotion?: boolean
+  readonly style?: CardStyle
+}
+
+export interface LoadingDotsView extends NodeBase {
+  readonly _tag: "LoadingDots"
+  readonly size?: ControlToken
+  readonly tone?: Tone
+  readonly label?: string
+  readonly reduceMotion?: boolean
+  readonly style?: CardStyle
+}
+
+export interface ShimmerTextView extends NodeBase {
+  readonly _tag: "ShimmerText"
+  /** Wraps real pending text content with the shimmer sweep. */
+  readonly text?: string
+  /** Skeleton placeholder bar width when no text has arrived yet. */
+  readonly width?: Dimension
+  readonly typeScale?: TypeScaleToken
+  readonly label?: string
+  readonly reduceMotion?: boolean
+  readonly style?: TextStyle
+}
+
 export type View =
   | StackView
   | TextView
@@ -3396,6 +3492,9 @@ export type View =
   | AvatarGroupView
   | CopyButtonView
   | SegmentedControlView
+  | SpinnerView
+  | LoadingDotsView
+  | ShimmerTextView
 
 export type KeyedView = View & { readonly key: NodeKey }
 
@@ -4835,6 +4934,50 @@ export const SegmentedControlSchema: Schema.Codec<SegmentedControlView, Segmente
   }
 )
 
+// Loading indicators (issue #83). See the SpinnerView/LoadingDotsView/
+// ShimmerTextView doc comments for the full design rationale.
+export const SpinnerSchema: Schema.Codec<SpinnerView, SpinnerView> = Schema.TaggedStruct("Spinner", {
+  ...CommonFields,
+  size: ControlTokenSchema.pipe(Schema.optionalKey),
+  tone: ToneSchema.pipe(Schema.optionalKey),
+  label: Schema.String.pipe(Schema.optionalKey),
+  reduceMotion: Schema.Boolean.pipe(Schema.optionalKey),
+  style: CardStyleSchema.pipe(Schema.optionalKey)
+})
+
+export const LoadingDotsSchema: Schema.Codec<LoadingDotsView, LoadingDotsView> = Schema.TaggedStruct(
+  "LoadingDots",
+  {
+    ...CommonFields,
+    size: ControlTokenSchema.pipe(Schema.optionalKey),
+    tone: ToneSchema.pipe(Schema.optionalKey),
+    label: Schema.String.pipe(Schema.optionalKey),
+    reduceMotion: Schema.Boolean.pipe(Schema.optionalKey),
+    style: CardStyleSchema.pipe(Schema.optionalKey)
+  }
+)
+
+// An empty ShimmerText (no text, no width) is not constructible — mirrors
+// the AvatarSourceFilter discipline: the typed fallback needs a first link.
+const ShimmerTextSourceFilter = Schema.makeFilter<ShimmerTextView>((view) =>
+  view.text === undefined && view.width === undefined
+    ? { path: ["width"], issue: "ShimmerText requires text or width" }
+    : undefined
+)
+
+export const ShimmerTextSchema: Schema.Codec<ShimmerTextView, ShimmerTextView> = Schema.TaggedStruct(
+  "ShimmerText",
+  {
+    ...CommonFields,
+    text: Schema.String.pipe(Schema.optionalKey),
+    width: DimensionSchema.pipe(Schema.optionalKey),
+    typeScale: TypeScaleTokenSchema.pipe(Schema.optionalKey),
+    label: Schema.String.pipe(Schema.optionalKey),
+    reduceMotion: Schema.Boolean.pipe(Schema.optionalKey),
+    style: TextStyleSchema.pipe(Schema.optionalKey)
+  }
+).check(ShimmerTextSourceFilter)
+
 export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
   Schema.Union([
     StackSchema,
@@ -4911,7 +5054,10 @@ export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
     AvatarSchema,
     AvatarGroupSchema,
     CopyButtonSchema,
-    SegmentedControlSchema
+    SegmentedControlSchema,
+    SpinnerSchema,
+    LoadingDotsSchema,
+    ShimmerTextSchema
   ]).check(OverlayStackFilter)
 )
 
@@ -5532,6 +5678,17 @@ export type SegmentedControlProps = WithoutTagAndVersion<SegmentedControlView>
 export const SegmentedControl = (props: SegmentedControlProps): SegmentedControlView =>
   SegmentedControlSchema.make({ _tag: "SegmentedControl", catalogVersion: CatalogVersion, ...props })
 
+export type SpinnerProps = WithoutTagAndVersion<SpinnerView>
+export const Spinner = (props: SpinnerProps): SpinnerView =>
+  SpinnerSchema.make({ _tag: "Spinner", catalogVersion: CatalogVersion, ...props })
+
+export type LoadingDotsProps = WithoutTagAndVersion<LoadingDotsView>
+export const LoadingDots = (props: LoadingDotsProps): LoadingDotsView =>
+  LoadingDotsSchema.make({ _tag: "LoadingDots", catalogVersion: CatalogVersion, ...props })
+
+export type ShimmerTextProps = WithoutTagAndVersion<ShimmerTextView>
+export const ShimmerText = (props: ShimmerTextProps): ShimmerTextView =>
+  ShimmerTextSchema.make({ _tag: "ShimmerText", catalogVersion: CatalogVersion, ...props })
 
 
 
@@ -5628,6 +5785,12 @@ export interface ViewResolution {
   readonly state?: unknown
   readonly viewport?: Viewport
   readonly platform?: PlatformVariant
+  // Resolved `prefers-reduced-motion` state (issue #83): renderers read the
+  // live OS-level signal once at the surface boundary (see
+  // `MotionPreferenceService`) and thread it through here so an animated
+  // component never reaches for a raw media query itself. An app-authored
+  // `reduceMotion` on the view always wins over this resolved default.
+  readonly reducedMotion?: boolean
 }
 
 const styleResolution = (input: ViewResolution): StyleResolution => ({
@@ -5753,6 +5916,19 @@ export const resolveView = (view: View, input: ViewResolution = {}): View => {
         ...view,
         ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) }),
         avatars: view.avatars.map((avatar) => resolveView(avatar, input) as KeyedAvatarView)
+      }
+    // Loading indicators (issue #83): an app-authored `reduceMotion` always
+    // wins; otherwise bake in the renderer's resolved OS-level preference so
+    // the per-tag DOM/RN renderers never check a media query themselves.
+    case "Spinner":
+    case "LoadingDots":
+    case "ShimmerText":
+      return {
+        ...view,
+        ...(view.reduceMotion === undefined && input.reducedMotion !== undefined
+          ? { reduceMotion: input.reducedMotion }
+          : {}),
+        ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) })
       }
     case "IconButton":
     case "CopyButton":
@@ -5984,6 +6160,9 @@ export const resolveBindings = <State>(view: View, state: State): View => {
     case "AvatarGroup":
     case "CopyButton":
     case "SegmentedControl":
+    case "Spinner":
+    case "LoadingDots":
+    case "ShimmerText":
       return view
     case "Section":
     case "Glow":
@@ -6436,6 +6615,7 @@ export interface HeadlessRendererOptions {
   // (exposed as `clipboardWrites`); when provided, writes are forwarded here
   // after recording.
   readonly clipboard?: Clipboard
+  readonly reducedMotion?: boolean
 }
 
 export interface HeadlessSurface extends MountedSurface {
@@ -6479,7 +6659,8 @@ export const makeHeadlessRenderer = (
           Stream.zipLatestWith(viewport.stream, (view, currentViewport) =>
             resolveView(view, {
               viewport: currentViewport,
-              ...(options.platform === undefined ? {} : { platform: options.platform })
+              ...(options.platform === undefined ? {} : { platform: options.platform }),
+              ...(options.reducedMotion === undefined ? {} : { reducedMotion: options.reducedMotion })
             })
           )
         )

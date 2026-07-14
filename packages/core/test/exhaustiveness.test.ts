@@ -89,6 +89,9 @@ const describeView = Match.type<View>().pipe(
   Match.tag("Avatar", () => "identity"),
   Match.tag("AvatarGroup", () => "identity"),
   Match.tag("CopyButton", () => "action"),
+  Match.tag("Spinner", () => "status"),
+  Match.tag("LoadingDots", () => "status"),
+  Match.tag("ShimmerText", () => "status"),
   Match.exhaustive
 )
 

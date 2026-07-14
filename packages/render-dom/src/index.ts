@@ -130,11 +130,17 @@ import {
   type WorkbenchView,
   type Viewport,
   type ViewportInput,
+  type SpinnerView,
+  type LoadingDotsView,
+  type ShimmerTextView,
+  type MotionPreferenceInput,
   StaticPayload,
   defaultViewportInput,
+  defaultMotionPreferenceInput,
   defaultTheme,
   makeNavigateIntent,
   makeViewportService,
+  makeMotionPreferenceService,
   resolveResponsiveValue,
   resolveView,
   resolveStyle
@@ -377,6 +383,12 @@ export interface DomRendererOptions {
   // navigator-backed default. Components never call `navigator.clipboard`
   // directly.
   readonly clipboard?: Clipboard
+  // Reduced-motion override (issue #83). When omitted, the surface detects
+  // the live `prefers-reduced-motion` media query at mount and keeps it
+  // live via a `change` listener — the one place this renderer ever checks
+  // that media query; `Spinner`/`LoadingDots`/`ShimmerText` only ever see
+  // the already-resolved typed `reduceMotion` field.
+  readonly reducedMotion?: boolean
 }
 
 // Navigator-backed clipboard driver. The `navigator.clipboard` lookup happens
@@ -534,6 +546,18 @@ const readDomViewport = (document: Document): ViewportInput => {
     width: window?.innerWidth ?? defaultViewportInput.width,
     height: window?.innerHeight ?? defaultViewportInput.height
   }
+}
+
+// The one place this renderer checks `prefers-reduced-motion` (issue #83):
+// read it once at mount, and keep it live via the media query's own change
+// event. Every animated component downstream only ever sees the resolved
+// typed `ViewResolution.reducedMotion` boolean this produces.
+const readDomMotionPreference = (document: Document): MotionPreferenceInput => {
+  const window = document.defaultView
+  if (window === null || typeof window.matchMedia !== "function") {
+    return defaultMotionPreferenceInput
+  }
+  return { reduced: window.matchMedia("(prefers-reduced-motion: reduce)").matches }
 }
 
 const styleDeclarations = (key: string, value: unknown): ReadonlyArray<readonly [string, string]> => {
@@ -703,6 +727,22 @@ const motionBaseRules = [
   '[data-effect-native-surface="dom"] [data-exiting="true"]{pointer-events:none;transition:opacity var(--en-motion-exit) var(--en-ease-exit),transform var(--en-motion-exit) var(--en-ease-exit);}'
 ].join("")
 
+// Loading-indicator keyframes (issue #83). Each animation is gated behind a
+// typed `data-en-motion="auto"` attribute the renderer sets from the
+// resolved `reduceMotion` field (see `resolveSpinnerMotion` etc. below) —
+// never a raw `@media (prefers-reduced-motion)` check inside the component.
+// The existing global chrome fallback (`chromeBaseRules` below) still
+// collapses these to near-zero duration as defense in depth when the OS
+// preference changes after mount without a re-render.
+const loadingIndicatorBaseRules = [
+  "@keyframes en-spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}",
+  "@keyframes en-dot-pulse{0%,80%,100%{opacity:0.35;transform:scale(0.75);}40%{opacity:1;transform:scale(1);}}",
+  "@keyframes en-shimmer-sweep{0%{background-position:150% 0;}100%{background-position:-50% 0;}}",
+  '[data-effect-native-surface="dom"] [data-en-component="spinner"][data-en-motion="auto"] [data-en-role="ring"]{animation:en-spin var(--en-motion-loop) linear infinite;}',
+  '[data-effect-native-surface="dom"] [data-en-component="loading-dots"][data-en-motion="auto"] [data-en-role="dot"]{animation:en-dot-pulse calc(var(--en-motion-loop) * 1.8) ease-in-out infinite;}',
+  '[data-effect-native-surface="dom"] [data-en-component="shimmer-text"][data-en-motion="auto"] [data-en-role="shimmer"]{background-size:200% 100%;animation:en-shimmer-sweep calc(var(--en-motion-loop) * 1.8) linear infinite;}'
+].join("")
+
 // Fine-pointer hover gating (C6, issue #77): every hover-triggered rule is
 // wrapped in `@media (hover:hover) and (pointer:fine)` so touch/coarse-
 // pointer contexts never get sticky hover (the apps-sdk-ui mixin discipline).
@@ -815,6 +855,10 @@ class AtomicStyleSheet {
       `--en-motion-fast:${this.#theme.motion.durationFastMs}ms;`,
       `--en-motion-enter:${this.#theme.motion.durationEnterMs}ms;`,
       `--en-motion-exit:${this.#theme.motion.durationExitMs}ms;`,
+      // Continuous-loop base period (#83): Spinner/LoadingDots/ShimmerText
+      // scale off this one named duration via CSS calc() multipliers instead
+      // of minting a duration token per component.
+      `--en-motion-loop:${this.#theme.motion.durationLoopMs}ms;`,
       `--en-ease-basic:${this.#theme.motion.easeBasic};`,
       `--en-ease-enter:${this.#theme.motion.easeEnter};`,
       `--en-ease-exit:${this.#theme.motion.easeExit};`,
@@ -892,7 +936,7 @@ class AtomicStyleSheet {
       })
       .join("")
     this.element.textContent =
-      `${themeRules}${componentBaseRules}${segmentedControlBaseRules}${motionBaseRules}${chromeBaseRules}${atomicRules}`
+      `${themeRules}${componentBaseRules}${segmentedControlBaseRules}${motionBaseRules}${loadingIndicatorBaseRules}${chromeBaseRules}${atomicRules}`
   }
 
   dispose(): void {
@@ -2518,6 +2562,143 @@ const renderAvatarGroup = (view: AvatarGroupView, state: DomRendererState): HTML
     children.push(more)
   }
   element.replaceChildren(...children)
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  return element
+}
+
+// Loading indicators (issue #83). Meaningful vs decorative mirrors Icon/
+// Avatar: a `label` means role="status" + aria-live="polite"; absent means
+// aria-hidden (the surrounding context usually carries the meaning). The
+// resolved `reduceMotion` field (baked in by `resolveView` from the live
+// `prefers-reduced-motion` signal, or an explicit app override) selects
+// `data-en-motion="auto"|"reduced"` — the CSS in `loadingIndicatorBaseRules`
+// only animates the "auto" case, so "reduced" renders the identical static
+// markup with no animation, never a raw media-query check here.
+const applyLoadingIndicatorA11y = (element: HTMLElement, label: string | undefined): void => {
+  if (label === undefined) {
+    element.setAttribute("aria-hidden", "true")
+  } else {
+    element.setAttribute("role", "status")
+    element.setAttribute("aria-live", "polite")
+    element.setAttribute("aria-label", label)
+  }
+}
+
+const renderSpinner = (view: SpinnerView, state: DomRendererState): HTMLElement => {
+  const element = state.keyedElement(view, "span")
+  state.resetListeners(element)
+  const tone = view.tone ?? "info"
+  const size = view.size ?? "md"
+  const reduceMotion = view.reduceMotion === true
+  const icon = state.theme.control[size].icon
+  element.setAttribute("data-en-component", "spinner")
+  element.setAttribute("data-en-tone", tone)
+  element.setAttribute("data-en-motion", reduceMotion ? "reduced" : "auto")
+  element.style.display = "inline-flex"
+  applyLoadingIndicatorA11y(element, view.label)
+
+  const toneColor = colorValue(toneColorToken[tone])
+  const borderWidth = Math.max(2, Math.round(icon / 8))
+  const ring = element.ownerDocument.createElement("span")
+  ring.setAttribute("data-en-role", "ring")
+  ring.style.display = "block"
+  ring.style.boxSizing = "border-box"
+  ring.style.width = `${icon}px`
+  ring.style.height = `${icon}px`
+  ring.style.borderRadius = "50%"
+  ring.style.border = `${borderWidth}px solid color-mix(in srgb, ${toneColor} 25%, transparent)`
+  ring.style.borderTopColor = toneColor
+  element.replaceChildren(ring)
+
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  return element
+}
+
+const renderLoadingDots = (view: LoadingDotsView, state: DomRendererState): HTMLElement => {
+  const element = state.keyedElement(view, "span")
+  state.resetListeners(element)
+  const tone = view.tone ?? "info"
+  const size = view.size ?? "md"
+  const reduceMotion = view.reduceMotion === true
+  const icon = state.theme.control[size].icon
+  const dotSize = Math.max(4, Math.round(icon * 0.3))
+  element.setAttribute("data-en-component", "loading-dots")
+  element.setAttribute("data-en-tone", tone)
+  element.setAttribute("data-en-motion", reduceMotion ? "reduced" : "auto")
+  element.style.display = "inline-flex"
+  element.style.alignItems = "center"
+  element.style.gap = `${Math.max(2, Math.round(dotSize * 0.6))}px`
+  applyLoadingIndicatorA11y(element, view.label)
+
+  const toneColor = colorValue(toneColorToken[tone])
+  const document = element.ownerDocument
+  const dots = [0, 1, 2].map((index) => {
+    const dot = document.createElement("span")
+    dot.setAttribute("data-en-role", "dot")
+    dot.style.display = "block"
+    dot.style.width = `${dotSize}px`
+    dot.style.height = `${dotSize}px`
+    dot.style.borderRadius = "50%"
+    dot.style.background = toneColor
+    if (reduceMotion) {
+      dot.style.opacity = "0.6"
+    } else {
+      dot.style.animationDelay = `${index * 160}ms`
+    }
+    return dot
+  })
+  element.replaceChildren(...dots)
+
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  return element
+}
+
+const renderShimmerText = (view: ShimmerTextView, state: DomRendererState): HTMLElement => {
+  const element = state.keyedElement(view, "span")
+  state.resetListeners(element)
+  const reduceMotion = view.reduceMotion === true
+  const typeScale = view.typeScale ?? "body"
+  const typeValue = state.theme.typeScale[typeScale]
+  element.setAttribute("data-en-component", "shimmer-text")
+  element.setAttribute("data-en-motion", reduceMotion ? "reduced" : "auto")
+
+  if (view.text !== undefined) {
+    // Real pending text: a shimmering gradient sweep clipped to the glyphs
+    // via background-clip:text. Reduced motion keeps the real text legible
+    // at a muted flat color — no gradient, no animation.
+    element.setAttribute("data-en-role", "shimmer")
+    element.textContent = view.text
+    element.style.fontSize = `${typeValue.fontSize}px`
+    element.style.lineHeight = `${typeValue.lineHeight}px`
+    if (reduceMotion) {
+      element.style.color = colorValue("textFaint")
+    } else {
+      element.style.color = "transparent"
+      element.style.backgroundImage =
+        `linear-gradient(90deg, ${colorValue("textFaint")} 25%, ${colorValue("textPrimary")} 50%, ${colorValue("textFaint")} 75%)`
+      element.style.setProperty("-webkit-background-clip", "text")
+      element.style.setProperty("background-clip", "text")
+    }
+  } else {
+    // Skeleton placeholder bar (no content has arrived yet). Reduced motion
+    // is a flat static bar in the same shape — still legible as "pending".
+    element.setAttribute("data-en-role", "shimmer")
+    element.style.display = "inline-block"
+    element.style.height = `${typeValue.lineHeight}px`
+    element.style.borderRadius = radiusValue("sm")
+    element.style.width = dimensionValue(view.width!)
+    if (reduceMotion) {
+      element.style.background = colorValue("surfaceRaised")
+    } else {
+      element.style.backgroundImage =
+        `linear-gradient(90deg, ${colorValue("surfaceRaised")} 25%, ${colorValue("surfaceOverlay")} 50%, ${colorValue("surfaceRaised")} 75%)`
+    }
+  }
+  applyLoadingIndicatorA11y(element, view.label)
+
   applyBaseStyle(element, view, state)
   applyA11y(element, view)
   return element
@@ -4893,6 +5074,12 @@ const renderView = (view: View, state: DomRendererState, report: IntentReporter)
       return renderAvatarGroup(view, state)
     case "SegmentedControl":
       return renderSegmentedControl(view, state, report)
+    case "Spinner":
+      return renderSpinner(view, state)
+    case "LoadingDots":
+      return renderLoadingDots(view, state)
+    case "ShimmerText":
+      return renderShimmerText(view, state)
   }
 }
 
@@ -5166,12 +5353,23 @@ export const makeDomRenderer = (options: DomRendererOptions = {}): RendererAdapt
         const contextClipboard = yield* Effect.serviceOption(Clipboard)
         const clipboard = options.clipboard ??
           (Option.isSome(contextClipboard) ? contextClipboard.value : makeNavigatorClipboard(document))
+        const motionPreference = yield* makeMotionPreferenceService(
+          options.reducedMotion !== undefined
+            ? { reduced: options.reducedMotion }
+            : readDomMotionPreference(document)
+        )
         const state = new DomRendererState(container, document, theme, options.hostDrivers ?? [], clipboard)
         const ready = yield* Deferred.make<void>()
         const window = document.defaultView
         const resolvedViewStream = viewStream.pipe(
-          Stream.zipLatestWith(viewport.stream, (view, currentViewport) =>
-            resolveView(view, { viewport: currentViewport, platform: "web" })
+          Stream.zipLatestWith(
+            Stream.zipLatest(viewport.stream, motionPreference.stream),
+            (view, [currentViewport, currentMotionPreference]) =>
+              resolveView(view, {
+                viewport: currentViewport,
+                platform: "web",
+                reducedMotion: currentMotionPreference.reduced
+              })
           )
         )
 
@@ -5192,6 +5390,22 @@ export const makeDomRenderer = (options: DomRendererOptions = {}): RendererAdapt
               window.removeEventListener("resize", updateViewport)
             })
           )
+          // Live `prefers-reduced-motion` updates (issue #83): only wired when
+          // the app has not pinned a static `reducedMotion` override.
+          if (options.reducedMotion === undefined && typeof window.matchMedia === "function") {
+            const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)")
+            const updateMotionPreference = () => {
+              void Effect.runPromise(motionPreference.set({ reduced: mediaQuery.matches })).catch(() => {
+                // Host media-query callbacks must stay total.
+              })
+            }
+            mediaQuery.addEventListener("change", updateMotionPreference)
+            yield* Effect.addFinalizer(() =>
+              Effect.sync(() => {
+                mediaQuery.removeEventListener("change", updateMotionPreference)
+              })
+            )
+          }
         }
 
         yield* resolvedViewStream.pipe(

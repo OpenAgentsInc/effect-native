@@ -29,6 +29,7 @@ import {
   GraphProvenanceCatalogVersion,
   IconExpansionCatalogVersion,
   CopyButtonCatalogVersion,
+  LoadingIndicatorCatalogVersion,
   TranscriptCatalogVersion,
   TabsCatalogVersion,
   FormCatalogVersion,
@@ -106,11 +107,12 @@ describe("catalog version compatibility", () => {
       AvatarCatalogVersion,
       CopyButtonCatalogVersion,
       SegmentedControlCatalogVersion,
-      ButtonMatrixCatalogVersion
+      ButtonMatrixCatalogVersion,
+      LoadingIndicatorCatalogVersion
     ])
     // The current marker is the last entry; the previous marker is second-last.
-    expect(CatalogVersion).toBe(ButtonMatrixCatalogVersion)
-    expect(PreviousCatalogVersion).toBe(SegmentedControlCatalogVersion)
+    expect(CatalogVersion).toBe(LoadingIndicatorCatalogVersion)
+    expect(PreviousCatalogVersion).toBe(ButtonMatrixCatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 1]).toBe(CatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 2]).toBe(PreviousCatalogVersion)
   })

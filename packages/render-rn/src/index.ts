@@ -115,6 +115,9 @@ import {
   type WorkbenchView,
   type Viewport,
   type ViewportInput,
+  type SpinnerView,
+  type LoadingDotsView,
+  type ShimmerTextView,
   StaticPayload,
   defaultViewportInput,
   defaultTheme,
@@ -232,6 +235,12 @@ export interface ReactNativeRenderOptions {
   // the typed `onCopy` intent with the content so the app can perform the
   // write itself — an honest declared subset, never a silent success.
   readonly clipboard?: Clipboard
+  // Reduced-motion default (issue #83), resolved through `resolveView` the
+  // same way as `viewport`/`platform`. RN renders `Spinner`/`LoadingDots`/
+  // `ShimmerText` as a static affordance regardless (see the doc comment on
+  // those render functions), but the typed `reduceMotion` field still
+  // resolves consistently across every renderer for app code that reads it.
+  readonly reducedMotion?: boolean
 }
 
 export interface EffectNativeSurfaceProps extends ReactNativeRenderOptions {
@@ -1897,6 +1906,142 @@ const renderAvatarGroup = (
     dependencies.ReactNative.View,
     { ...baseProps(view, style), testID: "en-avatar-group" },
     ...parts
+  )
+}
+
+// Loading indicators (issue #83). React Native core has no CSS keyframes and
+// this dependency-free catalog has never carried an `Animated`/gesture-loop
+// dependency (every existing continuous-motion case — glass, drag, mobile
+// gestures — is honestly a static or host-optional approximation on RN
+// today; see GAPS.md). Rather than introduce the FIRST live `Animated` loop
+// as a side effect of this issue, these three render an honest STATIC
+// affordance on RN unconditionally — the same shape/tone/size as the DOM
+// renderer's animated state, just without the sweep. That trivially and
+// honestly satisfies "reduced motion falls back to a static affordance" for
+// this renderer (there is no motion to fall back FROM), and keeps `Spinner`/
+// `LoadingDots`/`ShimmerText` fully usable on RN today. A live native
+// `Animated` loop is an additive, demand-gated enhancement for a future
+// screen that specifically needs RN motion parity with DOM, tracked in
+// GAPS.md rather than shipped unverified here. `reduceMotion` is still a
+// valid typed field on RN — `resolveView`/`ReactNativeRenderOptions.
+// reducedMotion` resolve it the same way as every other renderer — apps can
+// read it even though the RN visual output does not change today.
+const renderSpinner = (
+  view: SpinnerView,
+  dependencies: ReactNativeDependencies,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const theme = options.theme ?? defaultTheme
+  const tone = view.tone ?? "info"
+  const size = view.size ?? "md"
+  const icon = theme.control[size].icon
+  const toneColor = colorValue(theme, toneColorToken[tone])
+  const borderWidth = Math.max(2, Math.round(icon / 8))
+  const style = mergeNativeStyles(
+    {
+      width: icon,
+      height: icon,
+      borderRadius: icon / 2,
+      borderWidth,
+      borderColor: avatarSoftFill(toneColor),
+      borderTopColor: toneColor
+    },
+    viewStyle(view, options)
+  )
+  return createElement(dependencies, dependencies.ReactNative.View, {
+    ...baseProps(view, style),
+    testID: `en-spinner:${tone}`,
+    ...(view.label === undefined
+      ? { accessibilityElementsHidden: true, importantForAccessibility: "no-hide-descendants" }
+      : { accessibilityRole: "progressbar", accessibilityLabel: view.label, "aria-busy": true })
+  })
+}
+
+const renderLoadingDots = (
+  view: LoadingDotsView,
+  dependencies: ReactNativeDependencies,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const theme = options.theme ?? defaultTheme
+  const tone = view.tone ?? "info"
+  const size = view.size ?? "md"
+  const icon = theme.control[size].icon
+  const dotSize = Math.max(4, Math.round(icon * 0.3))
+  const toneColor = colorValue(theme, toneColorToken[tone])
+  const gap = Math.max(2, Math.round(dotSize * 0.6))
+  const dots = [0, 1, 2].map((index) =>
+    createElement(dependencies, dependencies.ReactNative.View, {
+      key: `dot-${index}`,
+      testID: `en-loading-dots-dot:${index}`,
+      style: {
+        width: dotSize,
+        height: dotSize,
+        borderRadius: dotSize / 2,
+        backgroundColor: toneColor,
+        opacity: 0.6,
+        ...(index === 0 ? {} : { marginLeft: gap })
+      }
+    })
+  )
+  const style = mergeNativeStyles({ flexDirection: "row", alignItems: "center" }, viewStyle(view, options))
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    {
+      ...baseProps(view, style),
+      testID: `en-loading-dots:${tone}`,
+      ...(view.label === undefined
+        ? { accessibilityElementsHidden: true, importantForAccessibility: "no-hide-descendants" }
+        : { accessibilityRole: "progressbar", accessibilityLabel: view.label, "aria-busy": true })
+    },
+    ...dots
+  )
+}
+
+const renderShimmerText = (
+  view: ShimmerTextView,
+  dependencies: ReactNativeDependencies,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const theme = options.theme ?? defaultTheme
+  const typeScale = view.typeScale ?? "body"
+  const typeValue = theme.typeScale[typeScale]
+  const a11yProps = view.label === undefined
+    ? { accessibilityElementsHidden: true, importantForAccessibility: "no-hide-descendants" as const }
+    : { accessibilityRole: "text" as const, accessibilityLabel: view.label }
+  if (view.text !== undefined) {
+    // RN has no background-clip:text — the DOM gradient-sweep technique is
+    // web-only. The honest RN rendering is the real text at a muted flat
+    // color, identical to the DOM reduced-motion state.
+    const style = mergeNativeStyles(
+      {
+        color: colorValue(theme, "textFaint"),
+        fontSize: typeValue.fontSize,
+        lineHeight: typeValue.lineHeight
+      },
+      viewStyle(view, options)
+    )
+    return createElement(
+      dependencies,
+      dependencies.ReactNative.Text,
+      { ...baseProps(view, style), testID: "en-shimmer-text", ...a11yProps },
+      view.text
+    )
+  }
+  const width = dimensionValue(theme, view.width!)
+  const style = mergeNativeStyles(
+    {
+      width,
+      height: typeValue.lineHeight,
+      borderRadius: radiusValue(theme, "sm"),
+      backgroundColor: colorValue(theme, "surfaceRaised")
+    },
+    viewStyle(view, options)
+  )
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    { ...baseProps(view, style), testID: "en-shimmer-placeholder", ...a11yProps }
   )
 }
 
@@ -4161,6 +4306,12 @@ const renderResolvedReactNativeView = (
       return renderCopyButton(view, dependencies, report, options)
     case "SegmentedControl":
       return renderSegmentedControl(view, dependencies, report, options)
+    case "Spinner":
+      return renderSpinner(view, dependencies, options)
+    case "LoadingDots":
+      return renderLoadingDots(view, dependencies, options)
+    case "ShimmerText":
+      return renderShimmerText(view, dependencies, options)
   }
 }
 
@@ -5251,7 +5402,8 @@ export const renderReactNativeView = (
     : makeViewport(options.viewport, options.theme ?? defaultTheme)
   const resolved = resolveView(view, {
     ...(viewport === undefined ? {} : { viewport }),
-    platform: options.platform ?? "ios"
+    platform: options.platform ?? "ios",
+    ...(options.reducedMotion === undefined ? {} : { reducedMotion: options.reducedMotion })
   })
   return renderResolvedReactNativeView(resolved, dependencies, report, options)
 }
@@ -5585,7 +5737,8 @@ export const makeReactNativeRenderer = (
           Stream.zipLatestWith(viewport.stream, (view, currentViewport) =>
             resolveView(view, {
               viewport: currentViewport,
-              platform: options.platform ?? "ios"
+              platform: options.platform ?? "ios",
+              ...(options.reducedMotion === undefined ? {} : { reducedMotion: options.reducedMotion })
             })
           )
         )

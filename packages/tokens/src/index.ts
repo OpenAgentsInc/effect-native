@@ -603,6 +603,10 @@ export const MotionThemeSchema = Schema.Struct({
   durationFastMs: NonNegativeNumberSchema,
   durationEnterMs: NonNegativeNumberSchema,
   durationExitMs: NonNegativeNumberSchema,
+  // Continuous-loop indicator duration (Spinner/LoadingDots/ShimmerText,
+  // issue #83): one named base period consuming components scale via
+  // multiplier rather than minting their own duration tokens.
+  durationLoopMs: NonNegativeNumberSchema,
   easeBasic: EasingValueSchema,
   // The named easing vocabulary (apps-sdk-ui harmonization C6): enter/exit
   // for overlay lifecycles, exitSnappy for less inertia delay on dismissal,
@@ -981,6 +985,7 @@ export const defaultTheme = ThemeSchema.make({
     durationFastMs: 150,
     durationEnterMs: 350,
     durationExitMs: 200,
+    durationLoopMs: 900,
     easeBasic: "ease",
     easeEnter: "cubic-bezier(0.19, 1, 0.22, 1)",
     easeExit: "cubic-bezier(0.8, 0, 0.4, 1)",

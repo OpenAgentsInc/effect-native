@@ -54,6 +54,9 @@ import {
   SegmentedControl,
   Select,
   Slider,
+  Spinner,
+  LoadingDots,
+  ShimmerText,
   StatTile,
   StatsBand,
   StatusBanner,
@@ -1953,6 +1956,59 @@ const componentStoryMap = {
         })
       ])
     })
+  ],
+  Spinner: [
+    story({
+      id: "spinner-indeterminate",
+      component: "Spinner",
+      title: "Spinner",
+      description: "Compact indeterminate in-flight ring on the control-lattice icon sub-token. " +
+        "Determinate circular progress stays a Meter variant.",
+      view: Spinner({ key: "spinner", size: "lg", tone: "info", label: "Loading" }),
+      controls: [
+        enumControl("spinner-size", "Size", ["size"], "lg", controlTokens),
+        enumControl("spinner-tone", "Tone", ["tone"], "info", tones),
+        booleanControl("spinner-reduce-motion", "Reduce motion", ["reduceMotion"], false)
+      ]
+    })
+  ],
+  LoadingDots: [
+    story({
+      id: "loading-dots-pulse",
+      component: "LoadingDots",
+      title: "LoadingDots",
+      description: "3-dot pulse loading indicator on the control-lattice icon sub-token.",
+      view: LoadingDots({ key: "dots", size: "lg", tone: "info", label: "Loading" }),
+      controls: [
+        enumControl("loading-dots-size", "Size", ["size"], "lg", controlTokens),
+        enumControl("loading-dots-tone", "Tone", ["tone"], "info", tones),
+        booleanControl("loading-dots-reduce-motion", "Reduce motion", ["reduceMotion"], false)
+      ]
+    })
+  ],
+  ShimmerText: [
+    story({
+      id: "shimmer-text-pending",
+      component: "ShimmerText",
+      title: "ShimmerText",
+      description: "Shimmer sweep over real pending text — reduced motion keeps the text at a muted flat color.",
+      view: ShimmerText({ key: "shimmer-pending", text: "Reading file…", label: "Reading file" }),
+      controls: [
+        textControl("shimmer-text-content", "Text", ["text"], "Reading file…"),
+        booleanControl("shimmer-text-reduce-motion", "Reduce motion", ["reduceMotion"], false)
+      ]
+    }),
+    story({
+      id: "shimmer-text-skeleton",
+      component: "ShimmerText",
+      title: "ShimmerText (skeleton)",
+      description: "Shimmer sweep over a skeleton placeholder width when no content has arrived yet.",
+      view: ShimmerText({ key: "shimmer-skeleton", width: "sm" }),
+      controls: [
+        enumControl("shimmer-skeleton-width", "Width", ["width"], "sm", dimensionTokens),
+        booleanControl("shimmer-skeleton-reduce-motion", "Reduce motion", ["reduceMotion"], false)
+      ]
+    })
   ]
 } satisfies { readonly [Tag in ComponentTag]: ReadonlyArray<Story> }
 
@@ -2106,7 +2162,10 @@ export const componentPageSummaries = {
   EmptyMessage: "Centered empty-state block: icon badge (bounded tone/size), title, description, and a typed Button action slot.",
   Avatar: "Identity mark with the typed image -> initials -> icon fallback chain, lattice size, and tone soft/solid variants.",
   AvatarGroup: "Overlapping keyed avatars with a cutout ring and a +N overflow count past max.",
-  CopyButton: "Copy-to-clipboard control over the injected Clipboard service: icon-only lattice default, labelled shape, copied-state feedback, typed onCopy intent."
+  CopyButton: "Copy-to-clipboard control over the injected Clipboard service: icon-only lattice default, labelled shape, copied-state feedback, typed onCopy intent.",
+  Spinner: "Compact indeterminate in-flight ring on the lattice icon sub-token; determinate progress stays a Meter variant.",
+  LoadingDots: "3-dot pulse loading indicator on the lattice icon sub-token.",
+  ShimmerText: "Shimmer sweep over real pending text or a skeleton placeholder width; reduced motion is a static affordance."
 } as const satisfies Record<ComponentTag, string>
 
 export const foundationPageIds = [

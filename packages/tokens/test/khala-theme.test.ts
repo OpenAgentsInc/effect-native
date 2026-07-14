@@ -114,6 +114,7 @@ describe("khalaTheme (Protoss-blue dark theme)", () => {
       durationFastMs: 150,
       durationEnterMs: 350,
       durationExitMs: 200,
+      durationLoopMs: 900,
       easeBasic: "ease",
       easeEnter: "cubic-bezier(0.19, 1, 0.22, 1)",
       easeExit: "cubic-bezier(0.8, 0, 0.4, 1)",

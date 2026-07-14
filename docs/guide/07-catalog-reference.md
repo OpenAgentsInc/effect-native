@@ -8,12 +8,22 @@ conformance-checked by
 (`bun run check:catalog-reference`) so this page cannot silently drop a shipped
 component.
 
-Current catalog marker: `CatalogVersion = "effect-native/v37"` (v37 gives
-`Button` the full tone x variant x size matrix — `tone` (the 6 matrix tones,
-default `"accent"`), `variant` (`solid`/`soft`/`outline`/`ghost`, default
-`"solid"`), `size` (the control lattice, default `"md"`), plus `pill`,
-`loading`, `block`, and `selected` — issue #78, harmonization P1.5. Pre-v37
-trees using the old `variant: "primary"|"secondary"|"ghost"` still decode:
+Current catalog marker: `CatalogVersion = "effect-native/v38"` (v38 adds
+`Spinner` + `LoadingDots` + `ShimmerText` — indeterminate loading indicators
+for Desktop transcript streaming states, tool-card wait states, and pending
+text (issue #83, harmonization P2.10). `Spinner`/`LoadingDots` size off the
+control-lattice icon sub-token and the closed Tone set; `ShimmerText` sweeps
+either real pending text or a skeleton placeholder width. Determinate
+circular progress stays a `Meter` variant — this bump does not duplicate it.
+All three honor reduced motion: an explicit `reduceMotion` wins, otherwise
+the renderer bakes in the resolved `prefers-reduced-motion` signal via the
+new `MotionPreferenceService`/`ViewResolution.reducedMotion`, so no component
+checks a media query itself. v37 gave `Button` the full tone x variant x
+size matrix — `tone` (the 6 matrix tones, default `"accent"`), `variant`
+(`solid`/`soft`/`outline`/`ghost`, default `"solid"`), `size` (the control
+lattice, default `"md"`), plus `pill`, `loading`, `block`, and `selected` —
+issue #78, harmonization P1.5. Pre-v37 trees using the old
+`variant: "primary"|"secondary"|"ghost"` still decode:
 `resolveButtonAppearance` normalizes them onto their exact tone+variant
 equivalents (`"primary"` -> accent/solid, `"secondary"` -> secondary/solid,
 `"ghost"` -> accent/ghost). v36 added `SegmentedControl` — a single-choice
@@ -30,15 +40,9 @@ feedback, and the typed `onCopy` / `onCopiedReset` intents — issue #84,
 harmonization P2.11. v34 added `Avatar` + `AvatarGroup` — typed identity
 marks with the image -> initials -> icon fallback chain, control-lattice
 sizes, Tone soft/solid variants, and cutout-overlap groups with a
-max/overflow count — issue #80, harmonization P2.7. v33 expanded the closed
-`IconName` set from 16 to 101 semantic PascalCase names from the OpenAgents
-Desktop demand audit — desktop shell parity plus arrows, status, git, files,
-edit, transcript, search, fleet/connectivity, account/security, payments,
-and common chrome — and normalized every glyph to the Apps SDK UI
-conventions: 1em × 1em box, `viewBox 0 0 24 24`, `currentColor` paint, size
-from the `--en-icon-size-*` tokens — issue #85, harmonization P2.12).
+max/overflow count — issue #80, harmonization P2.7).
 
-Closed component tags (`componentTags`, 75 total):
+Closed component tags (`componentTags`, 78 total):
 
 `Stack`, `Text`, `Button`, `Image`, `TextField`, `List`,
 `SectionList`, `Card`, `Spacer`, `Link`, `Modal`, `Sheet`,
@@ -52,7 +56,7 @@ Closed component tags (`componentTags`, 75 total):
 `Accordion`, `PricingColumn`, `PricingTable`, `LogoRow`, `StatsBand`, `Glow`,
 `MockupFrame`, `Pager`, `SwipeableListItem`, `BackgroundGradient`, `Wallpaper`, `Spotlight`, `Frame`, `BlurredPopup`,
 `IconButton`, `Toolbar`, `EmptyMessage`, `Avatar`, `AvatarGroup`, `CopyButton`,
-`SegmentedControl`.
+`SegmentedControl`, `Spinner`, `LoadingDots`, `ShimmerText`.
 
 There is no escape hatch to add an ad hoc component — growing the
 catalog is a deliberate, tracked process; see
@@ -341,7 +345,8 @@ over the closed `IconName` set with its own bounded `tone`
 default `md`); required `title`; optional muted `description`; optional
 `action` slot typed as a Button view specifically (an arbitrary view there is
 a decode failure). Layout is a centered column on spacing tokens. No
-illustrations/images and no loading state (Spinner/Shimmer is #83).
+illustrations/images and no loading state (`Spinner`/`LoadingDots`/
+`ShimmerText`, issue #83, below).
 
 ### Avatar
 
@@ -382,6 +387,53 @@ Native's parity path — RN declares uncontrolled self-feedback unsupported and,
 without an injected clipboard, fires `onCopy` so the app performs the write).
 The headless renderer records every write (`clipboardWrites`, `simulateCopy`).
 
+### Spinner
+
+Compact indeterminate in-flight ring (v38, #83). `size` is a `ControlToken`
+sized off the shared control lattice's icon sub-token; `tone` is the closed
+Tone set. Determinate circular progress stays a `Meter` variant (its
+`indeterminate` flag already covers unknown-duration bars) — this does not
+duplicate it. A `label` present means meaningful (`role="status"` +
+`aria-live="polite"`); absent means decorative (`aria-hidden`). `reduceMotion`
+is an explicit override; when unset, renderers bake in the resolved
+`prefers-reduced-motion` signal instead — see "Reduced motion" below.
+
+### LoadingDots
+
+3-dot pulse loading indicator (v38, #83) with the same `size`/`tone`/`label`/
+`reduceMotion` vocabulary as `Spinner`.
+
+### ShimmerText
+
+Shimmer/skeleton sweep (v38, #83) over either real pending text (`text`) or a
+skeleton placeholder bar (`width`, a `Dimension`) when no content has arrived
+yet — at least one of `text`/`width` is required, mirroring the Avatar
+fallback-chain discipline (an empty `ShimmerText` is not constructible).
+Optional `typeScale` sizes the skeleton bar height and the text font/line
+height (default `body`). Not a full skeleton-screen layout system — this is
+the text-shimmer primitive only. `label`/`reduceMotion` follow the same
+convention as `Spinner`/`LoadingDots`.
+
+### Reduced motion
+
+`Spinner`, `LoadingDots`, and `ShimmerText` are the catalog's first
+continuously-animating components. Each honors `prefers-reduced-motion` the
+same typed way: an explicit `reduceMotion` on the view always wins; when
+unset, `resolveView`'s `ViewResolution.reducedMotion` input — populated by
+the new `MotionPreferenceService` (mirrors `ViewportService`: a live
+`SubscriptionRef`-backed signal) — is baked in as the default before the
+tree reaches a renderer. The DOM renderer detects the OS-level media query
+exactly once, at mount, and keeps it live via the query's own `change` event;
+no component ever checks `@media (prefers-reduced-motion)` itself. When
+reduced, DOM renders the identical static markup with no `@keyframes`
+animation attached (gated by a `data-en-motion="auto"|"reduced"` attribute).
+React Native renders all three as an honest static affordance
+unconditionally today (no `Animated` dependency exists yet in this
+dependency-free catalog), which trivially satisfies "falls back to a static
+affordance" for that renderer since there is no motion to fall back from; a
+live native animation loop is an additive, demand-gated follow-up tracked in
+`GAPS.md`, not a gap in this contract.
+
 ## Shared vocabulary
 
 ### Common fields
@@ -391,7 +443,7 @@ Every component accepts these two, inherited from `NodeBase`:
 | Field | Type | Notes |
 |---|---|---|
 | `key` | `string` (optional) | Required (enforced by the schema, not just convention) on any view placed inside a `List`/`SectionList`/`Link` children array. |
-| `catalogVersion` | `"effect-native/v37"` | Set automatically by every constructor function — you never pass this yourself. |
+| `catalogVersion` | `"effect-native/v38"` | Set automatically by every constructor function — you never pass this yourself. |
 
 ### Design tokens
 

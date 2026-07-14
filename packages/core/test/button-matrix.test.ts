@@ -24,9 +24,13 @@ import {
 // uses to turn either shape into a canonical `{ tone, variant, size }`.
 
 describe("Button catalog v37 (#78, harmonization P1.5)", () => {
-  test("the button-matrix version is the current marker and stays in the compatible chain", () => {
+  test("the button-matrix version stays in the compatible chain", () => {
     expect(ButtonMatrixCatalogVersion).toBe("effect-native/v37")
-    expect(CatalogVersion).toBe(ButtonMatrixCatalogVersion)
+    // Constructors always stamp the current catalog marker, not the marker
+    // the component shipped under — ButtonMatrix shipped at v37; #83
+    // (Spinner/LoadingDots/ShimmerText) has since moved CatalogVersion
+    // forward. Its own historical marker still decodes via compatibility.
+    expect(CatalogVersion).not.toBe(ButtonMatrixCatalogVersion)
     expect(compatibleCatalogVersions).toContain(ButtonMatrixCatalogVersion)
     expect(compatibleCatalogVersions).toContain(AvatarCatalogVersion)
   })
