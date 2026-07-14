@@ -138,6 +138,220 @@ const tokenRecordFields = <const Keys extends ReadonlyArray<string>, Value exten
 ): { readonly [Key in Keys[number]]: Value } =>
   Object.fromEntries(keys.map((key) => [key, value])) as { readonly [Key in Keys[number]]: Value }
 
+// ---------------------------------------------------------------------------
+// Tier 1 — primitive color ramps (apps-sdk-ui harmonization P0.1, issue #74)
+// ---------------------------------------------------------------------------
+// Raw color ramps with no semantic meaning: the bottom tier of the
+// primitive → semantic → component token architecture. Semantic themes
+// (tier 2) derive their color roles from ramp steps instead of free-floating
+// hex, which keeps future colors on-brand by construction. Steps are named
+// on a 0…1000 lightness axis: a lower step is always lighter (higher
+// relative luminance) than a higher step within the same ramp.
+
+/** A six-digit opaque hex color — the only value form ramp steps may hold. */
+export const OpaqueColorValueSchema = Schema.String.check(
+  Schema.isPattern(/^#[0-9a-f]{6}$/, { title: "OpaqueHexColor" })
+)
+/**
+ * One alpha step: a two-digit lowercase hex byte. Appended to an opaque ramp
+ * step (via `withAlpha`) it forms an 8-digit `#rrggbbaa` overlay color — the
+ * alpha-overlay state engine's value form. Step names are the approximate
+ * opacity percentage; the byte is `round(percent × 255 / 100)` pinned as a
+ * literal so derived overlay colors stay byte-exact.
+ */
+export const AlphaChannelValueSchema = Schema.String.check(
+  Schema.isPattern(/^[0-9a-f]{2}$/, { title: "AlphaHexByte" })
+)
+
+export const blueRampSteps = [
+  "25",
+  "50",
+  "100",
+  "200",
+  "300",
+  "400",
+  "500",
+  "600",
+  "700",
+  "800",
+  "900",
+  "1000"
+] as const
+export const grayRampSteps = [
+  "0",
+  "25",
+  "50",
+  "100",
+  "200",
+  "300",
+  "400",
+  "450",
+  "500",
+  "600",
+  "700",
+  "750",
+  "800",
+  "850",
+  "900",
+  "925",
+  "950",
+  "1000"
+] as const
+export const statusRampSteps = ["300", "400", "500", "600"] as const
+export const alphaRampSteps = [
+  "4",
+  "5",
+  "8",
+  "10",
+  "13",
+  "16",
+  "20",
+  "24",
+  "30",
+  "40",
+  "60",
+  "86"
+] as const
+
+export const BlueRampSchema = Schema.Struct(
+  tokenRecordFields(blueRampSteps, OpaqueColorValueSchema)
+)
+export const GrayRampSchema = Schema.Struct(
+  tokenRecordFields(grayRampSteps, OpaqueColorValueSchema)
+)
+export const StatusRampSchema = Schema.Struct(
+  tokenRecordFields(statusRampSteps, OpaqueColorValueSchema)
+)
+export const AlphaRampSchema = Schema.Struct(
+  tokenRecordFields(alphaRampSteps, AlphaChannelValueSchema)
+)
+
+/**
+ * The full tier-1 primitive palette: one brand ramp (Protoss blue), one cool
+ * gray ramp (blue-tinted navy neutrals), four status hue ramps plus a violet
+ * syntax-accent ramp, and the alpha steps used by the overlay state engine.
+ */
+export const PaletteSchema = Schema.Struct({
+  blue: BlueRampSchema,
+  gray: GrayRampSchema,
+  red: StatusRampSchema,
+  green: StatusRampSchema,
+  amber: StatusRampSchema,
+  cyan: StatusRampSchema,
+  violet: StatusRampSchema,
+  alpha: AlphaRampSchema
+})
+
+export type BlueRampStep = (typeof blueRampSteps)[number]
+export type GrayRampStep = (typeof grayRampSteps)[number]
+export type StatusRampStep = (typeof statusRampSteps)[number]
+export type AlphaRampStep = (typeof alphaRampSteps)[number]
+export type Palette = Schema.Schema.Type<typeof PaletteSchema>
+
+const decodeOpaqueColor = Schema.decodeUnknownSync(OpaqueColorValueSchema)
+const decodeAlphaChannel = Schema.decodeUnknownSync(AlphaChannelValueSchema)
+
+/**
+ * Derive an 8-digit `#rrggbbaa` overlay color from an opaque ramp step and an
+ * alpha step. This is the only sanctioned way to mint translucent colors from
+ * the palette: interactive state changes are alpha overlays of one base hue,
+ * never new hues.
+ */
+export const withAlpha = (color: string, alpha: string): string =>
+  `${decodeOpaqueColor(color)}${decodeAlphaChannel(alpha)}`
+
+/**
+ * The Khala primitive palette (tier 1). Every khalaTheme semantic color role
+ * derives from these steps — see the derivation table in `khalaTheme` and the
+ * exact-hex pin in `test/khala-theme.test.ts` ("pins the palette so drift is
+ * visible in review"), which guarantees the ramp refactor changed nothing
+ * visually. Steps that no semantic role consumes yet exist so future colors
+ * are picked from the ramp instead of hand-mixed.
+ */
+export const khalaPalette = PaletteSchema.make({
+  // Protoss blue: the single brand hue. 500 is the canonical accent.
+  blue: {
+    "25": "#f2f7ff",
+    "50": "#e0ecff",
+    "100": "#c2d9ff",
+    "200": "#8fb3ff",
+    "300": "#60a5fa",
+    "400": "#5c96f8",
+    "500": "#3b82f6",
+    "600": "#2f6fe0",
+    "700": "#285dbd",
+    "800": "#204a99",
+    "900": "#183770",
+    "1000": "#0f234a"
+  },
+  // Cool gray: blue-tinted navy neutrals for text, borders, and surfaces.
+  gray: {
+    "0": "#ffffff",
+    "25": "#eef3ff",
+    "50": "#d6e0f5",
+    "100": "#bccbe8",
+    "200": "#a7b8d6",
+    "300": "#93a4c3",
+    "400": "#6b7ca1",
+    "450": "#5b6b8c",
+    "500": "#55648a",
+    "600": "#2c3d63",
+    "700": "#1f2b45",
+    "750": "#182640",
+    "800": "#16203a",
+    "850": "#141f36",
+    "900": "#0b1220",
+    "925": "#0a0f1c",
+    "950": "#05070d",
+    "1000": "#02040a"
+  },
+  red: {
+    "300": "#fca5a5",
+    "400": "#f87171",
+    "500": "#ef4444",
+    "600": "#dc2626"
+  },
+  green: {
+    "300": "#86efac",
+    "400": "#4ade80",
+    "500": "#22c55e",
+    "600": "#16a34a"
+  },
+  amber: {
+    "300": "#fcd34d",
+    "400": "#fbbf24",
+    "500": "#f59e0b",
+    "600": "#d97706"
+  },
+  cyan: {
+    "300": "#7dd3fc",
+    "400": "#38bdf8",
+    "500": "#0ea5e9",
+    "600": "#0284c7"
+  },
+  violet: {
+    "300": "#d8b4fe",
+    "400": "#c084fc",
+    "500": "#a855f7",
+    "600": "#9333ea"
+  },
+  // Alpha steps: name ≈ opacity percent; byte = round(percent × 255 / 100).
+  alpha: {
+    "4": "0a",
+    "5": "0d",
+    "8": "14",
+    "10": "1a",
+    "13": "21",
+    "16": "29",
+    "20": "33",
+    "24": "3d",
+    "30": "4d",
+    "40": "66",
+    "60": "99",
+    "86": "db"
+  }
+})
+
 export const SpacingThemeSchema = Schema.Struct(
   tokenRecordFields(spacingTokens, NonNegativeNumberSchema)
 )
@@ -341,43 +555,48 @@ export const encodeTheme = Schema.encodeSync(ThemeSchema)
  * switch — see workspace policy "uniform StarCraft blue everywhere" and
  * issue #25. Renderers and apps should treat this as the only theme value
  * they ever mount.
+ *
+ * Every color role is a derivation from `khalaPalette` (tier 1 → tier 2);
+ * no role holds free-floating hex. The derived values are pinned as exact
+ * hex literals in `test/khala-theme.test.ts` so the ramp refactor is
+ * mechanically proven to be zero-visual-change.
  */
 export const khalaTheme = ThemeSchema.make({
   spacing: defaultTheme.spacing,
   color: {
-    background: "#05070d",
-    surface: "#0b1220",
-    surfaceRaised: "#141f36",
-    surfaceOverlay: "#182640",
-    textPrimary: "#eef3ff",
-    textMuted: "#93a4c3",
-    textFaint: "#6b7ca1",
-    textInverse: "#05070d",
-    textDisabled: "#55648a",
-    accent: "#3b82f6",
-    accentHover: "#5c96f8",
-    accentActive: "#2f6fe0",
-    danger: "#f87171",
-    border: "#1f2b45",
-    borderSubtle: "#16203a",
-    borderStrong: "#2c3d63",
-    focus: "#60a5fa",
-    info: "#38bdf8",
-    success: "#22c55e",
-    warning: "#f59e0b",
-    stateHover: "#8fb3ff14",
-    stateActive: "#8fb3ff21",
-    stateSelected: "#3b82f629",
-    scrim: "#02040adb",
-    codeBackground: "#0a0f1c",
-    diffAdd: "#4ade80",
-    diffRemove: "#f87171",
-    syntaxKeyword: "#60a5fa",
-    syntaxString: "#4ade80",
-    syntaxComment: "#5b6b8c",
-    syntaxFunction: "#c084fc",
-    syntaxNumber: "#fbbf24",
-    syntaxOperator: "#93a4c3"
+    background: khalaPalette.gray["950"], // #05070d
+    surface: khalaPalette.gray["900"], // #0b1220
+    surfaceRaised: khalaPalette.gray["850"], // #141f36
+    surfaceOverlay: khalaPalette.gray["750"], // #182640
+    textPrimary: khalaPalette.gray["25"], // #eef3ff
+    textMuted: khalaPalette.gray["300"], // #93a4c3
+    textFaint: khalaPalette.gray["400"], // #6b7ca1
+    textInverse: khalaPalette.gray["950"], // #05070d
+    textDisabled: khalaPalette.gray["500"], // #55648a
+    accent: khalaPalette.blue["500"], // #3b82f6
+    accentHover: khalaPalette.blue["400"], // #5c96f8
+    accentActive: khalaPalette.blue["600"], // #2f6fe0
+    danger: khalaPalette.red["400"], // #f87171
+    border: khalaPalette.gray["700"], // #1f2b45
+    borderSubtle: khalaPalette.gray["800"], // #16203a
+    borderStrong: khalaPalette.gray["600"], // #2c3d63
+    focus: khalaPalette.blue["300"], // #60a5fa
+    info: khalaPalette.cyan["400"], // #38bdf8
+    success: khalaPalette.green["500"], // #22c55e
+    warning: khalaPalette.amber["500"], // #f59e0b
+    stateHover: withAlpha(khalaPalette.blue["200"], khalaPalette.alpha["8"]), // #8fb3ff14
+    stateActive: withAlpha(khalaPalette.blue["200"], khalaPalette.alpha["13"]), // #8fb3ff21
+    stateSelected: withAlpha(khalaPalette.blue["500"], khalaPalette.alpha["16"]), // #3b82f629
+    scrim: withAlpha(khalaPalette.gray["1000"], khalaPalette.alpha["86"]), // #02040adb
+    codeBackground: khalaPalette.gray["925"], // #0a0f1c
+    diffAdd: khalaPalette.green["400"], // #4ade80
+    diffRemove: khalaPalette.red["400"], // #f87171
+    syntaxKeyword: khalaPalette.blue["300"], // #60a5fa
+    syntaxString: khalaPalette.green["400"], // #4ade80
+    syntaxComment: khalaPalette.gray["450"], // #5b6b8c
+    syntaxFunction: khalaPalette.violet["400"], // #c084fc
+    syntaxNumber: khalaPalette.amber["400"], // #fbbf24
+    syntaxOperator: khalaPalette.gray["300"] // #93a4c3
   },
   radius: {
     none: 0,
