@@ -569,18 +569,68 @@ const styleDeclarations = (key: string, value: unknown): ReadonlyArray<readonly 
 // interactive state fills use `!important` deliberately, because the state
 // engine is uniform chrome physics that must beat the inline variant colors
 // the renderer sets at rest.
+// Component-token tier (C1 tier 3 + C4 data-* lowering, issue #77): the
+// apps-sdk-ui indirection chain — semantic/matrix token → component-local
+// custom property → CSS property — translated to render-dom's data-attribute
+// + generated-CSS mechanism. `data-en-component="button"` base rule consumes
+// only `--en-button-*` local vars (defaulted in :root above); each
+// `data-en-variant` selector re-points those vars, never a raw theme value.
+// This mirrors, and replaces the inline per-variant style assignment that
+// `renderButton` used to perform — same resolved output, now expressed as
+// the indirection chain so a later `size`/`tone` axis (#78/#79) only adds
+// more re-pointing selectors, never more JS branches.
+const componentBaseRules = [
+  ':where([data-effect-native-surface="dom"]) :where([data-en-component="button"]){font:inherit;background-color:var(--en-button-background);color:var(--en-button-text);border-width:1px;border-style:solid;border-color:var(--en-button-border);border-radius:var(--en-button-radius);padding-block:var(--en-button-padding-block);padding-inline:var(--en-button-padding-inline);}',
+  '[data-effect-native-surface="dom"] [data-en-component="button"][data-en-variant="primary"]{--en-button-background:var(--en-color-accent);--en-button-text:var(--en-color-textPrimary);--en-button-border:transparent;}',
+  '[data-effect-native-surface="dom"] [data-en-component="button"][data-en-variant="secondary"]{--en-button-background:var(--en-color-surface);--en-button-text:var(--en-color-textPrimary);--en-button-border:var(--en-color-border);}',
+  '[data-effect-native-surface="dom"] [data-en-component="button"][data-en-variant="ghost"]{--en-button-background:transparent;--en-button-text:var(--en-color-accent);--en-button-border:transparent;}',
+  '[data-effect-native-surface="dom"] [data-en-component="button"][data-en-disabled="true"]{cursor:not-allowed;opacity:0.5;}',
+  '[data-effect-native-surface="dom"] [data-en-component="button"]:not([data-en-disabled="true"]){cursor:pointer;}'
+].join("")
+
+// Motion lowering (C6, issue #77): generic `data-entering`/`data-exiting`
+// presence-transition infra, consuming the named easing + duration tokens.
+// `pointer-events:none` while exiting matches the apps-sdk-ui contract. This
+// is deliberately component-agnostic and not yet wired into Modal/Sheet/Toast
+// — the audit tracks full Animate/Transition primitives as a separate,
+// demand-gated Phase 2 gap; this ships the token-consumption mechanism ahead
+// of that so wiring a presence lifecycle later is additive CSS-attribute
+// wiring, not a new transition system.
+const motionBaseRules = [
+  '[data-effect-native-surface="dom"] [data-entering="true"]{transition:opacity var(--en-motion-enter) var(--en-ease-enter),transform var(--en-motion-enter) var(--en-ease-enter);}',
+  '[data-effect-native-surface="dom"] [data-exiting="true"]{pointer-events:none;transition:opacity var(--en-motion-exit) var(--en-ease-exit),transform var(--en-motion-exit) var(--en-ease-exit);}'
+].join("")
+
+// Fine-pointer hover gating (C6, issue #77): every hover-triggered rule is
+// wrapped in `@media (hover:hover) and (pointer:fine)` so touch/coarse-
+// pointer contexts never get sticky hover (the apps-sdk-ui mixin discipline).
+// `:active` rules stay ungated — press feedback is valid on touch.
+const chromeHoverRules = [
+  '[data-effect-native-surface="dom"] button[data-en-variant="ghost"]:hover:not(:disabled):not(:active){background-color:var(--en-color-stateHover) !important;}',
+  '[data-effect-native-surface="dom"] button[data-en-variant="primary"]:hover:not(:disabled):not(:active){background-color:var(--en-color-accentHover) !important;}',
+  '[data-effect-native-surface="dom"] button[data-en-variant="secondary"]:hover:not(:disabled){background-color:var(--en-color-surfaceRaised) !important;}',
+  '[data-effect-native-surface="dom"] [data-en-nav-item]:hover:not(:disabled){background-color:var(--en-color-stateHover);color:var(--en-color-textPrimary);}'
+].join("")
+
+// Application-chrome physics shared by every DOM surface (the apps-sdk-ui
+// chrome-language port): the alpha-overlay state engine — hover/active/
+// selected are translucent overlays of one base color, never new hues — a
+// 150ms basic transition, press-scale feedback, one focus ring, nav-item
+// chrome, and token-derived thin scrollbars. Every value resolves through
+// the :root theme variables. `:where()` keeps rest-state rules at zero
+// specificity so typed style overrides (atomic classes) still win; the
+// interactive state fills use `!important` deliberately, because the state
+// engine is uniform chrome physics that must beat the inline variant colors
+// the renderer sets at rest.
 const chromeBaseRules = [
   ':where([data-effect-native-surface="dom"]) :where(button){transition:background-color var(--en-motion-fast) var(--en-ease-basic),border-color var(--en-motion-fast) var(--en-ease-basic),color var(--en-motion-fast) var(--en-ease-basic),opacity var(--en-motion-fast) var(--en-ease-basic),transform var(--en-motion-fast) var(--en-ease-basic);}',
   '[data-effect-native-surface="dom"] button:not(:disabled):active{transform:scale(0.98);}',
   '[data-effect-native-surface="dom"] :is(button,a,input,textarea,[tabindex]):focus-visible{outline:2px solid var(--en-color-focus);outline-offset:2px;}',
   '[data-effect-native-surface="dom"] button:disabled{cursor:not-allowed;}',
-  '[data-effect-native-surface="dom"] button[data-en-variant="ghost"]:hover:not(:disabled):not(:active){background-color:var(--en-color-stateHover) !important;}',
+  `@media (hover:hover) and (pointer:fine){${chromeHoverRules}}`,
   '[data-effect-native-surface="dom"] button[data-en-variant="ghost"]:active:not(:disabled){background-color:var(--en-color-stateActive) !important;}',
-  '[data-effect-native-surface="dom"] button[data-en-variant="primary"]:hover:not(:disabled):not(:active){background-color:var(--en-color-accentHover) !important;}',
   '[data-effect-native-surface="dom"] button[data-en-variant="primary"]:active:not(:disabled){background-color:var(--en-color-accentActive) !important;}',
-  '[data-effect-native-surface="dom"] button[data-en-variant="secondary"]:hover:not(:disabled){background-color:var(--en-color-surfaceRaised) !important;}',
   ':where([data-effect-native-surface="dom"]) :where([data-en-nav-item]){display:flex;align-items:center;background:transparent;border:0;border-radius:var(--en-radius-md);padding:var(--en-spacing-1) var(--en-spacing-2);color:var(--en-color-textMuted);font:inherit;font-size:var(--en-type-label-fontSize);line-height:var(--en-type-label-lineHeight);cursor:pointer;text-align:left;}',
-  '[data-effect-native-surface="dom"] [data-en-nav-item]:hover:not(:disabled){background-color:var(--en-color-stateHover);color:var(--en-color-textPrimary);}',
   '[data-effect-native-surface="dom"] [data-en-nav-item]:active:not(:disabled){background-color:var(--en-color-stateActive);}',
   '[data-effect-native-surface="dom"] [data-en-nav-item][data-en-active="true"]{background-color:var(--en-color-stateSelected);color:var(--en-color-textPrimary);}',
   ':where([data-effect-native-surface="dom"]) :where([data-en-role="section-label"]){display:block;color:var(--en-color-textFaint);font-size:var(--en-type-caption-fontSize);line-height:var(--en-type-caption-lineHeight);font-weight:600;letter-spacing:0.06em;text-transform:uppercase;padding:var(--en-spacing-3) var(--en-spacing-2) var(--en-spacing-1);}',
@@ -661,16 +711,54 @@ class AtomicStyleSheet {
       `--en-ease-basic:${this.#theme.motion.easeBasic};`,
       `--en-ease-enter:${this.#theme.motion.easeEnter};`,
       `--en-ease-exit:${this.#theme.motion.easeExit};`,
+      // Named easing tier from #76 (apps-sdk-ui harmonization C6): exitSnappy
+      // (less inertia on dismissal) and move (on-screen positional
+      // transitions). Consumed today by the generic data-entering/
+      // data-exiting motion infra below; component call sites pick up
+      // exitSnappy/move as those lifecycles land.
+      `--en-ease-exit-snappy:${this.#theme.motion.easeExitSnappy};`,
+      `--en-ease-move:${this.#theme.motion.easeMove};`,
       `--en-elevation-overlay-shadow:${this.#theme.elevation.overlayShadow};`,
       `--en-elevation-hairline:0 0 0 ${px(this.#theme.elevation.hairlineWidth)} var(--en-color-borderSubtle);`,
       ...Object.entries(this.#theme.control).flatMap(([key, value]) => [
         `--en-control-${cssEscape(key)}-height:${px(value.height)};`,
         `--en-control-${cssEscape(key)}-gutter:${px(value.gutter)};`,
+        // Radius + font-size sub-tokens (#76 control lattice) — ready for a
+        // future `size` prop (#78/#79) to size a control's corner radius and
+        // label coherently from the same lattice step as height/gutter/icon.
+        `--en-control-${cssEscape(key)}-radius:${px(value.radius)};`,
+        `--en-control-${cssEscape(key)}-font-size:${px(value.fontSize)};`,
         `--en-control-${cssEscape(key)}-icon:${px(value.icon)};`
       ]),
       // Icon-size tokens (#85): glyphs draw on a 1em box, so font-size — set
       // from these custom properties — is the single sizing channel.
       ...Object.entries(iconSizeValues).map(([key, value]) => `--en-icon-size-${cssEscape(key)}:${px(value)};`),
+      // Tier-2 tone × variant × state color matrix (#75), lowered to CSS
+      // custom properties so a future Button/Badge/Alert/Chip matrix (#78/
+      // #79) can select `--en-matrix-<tone>-<variant>-<state>-<role>` instead
+      // of reaching into the typed theme object at render time. Additive:
+      // nothing selects these vars yet.
+      ...Object.entries(this.#theme.colorMatrix).flatMap(([tone, variantMap]) =>
+        Object.entries(variantMap as Record<string, Record<string, Record<string, string>>>).flatMap(
+          ([variant, stateMap]) =>
+            Object.entries(stateMap).flatMap(([state, cell]) =>
+              Object.entries(cell as Record<string, string>).map(([role, value]) =>
+                `--en-matrix-${cssEscape(tone)}-${cssEscape(variant)}-${cssEscape(state)}-${cssEscape(role)}:${value};`
+              )
+            )
+        )
+      ),
+      // Component-token tier (C1 tier 3, issue #77): default component-local
+      // vars a component's rest-state CSS rule consumes; variant/tone/size
+      // attribute selectors below re-point these per instance, mirroring the
+      // apps-sdk-ui `--button-*` indirection chain. These are renderer-owned
+      // chrome, not part of the typed authoring style contract.
+      "--en-button-background:transparent;",
+      "--en-button-text:var(--en-color-textPrimary);",
+      "--en-button-border:transparent;",
+      "--en-button-radius:var(--en-radius-md);",
+      "--en-button-padding-block:var(--en-spacing-2);",
+      "--en-button-padding-inline:var(--en-spacing-4);",
       "}"
     ].join("")
     const atomicRules = Array.from(this.#rules.entries())
@@ -682,7 +770,8 @@ class AtomicStyleSheet {
         return `.${className}{${property}:${value};}`
       })
       .join("")
-    this.element.textContent = `${themeRules}${chromeBaseRules}${atomicRules}`
+    this.element.textContent =
+      `${themeRules}${componentBaseRules}${motionBaseRules}${chromeBaseRules}${atomicRules}`
   }
 
   dispose(): void {
@@ -1070,31 +1159,20 @@ const renderButton = (view: ButtonView, state: DomRendererState, report: IntentR
   element.type = "button"
   element.textContent = view.label
   element.disabled = view.disabled === true
+  // Component-token tier lowering (C1 tier 3 + C4 data-* lowering, issue
+  // #77): the themed surface + label color + radius + padding + disabled
+  // chrome are expressed as the `data-en-component="button"` base rule plus
+  // `data-en-variant`/`data-en-disabled` re-pointing rules in the generated
+  // stylesheet (`componentBaseRules`) instead of inline styles — same
+  // resolved visual output as the previous per-variant inline recipe (parity
+  // with the render-rn fix for the #71-class bug: themed surface + label
+  // color instead of the native default button), now expressed through the
+  // apps-sdk-ui indirection chain so a later size/tone axis (#78/#79) only
+  // adds selectors, never more JS branches. `:where()`-zero-specificity base
+  // rule keeps typed style overrides (applyBaseStyle) able to win.
+  element.setAttribute("data-en-component", "button")
   element.setAttribute("data-en-variant", view.variant)
-  // Variant theme lowering (parity with the render-rn fix for the #71-class
-  // bug): themed surface + label color instead of the native default button.
-  // Applied before applyBaseStyle so typed style overrides still win.
-  element.style.font = "inherit"
-  element.style.borderRadius = "var(--en-radius-md)"
-  element.style.padding = "var(--en-spacing-2) var(--en-spacing-4)"
-  element.style.border = "1px solid transparent"
-  element.style.cursor = view.disabled === true ? "not-allowed" : "pointer"
-  element.style.opacity = view.disabled === true ? "0.5" : "1"
-  switch (view.variant) {
-    case "primary":
-      element.style.background = colorValue("accent")
-      element.style.color = colorValue("textPrimary")
-      break
-    case "secondary":
-      element.style.background = colorValue("surface")
-      element.style.color = colorValue("textPrimary")
-      element.style.borderColor = colorValue("border")
-      break
-    case "ghost":
-      element.style.background = "transparent"
-      element.style.color = colorValue("accent")
-      break
-  }
+  element.setAttribute("data-en-disabled", view.disabled === true ? "true" : "false")
   state.addListener(element, "click", () => runReportedIntent(report, view.onPress))
   applyBaseStyle(element, view, state)
   applyA11y(element, view)
@@ -1954,6 +2032,9 @@ const renderBadge = (view: BadgeView, state: DomRendererState): HTMLElement => {
   const element = state.keyedElement(view, "span")
   state.resetListeners(element)
   const tone = view.tone ?? "neutral"
+  // data-* lowering (C4, issue #77): additive component marker alongside the
+  // existing tone attribute; no CSS selects on data-en-component here yet.
+  element.setAttribute("data-en-component", "badge")
   element.setAttribute("data-en-tone", tone)
   element.textContent = view.label
   element.style.display = "inline-flex"
@@ -1968,6 +2049,7 @@ const renderChip = (view: ChipView, state: DomRendererState): HTMLElement => {
   const element = state.keyedElement(view, "span")
   state.resetListeners(element)
   const tone = view.tone ?? "neutral"
+  element.setAttribute("data-en-component", "chip")
   element.setAttribute("data-en-tone", tone)
   element.style.display = "inline-flex"
   element.style.gap = "var(--en-spacing-1)"
@@ -3312,6 +3394,11 @@ const renderToggle = (view: ToggleView, state: DomRendererState, report: IntentR
   element.type = "button"
   element.setAttribute("role", "switch")
   element.setAttribute("data-en-role", "control")
+  // data-* lowering (C4, issue #77): a stable, non-visual QA/behavior-contract
+  // selector for the checked state axis, additive to the existing aria-checked
+  // reflection — no CSS selects on it yet, so this cannot change rendering.
+  element.setAttribute("data-en-component", "toggle")
+  element.setAttribute("data-checked", view.value ? "true" : "false")
   element.setAttribute("aria-checked", view.value ? "true" : "false")
   if (view.label !== undefined) element.setAttribute("aria-label", view.label)
   element.disabled = view.disabled === true

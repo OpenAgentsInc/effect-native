@@ -147,27 +147,43 @@ describe("app shell (#27) DOM renderer", () => {
 
   test("controlled nav selection stays visible across root commits", async () => {
     const { container, document, window } = createDom()
-    Object.defineProperty((window as unknown as { HTMLElement: { prototype: object } }).HTMLElement.prototype, "clientHeight", {
+    // happy-dom's HTMLElement class is shared process-wide (not per-Window),
+    // so a bare `Object.defineProperty` here permanently leaks this
+    // `clientHeight` stub into every other test/file sharing the process —
+    // observed as flaky cross-file failures in the "nav rail selection..."
+    // test above when the full suite runs. Capture and restore the original
+    // descriptor so the stub is scoped to this test only.
+    const htmlElementPrototype = (window as unknown as { HTMLElement: { prototype: object } }).HTMLElement.prototype
+    const originalClientHeight = Object.getOwnPropertyDescriptor(htmlElementPrototype, "clientHeight")
+    Object.defineProperty(htmlElementPrototype, "clientHeight", {
       configurable: true,
       get(this: HTMLElement) { return this.hasAttribute("data-en-section") ? 32 : 0 }
     })
-    await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const state = yield* SubscriptionRef.make("first")
-      const program = makeViewProgramFromState(state, (active): View => NavRail({
-        key: "rail-nav",
-        activeId: active,
-        sections: [{ id: "many", items: [
-          { id: "first", label: "First" },
-          { id: "second", label: "Second" },
-          { id: "third", label: "Third" }
-        ] }]
-      }))
-      const surface = yield* makeDomRenderer({ document }).mount(container, program.viewStream, () => Effect.void)
-      yield* SubscriptionRef.set(state, "third")
-      yield* nextTask
-      const section = container.querySelector('[data-en-section="many"]') as HTMLElement | null
-      expect(section?.scrollTop).toBe(64)
-      yield* surface.unmount
-    })))
+    try {
+      await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
+        const state = yield* SubscriptionRef.make("first")
+        const program = makeViewProgramFromState(state, (active): View => NavRail({
+          key: "rail-nav",
+          activeId: active,
+          sections: [{ id: "many", items: [
+            { id: "first", label: "First" },
+            { id: "second", label: "Second" },
+            { id: "third", label: "Third" }
+          ] }]
+        }))
+        const surface = yield* makeDomRenderer({ document }).mount(container, program.viewStream, () => Effect.void)
+        yield* SubscriptionRef.set(state, "third")
+        yield* nextTask
+        const section = container.querySelector('[data-en-section="many"]') as HTMLElement | null
+        expect(section?.scrollTop).toBe(64)
+        yield* surface.unmount
+      })))
+    } finally {
+      if (originalClientHeight !== undefined) {
+        Object.defineProperty(htmlElementPrototype, "clientHeight", originalClientHeight)
+      } else {
+        delete (htmlElementPrototype as Record<string, unknown>).clientHeight
+      }
+    }
   })
 })
