@@ -87,6 +87,7 @@ import {
   type HostView,
   type IconName,
   type IconSize,
+  iconSizeValues,
   type IconView,
   type ImageView,
   type IntentError,
@@ -663,6 +664,9 @@ class AtomicStyleSheet {
         `--en-control-${cssEscape(key)}-gutter:${px(value.gutter)};`,
         `--en-control-${cssEscape(key)}-icon:${px(value.icon)};`
       ]),
+      // Icon-size tokens (#85): glyphs draw on a 1em box, so font-size — set
+      // from these custom properties — is the single sizing channel.
+      ...Object.entries(iconSizeValues).map(([key, value]) => `--en-icon-size-${cssEscape(key)}:${px(value)};`),
       "}"
     ].join("")
     const atomicRules = Array.from(this.#rules.entries())
@@ -1707,11 +1711,14 @@ const renderSpacer = (view: SpacerView, state: DomRendererState): HTMLElement =>
   return element
 }
 
-// Inline-SVG icon registry (issue #31). The closed IconName set is the stable
-// contract; this per-renderer map is the DOM asset detail. All glyphs draw on a
-// 24x24 viewBox and inherit `currentColor` so token-driven `color` flows
-// through. No user-supplied SVG ever enters the tree.
-const iconSizePixels: Record<IconSize, number> = { sm: 16, md: 20, lg: 24 }
+// Inline-SVG icon registry (issue #31, expanded #85). The closed IconName set
+// is the stable contract; this per-renderer map is the DOM asset detail. All
+// glyphs draw on a 1em × 1em box over a 24x24 viewBox and inherit
+// `currentColor` so token-driven `color` flows through and size flows from the
+// `--en-icon-size-*` tokens. No user-supplied SVG ever enters the tree.
+// The DomRenderer stylesheet always defines `--en-icon-size-*` from
+// `iconSizeValues`, so no literal fallback is needed here.
+const iconFontSizeValue = (size: IconSize): string => `var(--en-icon-size-${size})`
 
 const iconRegistry: Record<IconName, { readonly body: string; readonly fill: boolean }> = {
   Plus: { body: '<path d="M12 5v14M5 12h14"/>', fill: false },
@@ -1730,7 +1737,104 @@ const iconRegistry: Record<IconName, { readonly body: string; readonly fill: boo
   Menu: { body: '<path d="M4 7h16M4 12h16M4 17h16"/>', fill: false },
   Compose: { body: '<path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4"/>', fill: false },
   Mic: { body: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>', fill: false },
-  Sparkles: { body: '<path d="M12 4l1.8 4.7L18.5 10l-4.7 1.3L12 16l-1.8-4.7L5.5 10l4.7-1.3zM18 15l.9 2.1L21 18l-2.1.9L18 21l-.9-2.1L15 18l2.1-.9z"/>', fill: false }
+  Sparkles: { body: '<path d="M12 4l1.8 4.7L18.5 10l-4.7 1.3L12 16l-1.8-4.7L5.5 10l4.7-1.3zM18 15l.9 2.1L21 18l-2.1.9L18 21l-.9-2.1L15 18l2.1-.9z"/>', fill: false },
+  // Desktop shell set (v32, #85) — own drawings in the house stroke style.
+  Agent: { body: '<circle cx="12" cy="3.8" r="1.2"/><path d="M12 5v3M9.5 12.5v2M14.5 12.5v2"/><rect x="5" y="8" width="14" height="11" rx="2"/>', fill: false },
+  ChatCompose: { body: '<path d="M20 15a2 2 0 0 1-2 2H9l-5 4V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"/><path d="M12 7.5v6M9 10.5h6"/>', fill: false },
+  Chats: { body: '<path d="M14 4H5a2 2 0 0 0-2 2v10l3-3h8a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/><path d="M18 8h1a2 2 0 0 1 2 2v10l-3-3h-7a2 2 0 0 1-2-2v-1"/>', fill: false },
+  Code: { body: '<path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/>', fill: false },
+  Compare: { body: '<rect x="3" y="5" width="7" height="14" rx="1"/><rect x="14" y="5" width="7" height="14" rx="1"/>', fill: false },
+  Folder: { body: '<path d="M3 7a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>', fill: false },
+  Home: { body: '<path d="M4 11l8-7 8 7"/><path d="M6 9.5V20h12V9.5M10 20v-6h4v6"/>', fill: false },
+  NotificationBell: { body: '<path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10.5 19a1.5 1.5 0 0 0 3 0"/>', fill: false },
+  Plane: { body: '<path d="M21 3L3 11l7 3 3 7z"/><path d="M21 3L10 14"/>', fill: false },
+  Settings: { body: '<circle cx="12" cy="12" r="3.2"/><circle cx="12" cy="12" r="6.8"/><path d="M12 5.2V2.5M12 21.5v-2.7M18.8 12h2.7M2.5 12h2.7M16.8 7.2l1.9-1.9M5.3 18.7l1.9-1.9M16.8 16.8l1.9 1.9M5.3 5.3l1.9 1.9"/>', fill: false },
+  Terminal: { body: '<path d="M5 7l5 5-5 5M12 17h7"/>', fill: false },
+  Tools: { body: '<rect x="3" y="9" width="18" height="10" rx="2"/><path d="M9 9V7a3 3 0 0 1 6 0v2M3 13.5h18"/>', fill: false },
+  History: { body: '<path d="M5.5 6.5A7.5 7.5 0 1 1 4.5 12M4 6v4h4"/><path d="M12 8v4l3 2"/>', fill: false },
+  Branch: { body: '<circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="8" r="2"/><path d="M6 8v8M18 10a10 10 0 0 1-10 8"/>', fill: false },
+  InfoCircle: { body: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 7.6v.4"/>', fill: false },
+  // Expansion batch (v32, #85) — arrows / navigation.
+  ArrowUp: { body: '<path d="M12 19V5M5 12l7-7 7 7"/>', fill: false },
+  ArrowDown: { body: '<path d="M12 5v14M5 12l7 7 7-7"/>', fill: false },
+  ArrowLeft: { body: '<path d="M19 12H5M12 5l-7 7 7 7"/>', fill: false },
+  ArrowRight: { body: '<path d="M5 12h14M12 5l7 7-7 7"/>', fill: false },
+  ArrowUpRight: { body: '<path d="M7 17L17 7M8 7h9v9"/>', fill: false },
+  // Status glyphs.
+  CheckCircle: { body: '<circle cx="12" cy="12" r="8.5"/><path d="M8.5 12.5l2.5 2.5 4.5-5.5"/>', fill: false },
+  XCircle: { body: '<circle cx="12" cy="12" r="8.5"/><path d="M9.5 9.5l5 5M14.5 9.5l-5 5"/>', fill: false },
+  AlertTriangle: { body: '<path d="M12 4L2.5 20h19z"/><path d="M12 10.5v4M12 16.8v.4"/>', fill: false },
+  AlertCircle: { body: '<circle cx="12" cy="12" r="8.5"/><path d="M12 8v5M12 16.4v.4"/>', fill: false },
+  CircleFilled: { body: '<circle cx="12" cy="12" r="7"/>', fill: true },
+  CircleDot: { body: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="1.2"/>', fill: false },
+  Loader: { body: '<path d="M12 3a9 9 0 1 1-9 9"/>', fill: false },
+  // Git panel.
+  GitCommit: { body: '<circle cx="12" cy="12" r="3.5"/><path d="M2.5 12h6M15.5 12h6"/>', fill: false },
+  GitPullRequest: { body: '<circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/><path d="M6 8v8M18 16v-5a4 4 0 0 0-4-4h-2M14.5 4.5L12 7l2.5 2.5"/>', fill: false },
+  GitMerge: { body: '<circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="12" r="2"/><path d="M6 8v8M6 8c0 4 4 4 10 4"/>', fill: false },
+  Minus: { body: '<path d="M5 12h14"/>', fill: false },
+  // Files / workspace tree.
+  File: { body: '<path d="M13 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9z"/><path d="M13 3v6h6"/>', fill: false },
+  FileText: { body: '<path d="M13 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9z"/><path d="M13 3v6h6M9 13h6M9 17h6"/>', fill: false },
+  FilePlus: { body: '<path d="M13 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9z"/><path d="M13 3v6h6M12 12.5v5M9.5 15h5"/>', fill: false },
+  FolderOpen: { body: '<path d="M3 19V7a2 2 0 0 1 2-2h4l2 3h7a2 2 0 0 1 2 2v1"/><path d="M3 19l3-7h16l-3 7z"/>', fill: false },
+  FolderPlus: { body: '<path d="M3 7a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v6M9 14h6"/>', fill: false },
+  Image: { body: '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="M21 15l-5-5-9 9"/>', fill: false },
+  // Edit actions.
+  Pencil: { body: '<path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4"/>', fill: false },
+  Trash: { body: '<path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6.5 7l1 13h9l1-13"/><path d="M10 11v6M14 11v6"/>', fill: false },
+  Copy: { body: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/>', fill: false },
+  Save: { body: '<path d="M19 21H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h11l4 4v13a1 1 0 0 1-1 1z"/><path d="M8 3v5h7V3M7 21v-8h10v8"/>', fill: false },
+  Undo: { body: '<path d="M8 5L3 10l5 5"/><path d="M3 10h12a5.5 5.5 0 0 1 0 11h-5"/>', fill: false },
+  Redo: { body: '<path d="M16 5l5 5-5 5"/><path d="M21 10H9a5.5 5.5 0 0 0 0 11h5"/>', fill: false },
+  // Transcript / message actions.
+  ThumbsUp: { body: '<path d="M7 11v9H4a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1z"/><path d="M7 11l4-7a2 2 0 0 1 2 2v4h6a1.8 1.8 0 0 1 1.8 2.2l-1.2 6A2 2 0 0 1 17.6 20H7"/>', fill: false },
+  ThumbsDown: { body: '<path d="M17 13V4h3a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1z"/><path d="M17 13l-4 7a2 2 0 0 1-2-2v-4H5a1.8 1.8 0 0 1-1.8-2.2l1.2-6A2 2 0 0 1 6.4 4H17"/>', fill: false },
+  Share: { body: '<circle cx="6" cy="12" r="2.5"/><circle cx="17.5" cy="5.5" r="2.5"/><circle cx="17.5" cy="18.5" r="2.5"/><path d="M8.3 10.8l6.9-4M8.3 13.2l6.9 4"/>', fill: false },
+  Ellipsis: { body: '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>', fill: true },
+  EllipsisVertical: { body: '<circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/>', fill: true },
+  Expand: { body: '<path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5"/>', fill: false },
+  Collapse: { body: '<path d="M4 9h5V4M20 9h-5V4M4 15h5v5M20 15h-5v5"/>', fill: false },
+  // Search / filtering.
+  Search: { body: '<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.4-4.4"/>', fill: false },
+  Filter: { body: '<path d="M4 5h16l-6.5 7.5V19l-3 2v-8.5z"/>', fill: false },
+  Sliders: { body: '<path d="M5 6h14M5 12h14M5 18h14"/><circle cx="9" cy="6" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="8" cy="18" r="2"/>', fill: false },
+  // Fleet / connectivity / infrastructure.
+  Wifi: { body: '<path d="M2.5 9.5a14 14 0 0 1 19 0M5.5 13a9.5 9.5 0 0 1 13 0M8.5 16.5a5 5 0 0 1 7 0M12 19.8v.4"/>', fill: false },
+  WifiOff: { body: '<path d="M3 4l17 17M8.5 16.5a5 5 0 0 1 7 0M5.5 13a9.5 9.5 0 0 1 3-2M15.5 11a9.5 9.5 0 0 1 3 2M12 19.8v.4"/>', fill: false },
+  Server: { body: '<rect x="3" y="4" width="18" height="7" rx="1.5"/><rect x="3" y="13" width="18" height="7" rx="1.5"/><path d="M6.8 7.5h.4M6.8 16.5h.4"/>', fill: false },
+  Database: { body: '<ellipse cx="12" cy="5.5" rx="8" ry="2.8"/><path d="M4 5.5v13c0 1.5 3.6 2.8 8 2.8s8-1.3 8-2.8v-13"/><path d="M4 12c0 1.5 3.6 2.8 8 2.8s8-1.3 8-2.8"/>', fill: false },
+  Cpu: { body: '<rect x="6" y="6" width="12" height="12" rx="1.5"/><rect x="10" y="10" width="4" height="4"/><path d="M9 3v3M15 3v3M9 18v3M15 18v3M3 9h3M3 15h3M18 9h3M18 15h3"/>', fill: false },
+  Activity: { body: '<path d="M3 12h4l3-8 4 16 3-8h4"/>', fill: false },
+  Globe: { body: '<circle cx="12" cy="12" r="8.5"/><ellipse cx="12" cy="12" rx="4" ry="8.5"/><path d="M3.5 12h17"/>', fill: false },
+  // Account / security.
+  Lock: { body: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>', fill: false },
+  Unlock: { body: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.8-1.3"/>', fill: false },
+  Key: { body: '<circle cx="8" cy="15" r="4"/><path d="M10.8 12.2L20 3M15 8l3 3"/>', fill: false },
+  Shield: { body: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/>', fill: false },
+  User: { body: '<circle cx="12" cy="8" r="4"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>', fill: false },
+  Users: { body: '<circle cx="9" cy="8.5" r="3.5"/><path d="M2.5 19.5a6.5 6.5 0 0 1 13 0"/><path d="M16 5.5a3.5 3.5 0 0 1 0 6M18 13.6a6.5 6.5 0 0 1 3.5 5.9"/>', fill: false },
+  LogOut: { body: '<path d="M9 4H5a1.5 1.5 0 0 0-1.5 1.5v13A1.5 1.5 0 0 0 5 20h4"/><path d="M15 8l4 4-4 4M19 12H9"/>', fill: false },
+  // Payments.
+  Wallet: { body: '<path d="M19 7V5.5A1.5 1.5 0 0 0 17.5 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2H5"/><path d="M16.3 13.4h.4"/>', fill: false },
+  CreditCard: { body: '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10.5h18M6.5 15h4"/>', fill: false },
+  Zap: { body: '<path d="M13 2L4.5 13.5H11L9.5 22 18 10.5h-6.5z"/>', fill: true },
+  // Common desktop chrome.
+  Clock: { body: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2"/>', fill: false },
+  Download: { body: '<path d="M12 4v11M7 10.5l5 5 5-5M4.5 19.5h15"/>', fill: false },
+  Upload: { body: '<path d="M12 15V4M7 8.5l5-5 5 5M4.5 19.5h15"/>', fill: false },
+  ExternalLink: { body: '<path d="M14 4h6v6M20 4l-9 9"/><path d="M19 14v5a1.5 1.5 0 0 1-1.5 1.5h-12A1.5 1.5 0 0 1 4 19V6.5A1.5 1.5 0 0 1 5.5 5H10"/>', fill: false },
+  Link: { body: '<path d="M10 14a4.5 4.5 0 0 0 6.4.4l3-3a4.5 4.5 0 0 0-6.4-6.4l-1.5 1.5"/><path d="M14 10a4.5 4.5 0 0 0-6.4-.4l-3 3a4.5 4.5 0 0 0 6.4 6.4l1.5-1.5"/>', fill: false },
+  Eye: { body: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>', fill: false },
+  EyeOff: { body: '<path d="M4 4l16 16"/><path d="M10.5 6a10 10 0 0 1 1.5-.1c6 0 9.5 6.1 9.5 6.1a17.6 17.6 0 0 1-2.7 3.4M6.6 6.9A16.9 16.9 0 0 0 2.5 12S6 18.1 12 18.1a9.6 9.6 0 0 0 4.3-1"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>', fill: false },
+  Paperclip: { body: '<path d="M20 11.5l-8 8a5 5 0 0 1-7-7l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7L9.7 17.2a1.7 1.7 0 0 1-2.4-2.4L15 7"/>', fill: false },
+  Pin: { body: '<path d="M9 3.5h6M10 3.5l-.5 7L6.5 13v1.5h11V13l-3-2.5-.5-7"/><path d="M12 14.5V21"/>', fill: false },
+  Star: { body: '<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>', fill: false },
+  Archive: { body: '<rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9M10 13h4"/>', fill: false },
+  Command: { body: '<path d="M9 9V6a3 3 0 1 0-3 3zM15 9h3a3 3 0 1 0-3-3zM9 15H6a3 3 0 1 0 3 3zM15 15v3a3 3 0 1 0 3-3z"/><rect x="9" y="9" width="6" height="6"/>', fill: false },
+  Bug: { body: '<rect x="8" y="7" width="8" height="11" rx="4"/><path d="M8 11H3.5M8 15H4.5M16 11h4.5M16 15h3.5M9.5 7L8 4.5M14.5 7L16 4.5M12 7v11"/>', fill: false },
+  Package: { body: '<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/>', fill: false },
+  HelpCircle: { body: '<circle cx="12" cy="12" r="8.5"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.8 2.1c-.8.5-1.3 1-1.3 1.9"/><path d="M12 16.8v.4"/>', fill: false }
 }
 
 const renderIcon = (view: IconView, state: DomRendererState): HTMLElement => {
@@ -1739,13 +1843,8 @@ const renderIcon = (view: IconView, state: DomRendererState): HTMLElement => {
   element.setAttribute("data-en-icon", view.name)
   element.style.display = "inline-flex"
   element.style.color = view.color === undefined ? "" : colorValue(view.color)
-  const px = iconSizePixels[view.size ?? "md"]
-  const glyph = iconRegistry[view.name]
-  const paint = glyph.fill
-    ? 'fill="currentColor"'
-    : 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"'
-  element.innerHTML =
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${px}" height="${px}" viewBox="0 0 24 24" ${paint}>${glyph.body}</svg>`
+  element.style.fontSize = iconFontSizeValue(view.size ?? "md")
+  element.innerHTML = iconSvg(view.name)
   if (view.label === undefined) {
     element.setAttribute("aria-hidden", "true")
   } else {
@@ -2059,12 +2158,15 @@ const renderTable = (view: TableView, state: DomRendererState, report: IntentRep
 // draggable dividers whose drag reports a typed { paneId, size } intent (no
 // free-form drag math in app code). NavRail is a selection contract; Workbench
 // swaps the active pane as typed state.
-const iconSvg = (name: IconName, sizePx: number): string => {
+const iconSvg = (name: IconName): string => {
   const glyph = iconRegistry[name]
   const paint = glyph.fill
     ? 'fill="currentColor"'
     : 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"'
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${sizePx}" height="${sizePx}" viewBox="0 0 24 24" ${paint}>${glyph.body}</svg>`
+  // Apps SDK UI icon conventions (#85): 1em × 1em on a 24 viewBox with
+  // currentColor paint — the wrapping element's font-size (an icon-size token)
+  // is the single sizing channel and color inherits.
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" ${paint}>${glyph.body}</svg>`
 }
 
 const splitAxis = (orientation: "row" | "column"): {
@@ -2221,7 +2323,8 @@ const renderNavRail = (view: NavRailView, state: DomRendererState, report: Inten
         iconEl.setAttribute("data-en-icon", item.icon)
         iconEl.setAttribute("aria-hidden", "true")
         iconEl.style.display = "inline-flex"
-        iconEl.innerHTML = iconSvg(item.icon, iconSizePixels.md)
+        iconEl.style.fontSize = iconFontSizeValue("md")
+        iconEl.innerHTML = iconSvg(item.icon)
         button.appendChild(iconEl)
       }
       const label = document.createElement("span")
@@ -2319,7 +2422,8 @@ const menuItemButton = (
     const iconEl = document.createElement("span")
     iconEl.setAttribute("aria-hidden", "true")
     iconEl.style.display = "inline-flex"
-    iconEl.innerHTML = iconSvg(item.icon, iconSizePixels.sm)
+    iconEl.style.fontSize = iconFontSizeValue("sm")
+    iconEl.innerHTML = iconSvg(item.icon)
     button.appendChild(iconEl)
   }
   const label = document.createElement("span")
@@ -2590,7 +2694,8 @@ const renderComboboxOption = (
     const iconEl = document.createElement("span")
     iconEl.setAttribute("aria-hidden", "true")
     iconEl.style.display = "inline-flex"
-    iconEl.innerHTML = iconSvg(option.icon, iconSizePixels.sm)
+    iconEl.style.fontSize = iconFontSizeValue("sm")
+    iconEl.innerHTML = iconSvg(option.icon)
     optionEl.appendChild(iconEl)
   }
   const label = document.createElement("span")
@@ -2803,7 +2908,8 @@ const renderTabs = (view: TabsView, state: DomRendererState, report: IntentRepor
       const iconEl = document.createElement("span")
       iconEl.setAttribute("aria-hidden", "true")
       iconEl.style.display = "inline-flex"
-      iconEl.innerHTML = iconSvg(tab.icon, iconSizePixels.sm)
+      iconEl.style.fontSize = iconFontSizeValue("sm")
+      iconEl.innerHTML = iconSvg(tab.icon)
       button.appendChild(iconEl)
     }
     const label = document.createElement("span")
@@ -4010,7 +4116,8 @@ const renderTimeline = (view: TimelineView, state: DomRendererState, report: Int
     } else {
       marker.setAttribute("data-en-icon", graphEvent.icon)
       marker.style.display = "inline-flex"
-      marker.innerHTML = iconSvg(graphEvent.icon, iconSizePixels.sm)
+      marker.style.fontSize = iconFontSizeValue("sm")
+      marker.innerHTML = iconSvg(graphEvent.icon)
     }
     const label = document.createElement("span")
     label.setAttribute("data-en-role", "label")
@@ -5154,14 +5261,10 @@ const renderIconButton = (
   element.style.height = "44px"
   element.style.borderRadius = "9999px"
   // Same closed glyph registry as Icon; the glyph is decorative because the
-  // button itself carries the accessible name.
-  const px = iconSizePixels.md
-  const glyph = iconRegistry[view.icon]
-  const paint = glyph.fill
-    ? 'fill="currentColor"'
-    : 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"'
-  element.innerHTML =
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${px}" height="${px}" viewBox="0 0 24 24" aria-hidden="true" ${paint}>${glyph.body}</svg>`
+  // button itself carries the accessible name. 1em glyph sized by the
+  // icon-size token on the button (#85).
+  element.style.fontSize = iconFontSizeValue("md")
+  element.innerHTML = iconSvg(view.icon).replace("<svg ", '<svg aria-hidden="true" ')
   state.addListener(element, "click", () => runReportedIntent(report, view.onPress))
   applySurfaceMergedStyle(element, view.style, view.surface, state)
   applyA11y(element, view)

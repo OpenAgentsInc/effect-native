@@ -25,6 +25,7 @@ import {
   ChatChromeCatalogVersion,
   GlassChromeIconsCatalogVersion,
   GraphProvenanceCatalogVersion,
+  IconExpansionCatalogVersion,
   TranscriptCatalogVersion,
   TabsCatalogVersion,
   FormCatalogVersion,
@@ -96,11 +97,12 @@ describe("catalog version compatibility", () => {
       ChatChromeCatalogVersion,
       GlassChromeIconsCatalogVersion,
       GraphProvenanceCatalogVersion,
-      EmptyMessageCatalogVersion
+      EmptyMessageCatalogVersion,
+      IconExpansionCatalogVersion
     ])
     // The current marker is the last entry; the previous marker is second-last.
-    expect(CatalogVersion).toBe(EmptyMessageCatalogVersion)
-    expect(PreviousCatalogVersion).toBe(GraphProvenanceCatalogVersion)
+    expect(CatalogVersion).toBe(IconExpansionCatalogVersion)
+    expect(PreviousCatalogVersion).toBe(EmptyMessageCatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 1]).toBe(CatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 2]).toBe(PreviousCatalogVersion)
   })

@@ -92,8 +92,9 @@ export const ChatChromeCatalogVersion = "effect-native/v29" as const
 export const GlassChromeIconsCatalogVersion = "effect-native/v30" as const
 export const GraphProvenanceCatalogVersion = "effect-native/v31" as const
 export const EmptyMessageCatalogVersion = "effect-native/v32" as const
-export const PreviousCatalogVersion = GraphProvenanceCatalogVersion
-export const CatalogVersion = EmptyMessageCatalogVersion
+export const IconExpansionCatalogVersion = "effect-native/v33" as const
+export const PreviousCatalogVersion = EmptyMessageCatalogVersion
+export const CatalogVersion = IconExpansionCatalogVersion
 export const CatalogVersionSchema = Schema.Literal(CatalogVersion)
 export type CatalogVersion = typeof CatalogVersion
 export const compatibleCatalogVersions = [
@@ -129,7 +130,8 @@ export const compatibleCatalogVersions = [
   ChatChromeCatalogVersion,
   GlassChromeIconsCatalogVersion,
   GraphProvenanceCatalogVersion,
-  EmptyMessageCatalogVersion
+  EmptyMessageCatalogVersion,
+  IconExpansionCatalogVersion
 ] as const
 export type CompatibleCatalogVersion = (typeof compatibleCatalogVersions)[number]
 export const CompatibleCatalogVersionSchema = Schema.Literals(compatibleCatalogVersions)
@@ -1625,7 +1627,110 @@ export const iconNames = [
   "Menu",
   "Compose",
   "Mic",
-  "Sparkles"
+  "Sparkles",
+  // Desktop shell set (v33, #85): names the OpenAgents Desktop renderer already
+  // consumes through the monorepo-vendored copy — upstreamed for parity so the
+  // vendored fork stops diverging.
+  "Agent",
+  "ChatCompose",
+  "Chats",
+  "Code",
+  "Compare",
+  "Folder",
+  "Home",
+  "NotificationBell",
+  "Plane",
+  "Settings",
+  "Terminal",
+  "Tools",
+  "History",
+  "Branch",
+  "InfoCircle",
+  // Expansion batch (v33, #85) from the desktop demand audit (harmonization
+  // audit §2.4/§5/§6-C5): sidebar, tool cards, git panel, settings, fleet,
+  // transcript actions, and status glyphs. Semantic PascalCase names; still a
+  // closed set — growth remains a reviewed catalog change.
+  // Arrows / navigation.
+  "ArrowUp",
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+  "ArrowUpRight",
+  // Status glyphs (success/error/warning/info/loading/marker).
+  "CheckCircle",
+  "XCircle",
+  "AlertTriangle",
+  "AlertCircle",
+  "CircleFilled",
+  "CircleDot",
+  "Loader",
+  // Git panel.
+  "GitCommit",
+  "GitPullRequest",
+  "GitMerge",
+  "Minus",
+  // Files / workspace tree.
+  "File",
+  "FileText",
+  "FilePlus",
+  "FolderOpen",
+  "FolderPlus",
+  "Image",
+  // Edit actions.
+  "Pencil",
+  "Trash",
+  "Copy",
+  "Save",
+  "Undo",
+  "Redo",
+  // Transcript / message actions.
+  "ThumbsUp",
+  "ThumbsDown",
+  "Share",
+  "Ellipsis",
+  "EllipsisVertical",
+  "Expand",
+  "Collapse",
+  // Search / filtering.
+  "Search",
+  "Filter",
+  "Sliders",
+  // Fleet / connectivity / infrastructure.
+  "Wifi",
+  "WifiOff",
+  "Server",
+  "Database",
+  "Cpu",
+  "Activity",
+  "Globe",
+  // Account / security.
+  "Lock",
+  "Unlock",
+  "Key",
+  "Shield",
+  "User",
+  "Users",
+  "LogOut",
+  // Payments.
+  "Wallet",
+  "CreditCard",
+  "Zap",
+  // Common desktop chrome.
+  "Clock",
+  "Download",
+  "Upload",
+  "ExternalLink",
+  "Link",
+  "Eye",
+  "EyeOff",
+  "Paperclip",
+  "Pin",
+  "Star",
+  "Archive",
+  "Command",
+  "Bug",
+  "Package",
+  "HelpCircle"
 ] as const
 export const IconNameSchema = Schema.Literals(iconNames)
 export type IconName = (typeof iconNames)[number]
@@ -1633,6 +1738,13 @@ export type IconName = (typeof iconNames)[number]
 export const iconSizes = ["sm", "md", "lg"] as const
 export const IconSizeSchema = Schema.Literals(iconSizes)
 export type IconSize = (typeof iconSizes)[number]
+
+// Icon-size token values in px (harmonization #85). The single source of truth
+// both renderers size from: render-dom lowers these as `--en-icon-size-*`
+// custom properties and draws every glyph on a 1em × 1em box (viewBox 0 0 24
+// 24, currentColor) so size flows from the token and color inherits; render-rn
+// uses the same numbers as font sizes.
+export const iconSizeValues: Record<IconSize, number> = { sm: 16, md: 20, lg: 24 }
 
 // Closed tone set for data-display components (issue #39), aligned to the blue
 // status system.

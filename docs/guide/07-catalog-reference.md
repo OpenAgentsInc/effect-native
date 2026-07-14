@@ -8,10 +8,15 @@ conformance-checked by
 (`bun run check:catalog-reference`) so this page cannot silently drop a shipped
 component.
 
-Current catalog marker: `CatalogVersion = "effect-native/v32"` (v32 adds
-`EmptyMessage`, the typed centered empty-state block — optional icon badge
-over the closed icon set with bounded tone/size, required title, optional
-description, and a typed Button action slot — issue #82, harmonization P2.9).
+Current catalog marker: `CatalogVersion = "effect-native/v33"` (v33 expands the
+closed `IconName` set from 16 to 101 semantic PascalCase names from the
+OpenAgents Desktop demand audit — desktop shell parity plus arrows, status,
+git, files, edit, transcript, search, fleet/connectivity, account/security,
+payments, and common chrome — and normalizes every glyph to the Apps SDK UI
+conventions: 1em × 1em box, `viewBox 0 0 24 24`, `currentColor` paint, size
+from the `--en-icon-size-*` tokens — issue #85, harmonization P2.12. v32
+added `EmptyMessage`, the typed centered empty-state block — issue #82,
+harmonization P2.9).
 
 Closed component tags (`componentTags`, 71 total):
 
@@ -289,7 +294,7 @@ Every component accepts these two, inherited from `NodeBase`:
 | Field | Type | Notes |
 |---|---|---|
 | `key` | `string` (optional) | Required (enforced by the schema, not just convention) on any view placed inside a `List`/`SectionList`/`Link` children array. |
-| `catalogVersion` | `"effect-native/v32"` | Set automatically by every constructor function — you never pass this yourself. |
+| `catalogVersion` | `"effect-native/v33"` | Set automatically by every constructor function — you never pass this yourself. |
 
 ### Design tokens
 

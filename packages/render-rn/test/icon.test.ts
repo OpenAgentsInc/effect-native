@@ -42,11 +42,14 @@ const noopReport: IntentReporter = () => Effect.succeed(undefined)
 // token sizing and correct a11y (decorative vs meaningful).
 describe("Icon (#31) React Native renderer", () => {
   test("renders every seeded icon name as a font glyph with a testID", () => {
+    // Registry completeness (#85): every name in the closed set must resolve
+    // to a non-empty RN glyph.
     for (const name of iconNames) {
       const element = renderReactNativeView(Icon({ key: `icon-${name}`, name }) as View, dependencies, noopReport)
       expect(element.props.testID).toBe(`en-icon:${name}`)
       expect(element.props.accessibilityRole).toBe("image")
       expect(typeof element.props.children).toBe("string")
+      expect((element.props.children as string).length).toBeGreaterThan(0)
     }
   })
 
