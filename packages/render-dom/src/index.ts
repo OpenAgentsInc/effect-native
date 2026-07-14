@@ -2079,7 +2079,8 @@ const renderEmptyMessage = (view: EmptyMessageView, state: DomRendererState, rep
     badge.style.marginBottom = "var(--en-spacing-3)"
     badge.style.background = colorValue("surfaceRaised")
     badge.style.color = colorValue(emptyMessageToneColor[tone])
-    badge.innerHTML = iconSvg(view.icon.name, emptyMessageGlyphPx[size])
+    badge.style.fontSize = `${emptyMessageGlyphPx[size]}px`
+    badge.innerHTML = iconSvg(view.icon.name)
     children.push(badge)
   }
   const title = document.createElement("span")

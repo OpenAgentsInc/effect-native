@@ -21,7 +21,8 @@ import {
 describe("EmptyMessage catalog v32 (issue #82, harmonization P2.9)", () => {
   test("the empty-message version is the current marker in the compatible chain", () => {
     expect(EmptyMessageCatalogVersion).toBe("effect-native/v32")
-    expect(CatalogVersion).toBe(EmptyMessageCatalogVersion)
+    // v33 (icon expansion) moved the current marker on; v32 stays compatible.
+    expect(compatibleCatalogVersions.indexOf(EmptyMessageCatalogVersion)).toBeGreaterThan(-1)
     expect(compatibleCatalogVersions).toContain(EmptyMessageCatalogVersion)
   })
 
