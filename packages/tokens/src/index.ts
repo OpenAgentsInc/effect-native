@@ -352,6 +352,220 @@ export const khalaPalette = PaletteSchema.make({
   }
 })
 
+// ---------------------------------------------------------------------------
+// Tier 2 — the tone × variant × state color matrix (harmonization P0.2, #75)
+// ---------------------------------------------------------------------------
+// The apps-sdk-ui symmetric semantic color grid as typed schema:
+// `colorMatrix[tone][variant][state]` resolves to background/border/text/ring
+// roles. Interactive states resolve through the existing alpha-overlay state
+// engine — on dark themes states lighten via translucent overlays of one base
+// hue, never new hues. Components (Button, Badge, Alert, Chip, SelectControl)
+// consume the matrix in a later catalog bump; this tier is theme data only.
+
+export const toneTokens = [
+  "accent",
+  "secondary",
+  "danger",
+  "success",
+  "warning",
+  "info"
+] as const
+export const toneVariantTokens = ["solid", "soft", "outline", "ghost"] as const
+export const toneStateTokens = ["rest", "hover", "active", "selected", "disabled"] as const
+
+export const ToneTokenSchema = Schema.Literals(toneTokens)
+export const ToneVariantTokenSchema = Schema.Literals(toneVariantTokens)
+export const ToneStateTokenSchema = Schema.Literals(toneStateTokens)
+
+export type ToneToken = (typeof toneTokens)[number]
+export type ToneVariantToken = (typeof toneVariantTokens)[number]
+export type ToneStateToken = (typeof toneStateTokens)[number]
+
+/** The fully transparent color: ghost/outline resting fills and borders. */
+export const transparentColor = "#00000000" as const
+
+/** One matrix cell: the four color roles a control resolves for a state. */
+export const ToneCellSchema = Schema.Struct({
+  background: ColorValueSchema,
+  border: ColorValueSchema,
+  text: ColorValueSchema,
+  ring: ColorValueSchema
+})
+export const ToneStateMapSchema = Schema.Struct(
+  tokenRecordFields(toneStateTokens, ToneCellSchema)
+)
+export const ToneVariantMapSchema = Schema.Struct(
+  tokenRecordFields(toneVariantTokens, ToneStateMapSchema)
+)
+export const ColorMatrixSchema = Schema.Struct(
+  tokenRecordFields(toneTokens, ToneVariantMapSchema)
+)
+
+export type ToneCell = Schema.Schema.Type<typeof ToneCellSchema>
+export type ToneStateMap = Schema.Schema.Type<typeof ToneStateMapSchema>
+export type ToneVariantMap = Schema.Schema.Type<typeof ToneVariantMapSchema>
+export type ColorMatrix = Schema.Schema.Type<typeof ColorMatrixSchema>
+
+/**
+ * The per-tone inputs the matrix derivation consumes. Solid states carry
+ * explicit ramp steps (dark themes lighten on hover; active presses one step
+ * the other way — the existing accent/accentHover/accentActive engine).
+ * Non-solid states are alpha overlays of one base hue.
+ */
+interface ToneSpec {
+  readonly foreground: string
+  readonly solidBackground: string
+  readonly solidBackgroundHover: string
+  readonly solidBackgroundActive: string
+  readonly solidText: string
+  readonly solidBorder: string
+  readonly hoverOverlay: string
+  readonly activeOverlay: string
+  readonly selectedOverlay: string
+  readonly softBackground: string
+  readonly softBackgroundHover: string
+  readonly softBackgroundActive: string
+  readonly outlineBorder: string
+  readonly ring: string
+  readonly disabledText: string
+}
+
+/**
+ * Expand one tone spec into the full variant × state grid. Disabled cells
+ * keep the resting fill with disabled text and no ring; renderers additionally
+ * apply the existing opacity dim for disabled controls (unchanged engine).
+ */
+const toneCells = (spec: ToneSpec): ToneVariantMap => ({
+  solid: {
+    rest: {
+      background: spec.solidBackground,
+      border: spec.solidBorder,
+      text: spec.solidText,
+      ring: spec.ring
+    },
+    hover: {
+      background: spec.solidBackgroundHover,
+      border: spec.solidBorder,
+      text: spec.solidText,
+      ring: spec.ring
+    },
+    active: {
+      background: spec.solidBackgroundActive,
+      border: spec.solidBorder,
+      text: spec.solidText,
+      ring: spec.ring
+    },
+    selected: {
+      background: spec.solidBackgroundActive,
+      border: spec.solidBorder,
+      text: spec.solidText,
+      ring: spec.ring
+    },
+    disabled: {
+      background: spec.solidBackground,
+      border: spec.solidBorder,
+      text: spec.disabledText,
+      ring: transparentColor
+    }
+  },
+  soft: {
+    rest: {
+      background: spec.softBackground,
+      border: transparentColor,
+      text: spec.foreground,
+      ring: spec.ring
+    },
+    hover: {
+      background: spec.softBackgroundHover,
+      border: transparentColor,
+      text: spec.foreground,
+      ring: spec.ring
+    },
+    active: {
+      background: spec.softBackgroundActive,
+      border: transparentColor,
+      text: spec.foreground,
+      ring: spec.ring
+    },
+    selected: {
+      background: spec.softBackgroundActive,
+      border: transparentColor,
+      text: spec.foreground,
+      ring: spec.ring
+    },
+    disabled: {
+      background: spec.softBackground,
+      border: transparentColor,
+      text: spec.disabledText,
+      ring: transparentColor
+    }
+  },
+  outline: {
+    rest: {
+      background: transparentColor,
+      border: spec.outlineBorder,
+      text: spec.foreground,
+      ring: spec.ring
+    },
+    hover: {
+      background: spec.hoverOverlay,
+      border: spec.outlineBorder,
+      text: spec.foreground,
+      ring: spec.ring
+    },
+    active: {
+      background: spec.activeOverlay,
+      border: spec.outlineBorder,
+      text: spec.foreground,
+      ring: spec.ring
+    },
+    selected: {
+      background: spec.selectedOverlay,
+      border: spec.outlineBorder,
+      text: spec.foreground,
+      ring: spec.ring
+    },
+    disabled: {
+      background: transparentColor,
+      border: spec.outlineBorder,
+      text: spec.disabledText,
+      ring: transparentColor
+    }
+  },
+  ghost: {
+    rest: {
+      background: transparentColor,
+      border: transparentColor,
+      text: spec.foreground,
+      ring: spec.ring
+    },
+    hover: {
+      background: spec.hoverOverlay,
+      border: transparentColor,
+      text: spec.foreground,
+      ring: spec.ring
+    },
+    active: {
+      background: spec.activeOverlay,
+      border: transparentColor,
+      text: spec.foreground,
+      ring: spec.ring
+    },
+    selected: {
+      background: spec.selectedOverlay,
+      border: transparentColor,
+      text: spec.foreground,
+      ring: spec.ring
+    },
+    disabled: {
+      background: transparentColor,
+      border: transparentColor,
+      text: spec.disabledText,
+      ring: transparentColor
+    }
+  }
+})
+
 export const SpacingThemeSchema = Schema.Struct(
   tokenRecordFields(spacingTokens, NonNegativeNumberSchema)
 )
@@ -410,6 +624,7 @@ export const ControlThemeSchema = Schema.Struct(
 export const ThemeSchema = Schema.Struct({
   spacing: SpacingThemeSchema,
   color: ColorThemeSchema,
+  colorMatrix: ColorMatrixSchema,
   radius: RadiusThemeSchema,
   typeScale: TypeScaleThemeSchema,
   breakpoint: BreakpointThemeSchema,
@@ -431,6 +646,229 @@ export type ElevationTheme = Schema.Schema.Type<typeof ElevationThemeSchema>
 export type ControlSizeValue = Schema.Schema.Type<typeof ControlSizeValueSchema>
 export type ControlTheme = Schema.Schema.Type<typeof ControlThemeSchema>
 export type Theme = Schema.Schema.Type<typeof ThemeSchema>
+
+/**
+ * The neutral fixture theme's color matrix. Light engine: hovers darken via
+ * slate overlays (`#0f172a` at the theme's stateHover/stateActive alphas);
+ * status solids darken one ramp step on hover/active; selection is
+ * accent-tinted (the theme's stateSelected value for accent/secondary).
+ */
+const defaultColorMatrix: ColorMatrix = {
+  accent: toneCells({
+    foreground: "#2563eb",
+    solidBackground: "#2563eb",
+    solidBackgroundHover: "#1d4ed8",
+    solidBackgroundActive: "#1e40af",
+    solidText: "#ffffff",
+    solidBorder: transparentColor,
+    hoverOverlay: "#0f172a0a",
+    activeOverlay: "#0f172a14",
+    selectedOverlay: "#2563eb29",
+    softBackground: "#2563eb29",
+    softBackgroundHover: "#2563eb33",
+    softBackgroundActive: "#2563eb3d",
+    outlineBorder: "#2563eb",
+    ring: "#93c5fd",
+    disabledText: "#cbd5e1"
+  }),
+  secondary: toneCells({
+    foreground: "#0f172a",
+    solidBackground: "#f8fafc",
+    solidBackgroundHover: "#eef2f7",
+    solidBackgroundActive: "#e2e8f0",
+    solidText: "#0f172a",
+    solidBorder: "#cbd5e1",
+    hoverOverlay: "#0f172a0a",
+    activeOverlay: "#0f172a14",
+    selectedOverlay: "#2563eb29",
+    softBackground: "#0f172a0a",
+    softBackgroundHover: "#0f172a14",
+    softBackgroundActive: "#0f172a29",
+    outlineBorder: "#94a3b8",
+    ring: "#93c5fd",
+    disabledText: "#cbd5e1"
+  }),
+  danger: toneCells({
+    foreground: "#dc2626",
+    solidBackground: "#dc2626",
+    solidBackgroundHover: "#b91c1c",
+    solidBackgroundActive: "#991b1b",
+    solidText: "#ffffff",
+    solidBorder: transparentColor,
+    hoverOverlay: "#dc26260a",
+    activeOverlay: "#dc262614",
+    selectedOverlay: "#dc262629",
+    softBackground: "#dc262629",
+    softBackgroundHover: "#dc262633",
+    softBackgroundActive: "#dc26263d",
+    outlineBorder: "#dc2626",
+    ring: "#fca5a5",
+    disabledText: "#cbd5e1"
+  }),
+  success: toneCells({
+    foreground: "#16a34a",
+    solidBackground: "#16a34a",
+    solidBackgroundHover: "#15803d",
+    solidBackgroundActive: "#166534",
+    solidText: "#ffffff",
+    solidBorder: transparentColor,
+    hoverOverlay: "#16a34a0a",
+    activeOverlay: "#16a34a14",
+    selectedOverlay: "#16a34a29",
+    softBackground: "#16a34a29",
+    softBackgroundHover: "#16a34a33",
+    softBackgroundActive: "#16a34a3d",
+    outlineBorder: "#16a34a",
+    ring: "#86efac",
+    disabledText: "#cbd5e1"
+  }),
+  warning: toneCells({
+    foreground: "#d97706",
+    solidBackground: "#d97706",
+    solidBackgroundHover: "#b45309",
+    solidBackgroundActive: "#92400e",
+    solidText: "#ffffff",
+    solidBorder: transparentColor,
+    hoverOverlay: "#d977060a",
+    activeOverlay: "#d9770614",
+    selectedOverlay: "#d9770629",
+    softBackground: "#d9770629",
+    softBackgroundHover: "#d9770633",
+    softBackgroundActive: "#d977063d",
+    outlineBorder: "#d97706",
+    ring: "#fcd34d",
+    disabledText: "#cbd5e1"
+  }),
+  info: toneCells({
+    foreground: "#0ea5e9",
+    solidBackground: "#0ea5e9",
+    solidBackgroundHover: "#0284c7",
+    solidBackgroundActive: "#0369a1",
+    solidText: "#ffffff",
+    solidBorder: transparentColor,
+    hoverOverlay: "#0ea5e90a",
+    activeOverlay: "#0ea5e914",
+    selectedOverlay: "#0ea5e929",
+    softBackground: "#0ea5e929",
+    softBackgroundHover: "#0ea5e933",
+    softBackgroundActive: "#0ea5e93d",
+    outlineBorder: "#0ea5e9",
+    ring: "#7dd3fc",
+    disabledText: "#cbd5e1"
+  })
+}
+
+/**
+ * The Khala color matrix (tier 2, harmonization P0.2): every cell derives
+ * from `khalaPalette` ramp steps and alpha overlays. Protoss blue stays the
+ * primary tone. The accent solid/ghost cells reproduce the exact colors the
+ * current Button lowering uses (accent/accentHover/accentActive fills and the
+ * stateHover/stateActive/stateSelected overlays), pinned by test.
+ */
+const khalaColorMatrix: ColorMatrix = {
+  accent: toneCells({
+    foreground: khalaPalette.blue["500"],
+    solidBackground: khalaPalette.blue["500"],
+    solidBackgroundHover: khalaPalette.blue["400"],
+    solidBackgroundActive: khalaPalette.blue["600"],
+    solidText: khalaPalette.gray["25"],
+    solidBorder: transparentColor,
+    hoverOverlay: withAlpha(khalaPalette.blue["200"], khalaPalette.alpha["8"]),
+    activeOverlay: withAlpha(khalaPalette.blue["200"], khalaPalette.alpha["13"]),
+    selectedOverlay: withAlpha(khalaPalette.blue["500"], khalaPalette.alpha["16"]),
+    softBackground: withAlpha(khalaPalette.blue["500"], khalaPalette.alpha["16"]),
+    softBackgroundHover: withAlpha(khalaPalette.blue["500"], khalaPalette.alpha["20"]),
+    softBackgroundActive: withAlpha(khalaPalette.blue["500"], khalaPalette.alpha["24"]),
+    outlineBorder: khalaPalette.blue["500"],
+    ring: khalaPalette.blue["300"],
+    disabledText: khalaPalette.gray["500"]
+  }),
+  secondary: toneCells({
+    foreground: khalaPalette.gray["25"],
+    solidBackground: khalaPalette.gray["900"],
+    solidBackgroundHover: khalaPalette.gray["850"],
+    solidBackgroundActive: khalaPalette.gray["750"],
+    solidText: khalaPalette.gray["25"],
+    solidBorder: khalaPalette.gray["700"],
+    hoverOverlay: withAlpha(khalaPalette.blue["200"], khalaPalette.alpha["8"]),
+    activeOverlay: withAlpha(khalaPalette.blue["200"], khalaPalette.alpha["13"]),
+    selectedOverlay: withAlpha(khalaPalette.blue["500"], khalaPalette.alpha["16"]),
+    softBackground: withAlpha(khalaPalette.blue["200"], khalaPalette.alpha["8"]),
+    softBackgroundHover: withAlpha(khalaPalette.blue["200"], khalaPalette.alpha["13"]),
+    softBackgroundActive: withAlpha(khalaPalette.blue["200"], khalaPalette.alpha["16"]),
+    outlineBorder: khalaPalette.gray["600"],
+    ring: khalaPalette.blue["300"],
+    disabledText: khalaPalette.gray["500"]
+  }),
+  danger: toneCells({
+    foreground: khalaPalette.red["400"],
+    solidBackground: khalaPalette.red["400"],
+    solidBackgroundHover: khalaPalette.red["300"],
+    solidBackgroundActive: khalaPalette.red["500"],
+    solidText: khalaPalette.gray["950"],
+    solidBorder: transparentColor,
+    hoverOverlay: withAlpha(khalaPalette.red["400"], khalaPalette.alpha["8"]),
+    activeOverlay: withAlpha(khalaPalette.red["400"], khalaPalette.alpha["13"]),
+    selectedOverlay: withAlpha(khalaPalette.red["400"], khalaPalette.alpha["16"]),
+    softBackground: withAlpha(khalaPalette.red["400"], khalaPalette.alpha["16"]),
+    softBackgroundHover: withAlpha(khalaPalette.red["400"], khalaPalette.alpha["20"]),
+    softBackgroundActive: withAlpha(khalaPalette.red["400"], khalaPalette.alpha["24"]),
+    outlineBorder: khalaPalette.red["400"],
+    ring: khalaPalette.red["300"],
+    disabledText: khalaPalette.gray["500"]
+  }),
+  success: toneCells({
+    foreground: khalaPalette.green["500"],
+    solidBackground: khalaPalette.green["500"],
+    solidBackgroundHover: khalaPalette.green["400"],
+    solidBackgroundActive: khalaPalette.green["600"],
+    solidText: khalaPalette.gray["950"],
+    solidBorder: transparentColor,
+    hoverOverlay: withAlpha(khalaPalette.green["500"], khalaPalette.alpha["8"]),
+    activeOverlay: withAlpha(khalaPalette.green["500"], khalaPalette.alpha["13"]),
+    selectedOverlay: withAlpha(khalaPalette.green["500"], khalaPalette.alpha["16"]),
+    softBackground: withAlpha(khalaPalette.green["500"], khalaPalette.alpha["16"]),
+    softBackgroundHover: withAlpha(khalaPalette.green["500"], khalaPalette.alpha["20"]),
+    softBackgroundActive: withAlpha(khalaPalette.green["500"], khalaPalette.alpha["24"]),
+    outlineBorder: khalaPalette.green["500"],
+    ring: khalaPalette.green["300"],
+    disabledText: khalaPalette.gray["500"]
+  }),
+  warning: toneCells({
+    foreground: khalaPalette.amber["500"],
+    solidBackground: khalaPalette.amber["500"],
+    solidBackgroundHover: khalaPalette.amber["400"],
+    solidBackgroundActive: khalaPalette.amber["600"],
+    solidText: khalaPalette.gray["950"],
+    solidBorder: transparentColor,
+    hoverOverlay: withAlpha(khalaPalette.amber["500"], khalaPalette.alpha["8"]),
+    activeOverlay: withAlpha(khalaPalette.amber["500"], khalaPalette.alpha["13"]),
+    selectedOverlay: withAlpha(khalaPalette.amber["500"], khalaPalette.alpha["16"]),
+    softBackground: withAlpha(khalaPalette.amber["500"], khalaPalette.alpha["16"]),
+    softBackgroundHover: withAlpha(khalaPalette.amber["500"], khalaPalette.alpha["20"]),
+    softBackgroundActive: withAlpha(khalaPalette.amber["500"], khalaPalette.alpha["24"]),
+    outlineBorder: khalaPalette.amber["500"],
+    ring: khalaPalette.amber["300"],
+    disabledText: khalaPalette.gray["500"]
+  }),
+  info: toneCells({
+    foreground: khalaPalette.cyan["400"],
+    solidBackground: khalaPalette.cyan["400"],
+    solidBackgroundHover: khalaPalette.cyan["300"],
+    solidBackgroundActive: khalaPalette.cyan["500"],
+    solidText: khalaPalette.gray["950"],
+    solidBorder: transparentColor,
+    hoverOverlay: withAlpha(khalaPalette.cyan["400"], khalaPalette.alpha["8"]),
+    activeOverlay: withAlpha(khalaPalette.cyan["400"], khalaPalette.alpha["13"]),
+    selectedOverlay: withAlpha(khalaPalette.cyan["400"], khalaPalette.alpha["16"]),
+    softBackground: withAlpha(khalaPalette.cyan["400"], khalaPalette.alpha["16"]),
+    softBackgroundHover: withAlpha(khalaPalette.cyan["400"], khalaPalette.alpha["20"]),
+    softBackgroundActive: withAlpha(khalaPalette.cyan["400"], khalaPalette.alpha["24"]),
+    outlineBorder: khalaPalette.cyan["400"],
+    ring: khalaPalette.cyan["300"],
+    disabledText: khalaPalette.gray["500"]
+  })
+}
 
 export const defaultTheme = ThemeSchema.make({
   spacing: {
@@ -492,6 +930,7 @@ export const defaultTheme = ThemeSchema.make({
     syntaxNumber: "#b45309",
     syntaxOperator: "#334155"
   },
+  colorMatrix: defaultColorMatrix,
   radius: {
     none: 0,
     sm: 2,
@@ -598,6 +1037,7 @@ export const khalaTheme = ThemeSchema.make({
     syntaxNumber: khalaPalette.amber["400"], // #fbbf24
     syntaxOperator: khalaPalette.gray["300"] // #93a4c3
   },
+  colorMatrix: khalaColorMatrix,
   radius: {
     none: 0,
     sm: 2,

@@ -1808,7 +1808,9 @@ const componentStoryMap = {
   ]
 } satisfies { readonly [Tag in ComponentTag]: ReadonlyArray<Story> }
 
-export const generatedStoriesByComponent = componentStoryMap
+export const generatedStoriesByComponent: {
+  readonly [Tag in ComponentTag]: ReadonlyArray<Story>
+} = componentStoryMap
 
 export const defaultStorybook: Storybook = StorybookSchema.make({
   version: "effect-native/storybook/v0",
