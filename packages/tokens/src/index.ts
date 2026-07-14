@@ -79,8 +79,12 @@ export const radiusTokens = ["none", "sm", "md", "lg", "xl", "full"] as const
 export const typeScaleTokens = ["caption", "body", "label", "title", "heading"] as const
 export const breakpointTokens = ["sm", "md", "lg", "xl"] as const
 export const dimensionTokens = ["xs", "sm", "md", "lg", "xl", "full"] as const
-/** The shared control size lattice: one metric system for every control. */
-export const controlTokens = ["sm", "md", "lg", "xl"] as const
+/**
+ * The shared control size lattice: one metric system for every control.
+ * `2xs`/`xs` serve dense application chrome (toolbars, inline chips, status
+ * rows); `sm`…`xl` are the standard control heights.
+ */
+export const controlTokens = ["2xs", "xs", "sm", "md", "lg", "xl"] as const
 
 export const SpacingTokenSchema = Schema.Literals(spacingTokens)
 export const ColorTokenSchema = Schema.Literals(colorTokens)
@@ -595,12 +599,18 @@ export const DimensionThemeSchema = Schema.Struct(
  * overlays. Durations are milliseconds.
  */
 export const MotionThemeSchema = Schema.Struct({
+  /** The apps-sdk "basic" transition duration (150ms in shipped themes). */
   durationFastMs: NonNegativeNumberSchema,
   durationEnterMs: NonNegativeNumberSchema,
   durationExitMs: NonNegativeNumberSchema,
   easeBasic: EasingValueSchema,
+  // The named easing vocabulary (apps-sdk-ui harmonization C6): enter/exit
+  // for overlay lifecycles, exitSnappy for less inertia delay on dismissal,
+  // move for on-screen positional transitions.
   easeEnter: EasingValueSchema,
-  easeExit: EasingValueSchema
+  easeExit: EasingValueSchema,
+  easeExitSnappy: EasingValueSchema,
+  easeMove: EasingValueSchema
 })
 /**
  * Elevation vocabulary: floating overlays (menus, popovers, palettes,
@@ -611,10 +621,17 @@ export const ElevationThemeSchema = Schema.Struct({
   overlayShadow: ShadowValueSchema,
   hairlineWidth: NonNegativeNumberSchema
 })
-/** One control-lattice step: fixed height, horizontal gutter, icon size. */
+/**
+ * One control-lattice step: fixed height paired with the horizontal gutter,
+ * corner radius, label font size, and icon size that coherently size a
+ * control, its padding, its text, and its icon from one `size` value —
+ * the apps-sdk `--control-*` family as typed sub-tokens (harmonization C3).
+ */
 export const ControlSizeValueSchema = Schema.Struct({
   height: PositiveNumberSchema,
   gutter: NonNegativeNumberSchema,
+  radius: NonNegativeNumberSchema,
+  fontSize: PositiveNumberSchema,
   icon: PositiveNumberSchema
 })
 export const ControlThemeSchema = Schema.Struct(
@@ -966,17 +983,21 @@ export const defaultTheme = ThemeSchema.make({
     durationExitMs: 200,
     easeBasic: "ease",
     easeEnter: "cubic-bezier(0.19, 1, 0.22, 1)",
-    easeExit: "cubic-bezier(0.8, 0, 0.4, 1)"
+    easeExit: "cubic-bezier(0.8, 0, 0.4, 1)",
+    easeExitSnappy: "cubic-bezier(0.65, 0, 0.4, 1)",
+    easeMove: "cubic-bezier(0.65, 0, 0.35, 1)"
   },
   elevation: {
     overlayShadow: "0 10px 15px -3px rgba(15, 23, 42, 0.12), 0 4px 6px -4px rgba(15, 23, 42, 0.12)",
     hairlineWidth: 1
   },
   control: {
-    sm: { height: 24, gutter: 8, icon: 14 },
-    md: { height: 28, gutter: 10, icon: 16 },
-    lg: { height: 32, gutter: 12, icon: 18 },
-    xl: { height: 40, gutter: 14, icon: 20 }
+    "2xs": { height: 16, gutter: 4, radius: 2, fontSize: 11, icon: 10 },
+    xs: { height: 20, gutter: 6, radius: 4, fontSize: 12, icon: 12 },
+    sm: { height: 24, gutter: 8, radius: 4, fontSize: 12, icon: 14 },
+    md: { height: 28, gutter: 10, radius: 6, fontSize: 14, icon: 16 },
+    lg: { height: 32, gutter: 12, radius: 6, fontSize: 14, icon: 18 },
+    xl: { height: 40, gutter: 14, radius: 8, fontSize: 16, icon: 20 }
   }
 })
 
@@ -1060,7 +1081,20 @@ export const khalaTheme = ThemeSchema.make({
     overlayShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.6), 0 4px 6px -4px rgba(0, 0, 0, 0.6)",
     hairlineWidth: 1
   },
-  control: defaultTheme.control
+  // The Khala control lattice: heights/gutters/icons unchanged from the
+  // trimmed 4-step lattice (24/28/32/40 with 2xs/xs added for dense desktop
+  // chrome). Radii sit on the theme's sharper radius scale (controls render
+  // at radius-md = 4px today) and font sizes on the caption/label/body type
+  // scale, so one `size` prop sizes a control coherently with zero drift
+  // from current desktop rendering.
+  control: {
+    "2xs": { height: 16, gutter: 4, radius: 2, fontSize: 11, icon: 10 },
+    xs: { height: 20, gutter: 6, radius: 4, fontSize: 12, icon: 12 },
+    sm: { height: 24, gutter: 8, radius: 4, fontSize: 12, icon: 14 },
+    md: { height: 28, gutter: 10, radius: 4, fontSize: 13, icon: 16 },
+    lg: { height: 32, gutter: 12, radius: 4, fontSize: 14, icon: 18 },
+    xl: { height: 40, gutter: 14, radius: 6, fontSize: 16, icon: 20 }
+  }
 })
 
 /**

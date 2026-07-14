@@ -104,27 +104,33 @@ describe("khalaTheme (Protoss-blue dark theme)", () => {
   })
 
   test("pins the chrome physics groups (motion, elevation, control lattice)", () => {
-    // The application-chrome design language (apps-sdk-ui port, EP250):
+    // The application-chrome design language (apps-sdk-ui port, EP250 + #76):
     // 150ms basic transitions, 350ms strong-ease-out overlay enters, 200ms
-    // exits; overlays = shadow + hairline ring; a trimmed 4-step control
-    // lattice (no 22px or 48px control use-cases in Khala surfaces).
+    // exits, plus the named exitSnappy/move easings; overlays = shadow +
+    // hairline ring; the control lattice keeps the 24/28/32/40 core heights
+    // (zero drift) with 2xs/xs dense-chrome steps and paired
+    // gutter/radius/fontSize/icon sub-tokens per step.
     expect(khalaTheme.motion).toEqual({
       durationFastMs: 150,
       durationEnterMs: 350,
       durationExitMs: 200,
       easeBasic: "ease",
       easeEnter: "cubic-bezier(0.19, 1, 0.22, 1)",
-      easeExit: "cubic-bezier(0.8, 0, 0.4, 1)"
+      easeExit: "cubic-bezier(0.8, 0, 0.4, 1)",
+      easeExitSnappy: "cubic-bezier(0.65, 0, 0.4, 1)",
+      easeMove: "cubic-bezier(0.65, 0, 0.35, 1)"
     })
     expect(khalaTheme.elevation).toEqual({
       overlayShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.6), 0 4px 6px -4px rgba(0, 0, 0, 0.6)",
       hairlineWidth: 1
     })
     expect(khalaTheme.control).toEqual({
-      sm: { height: 24, gutter: 8, icon: 14 },
-      md: { height: 28, gutter: 10, icon: 16 },
-      lg: { height: 32, gutter: 12, icon: 18 },
-      xl: { height: 40, gutter: 14, icon: 20 }
+      "2xs": { height: 16, gutter: 4, radius: 2, fontSize: 11, icon: 10 },
+      xs: { height: 20, gutter: 6, radius: 4, fontSize: 12, icon: 12 },
+      sm: { height: 24, gutter: 8, radius: 4, fontSize: 12, icon: 14 },
+      md: { height: 28, gutter: 10, radius: 4, fontSize: 13, icon: 16 },
+      lg: { height: 32, gutter: 12, radius: 4, fontSize: 14, icon: 18 },
+      xl: { height: 40, gutter: 14, radius: 6, fontSize: 16, icon: 20 }
     })
   })
 
