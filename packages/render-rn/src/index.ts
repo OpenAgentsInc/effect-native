@@ -1,7 +1,12 @@
 import { Deferred, Effect, Exit, Fiber, Ref, Scope, Stream } from "effect"
 import {
   type AriaRole,
+  type AlertView,
+  resolveAlertAppearance,
   type BadgeView,
+  resolveBadgeAppearance,
+  resolveSelectAppearance,
+  resolveTextFieldAppearance,
   type ButtonView,
   type CardView,
   type CheckboxView,
@@ -135,6 +140,7 @@ import {
   type RadiusToken,
   type SpacingToken,
   type Theme,
+  type ToneToken,
   type TypeScaleToken
 } from "@effect-native/tokens"
 
@@ -1020,20 +1026,46 @@ const renderImage = (
   )
 }
 
+// TextField matrix axes (harmonization #79). `resolveTextFieldAppearance`'s
+// `isLegacy` flag gates the new chrome: a pre-#79 tree never sets
+// `variant`/`size`, so it keeps the exact pre-#79 (renderer-drawn-chromeless)
+// look, relying entirely on `view.style` as before. `invalid` and
+// `gutterSize` are wholly new axes with nothing to preserve, so they always
+// apply when set. `autoResize` is honored by continuing to omit any height
+// constraint on a multiline field — RN's `TextInput` already grows with its
+// content when nothing constrains its height, so this is a declared
+// (accurate, not fabricated) no-op rather than new imperative sizing logic.
 const renderTextField = (
   view: TextFieldView,
   dependencies: ReactNativeDependencies,
   report: IntentReporter,
   options: ReactNativeRenderOptions
 ): ReactElementLike => {
+  const theme = options.theme ?? defaultTheme
   const onChange = view.field === undefined
     ? view.onChange
     : IntentRef("FormFieldChanged", FormFieldValueBinding(view.field))
+  const appearance = resolveTextFieldAppearance(view)
+  const chromeStyle = appearance.isLegacy
+    ? (view.invalid === true ? { borderBottomWidth: 1, borderBottomColor: colorValue(theme, "danger") } : {})
+    : (() => {
+        const cell = theme.colorMatrix[appearance.tone][appearance.variant].rest
+        const control = theme.control[appearance.size]
+        return {
+          backgroundColor: cell.background,
+          borderColor: cell.border,
+          borderWidth: 1,
+          borderRadius: control.radius,
+          minHeight: control.height,
+          color: cell.text
+        }
+      })()
+  const gutterStyle = view.gutterSize === undefined ? {} : { paddingHorizontal: spacingValue(theme, view.gutterSize) }
   return createElement(
     dependencies,
     dependencies.ReactNative.TextInput,
     {
-      ...baseProps(view, viewStyle(view, options)),
+      ...baseProps(view, mergeNativeStyles(mergeNativeStyles(chromeStyle, gutterStyle), viewStyle(view, options))),
       accessibilityLabel: view.label,
       autoFocus: view.focused === true,
       multiline: view.multiline === true,
@@ -1504,6 +1536,11 @@ const renderDivider = (
   })
 }
 
+// Badge/Chip matrix axes (harmonization #79). `resolveBadgeAppearance`'s
+// `isLegacy` flag gates every new visual, mirroring the DOM renderer: a
+// pre-#79 tree never sets `variant`/`size`, so it keeps the exact pre-#79
+// bare-Text look; only an explicit `variant`/`size` opts a badge into the
+// matrix cell + control-lattice box.
 const renderBadge = (
   view: BadgeView,
   dependencies: ReactNativeDependencies,
@@ -1511,12 +1548,42 @@ const renderBadge = (
 ): ReactElementLike => {
   const theme = options.theme ?? defaultTheme
   const tone = view.tone ?? "neutral"
-  const style = mergeNativeStyles({ color: colorValue(theme, toneColorToken[tone]) }, viewStyle(view, options))
+  const appearance = resolveBadgeAppearance(view)
+  if (appearance.isLegacy) {
+    const style = mergeNativeStyles({ color: colorValue(theme, toneColorToken[tone]) }, viewStyle(view, options))
+    return createElement(
+      dependencies,
+      dependencies.ReactNative.Text,
+      { ...baseProps(view, style), testID: `en-badge:${tone}` },
+      view.label
+    )
+  }
+  const cell = theme.colorMatrix[appearance.tone][appearance.variant].rest
+  const control = theme.control[appearance.size]
+  const style = mergeNativeStyles(
+    {
+      flexDirection: "row",
+      alignItems: "center",
+      alignSelf: "flex-start",
+      backgroundColor: cell.background,
+      borderColor: cell.border,
+      borderWidth: 1,
+      borderRadius: control.radius,
+      paddingHorizontal: control.gutter,
+      minHeight: control.height
+    },
+    viewStyle(view, options)
+  )
   return createElement(
     dependencies,
-    dependencies.ReactNative.Text,
-    { ...baseProps(view, style), testID: `en-badge:${tone}` },
-    view.label
+    dependencies.ReactNative.View,
+    { ...baseProps(view, style), testID: `en-badge:${appearance.tone}:${appearance.variant}` },
+    createElement(
+      dependencies,
+      dependencies.ReactNative.Text,
+      { key: "label", style: { color: cell.text, fontSize: control.fontSize } },
+      view.label
+    )
   )
 }
 
@@ -1527,21 +1594,60 @@ const renderChip = (
 ): ReactElementLike => {
   const theme = options.theme ?? defaultTheme
   const tone = view.tone ?? "neutral"
-  const style = mergeNativeStyles({ flexDirection: "row", gap: spacingValue(theme, "1") }, viewStyle(view, options))
+  const appearance = resolveBadgeAppearance(view)
+  if (appearance.isLegacy) {
+    const style = mergeNativeStyles({ flexDirection: "row", gap: spacingValue(theme, "1") }, viewStyle(view, options))
+    const parts: Array<ReactElementLike> = [
+      createElement(dependencies, dependencies.ReactNative.Text, { key: "label" }, view.label)
+    ]
+    if (view.value !== undefined) {
+      parts.push(
+        createElement(
+          dependencies,
+          dependencies.ReactNative.Text,
+          { key: "value", style: { color: colorValue(theme, toneColorToken[tone]) } },
+          view.value
+        )
+      )
+    }
+    return createElement(dependencies, dependencies.ReactNative.View, baseProps(view, style), ...parts)
+  }
+  const cell = theme.colorMatrix[appearance.tone][appearance.variant].rest
+  const control = theme.control[appearance.size]
+  const style = mergeNativeStyles(
+    {
+      flexDirection: "row",
+      alignItems: "center",
+      alignSelf: "flex-start",
+      gap: spacingValue(theme, "1"),
+      backgroundColor: cell.background,
+      borderColor: cell.border,
+      borderWidth: 1,
+      borderRadius: control.radius,
+      paddingHorizontal: control.gutter,
+      minHeight: control.height
+    },
+    viewStyle(view, options)
+  )
   const parts: Array<ReactElementLike> = [
-    createElement(dependencies, dependencies.ReactNative.Text, { key: "label" }, view.label)
+    createElement(dependencies, dependencies.ReactNative.Text, { key: "label", style: { color: cell.text, fontSize: control.fontSize } }, view.label)
   ]
   if (view.value !== undefined) {
     parts.push(
       createElement(
         dependencies,
         dependencies.ReactNative.Text,
-        { key: "value", style: { color: colorValue(theme, toneColorToken[tone]) } },
+        { key: "value", style: { color: cell.text, fontSize: control.fontSize } },
         view.value
       )
     )
   }
-  return createElement(dependencies, dependencies.ReactNative.View, baseProps(view, style), ...parts)
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    { ...baseProps(view, style), testID: `en-chip:${appearance.tone}:${appearance.variant}` },
+    ...parts
+  )
 }
 
 const renderMeter = (
@@ -2964,18 +3070,56 @@ const renderToggle = (
   )
 }
 
+// Select/SelectControl trigger conventions (harmonization #79). React
+// Native has no native `<select>`, so this renders selectable rows
+// (picker-style) rather than a closed trigger + popup — a declared,
+// pre-existing fidelity gap (see the original comment below), which also
+// means `dropdownIcon` has no trigger glyph to attach to on this renderer;
+// it is accepted and typed for cross-renderer parity but intentionally
+// unused here, exactly like SegmentedControl's declared RN thumb-animation
+// gap. `variant`/`size`/`pill` still apply real container/row chrome from
+// the matrix + control lattice, gated by `resolveSelectAppearance`'s
+// `isLegacy` flag so a pre-#79 tree keeps its exact unstyled-row look.
+// Multi-select is additive: toggling membership in `values` when `multiple`
+// is true, else the original single-select `value` behavior.
 const renderSelect = (
   view: SelectView,
   dependencies: ReactNativeDependencies,
   report: IntentReporter,
   options: ReactNativeRenderOptions
 ): ReactElementLike => {
+  const theme = options.theme ?? defaultTheme
   const onChange = controlChangeIntent(view)
+  const appearance = resolveSelectAppearance(view)
+  const multiple = view.multiple === true
+  const selectedValues = view.values ?? []
+  const isSelected = (optionValue: string): boolean =>
+    multiple ? selectedValues.includes(optionValue) : view.value === optionValue
+  const nextIntentPayload = (optionValue: string): string | ReadonlyArray<string> =>
+    multiple
+      ? (selectedValues.includes(optionValue)
+        ? selectedValues.filter((value) => value !== optionValue)
+        : [...selectedValues, optionValue])
+      : optionValue
   // No native <select> in RN; render selectable rows (picker-style).
+  const containerStyle = appearance.isLegacy
+    ? { flexDirection: "column" as const }
+    : (() => {
+        const cell = theme.colorMatrix[appearance.tone][appearance.variant].rest
+        const control = theme.control[appearance.size]
+        return {
+          flexDirection: "column" as const,
+          backgroundColor: cell.background,
+          borderColor: cell.border,
+          borderWidth: 1,
+          borderRadius: appearance.pill ? radiusValue(theme, "full") : control.radius,
+          paddingHorizontal: control.gutter
+        }
+      })()
   return createElement(
     dependencies,
     dependencies.ReactNative.View,
-    { ...baseProps(view, mergeNativeStyles({ flexDirection: "column" }, viewStyle(view, options))), testID: "en-select", accessibilityLabel: view.label },
+    { ...baseProps(view, mergeNativeStyles(containerStyle, viewStyle(view, options))), testID: "en-select", accessibilityLabel: view.label },
     ...view.options.map((option) =>
       createElement(
         dependencies,
@@ -2984,11 +3128,11 @@ const renderSelect = (
           key: `option-${option.value}`,
           testID: `en-select-option:${option.value}`,
           accessibilityRole: "menuitem",
-          accessibilityState: { selected: view.value === option.value, disabled: view.disabled === true || option.disabled === true },
+          accessibilityState: { selected: isSelected(option.value), disabled: view.disabled === true || option.disabled === true },
           disabled: view.disabled === true || option.disabled === true,
           ...(onChange === undefined || view.disabled === true || option.disabled === true
             ? {}
-            : { onPress: () => runReportedIntent(report, onChange, option.value) })
+            : { onPress: () => runReportedIntent(report, onChange, nextIntentPayload(option.value)) })
         },
         createElement(dependencies, dependencies.ReactNative.Text, { key: "label" }, option.label)
       ))
@@ -3416,6 +3560,82 @@ const renderStatusBanner = (
       testID: `en-status-banner:${view.tone}`,
       accessibilityRole: view.tone === "danger" ? "alert" : "text",
       accessibilityLiveRegion: rnLiveRegion(view.tone)
+    },
+    ...parts
+  )
+}
+
+const rnAlertLiveRegion = (tone: ToneToken): string => (tone === "danger" ? "assertive" : "polite")
+
+// Alert (harmonization #79, new component — see the AlertView doc comment in
+// core for the Alert-vs-StatusBanner decision). No legacy rendering to
+// preserve, so `resolveAlertAppearance` always resolves a concrete
+// tone/variant/icon and the matrix cell always drives the chrome.
+const renderAlert = (
+  view: AlertView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const theme = options.theme ?? defaultTheme
+  const appearance = resolveAlertAppearance(view)
+  const cell = theme.colorMatrix[appearance.tone][appearance.variant].rest
+  const bodyParts: Array<ReactElementLike> = []
+  if (view.title !== undefined) {
+    bodyParts.push(
+      createElement(
+        dependencies,
+        dependencies.ReactNative.Text,
+        { key: "title", accessibilityRole: "header", style: { color: cell.text, fontWeight: "600" } },
+        view.title
+      )
+    )
+  }
+  bodyParts.push(
+    createElement(dependencies, dependencies.ReactNative.Text, { key: "message", style: { color: cell.text } }, view.message)
+  )
+  const parts: Array<ReactElementLike> = [
+    createElement(
+      dependencies,
+      dependencies.ReactNative.View,
+      { key: "body", style: { flexDirection: "column", gap: spacingValue(theme, "1"), flex: 1 } },
+      ...bodyParts
+    )
+  ]
+  if (view.onDismiss !== undefined) {
+    const onDismiss = view.onDismiss
+    parts.push(
+      createElement(
+        dependencies,
+        dependencies.ReactNative.Pressable,
+        { key: "dismiss", testID: "en-alert-dismiss", accessibilityLabel: "Dismiss", onPress: () => runReportedIntent(report, onDismiss) },
+        createElement(dependencies, dependencies.ReactNative.Text, { key: "x", style: { color: cell.text } }, "×")
+      )
+    )
+  }
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    {
+      ...baseProps(
+        view,
+        mergeNativeStyles(
+          {
+            flexDirection: "row",
+            alignItems: "flex-start",
+            gap: spacingValue(theme, "2"),
+            padding: spacingValue(theme, "3"),
+            borderRadius: radiusValue(theme, "md"),
+            borderWidth: 1,
+            backgroundColor: cell.background,
+            borderColor: cell.border
+          },
+          viewStyle(view, options)
+        )
+      ),
+      testID: `en-alert:${appearance.tone}:${appearance.variant}`,
+      accessibilityRole: appearance.tone === "danger" ? "alert" : "text",
+      accessibilityLiveRegion: rnAlertLiveRegion(appearance.tone)
     },
     ...parts
   )
@@ -4254,6 +4474,8 @@ const renderResolvedReactNativeView = (
       return renderToastRegion(view, dependencies, report, options)
     case "StatusBanner":
       return renderStatusBanner(view, dependencies, report, options)
+    case "Alert":
+      return renderAlert(view, dependencies, report, options)
     case "RecoveryOverlay":
       return renderRecoveryOverlay(view, dependencies, report, options)
     case "Markdown":

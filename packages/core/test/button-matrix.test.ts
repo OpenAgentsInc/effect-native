@@ -28,7 +28,8 @@ describe("Button catalog v37 (#78, harmonization P1.5)", () => {
     expect(ButtonMatrixCatalogVersion).toBe("effect-native/v37")
     // Constructors always stamp the current catalog marker, not the marker
     // the component shipped under — ButtonMatrix shipped at v37; #83
-    // (Spinner/LoadingDots/ShimmerText) has since moved CatalogVersion
+    // (Spinner/LoadingDots/ShimmerText, v38) and #79 (Badge/Chip/TextField/
+    // Select matrix axes + Alert, v39) have since moved CatalogVersion
     // forward. Its own historical marker still decodes via compatibility.
     expect(CatalogVersion).not.toBe(ButtonMatrixCatalogVersion)
     expect(compatibleCatalogVersions).toContain(ButtonMatrixCatalogVersion)

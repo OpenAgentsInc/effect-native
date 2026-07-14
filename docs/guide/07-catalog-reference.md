@@ -8,17 +8,39 @@ conformance-checked by
 (`bun run check:catalog-reference`) so this page cannot silently drop a shipped
 component.
 
-Current catalog marker: `CatalogVersion = "effect-native/v38"` (v38 adds
-`Spinner` + `LoadingDots` + `ShimmerText` — indeterminate loading indicators
-for Desktop transcript streaming states, tool-card wait states, and pending
-text (issue #83, harmonization P2.10). `Spinner`/`LoadingDots` size off the
-control-lattice icon sub-token and the closed Tone set; `ShimmerText` sweeps
-either real pending text or a skeleton placeholder width. Determinate
-circular progress stays a `Meter` variant — this bump does not duplicate it.
-All three honor reduced motion: an explicit `reduceMotion` wins, otherwise
-the renderer bakes in the resolved `prefers-reduced-motion` signal via the
-new `MotionPreferenceService`/`ViewResolution.reducedMotion`, so no component
-checks a media query itself. v37 gave `Button` the full tone x variant x
+Current catalog marker: `CatalogVersion = "effect-native/v39"` (v39,
+harmonization P1.6, issue #79: matrix axes on the remaining PARTIAL
+components from the harmonization audit. `Badge`/`Chip` gain `variant`
+(`solid`/`soft`/`outline`) + lattice `size`; omitting both keeps the exact
+pre-v39 tone-colored-text-only look (`resolveBadgeAppearance`'s `isLegacy`
+flag gates every new visual). `TextField` gains `variant`
+(`outline`/`soft`), lattice `size`, an independent `gutterSize` override,
+`invalid`, and (on `PlainTextFieldView`) `autoResize` for a DOM textarea
+that grows to its content (React Native already grows a multiline field
+with no fixed height, so `autoResize` there is a declared, accurate no-op).
+`Select` gains SelectControl-style trigger conventions — `variant`
+(`soft`/`outline`/`ghost`), lattice `size`, `pill`, `dropdownIcon` — plus
+additive multi-select (`multiple` + `values`, `onChange` fires the next
+selected-values array); React Native's rows-list Select has no trigger to
+attach `dropdownIcon` to, a declared fidelity gap. A brand-new `Alert`
+component (icon + title + body on the full tone x variant matrix) joins the
+catalog rather than reshaping `StatusBanner` in place — see the `AlertView`
+doc comment in `packages/core/src/index.ts` and the `### Alert` section
+below for the Alert-vs-StatusBanner decision.
+
+v38 added `Spinner` + `LoadingDots` + `ShimmerText` — indeterminate loading
+indicators for Desktop transcript streaming states, tool-card wait states,
+and pending text (issue #83, harmonization P2.10). `Spinner`/`LoadingDots`
+size off the control-lattice icon sub-token and the closed Tone set;
+`ShimmerText` sweeps either real pending text or a skeleton placeholder
+width. Determinate circular progress stays a `Meter` variant — this bump
+does not duplicate it. All three honor reduced motion: an explicit
+`reduceMotion` wins, otherwise the renderer bakes in the resolved
+`prefers-reduced-motion` signal via the new
+`MotionPreferenceService`/`ViewResolution.reducedMotion`, so no component
+checks a media query itself.
+
+v37 gave `Button` the full tone x variant x
 size matrix — `tone` (the 6 matrix tones, default `"accent"`), `variant`
 (`solid`/`soft`/`outline`/`ghost`, default `"solid"`), `size` (the control
 lattice, default `"md"`), plus `pill`, `loading`, `block`, and `selected` —
@@ -42,7 +64,7 @@ marks with the image -> initials -> icon fallback chain, control-lattice
 sizes, Tone soft/solid variants, and cutout-overlap groups with a
 max/overflow count — issue #80, harmonization P2.7).
 
-Closed component tags (`componentTags`, 78 total):
+Closed component tags (`componentTags`, 79 total):
 
 `Stack`, `Text`, `Button`, `Image`, `TextField`, `List`,
 `SectionList`, `Card`, `Spacer`, `Link`, `Modal`, `Sheet`,
@@ -56,7 +78,7 @@ Closed component tags (`componentTags`, 78 total):
 `Accordion`, `PricingColumn`, `PricingTable`, `LogoRow`, `StatsBand`, `Glow`,
 `MockupFrame`, `Pager`, `SwipeableListItem`, `BackgroundGradient`, `Wallpaper`, `Spotlight`, `Frame`, `BlurredPopup`,
 `IconButton`, `Toolbar`, `EmptyMessage`, `Avatar`, `AvatarGroup`, `CopyButton`,
-`SegmentedControl`, `Spinner`, `LoadingDots`, `ShimmerText`.
+`SegmentedControl`, `Spinner`, `LoadingDots`, `ShimmerText`, `Alert`.
 
 There is no escape hatch to add an ad hoc component — growing the
 catalog is a deliberate, tracked process; see
@@ -102,6 +124,22 @@ locally after dispatching `onSubmit` (the app's controlled reset to `""`
 agrees with it). Focused fields still receive app-driven controlled value
 changes.
 
+Matrix axes (v38, #79): `variant` (`outline`/`soft`) and lattice `size` opt a
+field into renderer-drawn box chrome (border for `outline`, tinted fill for
+`soft`, sized from the control lattice); omitting both keeps the exact pre-v38
+look — no border, no background, fully `style`-driven, since that is what
+every existing TextField call site already relies on
+(`resolveTextFieldAppearance`'s `isLegacy` flag gates the chrome). `gutterSize`
+independently overrides the horizontal inline padding regardless of `variant`.
+`invalid` is a wholly new axis: it always reflects `aria-invalid` and always
+draws a danger-tone cue (a border on `variant`-opted fields, a bottom border
+otherwise). `PlainTextFieldView` (non-secure) additionally accepts
+`autoResize`: with `multiline: true`, the DOM renderer grows the `<textarea>`
+to its `scrollHeight` on every input (Textarea parity); React Native's
+multiline `TextInput` already grows with its content whenever nothing
+constrains its height, so `autoResize` there is a declared, accurate no-op
+rather than new imperative sizing logic.
+
 ### List
 
 Virtualized collection. Optional pull-to-refresh via typed `refreshing` state and
@@ -133,7 +171,18 @@ drive the owned DOM/RN panel lowering.
 
 ### Badge
 
+Matrix axes (v38, #79): `variant` (`solid`/`soft`/`outline`) and lattice
+`size` opt a badge into the tone x variant color-matrix fill (the closed
+`Tone` set maps onto its matrix-tone equivalent: `neutral` -> `secondary`,
+`info`/`success`/`danger` unchanged, `warn` -> `warning`); omitting both
+keeps the exact pre-v38 look (tone-colored text only, no fill/border/sizing)
+since that is what every existing Badge call site already renders
+(`resolveBadgeAppearance`'s `isLegacy` flag gates the chrome).
+
 ### Chip
+
+Same matrix axes as `Badge` (`variant`, lattice `size`, same back-compat
+`isLegacy` gate and `Tone` mapping) applied to the chip's label/value pill.
 
 ### Meter
 
@@ -172,6 +221,30 @@ busy — the typed `"submit"` key command still fires so apps can queue), and
 
 ### Select
 
+SelectControl trigger conventions (v38, #79): `variant`
+(`soft`/`outline`/`ghost` — no `solid`; a trigger is never a
+call-to-action), lattice `size`, and `pill` opt the trigger into the
+tone-neutral (fixed `"secondary"` tone) matrix box chrome; `dropdownIcon`
+picks the trigger's indicator glyph from the closed `IconName` set (defaults
+to `"ChevronDown"` once `variant` opts in). Omitting `variant`/`size` keeps
+the pre-v38 platform-default `<select>` look on DOM and the unstyled rows
+list on React Native (`resolveSelectAppearance`'s `isLegacy` flag gates the
+chrome). The DOM renderer draws the dropdown-indicator glyph as a
+`background-image` data URI rather than a wrapper element (so the
+`<select>` stays the keyed root and existing `element.value =` call sites
+keep working); that glyph paints a fixed neutral tone rather than the
+resolved matrix text color, a declared simplification (CSS custom
+properties and `currentColor` do not resolve inside an externally
+referenced SVG image). React Native's rows-list Select has no trigger to
+attach `dropdownIcon` to at all — an existing, now-declared fidelity gap
+alongside `SegmentedControl`'s RN thumb-animation gap.
+
+Multi-select (v38, #79) is additive: `multiple` + `values` (the selected
+list) sit alongside the pre-v38 single-select `value`/`onChange`, which keep
+their exact prior meaning when `multiple` is omitted or `false`. When
+`multiple` is `true`, `onChange` fires with the next selected-values array
+instead of a single string.
+
 ### Checkbox
 
 ### RadioGroup
@@ -203,6 +276,34 @@ rather than faked.
 ### ToastRegion
 
 ### StatusBanner
+
+A persistent single-line app-chrome status row (a connectivity/health bar):
+typed `tone`, `message`, optional `onRetry`/`onDismiss`, bound to
+`aria-live`/`role` by tone. See `### Alert` below for why the harmonization
+#79 rich-callout shape landed as a new component instead of reshaping this
+one.
+
+### Alert
+
+New component (v38, harmonization P1.6, issue #79) — an icon + title + body
+callout on the full tone x variant matrix (`tone`, one of the 6 matrix tones,
+default `"info"`; `variant`, `solid`/`soft`/`outline`/`ghost`, default
+`"soft"`), typically embedded inline in page/form content (validation
+summaries, settings-panel warnings) rather than mounted as persistent app
+chrome. `icon` defaults to a tone-appropriate glyph
+(`danger` -> `AlertCircle`, `warning` -> `AlertTriangle`, `success` ->
+`CheckCircle`, `info`/`accent`/`secondary` -> `InfoCircle`) when omitted;
+`title` is optional, `message` is required; `onDismiss` is optional.
+
+**Alert vs. StatusBanner, decided in-issue:** apps-sdk-ui's `Alert` is a rich
+inline callout; our `StatusBanner` is a narrower persistent single-line
+status row with only a `message` field. Reshaping `StatusBanner` in place to
+carry icon/title/body would change the required shape of every existing
+`StatusBanner` call site and blur its persistent-banner role. `Alert` is a
+distinct new catalog entry instead, so `StatusBanner`'s contract and
+rendering are completely unchanged — zero back-compat risk — while the
+richer inline-callout shape gets its own typed home, per the GAPS growth
+rule (a new named component for a new named use, not a breaking reshape).
 
 ### RecoveryOverlay
 
@@ -443,7 +544,7 @@ Every component accepts these two, inherited from `NodeBase`:
 | Field | Type | Notes |
 |---|---|---|
 | `key` | `string` (optional) | Required (enforced by the schema, not just convention) on any view placed inside a `List`/`SectionList`/`Link` children array. |
-| `catalogVersion` | `"effect-native/v38"` | Set automatically by every constructor function — you never pass this yourself. |
+| `catalogVersion` | `"effect-native/v39"` | Set automatically by every constructor function — you never pass this yourself. |
 
 ### Design tokens
 

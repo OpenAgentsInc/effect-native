@@ -1,6 +1,15 @@
 import { Deferred, Effect, Exit, Layer, Option, Scope, Stream } from "effect"
 import {
+  type AlertView,
+  resolveAlertAppearance,
+  type ResolvedAlertAppearance,
   type BadgeView,
+  resolveBadgeAppearance,
+  type ResolvedBadgeAppearance,
+  resolveSelectAppearance,
+  type ResolvedSelectAppearance,
+  resolveTextFieldAppearance,
+  type ResolvedTextFieldAppearance,
   type ButtonView,
   type CardView,
   type CheckboxView,
@@ -153,6 +162,8 @@ import {
   toneTokens,
   toneVariantTokens,
   controlTokens,
+  type ToneToken,
+  type ToneVariantToken,
   type TypeScaleToken
 } from "@effect-native/tokens"
 
@@ -697,6 +708,60 @@ const componentBaseRules = [
   "@keyframes en-button-spin{to{transform:rotate(360deg);}}"
 ].join("")
 
+// Matrix axes on Badge/Chip/TextField/Select (harmonization P1.6, issue #79):
+// a shared, lighter-weight version of Button's component-token-tier pattern.
+// These five components have no hover/press/selected states in scope for
+// #79 (rest-state chrome only), so the CSS property is set directly from the
+// already-lowered `--en-matrix-<tone>-<variant>-rest-<role>` /
+// `--en-control-<size>-*` custom properties (#75/#76/#77) rather than
+// re-pointing an intermediate `--en-<component>-*` var — there is no second
+// consumer of that indirection yet. Each renderer only emits
+// `data-en-tone`/`data-en-variant`/`data-en-size` when the view explicitly set
+// the corresponding new axis (`resolveBadgeAppearance`/`resolveTextFieldAppearance`/
+// `resolveSelectAppearance`'s `isLegacy` flag), so these selectors can never
+// match a pre-#79 tree and cannot change its rendering.
+const toneVariantColorRules = (component: string): string =>
+  toneTokens.flatMap((tone) =>
+    toneVariantTokens.map((variant) =>
+      `[data-effect-native-surface="dom"] [data-en-component="${component}"][data-en-tone="${tone}"][data-en-variant="${variant}"]{` +
+      `background-color:var(--en-matrix-${tone}-${variant}-rest-background);` +
+      `border-color:var(--en-matrix-${tone}-${variant}-rest-border);` +
+      `color:var(--en-matrix-${tone}-${variant}-rest-text);` +
+      "border-width:1px;border-style:solid;" +
+      "}"
+    )
+  ).join("")
+
+const controlSizeBoxRules = (component: string): string =>
+  controlTokens.map((size) =>
+    `[data-effect-native-surface="dom"] [data-en-component="${component}"][data-en-size="${size}"]{` +
+    `min-height:var(--en-control-${size}-height);` +
+    `padding-inline:var(--en-control-${size}-gutter);` +
+    `border-radius:var(--en-control-${size}-radius);` +
+    `font-size:var(--en-control-${size}-font-size);` +
+    "}"
+  ).join("")
+
+const matrixAxesComponentRules = [
+  `:where([data-effect-native-surface="dom"]) :where([data-en-component="badge"][data-en-variant]){display:inline-flex;align-items:center;gap:${spacingValue("1")};padding-block:${spacingValue("0.5")};}`,
+  toneVariantColorRules("badge"),
+  controlSizeBoxRules("badge"),
+  `:where([data-effect-native-surface="dom"]) :where([data-en-component="chip"][data-en-variant]){display:inline-flex;align-items:center;gap:${spacingValue("1")};padding-block:${spacingValue("0.5")};}`,
+  toneVariantColorRules("chip"),
+  controlSizeBoxRules("chip"),
+  toneVariantColorRules("textfield"),
+  controlSizeBoxRules("textfield"),
+  `[data-effect-native-surface="dom"] [data-en-component="textfield"][data-en-invalid="true"]{border-color:${colorValue("danger")} !important;}`,
+  toneVariantColorRules("select"),
+  controlSizeBoxRules("select"),
+  `[data-effect-native-surface="dom"] [data-en-component="select"][data-en-variant]{appearance:none;-webkit-appearance:none;background-repeat:no-repeat;background-position:right ${spacingValue("2")} center;padding-inline-end:${spacingValue("6")};}`,
+  `[data-effect-native-surface="dom"] [data-en-component="select"][data-en-pill="true"]{border-radius:${radiusValue("full")};}`,
+  // Alert (harmonization #79, new component — always resolved, no legacy
+  // gating): icon + title + body callout on the tone x variant matrix.
+  `:where([data-effect-native-surface="dom"]) :where([data-en-component="alert"]){display:flex;align-items:flex-start;gap:${spacingValue("2")};padding:${spacingValue("3")};border-radius:${radiusValue("md")};border-width:1px;border-style:solid;}`,
+  toneVariantColorRules("alert")
+].join("")
+
 // SegmentedControl (issue #81) component-token tier: the container's track
 // background and corner radius resolve through `--en-segmented-*` local vars;
 // `data-en-size` re-points the radius to the matching control-lattice step
@@ -936,7 +1001,7 @@ class AtomicStyleSheet {
       })
       .join("")
     this.element.textContent =
-      `${themeRules}${componentBaseRules}${segmentedControlBaseRules}${motionBaseRules}${loadingIndicatorBaseRules}${chromeBaseRules}${atomicRules}`
+      `${themeRules}${componentBaseRules}${matrixAxesComponentRules}${segmentedControlBaseRules}${motionBaseRules}${loadingIndicatorBaseRules}${chromeBaseRules}${atomicRules}`
   }
 
   dispose(): void {
@@ -1652,12 +1717,58 @@ const renderTextField = (view: TextFieldView, state: DomRendererState, report: I
   if (field.localName === "textarea") {
     field.style.resize = "vertical"
   }
+  // TextField matrix axes (harmonization #79). `resolveTextFieldAppearance`'s
+  // `isLegacy` flag gates every new visual: a pre-#79 tree never sets
+  // `variant`/`size`, so it keeps the exact chromeless look above (no
+  // data-en-tone/variant/size attributes, no border/background/lattice
+  // sizing). `gutterSize` and `invalid` are wholly new axes with nothing to
+  // preserve, so they always apply when set, independent of `variant`.
+  const textFieldAppearance = resolveTextFieldAppearance(view)
+  field.setAttribute("data-en-component", "textfield")
+  if (textFieldAppearance.isLegacy) {
+    field.removeAttribute("data-en-tone")
+    field.removeAttribute("data-en-variant")
+    field.removeAttribute("data-en-size")
+  } else {
+    field.setAttribute("data-en-tone", textFieldAppearance.tone)
+    field.setAttribute("data-en-variant", textFieldAppearance.variant)
+    field.setAttribute("data-en-size", textFieldAppearance.size)
+    field.style.background = ""
+    field.style.border = ""
+    field.style.outline = ""
+  }
+  field.setAttribute("data-en-invalid", view.invalid === true ? "true" : "false")
+  applyControlA11y(field, view)
+  if (view.invalid === true) {
+    field.style.borderBottom = textFieldAppearance.isLegacy ? `1px solid ${colorValue("danger")}` : ""
+  } else if (textFieldAppearance.isLegacy) {
+    field.style.borderBottom = ""
+  }
+  if (view.gutterSize !== undefined) {
+    field.style.paddingInline = spacingValue(view.gutterSize)
+  } else if (textFieldAppearance.isLegacy) {
+    field.style.paddingInline = ""
+  }
+  // Textarea-equivalent autoResize (harmonization #79, Textarea parity): grow
+  // the textarea's height to its scrollHeight on every input, so a plain
+  // multiline TextField needs no app-side row-counting logic.
+  const autoResize = field.localName === "textarea" &&
+    (view as unknown as { readonly autoResize?: boolean }).autoResize === true
+  const applyAutoResize = (): void => {
+    field.style.height = "auto"
+    field.style.height = `${field.scrollHeight}px`
+  }
+  if (autoResize) {
+    field.style.overflowY = "hidden"
+    applyAutoResize()
+  }
   const onChange = view.field === undefined
     ? view.onChange
     : IntentRef("FormFieldChanged", FormFieldValueBinding(view.field))
-  if (onChange !== undefined) {
+  if (onChange !== undefined || autoResize) {
     state.addListener(field, "input", () => {
-      if (view.disabled === true) return
+      if (autoResize) applyAutoResize()
+      if (view.disabled === true || onChange === undefined) return
       runReportedIntent(report, onChange, fieldValue(field))
     })
   }
@@ -2233,17 +2344,34 @@ const renderDivider = (view: DividerView, state: DomRendererState): HTMLElement 
   return element
 }
 
+// Badge/Chip matrix axes (harmonization #79). `resolveBadgeAppearance`'s
+// `isLegacy` flag is the back-compat gate: a pre-#79 tree never sets
+// `variant`/`size`, so `isLegacy` is true and the renderer keeps drawing the
+// exact pre-#79 look (data-en-tone holding the legacy `Tone` value, colored
+// text, no fill). Only when a caller opts in does `data-en-tone` switch to
+// the resolved matrix tone and `data-en-variant`/`data-en-size` attach,
+// activating the generated `toneVariantColorRules("badge")`/
+// `controlSizeBoxRules("badge")` selectors.
 const renderBadge = (view: BadgeView, state: DomRendererState): HTMLElement => {
   const element = state.keyedElement(view, "span")
   state.resetListeners(element)
   const tone = view.tone ?? "neutral"
-  // data-* lowering (C4, issue #77): additive component marker alongside the
-  // existing tone attribute; no CSS selects on data-en-component here yet.
+  const appearance = resolveBadgeAppearance(view)
   element.setAttribute("data-en-component", "badge")
-  element.setAttribute("data-en-tone", tone)
+  if (appearance.isLegacy) {
+    element.setAttribute("data-en-tone", tone)
+    element.removeAttribute("data-en-variant")
+    element.removeAttribute("data-en-size")
+    element.style.display = "inline-flex"
+    element.style.color = colorValue(toneColorToken[tone])
+  } else {
+    element.setAttribute("data-en-tone", appearance.tone)
+    element.setAttribute("data-en-variant", appearance.variant)
+    element.setAttribute("data-en-size", appearance.size)
+    element.style.display = ""
+    element.style.color = ""
+  }
   element.textContent = view.label
-  element.style.display = "inline-flex"
-  element.style.color = colorValue(toneColorToken[tone])
   applyBaseStyle(element, view, state)
   applyA11y(element, view)
   applyInteractions(element, view, state, () => Effect.succeed(undefined))
@@ -2254,10 +2382,21 @@ const renderChip = (view: ChipView, state: DomRendererState): HTMLElement => {
   const element = state.keyedElement(view, "span")
   state.resetListeners(element)
   const tone = view.tone ?? "neutral"
+  const appearance = resolveBadgeAppearance(view)
   element.setAttribute("data-en-component", "chip")
-  element.setAttribute("data-en-tone", tone)
-  element.style.display = "inline-flex"
-  element.style.gap = "var(--en-spacing-1)"
+  if (appearance.isLegacy) {
+    element.setAttribute("data-en-tone", tone)
+    element.removeAttribute("data-en-variant")
+    element.removeAttribute("data-en-size")
+    element.style.display = "inline-flex"
+    element.style.gap = "var(--en-spacing-1)"
+  } else {
+    element.setAttribute("data-en-tone", appearance.tone)
+    element.setAttribute("data-en-variant", appearance.variant)
+    element.setAttribute("data-en-size", appearance.size)
+    element.style.display = ""
+    element.style.gap = ""
+  }
   const document = element.ownerDocument
   const label = document.createElement("span")
   label.setAttribute("data-en-role", "label")
@@ -2266,7 +2405,9 @@ const renderChip = (view: ChipView, state: DomRendererState): HTMLElement => {
   if (view.value !== undefined) {
     const value = document.createElement("span")
     value.setAttribute("data-en-role", "value")
-    value.style.color = colorValue(toneColorToken[tone])
+    if (appearance.isLegacy) {
+      value.style.color = colorValue(toneColorToken[tone])
+    }
     value.textContent = view.value
     children.push(value)
   }
@@ -2747,6 +2888,17 @@ const renderTable = (view: TableView, state: DomRendererState, report: IntentRep
 // draggable dividers whose drag reports a typed { paneId, size } intent (no
 // free-form drag math in app code). NavRail is a selection contract; Workbench
 // swaps the active pane as typed state.
+// Select trigger dropdown-indicator glyph (harmonization #79). A CSS
+// `background-image: url(...)` SVG renders in an isolated image document, so
+// neither `currentColor` nor a `var(--en-*)` custom property resolves against
+// the host page's color/theme there — a declared, honest simplification (not
+// a silent bug): the indicator glyph paints a fixed neutral tone instead of
+// tracking the resolved matrix text color. `dropdownIcon` still selects the
+// real glyph shape from the closed icon set.
+const dropdownIndicatorColor = "#8b93a7"
+const dropdownIconDataUri = (name: IconName): string =>
+  `url("data:image/svg+xml,${encodeURIComponent(iconSvg(name).replace(/currentColor/g, dropdownIndicatorColor))}")`
+
 const iconSvg = (name: IconName): string => {
   const glyph = iconRegistry[name]
   const paint = glyph.fill
@@ -3756,34 +3908,76 @@ const renderToggle = (view: ToggleView, state: DomRendererState, report: IntentR
   return element
 }
 
+// Select/SelectControl trigger conventions (harmonization #79).
+// `resolveSelectAppearance`'s `isLegacy` flag gates every new visual: a
+// pre-#79 tree never sets `variant`/`size`, so it keeps the exact
+// platform-default `<select>` look. Once a caller opts in, the trigger draws
+// through the generated `toneVariantColorRules("select")`/
+// `controlSizeBoxRules("select")` selectors plus a decorative dropdown-icon
+// background-image (no wrapper element — the `<select>` stays the keyed root
+// so existing `element.value =` call sites keep working unchanged).
+// Multi-select is additive: `multiple`/`values` only take effect when
+// `view.multiple` is true; `value` keeps its pre-#79 single-select meaning.
 const renderSelect = (view: SelectView, state: DomRendererState, report: IntentReporter): HTMLElement => {
   const element = state.keyedElement(view, "select") as HTMLSelectElement
   state.resetListeners(element)
   element.setAttribute("data-en-role", "control")
   element.disabled = view.disabled === true
+  element.multiple = view.multiple === true
   if (view.label !== undefined) element.setAttribute("aria-label", view.label)
   applyControlA11y(element, view)
   const document = element.ownerDocument
   const optionEls: Array<HTMLOptionElement> = []
-  if (view.placeholder !== undefined) {
+  if (view.placeholder !== undefined && view.multiple !== true) {
     const placeholder = document.createElement("option")
     placeholder.value = ""
     placeholder.textContent = view.placeholder
     placeholder.disabled = true
     optionEls.push(placeholder)
   }
+  const selectedValues = view.multiple === true ? (view.values ?? []) : undefined
   for (const option of view.options) {
     const optionEl = document.createElement("option")
     optionEl.value = option.value
     optionEl.textContent = option.label
     optionEl.disabled = option.disabled === true
+    if (selectedValues !== undefined) {
+      optionEl.selected = selectedValues.includes(option.value)
+    }
     optionEls.push(optionEl)
   }
   element.replaceChildren(...optionEls)
-  element.value = view.value
+  if (selectedValues === undefined) {
+    element.value = view.value
+  }
   const onChange = controlChangeIntent(view)
   if (onChange !== undefined) {
-    state.addListener(element, "change", () => runReportedIntent(report, onChange, element.value))
+    state.addListener(element, "change", () => {
+      if (view.multiple === true) {
+        runReportedIntent(
+          report,
+          onChange,
+          Array.from(element.selectedOptions).map((option) => option.value)
+        )
+      } else {
+        runReportedIntent(report, onChange, element.value)
+      }
+    })
+  }
+  const appearance = resolveSelectAppearance(view)
+  element.setAttribute("data-en-component", "select")
+  if (appearance.isLegacy) {
+    element.removeAttribute("data-en-variant")
+    element.removeAttribute("data-en-size")
+    element.removeAttribute("data-en-pill")
+    element.style.backgroundImage = ""
+  } else {
+    element.setAttribute("data-en-tone", appearance.tone)
+    element.setAttribute("data-en-variant", appearance.variant)
+    element.setAttribute("data-en-size", appearance.size)
+    element.setAttribute("data-en-pill", appearance.pill ? "true" : "false")
+    element.style.backgroundImage = dropdownIconDataUri(appearance.dropdownIcon)
+    element.style.backgroundSize = iconFontSizeValue("sm")
   }
   applyBaseStyle(element, view, state)
   applyA11y(element, view)
@@ -4242,6 +4436,64 @@ const renderStatusBanner = (view: StatusBannerView, state: DomRendererState, rep
     state.addListener(retry, "click", () => runReportedIntent(report, onRetry))
     children.push(retry)
   }
+  if (view.onDismiss !== undefined) {
+    const dismiss = document.createElement("button") as HTMLButtonElement
+    dismiss.type = "button"
+    dismiss.setAttribute("data-en-role", "dismiss")
+    dismiss.setAttribute("aria-label", "Dismiss")
+    dismiss.textContent = "×"
+    const onDismiss = view.onDismiss
+    state.addListener(dismiss, "click", () => runReportedIntent(report, onDismiss))
+    children.push(dismiss)
+  }
+  element.replaceChildren(...children)
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  return element
+}
+
+// Alert (harmonization #79, new component — see the AlertView doc comment
+// for the Alert-vs-StatusBanner decision). A brand-new tag has no legacy
+// rendering to preserve, so `resolveAlertAppearance` always resolves a
+// concrete tone/variant/icon and the generated `toneVariantColorRules("alert")`
+// selector always applies.
+const alertLiveRole = (tone: ToneToken): { readonly role: string; readonly live: string } =>
+  tone === "danger" ? { role: "alert", live: "assertive" } : { role: "status", live: "polite" }
+
+const renderAlert = (view: AlertView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const element = state.keyedElement(view, "div")
+  state.resetListeners(element)
+  const appearance = resolveAlertAppearance(view)
+  const live = alertLiveRole(appearance.tone)
+  element.setAttribute("role", live.role)
+  element.setAttribute("aria-live", live.live)
+  element.setAttribute("data-en-component", "alert")
+  element.setAttribute("data-en-tone", appearance.tone)
+  element.setAttribute("data-en-variant", appearance.variant)
+  const document = element.ownerDocument
+  const icon = document.createElement("span")
+  icon.setAttribute("data-en-role", "icon")
+  icon.setAttribute("aria-hidden", "true")
+  icon.style.display = "inline-flex"
+  icon.style.fontSize = iconFontSizeValue("md")
+  icon.innerHTML = iconSvg(appearance.icon)
+  const body = document.createElement("div")
+  body.setAttribute("data-en-role", "body")
+  body.style.display = "flex"
+  body.style.flexDirection = "column"
+  body.style.gap = "var(--en-spacing-1)"
+  if (view.title !== undefined) {
+    const title = document.createElement("span")
+    title.setAttribute("data-en-role", "title")
+    title.style.fontWeight = "600"
+    title.textContent = view.title
+    body.appendChild(title)
+  }
+  const message = document.createElement("span")
+  message.setAttribute("data-en-role", "message")
+  message.textContent = view.message
+  body.appendChild(message)
+  const children: Array<HTMLElement> = [icon, body]
   if (view.onDismiss !== undefined) {
     const dismiss = document.createElement("button") as HTMLButtonElement
     dismiss.type = "button"
@@ -5009,6 +5261,8 @@ const renderView = (view: View, state: DomRendererState, report: IntentReporter)
       return renderToastRegion(view, state, report)
     case "StatusBanner":
       return renderStatusBanner(view, state, report)
+    case "Alert":
+      return renderAlert(view, state, report)
     case "RecoveryOverlay":
       return renderRecoveryOverlay(view, state, report)
     case "Markdown":

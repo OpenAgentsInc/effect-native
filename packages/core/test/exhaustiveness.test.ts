@@ -92,6 +92,7 @@ const describeView = Match.type<View>().pipe(
   Match.tag("Spinner", () => "status"),
   Match.tag("LoadingDots", () => "status"),
   Match.tag("ShimmerText", () => "status"),
+  Match.tag("Alert", () => "feedback"),
   Match.exhaustive
 )
 

@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test"
 import { Effect, Exit, Ref, Schema, Stream, SubscriptionRef } from "effect"
 import { Window } from "happy-dom"
 import {
+  Alert,
   Binding,
   Button,
   Card,
@@ -410,6 +411,14 @@ const catalogFixturesByTag = {
     message: "Boot RPC degraded.",
     onRetry: IntentRef("Pressed", StaticPayload({ id: "retry" })),
     onDismiss: IntentRef("Dismissed", StaticPayload({ surface: "banner" }))
+  }),
+  Alert: Alert({
+    key: "alert",
+    tone: "warning",
+    variant: "soft",
+    title: "Review recommended",
+    message: "This change touches a shared schema file.",
+    onDismiss: IntentRef("Dismissed", StaticPayload({ surface: "alert" }))
   }),
   RecoveryOverlay: RecoveryOverlay({
     key: "recovery-overlay",
@@ -896,7 +905,8 @@ const catalogRendererTags = [
   "SegmentedControl",
   "Spinner",
   "LoadingDots",
-  "ShimmerText"
+  "ShimmerText",
+  "Alert"
 ] as const
 
 // Host (issue #23) is supported by the headless recorder and the DOM renderer

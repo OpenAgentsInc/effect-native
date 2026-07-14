@@ -38,6 +38,7 @@ import {
   InteractionCatalogVersion,
   LegacyCatalogVersion,
   LinkCatalogVersion,
+  MatrixAxesCatalogVersion,
   OverlayCatalogVersion,
   PreviousCatalogVersion,
   ResponsiveCatalogVersion,
@@ -108,11 +109,12 @@ describe("catalog version compatibility", () => {
       CopyButtonCatalogVersion,
       SegmentedControlCatalogVersion,
       ButtonMatrixCatalogVersion,
-      LoadingIndicatorCatalogVersion
+      LoadingIndicatorCatalogVersion,
+      MatrixAxesCatalogVersion
     ])
     // The current marker is the last entry; the previous marker is second-last.
-    expect(CatalogVersion).toBe(LoadingIndicatorCatalogVersion)
-    expect(PreviousCatalogVersion).toBe(ButtonMatrixCatalogVersion)
+    expect(CatalogVersion).toBe(MatrixAxesCatalogVersion)
+    expect(PreviousCatalogVersion).toBe(LoadingIndicatorCatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 1]).toBe(CatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 2]).toBe(PreviousCatalogVersion)
   })

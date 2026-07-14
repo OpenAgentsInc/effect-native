@@ -1,6 +1,7 @@
 import { Effect, Schema, SubscriptionRef } from "effect"
 import {
   Accordion,
+  Alert,
   AnnouncementBadge,
   Avatar,
   AvatarGroup,
@@ -118,7 +119,9 @@ import {
   dimensionTokens,
   khalaTheme,
   radiusTokens,
-  spacingTokens
+  spacingTokens,
+  toneTokens,
+  toneVariantTokens
 } from "@effect-native/tokens"
 
 export const packageName = "@effect-native/gallery" as const
@@ -484,6 +487,45 @@ const componentStoryMap = {
         textControl("textfield-secure-value", "Value", ["value"], "secret"),
         booleanControl("textfield-secure-focused", "Focused", ["focused"], false)
       ]
+    }),
+    story({
+      id: "textfield-matrix-variant",
+      component: "TextField",
+      title: "TextField (matrix variant + size + invalid, harmonization #79)",
+      description: "Opt-in `variant`/`size`/`gutterSize` matrix box chrome and `invalid` danger cue; omitting `variant`/`size` keeps the original renderer-drawn-chromeless look (style-driven boxes still work unchanged).",
+      view: TextField({
+        key: "textfield-matrix-variant",
+        label: "Email",
+        value: "",
+        placeholder: "you@example.com",
+        variant: "outline",
+        size: "md",
+        invalid: true,
+        onChange: IntentRef("GalleryStory.Changed", ComponentValueBinding())
+      }),
+      controls: [
+        enumControl("textfield-matrix-variant-select", "Variant", ["variant"], "outline", ["outline", "soft"]),
+        enumControl("textfield-matrix-size", "Size", ["size"], "md", controlTokens),
+        booleanControl("textfield-matrix-invalid", "Invalid", ["invalid"], true)
+      ]
+    }),
+    story({
+      id: "textfield-multiline-autoresize",
+      component: "TextField",
+      title: "TextField (multiline autoResize, Textarea parity)",
+      description: "Plain multiline mode that grows its height to fit content (DOM); React Native already grows a multiline field with no fixed height, so `autoResize` is a declared no-op there.",
+      view: TextField({
+        key: "textfield-multiline-autoresize",
+        label: "Notes",
+        value: "A note that can grow across multiple lines as you type more content.",
+        multiline: true,
+        autoResize: true,
+        variant: "outline",
+        onChange: IntentRef("GalleryStory.Changed", ComponentValueBinding())
+      }),
+      controls: [
+        booleanControl("textfield-autoresize", "Auto-resize", ["autoResize"], true)
+      ]
     })
   ],
   List: [
@@ -724,6 +766,18 @@ const componentStoryMap = {
       description: "Status/count badge with typed tone.",
       view: Badge({ key: "badge-tone", label: "Live", tone: "success" }),
       controls: [enumControl("badge-tone", "Tone", ["tone"], "success", tones)]
+    }),
+    story({
+      id: "badge-matrix-variant",
+      component: "Badge",
+      title: "Badge (matrix variant + size, harmonization #79)",
+      description: "Opt-in tone x variant x size matrix chrome via `variant`/`size`; omitting both keeps the original tone-colored-text-only look.",
+      view: Badge({ key: "badge-matrix-variant", label: "Danger", tone: "danger", variant: "soft", size: "sm" }),
+      controls: [
+        enumControl("badge-matrix-tone", "Tone", ["tone"], "danger", tones),
+        enumControl("badge-matrix-variant-select", "Variant", ["variant"], "soft", ["solid", "soft", "outline"]),
+        enumControl("badge-matrix-size", "Size", ["size"], "sm", controlTokens)
+      ]
     })
   ],
   Chip: [
@@ -734,6 +788,18 @@ const componentStoryMap = {
       description: "Label + value pill for the fleet cockpit strip.",
       view: Chip({ key: "chip-value", label: "Slots", value: "3/8", tone: "info" }),
       controls: [enumControl("chip-tone", "Tone", ["tone"], "info", tones)]
+    }),
+    story({
+      id: "chip-matrix-variant",
+      component: "Chip",
+      title: "Chip (matrix variant + size, harmonization #79)",
+      description: "Opt-in tone x variant x size matrix chrome via `variant`/`size`; omitting both keeps the original look.",
+      view: Chip({ key: "chip-matrix-variant", label: "Workers", value: "3/8", tone: "info", variant: "outline", size: "sm" }),
+      controls: [
+        enumControl("chip-matrix-tone", "Tone", ["tone"], "info", tones),
+        enumControl("chip-matrix-variant-select", "Variant", ["variant"], "outline", ["solid", "soft", "outline"]),
+        enumControl("chip-matrix-size", "Size", ["size"], "sm", controlTokens)
+      ]
     })
   ],
   Meter: [
@@ -1067,6 +1133,52 @@ const componentStoryMap = {
           { value: "local", label: "Local", disabled: true }
         ]
       })
+    }),
+    story({
+      id: "select-matrix-variant",
+      component: "Select",
+      title: "Select trigger (matrix variant + size + pill + dropdownIcon, harmonization #79)",
+      description: "Opt-in tone-neutral trigger chrome via `variant`/`size`/`pill`/`dropdownIcon`; omitting `variant`/`size` keeps the pre-#79 platform-default `<select>` look.",
+      view: Select({
+        key: "select-matrix-variant",
+        value: "claude",
+        label: "Model",
+        variant: "soft",
+        size: "sm",
+        pill: true,
+        dropdownIcon: "ChevronDown",
+        onChange: IntentRef("GalleryStory.Changed", ComponentValueBinding()),
+        options: [
+          { value: "claude", label: "Claude" },
+          { value: "codex", label: "Codex" },
+          { value: "local", label: "Local", disabled: true }
+        ]
+      }),
+      controls: [
+        enumControl("select-matrix-variant-select", "Variant", ["variant"], "soft", ["soft", "outline", "ghost"]),
+        enumControl("select-matrix-size", "Size", ["size"], "sm", controlTokens),
+        booleanControl("select-matrix-pill", "Pill", ["pill"], true)
+      ]
+    }),
+    story({
+      id: "select-multiple",
+      component: "Select",
+      title: "Select (multi-select, harmonization #79)",
+      description: "Additive multi-select: `multiple` + `values`, onChange fires the next selected-values array.",
+      view: Select({
+        key: "select-multiple",
+        value: "claude",
+        multiple: true,
+        values: ["claude", "codex"],
+        label: "Models",
+        variant: "outline",
+        onChange: IntentRef("GalleryStory.Changed", ComponentValueBinding()),
+        options: [
+          { value: "claude", label: "Claude" },
+          { value: "codex", label: "Codex" },
+          { value: "local", label: "Local" }
+        ]
+      })
     })
   ],
   Checkbox: [
@@ -1230,6 +1342,40 @@ const componentStoryMap = {
         message: "Boot RPC degraded: retrying capture stream.",
         onRetry: IntentRef("GalleryStory.Pressed", StaticPayload({ id: "retry" })),
         onDismiss: IntentRef("GalleryStory.Dismissed", StaticPayload({ surface: "status-banner" }))
+      })
+    })
+  ],
+  Alert: [
+    story({
+      id: "alert-basic",
+      component: "Alert",
+      title: "Alert (harmonization #79)",
+      description: "Icon + title + body callout on the tone x variant matrix — a new component distinct from StatusBanner's persistent single-line banner role.",
+      view: Alert({
+        key: "alert-basic",
+        tone: "warning",
+        variant: "soft",
+        title: "Review recommended",
+        message: "This change touches a shared schema file. Confirm the migration before merging.",
+        onDismiss: IntentRef("GalleryStory.Dismissed", StaticPayload({ surface: "alert" }))
+      }),
+      controls: [
+        enumControl("alert-tone", "Tone", ["tone"], "warning", toneTokens),
+        enumControl("alert-variant", "Variant", ["variant"], "soft", toneVariantTokens),
+        textControl("alert-title", "Title", ["title"], "Review recommended"),
+        textControl("alert-message", "Message", ["message"], "This change touches a shared schema file. Confirm the migration before merging.")
+      ]
+    }),
+    story({
+      id: "alert-danger-no-title",
+      component: "Alert",
+      title: "Alert (danger, message-only)",
+      description: "`title` is optional; `icon` defaults to a tone-appropriate glyph when omitted.",
+      view: Alert({
+        key: "alert-danger-no-title",
+        tone: "danger",
+        variant: "outline",
+        message: "Failed to reach the workroom sidecar. Retrying automatically."
       })
     })
   ],
@@ -2092,7 +2238,7 @@ export const componentPageSummaries = {
   Text: "Typography primitive over the closed type scale (caption/body/label/title/heading) with token colors and weights.",
   Button: "Pressable action with variants primary / secondary / ghost, disabled state, and a typed onPress intent.",
   Image: "Media box with fit contain / cover / fill, alt text, and token radius.",
-  TextField: "Single- or multi-line text input with label, placeholder, secure mode, focus state, and typed change/submit intents.",
+  TextField: "Single- or multi-line text input with label, placeholder, secure mode, focus state, and typed change/submit intents; opt-in variant/size/gutterSize matrix box chrome, invalid cue, and multiline autoResize (harmonization #79).",
   List: "Keyed vertical collection with optional virtualization and estimated item size.",
   SectionList: "Grouped keyed collection with sticky headers and optional virtualization.",
   Card: "Bordered surface container with token padding and radius.",
@@ -2103,8 +2249,8 @@ export const componentPageSummaries = {
   Host: "Foreign-host escape hatch: serializable kind + props, driver-owned widget.",
   Icon: "Closed icon-name registry rendered at token sizes with token colors.",
   Divider: "Horizontal or vertical separator line.",
-  Badge: "Status/count pill over the closed tone set.",
-  Chip: "Label + value pill for dense status strips.",
+  Badge: "Status/count pill over the closed tone set; opt-in tone x variant x size matrix chrome via variant/size (harmonization #79).",
+  Chip: "Label + value pill for dense status strips; opt-in tone x variant x size matrix chrome via variant/size (harmonization #79).",
   Meter: "Determinate progress/capacity readout with tone.",
   StatTile: "Label + strong value summary cell.",
   Table: "Typed columns and keyed rows of arbitrary cell views.",
@@ -2120,7 +2266,7 @@ export const componentPageSummaries = {
   Tabs: "WAI-ARIA tablist with typed tab items, badges, and panel association by id.",
   Composer: "Chat input over a typed document model with mentions, attachments, and slash/mention autocomplete.",
   Toggle: "Boolean switch with typed value and onChange intent.",
-  Select: "Single choice from a typed option list.",
+  Select: "Single choice from a typed option list; opt-in trigger variant/size/pill/dropdownIcon chrome, and additive multi-select via multiple/values (harmonization #79).",
   Checkbox: "Multi-select boolean with typed checked state.",
   RadioGroup: "Exclusive choice group with typed value.",
   SegmentedControl: "Single-choice control with an animated selection thumb (DOM); lattice size, gutterSize, and pill.",
@@ -2130,6 +2276,7 @@ export const componentPageSummaries = {
   Toast: "Single transient notification with live region and dismiss.",
   ToastRegion: "Stacked, placement-aware notification region.",
   StatusBanner: "Persistent inline banner with typed tone plus retry/dismiss intents.",
+  Alert: "Icon + title + body callout on the tone x variant matrix (harmonization #79) — distinct from StatusBanner's persistent single-line banner role.",
   RecoveryOverlay: "Full-surface blocking overlay with typed recovery actions.",
   Markdown: "Pre-parsed typed block+inline document model — no parser, no raw HTML.",
   Transcript: "Append-optimized log of role-styled messages with typed status.",

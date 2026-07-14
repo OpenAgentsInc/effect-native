@@ -23,15 +23,20 @@ import {
 // variant; this catalog bump does not duplicate it.
 describe("Spinner + LoadingDots + ShimmerText (#83) catalog contract", () => {
   test("constructed views carry the current catalog marker and typed bounded props", () => {
-    expect(CatalogVersion).toBe(LoadingIndicatorCatalogVersion)
+    // Constructors always stamp the current catalog marker, not the marker
+    // the component shipped under — loading indicators shipped at v38; #79
+    // (Badge/Chip/TextField/Select matrix axes + Alert) has since moved
+    // CatalogVersion forward. LoadingIndicatorCatalogVersion still decodes
+    // via compatibility (see the prior-version test below).
+    expect(CatalogVersion).not.toBe(LoadingIndicatorCatalogVersion)
 
     const spinner = Spinner({ key: "spinner", size: "lg", tone: "info", label: "Loading" })
-    expect(spinner.catalogVersion).toBe(LoadingIndicatorCatalogVersion)
+    expect(spinner.catalogVersion).toBe(CatalogVersion)
     expect(spinner.size).toBe("lg")
     expect(spinner.label).toBe("Loading")
 
     const dots = LoadingDots({ key: "dots", size: "sm", tone: "neutral" })
-    expect(dots.catalogVersion).toBe(LoadingIndicatorCatalogVersion)
+    expect(dots.catalogVersion).toBe(CatalogVersion)
     expect(dots.size).toBe("sm")
 
     const shimmerText = ShimmerText({ key: "pending-text", text: "Reading file…" })

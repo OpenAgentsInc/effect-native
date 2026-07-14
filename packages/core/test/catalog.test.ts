@@ -193,7 +193,7 @@ const view = (depth: number): fc.Arbitrary<View> => {
 describe("Effect Native catalog", () => {
   test("contains exactly the current component tags", () => {
     expect([...componentTags]).toEqual([...componentTags]) // length guard only; tags listed in source
-    expect(componentTags.length).toBeGreaterThanOrEqual(78)
+    expect(componentTags.length).toBeGreaterThanOrEqual(79)
     expect(new Set(componentTags).size).toBe(componentTags.length)
   })
 

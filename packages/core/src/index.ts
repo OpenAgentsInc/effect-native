@@ -115,8 +115,13 @@ export const CopyButtonCatalogVersion = "effect-native/v35" as const
 export const SegmentedControlCatalogVersion = "effect-native/v36" as const
 export const ButtonMatrixCatalogVersion = "effect-native/v37" as const
 export const LoadingIndicatorCatalogVersion = "effect-native/v38" as const
-export const PreviousCatalogVersion = ButtonMatrixCatalogVersion
-export const CatalogVersion = LoadingIndicatorCatalogVersion
+// Harmonization P1.6 (issue #79): tone x variant x size matrix axes on Badge,
+// Chip, TextField, and Select/SelectControl trigger conventions, plus a new
+// Alert component (see the AlertView doc comment for the Alert-vs-StatusBanner
+// decision).
+export const MatrixAxesCatalogVersion = "effect-native/v39" as const
+export const PreviousCatalogVersion = LoadingIndicatorCatalogVersion
+export const CatalogVersion = MatrixAxesCatalogVersion
 export const CatalogVersionSchema = Schema.Literal(CatalogVersion)
 export type CatalogVersion = typeof CatalogVersion
 export const compatibleCatalogVersions = [
@@ -158,7 +163,8 @@ export const compatibleCatalogVersions = [
   CopyButtonCatalogVersion,
   SegmentedControlCatalogVersion,
   ButtonMatrixCatalogVersion,
-  LoadingIndicatorCatalogVersion
+  LoadingIndicatorCatalogVersion,
+  MatrixAxesCatalogVersion
 ] as const
 export type CompatibleCatalogVersion = (typeof compatibleCatalogVersions)[number]
 export const CompatibleCatalogVersionSchema = Schema.Literals(compatibleCatalogVersions)
@@ -241,7 +247,8 @@ export const componentTags = [
   "SegmentedControl",
   "Spinner",
   "LoadingDots",
-  "ShimmerText"
+  "ShimmerText",
+  "Alert"
 ] as const
 export type ComponentTag = (typeof componentTags)[number]
 
@@ -2052,6 +2059,21 @@ export interface ImageView extends NodeBase {
   readonly style?: ImageStyle
 }
 
+// TextField matrix axes (harmonization P1.6, issue #79). Pre-#79 trees never
+// set `variant`/`size`/`gutterSize` and got zero renderer-drawn chrome (fully
+// transparent, unbordered, unpadded — call sites hand-rolled the box via
+// `style`, the exact "one-off" the harmonization audit calls out). Omitting
+// all three keeps that legacy no-chrome look identically; setting `variant`
+// opts a field into the tone-neutral matrix box (border for "outline", tinted
+// fill for "soft") via `resolveTextFieldAppearance`, `size` opts it into the
+// control lattice, and `gutterSize` independently overrides the horizontal
+// inline padding regardless of variant (a plain additive token consumption,
+// so it is safe to honor even when `variant` is omitted). `invalid` is a
+// wholly new axis (TextField never had one), so it is safe to always reflect
+// via aria-invalid and a danger-tone border cue.
+export type TextFieldVariantToken = "outline" | "soft"
+export const TextFieldVariantTokenSchema = Schema.Literals(["outline", "soft"] as const)
+
 export interface BaseTextFieldView extends NodeBase {
   readonly _tag: "TextField"
   readonly value: string
@@ -2061,6 +2083,14 @@ export interface BaseTextFieldView extends NodeBase {
   readonly focused?: boolean
   /** Disabled fields accept no input and dispatch no change/submit intents (v29, #72). */
   readonly disabled?: boolean
+  /** Invalid/error state (harmonization #79): reflects aria-invalid; adds a danger-tone cue. */
+  readonly invalid?: boolean
+  /** Matrix variant (harmonization #79). Omitted keeps the pre-#79 (chromeless) look. */
+  readonly variant?: TextFieldVariantToken
+  /** Control-lattice size (harmonization #79). Omitted keeps the pre-#79 (unsized) look. */
+  readonly size?: ControlToken
+  /** Horizontal inline padding override (harmonization #79), independent of `size`. */
+  readonly gutterSize?: SpacingToken
   /**
    * Contract-level submit lifecycle (v29, #72): after dispatching `onSubmit`,
    * the renderer clears the field locally so the input is empty and
@@ -2080,6 +2110,15 @@ export interface SecureTextFieldView extends BaseTextFieldView {
 export interface PlainTextFieldView extends BaseTextFieldView {
   readonly secure?: false
   readonly multiline?: boolean
+  /**
+   * Textarea-equivalent auto-grow (harmonization #79, Textarea parity):
+   * meaningful only alongside `multiline: true`. DOM grows the `<textarea>`'s
+   * height to its scrollHeight on every input. React Native never applies a
+   * fixed height to begin with, so a multiline `TextInput` already grows with
+   * its content by default — `autoResize` there is honored by continuing to
+   * omit any height constraint (a declared no-op, not a fabricated behavior).
+   */
+  readonly autoResize?: boolean
 }
 
 export type TextFieldView = SecureTextFieldView | PlainTextFieldView
@@ -2221,10 +2260,28 @@ export interface DividerView extends NodeBase {
   readonly style?: CardStyle
 }
 
+// Badge/Chip matrix axes (harmonization P1.6, issue #79). Pre-#79 trees only
+// ever set `tone` (the closed `Tone` set) and got a fixed "colored text, no
+// fill" look with no size control — that is exactly what a tree with
+// `variant`/`size` both omitted must keep rendering as, so old trees decode
+// and render identically. `variant` is additive and, when set, opts a badge
+// into the tone x variant color-matrix fill (solid/soft/outline) via
+// `resolveBadgeAppearance`; `size` is additive and, when set, opts it into the
+// control lattice (height/gutter/radius/font). Neither axis is exposed with a
+// "ghost" option publicly — `resolveBadgeAppearance` uses "ghost" internally
+// only as the resolved cell for the legacy omitted-variant look, so it can
+// never collide with an author-chosen value (the input schema forbids it).
+export type BadgeVariantToken = "solid" | "soft" | "outline"
+export const BadgeVariantTokenSchema = Schema.Literals(["solid", "soft", "outline"] as const)
+
 export interface BadgeView extends NodeBase {
   readonly _tag: "Badge"
   readonly label: string
   readonly tone?: Tone
+  /** Matrix variant (harmonization #79). Omitted keeps the pre-#79 look. */
+  readonly variant?: BadgeVariantToken
+  /** Control-lattice size (harmonization #79). Omitted keeps the pre-#79 (unsized) look. */
+  readonly size?: ControlToken
   readonly style?: CardStyle
 }
 
@@ -2233,6 +2290,10 @@ export interface ChipView extends NodeBase {
   readonly label: string
   readonly value?: string
   readonly tone?: Tone
+  /** Matrix variant (harmonization #79). Omitted keeps the pre-#79 look. */
+  readonly variant?: BadgeVariantToken
+  /** Control-lattice size (harmonization #79). Omitted keeps the pre-#79 (unsized) look. */
+  readonly size?: ControlToken
   readonly style?: CardStyle
 }
 
@@ -2561,6 +2622,19 @@ export interface ToggleView extends NodeBase {
   readonly style?: CardStyle
 }
 
+// Select/SelectControl trigger conventions (harmonization P1.6, issue #79).
+// Pre-#79 trees never set `variant`/`size`/`pill`/`dropdownIcon`, so the
+// renderer drew the platform-default control chrome (a bare `<select>` on
+// DOM, an unstyled rows list on React Native) — omitting all of them keeps
+// that exact look. Setting `variant` opts a Select into the neutral matrix
+// trigger chrome (no "solid" cell — a select trigger is never a call-to-
+// action) via `resolveSelectAppearance`. Multi-select is additive: `value`
+// stays required (mirroring `values[0] ?? ""` by convention) so every
+// pre-#79 single-select tree keeps its exact shape; `multiple`/`values` are
+// new optional fields consulted only when `multiple` is true.
+export type SelectVariantToken = "soft" | "outline" | "ghost"
+export const SelectVariantTokenSchema = Schema.Literals(["soft", "outline", "ghost"] as const)
+
 export interface SelectView extends NodeBase {
   readonly _tag: "Select"
   readonly value: string
@@ -2570,6 +2644,18 @@ export interface SelectView extends NodeBase {
   readonly disabled?: boolean
   readonly invalid?: boolean
   readonly field?: FieldBinding
+  /** Matrix variant (harmonization #79). Omitted keeps the pre-#79 platform-default look. */
+  readonly variant?: SelectVariantToken
+  /** Control-lattice size (harmonization #79). Omitted keeps the pre-#79 (unsized) look. */
+  readonly size?: ControlToken
+  /** Fully rounded corners (harmonization #79), meaningful alongside an explicit `variant`. */
+  readonly pill?: boolean
+  /** Trigger dropdown-indicator glyph (harmonization #79). Defaults to "ChevronDown" once `variant` opts in. */
+  readonly dropdownIcon?: IconName
+  /** Multi-select (harmonization #79, refs demand for tag-style multi-choice fields). */
+  readonly multiple?: boolean
+  /** Selected values when `multiple` is true. Ignored otherwise. */
+  readonly values?: ReadonlyArray<string>
   readonly onChange?: IntentRef
   readonly style?: TextFieldStyle
 }
@@ -2676,6 +2762,39 @@ export interface StatusBannerView extends NodeBase {
   readonly tone: Tone
   readonly message: string
   readonly onRetry?: IntentRef
+  readonly onDismiss?: IntentRef
+  readonly style?: CardStyle
+}
+
+/**
+ * Alert (harmonization P1.6, issue #79) — a NEW component, not a StatusBanner
+ * reshape. Decision, recorded here because the issue asked for it to be made
+ * in-repo: apps-sdk-ui's `Alert` is a rich inline callout (icon + title +
+ * body, full tone x variant matrix) typically embedded in page/form content
+ * (validation summaries, inline warnings in a settings panel); our
+ * `StatusBanner` is a persistent single-line app-chrome status row (a
+ * connectivity/health bar bound to `aria-live`, message + retry/dismiss only,
+ * no title/body split). Reshaping StatusBanner in place to carry icon/title/
+ * body would blur that narrower persistent-banner role and change the
+ * required shape of every existing StatusBanner call site (`message` is
+ * currently the only content field). Adding a distinct `Alert` instead keeps
+ * StatusBanner's contract and rendering completely unchanged (zero back-compat
+ * risk) and gives the richer inline-callout shape its own typed home,
+ * matching the GAPS growth rule (a new named component for a new named use)
+ * rather than a breaking reshape of an existing one. Demanding screen: inline
+ * form-validation summaries and settings-panel warning/info callouts
+ * (harmonization audit §5 "Alert" row + desktop settings/forms demand).
+ */
+export interface AlertView extends NodeBase {
+  readonly _tag: "Alert"
+  /** Matrix tone. Defaults to "info" when omitted. */
+  readonly tone?: ToneToken
+  /** Matrix variant. Defaults to "soft" when omitted (the typical callout fill). */
+  readonly variant?: ToneVariantToken
+  /** Leading icon. Defaults to a tone-appropriate glyph (see `defaultAlertIcon`) when omitted. */
+  readonly icon?: IconName
+  readonly title?: string
+  readonly message: string
   readonly onDismiss?: IntentRef
   readonly style?: CardStyle
 }
@@ -3495,6 +3614,7 @@ export type View =
   | SpinnerView
   | LoadingDotsView
   | ShimmerTextView
+  | AlertView
 
 export type KeyedView = View & { readonly key: NodeKey }
 
@@ -3786,6 +3906,144 @@ export const resolveButtonAppearance = (view: ButtonView): ResolvedButtonAppeara
   }
 }
 
+/** The fully resolved appearance every renderer consumes for a Badge/Chip. */
+export interface ResolvedBadgeAppearance {
+  readonly tone: ToneToken
+  readonly variant: ToneVariantToken
+  readonly size: ControlToken
+  /**
+   * True when the caller set neither `variant` nor `size` — the renderer must
+   * reproduce the exact pre-#79 look (tone-colored text, no fill/border/
+   * sizing) rather than draw the resolved matrix cell, since old serialized
+   * trees never carry these fields and must keep rendering identically.
+   */
+  readonly isLegacy: boolean
+}
+
+// Pre-#79 Badge/Chip tone -> matrix tone, used whenever a caller opts into the
+// matrix (sets `variant` and/or `size`) so the color family stays the same
+// one the old `Tone` value named.
+const legacyToneToMatrixTone: Record<Tone, ToneToken> = {
+  neutral: "secondary",
+  info: "info",
+  success: "success",
+  warn: "warning",
+  danger: "danger"
+}
+
+/**
+ * Resolves a Badge/Chip's `tone`/`variant`/`size` onto the matrix + control
+ * lattice (harmonization #79). Every renderer calls this single resolver.
+ * `variant` is publicly `solid | soft | outline` only; the resolved
+ * `variant` defaults to `"ghost"` (a matrix token no author can pass in
+ * directly) when omitted so `isLegacy` and the "ghost" sentinel agree, and
+ * renderers must use `isLegacy` (not a `=== "ghost"` check) to decide whether
+ * to draw the pre-#79 legacy look or the matrix cell.
+ */
+export const resolveBadgeAppearance = (
+  view: { readonly tone?: Tone; readonly variant?: BadgeVariantToken; readonly size?: ControlToken }
+): ResolvedBadgeAppearance => ({
+  tone: legacyToneToMatrixTone[view.tone ?? "neutral"],
+  variant: view.variant ?? "ghost",
+  size: view.size ?? "md",
+  isLegacy: view.variant === undefined && view.size === undefined
+})
+
+/** The fully resolved appearance every renderer consumes for a TextField. */
+export interface ResolvedTextFieldAppearance {
+  readonly tone: ToneToken
+  readonly variant: ToneVariantToken
+  readonly size: ControlToken
+  /** True when the caller set neither `variant` nor `size` — keep the pre-#79 chromeless look. */
+  readonly isLegacy: boolean
+}
+
+/**
+ * Resolves a TextField's `variant`/`size` onto the matrix + control lattice
+ * (harmonization #79). TextField carries no tone axis (it is a neutral input
+ * surface, not a semantic-status control), so the resolved tone is fixed at
+ * "secondary" — the same neutral box the matrix already uses for
+ * Button's secondary tone — unless `invalid` is set, in which case the danger
+ * tone drives the border/ring so invalid fields read as invalid even without
+ * touching `style`.
+ */
+export const resolveTextFieldAppearance = (
+  view: { readonly variant?: TextFieldVariantToken; readonly size?: ControlToken; readonly invalid?: boolean }
+): ResolvedTextFieldAppearance => ({
+  tone: view.invalid === true ? "danger" : "secondary",
+  variant: view.variant ?? "outline",
+  size: view.size ?? "md",
+  isLegacy: view.variant === undefined && view.size === undefined
+})
+
+/** The fully resolved appearance every renderer consumes for a Select trigger. */
+export interface ResolvedSelectAppearance {
+  readonly tone: ToneToken
+  readonly variant: ToneVariantToken
+  readonly size: ControlToken
+  readonly pill: boolean
+  readonly dropdownIcon: IconName
+  /** True when the caller set neither `variant` nor `size` — keep the pre-#79 platform-default look. */
+  readonly isLegacy: boolean
+}
+
+/**
+ * Resolves a Select's `variant`/`size`/`pill`/`dropdownIcon` onto the matrix +
+ * control lattice (harmonization #79). A select trigger has no tone axis
+ * (fixed at "secondary", the same neutral surface TextField uses) and no
+ * "solid" variant (a trigger is never a call-to-action) — the public
+ * `SelectVariantToken` is `soft | outline | ghost` only.
+ */
+export const resolveSelectAppearance = (
+  view: {
+    readonly variant?: SelectVariantToken
+    readonly size?: ControlToken
+    readonly pill?: boolean
+    readonly dropdownIcon?: IconName
+  }
+): ResolvedSelectAppearance => ({
+  tone: "secondary",
+  variant: view.variant ?? "outline",
+  size: view.size ?? "md",
+  pill: view.pill === true,
+  dropdownIcon: view.dropdownIcon ?? "ChevronDown",
+  isLegacy: view.variant === undefined && view.size === undefined
+})
+
+/** Default leading icon per matrix tone for a tone-omitted/icon-omitted Alert. */
+export const defaultAlertIcon: Record<ToneToken, IconName> = {
+  accent: "InfoCircle",
+  secondary: "InfoCircle",
+  danger: "AlertCircle",
+  success: "CheckCircle",
+  warning: "AlertTriangle",
+  info: "InfoCircle"
+}
+
+/** The fully resolved appearance every renderer consumes for an Alert. */
+export interface ResolvedAlertAppearance {
+  readonly tone: ToneToken
+  readonly variant: ToneVariantToken
+  readonly icon: IconName
+}
+
+/**
+ * Resolves an Alert's `tone`/`variant`/`icon` onto the matrix + default icon
+ * table (harmonization #79). Alert is a brand-new component (no prior
+ * catalog version ever shipped it), so there is no legacy-omitted-look to
+ * preserve — every field always resolves to a concrete default.
+ */
+export const resolveAlertAppearance = (
+  view: { readonly tone?: ToneToken; readonly variant?: ToneVariantToken; readonly icon?: IconName }
+): ResolvedAlertAppearance => {
+  const tone = view.tone ?? "info"
+  return {
+    tone,
+    variant: view.variant ?? "soft",
+    icon: view.icon ?? defaultAlertIcon[tone]
+  }
+}
+
 export const ImageSchema: Schema.Codec<ImageView, ImageView> = Schema.TaggedStruct("Image", {
   ...CommonFields,
   source: UriStringSchema,
@@ -3804,6 +4062,10 @@ const BaseTextFieldFields = {
   field: FieldBindingSchema.pipe(Schema.optionalKey),
   focused: Schema.Boolean.pipe(Schema.optionalKey),
   disabled: Schema.Boolean.pipe(Schema.optionalKey),
+  invalid: Schema.Boolean.pipe(Schema.optionalKey),
+  variant: TextFieldVariantTokenSchema.pipe(Schema.optionalKey),
+  size: ControlTokenSchema.pipe(Schema.optionalKey),
+  gutterSize: SpacingTokenSchema.pipe(Schema.optionalKey),
   clearOnSubmit: Schema.Boolean.pipe(Schema.optionalKey),
   onChange: IntentRefSchema.pipe(Schema.optionalKey),
   onSubmit: IntentRefSchema.pipe(Schema.optionalKey),
@@ -3821,7 +4083,8 @@ export const PlainTextFieldSchema: Schema.Codec<PlainTextFieldView, PlainTextFie
   Schema.TaggedStruct("TextField", {
     ...BaseTextFieldFields,
     secure: Schema.Literal(false).pipe(Schema.optionalKey),
-    multiline: Schema.Boolean.pipe(Schema.optionalKey)
+    multiline: Schema.Boolean.pipe(Schema.optionalKey),
+    autoResize: Schema.Boolean.pipe(Schema.optionalKey)
   })
 
 export const TextFieldSchema: Schema.Codec<TextFieldView, TextFieldView> = Schema.Union([
@@ -3957,6 +4220,8 @@ export const BadgeSchema: Schema.Codec<BadgeView, BadgeView> = Schema.TaggedStru
   ...CommonFields,
   label: Schema.String,
   tone: ToneSchema.pipe(Schema.optionalKey),
+  variant: BadgeVariantTokenSchema.pipe(Schema.optionalKey),
+  size: ControlTokenSchema.pipe(Schema.optionalKey),
   style: CardStyleSchema.pipe(Schema.optionalKey)
 })
 
@@ -3965,6 +4230,8 @@ export const ChipSchema: Schema.Codec<ChipView, ChipView> = Schema.TaggedStruct(
   label: Schema.String,
   value: Schema.String.pipe(Schema.optionalKey),
   tone: ToneSchema.pipe(Schema.optionalKey),
+  variant: BadgeVariantTokenSchema.pipe(Schema.optionalKey),
+  size: ControlTokenSchema.pipe(Schema.optionalKey),
   style: CardStyleSchema.pipe(Schema.optionalKey)
 })
 
@@ -4262,6 +4529,12 @@ export const SelectSchema: Schema.Codec<SelectView, SelectView> = Schema.TaggedS
   value: Schema.String,
   options: Schema.Array(ChoiceOptionSchema),
   placeholder: Schema.String.pipe(Schema.optionalKey),
+  variant: SelectVariantTokenSchema.pipe(Schema.optionalKey),
+  size: ControlTokenSchema.pipe(Schema.optionalKey),
+  pill: Schema.Boolean.pipe(Schema.optionalKey),
+  dropdownIcon: IconNameSchema.pipe(Schema.optionalKey),
+  multiple: Schema.Boolean.pipe(Schema.optionalKey),
+  values: Schema.Array(Schema.String).pipe(Schema.optionalKey),
   style: TextFieldStyleSchema.pipe(Schema.optionalKey)
 })
 
@@ -4341,6 +4614,17 @@ export const StatusBannerSchema: Schema.Codec<StatusBannerView, StatusBannerView
   tone: ToneSchema,
   message: Schema.String,
   onRetry: IntentRefSchema.pipe(Schema.optionalKey),
+  onDismiss: IntentRefSchema.pipe(Schema.optionalKey),
+  style: CardStyleSchema.pipe(Schema.optionalKey)
+})
+
+export const AlertSchema: Schema.Codec<AlertView, AlertView> = Schema.TaggedStruct("Alert", {
+  ...CommonFields,
+  tone: ToneTokenSchema.pipe(Schema.optionalKey),
+  variant: ToneVariantTokenSchema.pipe(Schema.optionalKey),
+  icon: IconNameSchema.pipe(Schema.optionalKey),
+  title: Schema.String.pipe(Schema.optionalKey),
+  message: Schema.String,
   onDismiss: IntentRefSchema.pipe(Schema.optionalKey),
   style: CardStyleSchema.pipe(Schema.optionalKey)
 })
@@ -5057,7 +5341,8 @@ export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
     SegmentedControlSchema,
     SpinnerSchema,
     LoadingDotsSchema,
-    ShimmerTextSchema
+    ShimmerTextSchema,
+    AlertSchema
   ]).check(OverlayStackFilter)
 )
 
@@ -5507,6 +5792,10 @@ export type StatusBannerProps = WithoutTagAndVersion<StatusBannerView>
 export const StatusBanner = (props: StatusBannerProps): StatusBannerView =>
   StatusBannerSchema.make({ _tag: "StatusBanner", catalogVersion: CatalogVersion, ...props })
 
+export type AlertProps = WithoutTagAndVersion<AlertView>
+export const Alert = (props: AlertProps): AlertView =>
+  AlertSchema.make({ _tag: "Alert", catalogVersion: CatalogVersion, ...props })
+
 export type RecoveryOverlayProps = WithoutTagAndVersion<RecoveryOverlayView>
 export const RecoveryOverlay = (props: RecoveryOverlayProps): RecoveryOverlayView =>
   RecoveryOverlaySchema.make({ _tag: "RecoveryOverlay", catalogVersion: CatalogVersion, ...props })
@@ -5907,6 +6196,7 @@ export const resolveView = (view: View, input: ViewResolution = {}): View => {
     case "PricingColumn":
     case "Avatar":
     case "SegmentedControl":
+    case "Alert":
       return {
         ...view,
         ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) })
@@ -6163,6 +6453,7 @@ export const resolveBindings = <State>(view: View, state: State): View => {
     case "Spinner":
     case "LoadingDots":
     case "ShimmerText":
+    case "Alert":
       return view
     case "Section":
     case "Glow":
