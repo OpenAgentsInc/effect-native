@@ -14,6 +14,7 @@ import {
   ContextMenu,
   DiffView,
   DropdownMenu,
+  EmptyMessage,
   FieldBinding,
   FieldRow,
   Accordion,
@@ -669,7 +670,19 @@ const catalogFixturesByTag = {
   Toolbar: Toolbar(
     { key: "toolbar", placement: "bottom-floating", surface: "glass" },
     [Text({ key: "toolbar-hint", content: "Toolbar", variant: "caption" })]
-  )
+  ),
+  EmptyMessage: EmptyMessage({
+    key: "empty-message",
+    icon: { name: "Circle", tone: "secondary", size: "md" },
+    title: "No sessions yet",
+    description: "Start a new session to see it listed here.",
+    action: Button({
+      key: "empty-message-action",
+      label: "New session",
+      variant: "secondary",
+      onPress: IntentRef("Pressed", StaticPayload({ amount: 1 }))
+    })
+  })
 } satisfies { readonly [Tag in (typeof componentTags)[number]]: View }
 
 const allFixtureTags = Object.keys(catalogFixturesByTag).sort()
@@ -813,7 +826,8 @@ const catalogRendererTags = [
   "Frame",
   "BlurredPopup",
   "IconButton",
-  "Toolbar"
+  "Toolbar",
+  "EmptyMessage"
 ] as const
 
 // Host (issue #23) is supported by the headless recorder and the DOM renderer

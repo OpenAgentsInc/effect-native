@@ -17,6 +17,9 @@ import {
   DiffView,
   Divider,
   DropdownMenu,
+  EmptyMessage,
+  emptyMessageIconSizes,
+  emptyMessageIconTones,
   FieldRow,
   Footer,
   Glow,
@@ -1805,6 +1808,37 @@ const componentStoryMap = {
         ]
       )
     })
+  ],
+  EmptyMessage: [
+    story({
+      id: "empty-message",
+      component: "EmptyMessage",
+      title: "EmptyMessage",
+      description: "Centered empty-state block: icon badge, title, description, and a typed Button action slot.",
+      view: EmptyMessage({
+        key: "empty-message",
+        icon: { name: "Circle", tone: "secondary", size: "md" },
+        title: "No sessions yet",
+        description: "Start a new session to see it listed here.",
+        action: Button({
+          key: "empty-message-action",
+          label: "New session",
+          variant: "secondary",
+          onPress: IntentRef("GalleryStory.Pressed", StaticPayload({ amount: 1 }))
+        })
+      }),
+      controls: [
+        enumControl("empty-message-icon-tone", "Icon tone", ["icon", "tone"], "secondary", emptyMessageIconTones),
+        enumControl("empty-message-icon-size", "Icon size", ["icon", "size"], "md", emptyMessageIconSizes),
+        textControl("empty-message-title", "Title", ["title"], "No sessions yet"),
+        textControl(
+          "empty-message-description",
+          "Description",
+          ["description"],
+          "Start a new session to see it listed here."
+        )
+      ]
+    })
   ]
 } satisfies { readonly [Tag in ComponentTag]: ReadonlyArray<Story> }
 
@@ -1953,7 +1987,8 @@ export const componentPageSummaries = {
   Frame: "Decorative bordered frame around content.",
   BlurredPopup: "Blur-backed popup on the overlay presence lifecycle.",
   IconButton: "Circular icon-only pressable over the closed icon set with glass surface variant.",
-  Toolbar: "Floating action strip (glass surface) hosting icon buttons."
+  Toolbar: "Floating action strip (glass surface) hosting icon buttons.",
+  EmptyMessage: "Centered empty-state block: icon badge (bounded tone/size), title, description, and a typed Button action slot."
 } as const satisfies Record<ComponentTag, string>
 
 export const foundationPageIds = [

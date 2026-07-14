@@ -70,6 +70,9 @@ import {
   type StatTileView,
   type TableView,
   type Tone,
+  type EmptyMessageIconSize,
+  type EmptyMessageIconTone,
+  type EmptyMessageView,
   type HostKind,
   type HostView,
   type IconName,
@@ -1465,6 +1468,131 @@ const renderStatTile = (
       { key: "value", style: { color: colorValue(theme, toneColorToken[tone]) } },
       view.value
     )
+  )
+}
+
+// Empty-state message (issue #82, harmonization P2.9) on React Native.
+// Centered column on spacing tokens: optional icon badge (font glyph from the
+// bounded registry, tone/size from the closed EmptyMessage vocabularies),
+// required title, optional muted description, optional typed Button action.
+const emptyMessageToneColor: Record<EmptyMessageIconTone, ColorToken> = {
+  secondary: "textMuted",
+  danger: "danger",
+  warning: "warning"
+}
+
+const emptyMessageBadgeSize: Record<EmptyMessageIconSize, number> = { sm: 32, md: 40 }
+const emptyMessageGlyphSize: Record<EmptyMessageIconSize, number> = { sm: 20, md: 24 }
+
+const renderEmptyMessage = (
+  view: EmptyMessageView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const theme = options.theme ?? defaultTheme
+  const children: Array<ReactElementLike> = []
+  if (view.icon !== undefined) {
+    const tone = view.icon.tone ?? "secondary"
+    const size = view.icon.size ?? "md"
+    children.push(
+      createElement(
+        dependencies,
+        dependencies.ReactNative.View,
+        {
+          key: "icon",
+          testID: `en-empty-message-icon:${tone}`,
+          accessibilityElementsHidden: true,
+          importantForAccessibility: "no-hide-descendants",
+          style: {
+            width: emptyMessageBadgeSize[size],
+            height: emptyMessageBadgeSize[size],
+            borderRadius: radiusValue(theme, "md"),
+            alignItems: "center",
+            justifyContent: "center",
+            marginBottom: spacingValue(theme, "3"),
+            backgroundColor: colorValue(theme, "surfaceRaised")
+          }
+        },
+        createElement(
+          dependencies,
+          dependencies.ReactNative.Text,
+          {
+            key: "glyph",
+            style: {
+              fontSize: emptyMessageGlyphSize[size],
+              color: colorValue(theme, emptyMessageToneColor[tone])
+            }
+          },
+          iconGlyphs[view.icon.name]
+        )
+      )
+    )
+  }
+  children.push(
+    createElement(
+      dependencies,
+      dependencies.ReactNative.Text,
+      {
+        key: "title",
+        testID: "en-empty-message-title",
+        style: {
+          maxWidth: "90%",
+          textAlign: "center",
+          fontWeight: "600",
+          color: colorValue(theme, "textPrimary")
+        }
+      },
+      view.title
+    )
+  )
+  if (view.description !== undefined) {
+    children.push(
+      createElement(
+        dependencies,
+        dependencies.ReactNative.Text,
+        {
+          key: "description",
+          testID: "en-empty-message-description",
+          style: {
+            maxWidth: "90%",
+            textAlign: "center",
+            marginTop: spacingValue(theme, "1"),
+            color: colorValue(theme, "textMuted")
+          }
+        },
+        view.description
+      )
+    )
+  }
+  if (view.action !== undefined) {
+    children.push(
+      createElement(
+        dependencies,
+        dependencies.ReactNative.View,
+        { key: "action", testID: "en-empty-message-action", style: { marginTop: spacingValue(theme, "4") } },
+        renderResolvedReactNativeView(view.action, dependencies, report, options)
+      )
+    )
+  }
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.View,
+    baseProps(
+      view,
+      mergeNativeStyles(
+        {
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          width: "100%",
+          height: "100%",
+          padding: spacingValue(theme, "6")
+        },
+        viewStyle(view, options)
+      )
+    ),
+    ...children
   )
 }
 
@@ -3616,6 +3744,8 @@ const renderResolvedReactNativeView = (
       return renderIconButton(view, dependencies, report, options)
     case "Toolbar":
       return renderToolbar(view, dependencies, report, options)
+    case "EmptyMessage":
+      return renderEmptyMessage(view, dependencies, report, options)
   }
 }
 
@@ -4679,6 +4809,12 @@ export const viewStructure = (view: View): ReactNativeStructure => {
         tag: "Toolbar",
         ...(view.key === undefined ? {} : { key: view.key }),
         children: view.children.map(viewStructure)
+      }
+    case "EmptyMessage":
+      return {
+        tag: "EmptyMessage",
+        ...(view.key === undefined ? {} : { key: view.key }),
+        ...(view.action === undefined ? {} : { children: [viewStructure(view.action)] })
       }
     default:
       return {

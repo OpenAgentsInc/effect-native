@@ -91,8 +91,9 @@ export const MarkdownLinkHrefCatalogVersion = "effect-native/v28" as const
 export const ChatChromeCatalogVersion = "effect-native/v29" as const
 export const GlassChromeIconsCatalogVersion = "effect-native/v30" as const
 export const GraphProvenanceCatalogVersion = "effect-native/v31" as const
-export const PreviousCatalogVersion = GlassChromeIconsCatalogVersion
-export const CatalogVersion = GraphProvenanceCatalogVersion
+export const EmptyMessageCatalogVersion = "effect-native/v32" as const
+export const PreviousCatalogVersion = GraphProvenanceCatalogVersion
+export const CatalogVersion = EmptyMessageCatalogVersion
 export const CatalogVersionSchema = Schema.Literal(CatalogVersion)
 export type CatalogVersion = typeof CatalogVersion
 export const compatibleCatalogVersions = [
@@ -127,7 +128,8 @@ export const compatibleCatalogVersions = [
   MarkdownLinkHrefCatalogVersion,
   ChatChromeCatalogVersion,
   GlassChromeIconsCatalogVersion,
-  GraphProvenanceCatalogVersion
+  GraphProvenanceCatalogVersion,
+  EmptyMessageCatalogVersion
 ] as const
 export type CompatibleCatalogVersion = (typeof compatibleCatalogVersions)[number]
 export const CompatibleCatalogVersionSchema = Schema.Literals(compatibleCatalogVersions)
@@ -202,7 +204,8 @@ export const componentTags = [
   "Frame",
   "BlurredPopup",
   "IconButton",
-  "Toolbar"
+  "Toolbar",
+  "EmptyMessage"
 ] as const
 export type ComponentTag = (typeof componentTags)[number]
 
@@ -3002,6 +3005,35 @@ export interface ToolbarView extends NodeBase {
   readonly style?: CardStyle
 }
 
+// Empty-state message (issue #82, harmonization P2.9). One typed centered
+// block for empty panes — Desktop history/workspace/fleet each hand-rolled
+// this composition before. The icon is a badge over the closed IconName set
+// with its own bounded tone (secondary|danger|warning) and size (sm|md)
+// vocabularies; the optional action slot is a typed child Button view. No
+// illustrations/images and no loading state (Spinner/Shimmer is #83).
+export const emptyMessageIconTones = ["secondary", "danger", "warning"] as const
+export const EmptyMessageIconToneSchema = Schema.Literals(emptyMessageIconTones)
+export type EmptyMessageIconTone = (typeof emptyMessageIconTones)[number]
+
+export const emptyMessageIconSizes = ["sm", "md"] as const
+export const EmptyMessageIconSizeSchema = Schema.Literals(emptyMessageIconSizes)
+export type EmptyMessageIconSize = (typeof emptyMessageIconSizes)[number]
+
+export interface EmptyMessageIcon {
+  readonly name: IconName
+  readonly tone?: EmptyMessageIconTone
+  readonly size?: EmptyMessageIconSize
+}
+
+export interface EmptyMessageView extends NodeBase {
+  readonly _tag: "EmptyMessage"
+  readonly icon?: EmptyMessageIcon
+  readonly title: string
+  readonly description?: string
+  readonly action?: ButtonView
+  readonly style?: CardStyle
+}
+
 export type View =
   | StackView
   | TextView
@@ -3073,6 +3105,7 @@ export type View =
   | BlurredPopupView
   | IconButtonView
   | ToolbarView
+  | EmptyMessageView
 
 export type KeyedView = View & { readonly key: NodeKey }
 
@@ -3178,6 +3211,8 @@ const childViewEntries = (
       )
     case "PricingTable":
       return view.columns.map((child, index) => ({ path: ["columns", index], view: child }))
+    case "EmptyMessage":
+      return view.action === undefined ? [] : [{ path: ["action"], view: view.action }]
     default:
       return []
   }
@@ -4334,6 +4369,26 @@ export const ToolbarSchema: Schema.Codec<ToolbarView, ToolbarView> =
     style: CardStyleSchema.pipe(Schema.optionalKey)
   })
 
+export const EmptyMessageIconSchema: Schema.Codec<EmptyMessageIcon, EmptyMessageIcon> = Schema.Struct({
+  name: IconNameSchema,
+  tone: EmptyMessageIconToneSchema.pipe(Schema.optionalKey),
+  size: EmptyMessageIconSizeSchema.pipe(Schema.optionalKey)
+})
+
+export const EmptyMessageSchema: Schema.Codec<EmptyMessageView, EmptyMessageView> = Schema.TaggedStruct(
+  "EmptyMessage",
+  {
+    ...CommonFields,
+    icon: EmptyMessageIconSchema.pipe(Schema.optionalKey),
+    title: Schema.String,
+    description: Schema.String.pipe(Schema.optionalKey),
+    // The action slot is typed as a Button view specifically — not an open
+    // child array. An arbitrary view there is a decode failure.
+    action: Schema.suspend((): Schema.Codec<ButtonView, ButtonView> => ButtonSchema).pipe(Schema.optionalKey),
+    style: CardStyleSchema.pipe(Schema.optionalKey)
+  }
+)
+
 export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
   Schema.Union([
     StackSchema,
@@ -4405,7 +4460,8 @@ export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
     FrameSchema,
     BlurredPopupSchema,
     IconButtonSchema,
-    ToolbarSchema
+    ToolbarSchema,
+    EmptyMessageSchema
   ]).check(OverlayStackFilter)
 )
 
@@ -5006,6 +5062,10 @@ export const Toolbar = (
 ): ToolbarView =>
   ToolbarSchema.make({ _tag: "Toolbar", catalogVersion: CatalogVersion, ...props, children })
 
+export type EmptyMessageProps = WithoutTagAndVersion<EmptyMessageView>
+export const EmptyMessage = (props: EmptyMessageProps): EmptyMessageView =>
+  EmptyMessageSchema.make({ _tag: "EmptyMessage", catalogVersion: CatalogVersion, ...props })
+
 
 
 
@@ -5393,6 +5453,12 @@ export const resolveView = (view: View, input: ViewResolution = {}): View => {
           ? {}
           : { autocomplete: { ...view.autocomplete, combobox: resolveView(view.autocomplete.combobox, input) as ComboboxView } })
       }
+    case "EmptyMessage":
+      return {
+        ...view,
+        ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) }),
+        ...(view.action === undefined ? {} : { action: resolveView(view.action, input) as ButtonView })
+      }
   }
 }
 
@@ -5625,6 +5691,10 @@ export const resolveBindings = <State>(view: View, state: State): View => {
         open: resolveBoundBoolean(view.open, state),
         children: view.children.map((child) => resolveBindings(child, state))
       }
+    case "EmptyMessage":
+      return view.action === undefined
+        ? view
+        : { ...view, action: resolveBindings(view.action, state) as ButtonView }
   }
 }
 
@@ -5722,6 +5792,10 @@ export const redactSecureView = (view: View): View => {
         ...view,
         control: redactSecureView(view.control)
       }
+    case "EmptyMessage":
+      return view.action === undefined
+        ? view
+        : { ...view, action: redactSecureView(view.action) as ButtonView }
     case "Transcript":
       return {
         ...view,

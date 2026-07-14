@@ -8,6 +8,7 @@ import {
   GraphFigureSchema,
   GraphProvenanceCatalogVersion,
   IntentRef,
+  compatibleCatalogVersions,
   decodeCompatibleView,
   graphChipKinds,
   graphEdgeStatusColorToken,
@@ -50,7 +51,7 @@ describe("GraphFigure provenance vocabulary (#68, v31)", () => {
 
   test("badges, chips, entry policy, chip intent, and evidence_backed edges are typed data", () => {
     const view = richGraph()
-    expect(view.catalogVersion).toBe(GraphProvenanceCatalogVersion)
+    expect(view.catalogVersion).toBe(CatalogVersion)
     expect(view.nodes[0]?.badge?.tone).toBe("info")
     expect(view.nodes[0]?.chips?.[0]?.kind).toBe("provenance")
     expect(view.nodes[1]?.badge?.tone).toBeUndefined()
@@ -112,6 +113,7 @@ describe("GraphFigure provenance vocabulary (#68, v31)", () => {
     }
     const decoded = decodeCompatibleView(v30)
     expect(decoded.catalogVersion).toBe(GlassChromeIconsCatalogVersion)
-    expect(CatalogVersion).toBe(GraphProvenanceCatalogVersion)
+    // The provenance version stays in the compatible chain (current moved on).
+    expect(compatibleCatalogVersions).toContain(GraphProvenanceCatalogVersion)
   })
 })

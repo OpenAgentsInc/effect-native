@@ -78,6 +78,9 @@ import {
   type StatTileView,
   type TableView,
   type Tone,
+  type EmptyMessageIconSize,
+  type EmptyMessageIconTone,
+  type EmptyMessageView,
   type FlatStyle,
   FormFieldValueBinding,
   type HostKind,
@@ -1929,6 +1932,85 @@ const renderStatTile = (view: StatTileView, state: DomRendererState): HTMLElemen
   value.style.color = colorValue(toneColorToken[tone])
   value.textContent = view.value
   element.replaceChildren(label, value)
+  applyBaseStyle(element, view, state)
+  applyA11y(element, view)
+  return element
+}
+
+// Empty-state message (issue #82, harmonization P2.9). Centered block on
+// spacing tokens: optional icon badge over the closed IconName set (bounded
+// tone/size vocabularies), required title, optional muted description, and an
+// optional typed Button action slot.
+const emptyMessageToneColor: Record<EmptyMessageIconTone, ColorToken> = {
+  secondary: "textMuted",
+  danger: "danger",
+  warning: "warning"
+}
+
+const emptyMessageBadgePx: Record<EmptyMessageIconSize, number> = { sm: 32, md: 40 }
+const emptyMessageGlyphPx: Record<EmptyMessageIconSize, number> = { sm: 20, md: 24 }
+
+const renderEmptyMessage = (view: EmptyMessageView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+  const element = state.keyedElement(view, "div")
+  state.resetListeners(element)
+  element.style.display = "flex"
+  element.style.flexDirection = "column"
+  element.style.alignItems = "center"
+  element.style.justifyContent = "center"
+  element.style.textAlign = "center"
+  element.style.width = "100%"
+  element.style.height = "100%"
+  element.style.padding = "var(--en-spacing-6)"
+  const document = element.ownerDocument
+  const children: Array<HTMLElement> = []
+  if (view.icon !== undefined) {
+    const tone = view.icon.tone ?? "secondary"
+    const size = view.icon.size ?? "md"
+    const badge = document.createElement("div")
+    badge.setAttribute("data-en-role", "icon")
+    badge.setAttribute("data-en-tone", tone)
+    badge.setAttribute("data-en-size", size)
+    badge.setAttribute("aria-hidden", "true")
+    badge.style.display = "flex"
+    badge.style.alignItems = "center"
+    badge.style.justifyContent = "center"
+    badge.style.width = `${emptyMessageBadgePx[size]}px`
+    badge.style.height = `${emptyMessageBadgePx[size]}px`
+    badge.style.borderRadius = radiusValue("md")
+    badge.style.marginBottom = "var(--en-spacing-3)"
+    badge.style.background = colorValue("surfaceRaised")
+    badge.style.color = colorValue(emptyMessageToneColor[tone])
+    badge.innerHTML = iconSvg(view.icon.name, emptyMessageGlyphPx[size])
+    children.push(badge)
+  }
+  const title = document.createElement("span")
+  title.setAttribute("data-en-role", "title")
+  title.style.maxWidth = "90%"
+  title.style.color = colorValue("textPrimary")
+  title.style.fontSize = "var(--en-type-label-fontSize)"
+  title.style.lineHeight = "var(--en-type-label-lineHeight)"
+  title.style.fontWeight = "600"
+  title.textContent = view.title
+  children.push(title)
+  if (view.description !== undefined) {
+    const description = document.createElement("span")
+    description.setAttribute("data-en-role", "description")
+    description.style.maxWidth = "90%"
+    description.style.marginTop = "var(--en-spacing-1)"
+    description.style.color = colorValue("textMuted")
+    description.style.fontSize = "var(--en-type-body-fontSize)"
+    description.style.lineHeight = "var(--en-type-body-lineHeight)"
+    description.textContent = view.description
+    children.push(description)
+  }
+  if (view.action !== undefined) {
+    const action = document.createElement("div")
+    action.setAttribute("data-en-role", "action")
+    action.style.marginTop = "var(--en-spacing-4)"
+    action.appendChild(renderView(view.action, state, report))
+    children.push(action)
+  }
+  element.replaceChildren(...children)
   applyBaseStyle(element, view, state)
   applyA11y(element, view)
   return element
@@ -4107,6 +4189,8 @@ const renderView = (view: View, state: DomRendererState, report: IntentReporter)
       return renderIconButton(view, state, report)
     case "Toolbar":
       return renderToolbar(view, state, report)
+    case "EmptyMessage":
+      return renderEmptyMessage(view, state, report)
   }
 }
 
@@ -4344,6 +4428,12 @@ export const viewStructure = (view: View): DomStructure => {
         tag: "Toolbar",
         ...(view.key === undefined ? {} : { key: view.key }),
         children: view.children.map(viewStructure)
+      }
+    case "EmptyMessage":
+      return {
+        tag: "EmptyMessage",
+        ...(view.key === undefined ? {} : { key: view.key }),
+        ...(view.action === undefined ? {} : { children: [viewStructure(view.action)] })
       }
     default:
       return {

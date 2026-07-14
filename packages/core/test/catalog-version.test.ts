@@ -10,6 +10,7 @@ import {
   CompatibleViewSchema,
   ComposerCatalogVersion,
   DataDisplayCatalogVersion,
+  EmptyMessageCatalogVersion,
   FeedbackCatalogVersion,
   GraphCatalogVersion,
   MarketingCatalogVersion,
@@ -94,11 +95,12 @@ describe("catalog version compatibility", () => {
       MarkdownLinkHrefCatalogVersion,
       ChatChromeCatalogVersion,
       GlassChromeIconsCatalogVersion,
-      GraphProvenanceCatalogVersion
+      GraphProvenanceCatalogVersion,
+      EmptyMessageCatalogVersion
     ])
     // The current marker is the last entry; the previous marker is second-last.
-    expect(CatalogVersion).toBe(GraphProvenanceCatalogVersion)
-    expect(PreviousCatalogVersion).toBe(GlassChromeIconsCatalogVersion)
+    expect(CatalogVersion).toBe(EmptyMessageCatalogVersion)
+    expect(PreviousCatalogVersion).toBe(GraphProvenanceCatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 1]).toBe(CatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 2]).toBe(PreviousCatalogVersion)
   })

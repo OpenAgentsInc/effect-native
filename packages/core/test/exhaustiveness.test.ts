@@ -84,6 +84,7 @@ const describeView = Match.type<View>().pipe(
   Match.tag("BlurredPopup", () => "mobile-surface"),
   Match.tag("IconButton", () => "action"),
   Match.tag("Toolbar", () => "shell"),
+  Match.tag("EmptyMessage", () => "status"),
   Match.exhaustive
 )
 

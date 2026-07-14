@@ -8,12 +8,12 @@ conformance-checked by
 (`bun run check:catalog-reference`) so this page cannot silently drop a shipped
 component.
 
-Current catalog marker: `CatalogVersion = "effect-native/v31"` (v31 adds the
-GraphFigure provenance vocabulary — node badges, provenance/evidence/datum
-chips with the `onChipSelect` intent, the typed `nodeEntry` policy, and the
-`evidence_backed` edge status — issue #68, Sarah Blueprint map).
+Current catalog marker: `CatalogVersion = "effect-native/v32"` (v32 adds
+`EmptyMessage`, the typed centered empty-state block — optional icon badge
+over the closed icon set with bounded tone/size, required title, optional
+description, and a typed Button action slot — issue #82, harmonization P2.9).
 
-Closed component tags (`componentTags`, 70 total):
+Closed component tags (`componentTags`, 71 total):
 
 `Stack`, `Text`, `Button`, `Image`, `TextField`, `List`,
 `SectionList`, `Card`, `Spacer`, `Link`, `Modal`, `Sheet`,
@@ -26,7 +26,7 @@ Closed component tags (`componentTags`, 70 total):
 `Section`, `Hero`, `AnnouncementBadge`, `CtaSection`, `Footer`, `NavBar`,
 `Accordion`, `PricingColumn`, `PricingTable`, `LogoRow`, `StatsBand`, `Glow`,
 `MockupFrame`, `Pager`, `SwipeableListItem`, `BackgroundGradient`, `Wallpaper`, `Spotlight`, `Frame`, `BlurredPopup`,
-`IconButton`, `Toolbar`.
+`IconButton`, `Toolbar`, `EmptyMessage`.
 
 There is no escape hatch to add an ad hoc component — growing the
 catalog is a deliberate, tracked process; see
@@ -270,6 +270,16 @@ is not constructible. Optional `surface: "glass"` for the translucent material.
 Floating action strip (glass set, GL-1). Children rendered in a row; semantic
 `placement` (`bottom-floating` default, or `top`); optional `surface: "glass"`.
 
+### EmptyMessage
+
+Centered empty-state block for empty panes (issue #82). Optional `icon` badge
+over the closed `IconName` set with its own bounded `tone`
+(`secondary`/`danger`/`warning`, default `secondary`) and `size` (`sm`/`md`,
+default `md`); required `title`; optional muted `description`; optional
+`action` slot typed as a Button view specifically (an arbitrary view there is
+a decode failure). Layout is a centered column on spacing tokens. No
+illustrations/images and no loading state (Spinner/Shimmer is #83).
+
 ## Shared vocabulary
 
 ### Common fields
@@ -279,7 +289,7 @@ Every component accepts these two, inherited from `NodeBase`:
 | Field | Type | Notes |
 |---|---|---|
 | `key` | `string` (optional) | Required (enforced by the schema, not just convention) on any view placed inside a `List`/`SectionList`/`Link` children array. |
-| `catalogVersion` | `"effect-native/v31"` | Set automatically by every constructor function — you never pass this yourself. |
+| `catalogVersion` | `"effect-native/v32"` | Set automatically by every constructor function — you never pass this yourself. |
 
 ### Design tokens
 
