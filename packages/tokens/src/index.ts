@@ -1,6 +1,6 @@
-import { Context, Layer, Schema } from "effect"
+import { Context, Layer, Schema } from "effect";
 
-export const packageName = "@effect-native/tokens" as const
+export const packageName = "@effect-native/tokens" as const;
 
 export const spacingTokens = [
   "0",
@@ -24,8 +24,8 @@ export const spacingTokens = [
   "40",
   "48",
   "56",
-  "64"
-] as const
+  "64",
+] as const;
 
 export const colorTokens = [
   "background",
@@ -72,50 +72,78 @@ export const colorTokens = [
   "syntaxComment",
   "syntaxFunction",
   "syntaxNumber",
-  "syntaxOperator"
-] as const
+  "syntaxOperator",
+] as const;
 
-export const radiusTokens = ["none", "sm", "md", "lg", "xl", "full"] as const
-export const typeScaleTokens = ["caption", "body", "label", "title", "heading"] as const
-export const breakpointTokens = ["sm", "md", "lg", "xl"] as const
-export const dimensionTokens = ["xs", "sm", "md", "lg", "xl", "full"] as const
+export const radiusTokens = ["none", "sm", "md", "lg", "xl", "full"] as const;
+export const typeScaleTokens = [
+  "caption",
+  "body",
+  "label",
+  "title",
+  "heading",
+] as const;
+export const breakpointTokens = ["sm", "md", "lg", "xl"] as const;
+/**
+ * Shared bounded-layout lattice.
+ *
+ * The compact steps cover host chrome that cannot be expressed as spacing
+ * (meter tracks, attachment thumbnails, and minimum composer height). `2xl`
+ * is the shared long-form reading measure used by Desktop surfaces. Keeping
+ * these values in the closed lattice prevents applications from growing
+ * per-call-site numeric dimension allowlists.
+ */
+export const dimensionTokens = [
+  "4xs",
+  "3xs",
+  "2xs",
+  "xs",
+  "sm",
+  "md",
+  "lg",
+  "xl",
+  "2xl",
+  "full",
+] as const;
 /**
  * The shared control size lattice: one metric system for every control.
  * `2xs`/`xs` serve dense application chrome (toolbars, inline chips, status
  * rows); `sm`…`xl` are the standard control heights.
  */
-export const controlTokens = ["2xs", "xs", "sm", "md", "lg", "xl"] as const
+export const controlTokens = ["2xs", "xs", "sm", "md", "lg", "xl"] as const;
 
-export const SpacingTokenSchema = Schema.Literals(spacingTokens)
-export const ColorTokenSchema = Schema.Literals(colorTokens)
-export const RadiusTokenSchema = Schema.Literals(radiusTokens)
-export const TypeScaleTokenSchema = Schema.Literals(typeScaleTokens)
-export const BreakpointTokenSchema = Schema.Literals(breakpointTokens)
-export const DimensionTokenSchema = Schema.Literals(dimensionTokens)
-export const ControlTokenSchema = Schema.Literals(controlTokens)
+export const SpacingTokenSchema = Schema.Literals(spacingTokens);
+export const ColorTokenSchema = Schema.Literals(colorTokens);
+export const RadiusTokenSchema = Schema.Literals(radiusTokens);
+export const TypeScaleTokenSchema = Schema.Literals(typeScaleTokens);
+export const BreakpointTokenSchema = Schema.Literals(breakpointTokens);
+export const DimensionTokenSchema = Schema.Literals(dimensionTokens);
+export const ControlTokenSchema = Schema.Literals(controlTokens);
 
-export type SpacingToken = (typeof spacingTokens)[number]
-export type ColorToken = (typeof colorTokens)[number]
-export type RadiusToken = (typeof radiusTokens)[number]
-export type TypeScaleToken = (typeof typeScaleTokens)[number]
-export type BreakpointToken = (typeof breakpointTokens)[number]
-export type DimensionToken = (typeof dimensionTokens)[number]
-export type ControlToken = (typeof controlTokens)[number]
+export type SpacingToken = (typeof spacingTokens)[number];
+export type ColorToken = (typeof colorTokens)[number];
+export type RadiusToken = (typeof radiusTokens)[number];
+export type TypeScaleToken = (typeof typeScaleTokens)[number];
+export type BreakpointToken = (typeof breakpointTokens)[number];
+export type DimensionToken = (typeof dimensionTokens)[number];
+export type ControlToken = (typeof controlTokens)[number];
 
 export const NonNegativeNumberSchema = Schema.Number.check(
   Schema.isFinite({ title: "FiniteNumber" }),
-  Schema.isGreaterThanOrEqualTo(0, { title: "NonNegativeNumber" })
-)
+  Schema.isGreaterThanOrEqualTo(0, { title: "NonNegativeNumber" }),
+);
 export const PositiveNumberSchema = Schema.Number.check(
   Schema.isFinite({ title: "FiniteNumber" }),
-  Schema.isGreaterThan(0, { title: "PositiveNumber" })
-)
+  Schema.isGreaterThan(0, { title: "PositiveNumber" }),
+);
 export const ColorValueSchema = Schema.String.check(
   Schema.isPattern(/^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i, {
-    title: "HexColor"
-  })
-)
-export const FontWeightValueSchema = Schema.Literals([400, 500, 600, 700] as const)
+    title: "HexColor",
+  }),
+);
+export const FontWeightValueSchema = Schema.Literals([
+  400, 500, 600, 700,
+] as const);
 /**
  * A CSS timing-function keyword or cubic-bezier expression. Renderers that
  * cannot consume CSS easing directly (e.g. React Native) map these to their
@@ -124,23 +152,28 @@ export const FontWeightValueSchema = Schema.Literals([400, 500, 600, 700] as con
 export const EasingValueSchema = Schema.String.check(
   Schema.isPattern(
     /^(?:linear|ease|ease-in|ease-out|ease-in-out|cubic-bezier\(\s*-?\d*\.?\d+\s*,\s*-?\d*\.?\d+\s*,\s*-?\d*\.?\d+\s*,\s*-?\d*\.?\d+\s*\))$/,
-    { title: "EasingValue" }
-  )
-)
+    { title: "EasingValue" },
+  ),
+);
 /**
  * A shadow list ("x y blur spread color, …"). Bounded character set only —
  * no url(), no functions beyond rgba()/rgb().
  */
 export const ShadowValueSchema = Schema.String.check(
   Schema.isPattern(/^[0-9a-zA-Z(),.#%\s-]+$/, { title: "ShadowValue" }),
-  Schema.isMinLength(1)
-)
+  Schema.isMinLength(1),
+);
 
-const tokenRecordFields = <const Keys extends ReadonlyArray<string>, Value extends Schema.Constraint>(
+const tokenRecordFields = <
+  const Keys extends ReadonlyArray<string>,
+  Value extends Schema.Constraint,
+>(
   keys: Keys,
-  value: Value
+  value: Value,
 ): { readonly [Key in Keys[number]]: Value } =>
-  Object.fromEntries(keys.map((key) => [key, value])) as { readonly [Key in Keys[number]]: Value }
+  Object.fromEntries(keys.map((key) => [key, value])) as {
+    readonly [Key in Keys[number]]: Value;
+  };
 
 // ---------------------------------------------------------------------------
 // Tier 1 — primitive color ramps (apps-sdk-ui harmonization P0.1, issue #74)
@@ -154,8 +187,8 @@ const tokenRecordFields = <const Keys extends ReadonlyArray<string>, Value exten
 
 /** A six-digit opaque hex color — the only value form ramp steps may hold. */
 export const OpaqueColorValueSchema = Schema.String.check(
-  Schema.isPattern(/^#[0-9a-f]{6}$/, { title: "OpaqueHexColor" })
-)
+  Schema.isPattern(/^#[0-9a-f]{6}$/, { title: "OpaqueHexColor" }),
+);
 /**
  * One alpha step: a two-digit lowercase hex byte. Appended to an opaque ramp
  * step (via `withAlpha`) it forms an 8-digit `#rrggbbaa` overlay color — the
@@ -164,8 +197,8 @@ export const OpaqueColorValueSchema = Schema.String.check(
  * literal so derived overlay colors stay byte-exact.
  */
 export const AlphaChannelValueSchema = Schema.String.check(
-  Schema.isPattern(/^[0-9a-f]{2}$/, { title: "AlphaHexByte" })
-)
+  Schema.isPattern(/^[0-9a-f]{2}$/, { title: "AlphaHexByte" }),
+);
 
 export const blueRampSteps = [
   "25",
@@ -179,8 +212,8 @@ export const blueRampSteps = [
   "700",
   "800",
   "900",
-  "1000"
-] as const
+  "1000",
+] as const;
 export const grayRampSteps = [
   "0",
   "25",
@@ -199,9 +232,9 @@ export const grayRampSteps = [
   "900",
   "925",
   "950",
-  "1000"
-] as const
-export const statusRampSteps = ["300", "400", "500", "600"] as const
+  "1000",
+] as const;
+export const statusRampSteps = ["300", "400", "500", "600"] as const;
 export const alphaRampSteps = [
   "4",
   "5",
@@ -214,21 +247,21 @@ export const alphaRampSteps = [
   "30",
   "40",
   "60",
-  "86"
-] as const
+  "86",
+] as const;
 
 export const BlueRampSchema = Schema.Struct(
-  tokenRecordFields(blueRampSteps, OpaqueColorValueSchema)
-)
+  tokenRecordFields(blueRampSteps, OpaqueColorValueSchema),
+);
 export const GrayRampSchema = Schema.Struct(
-  tokenRecordFields(grayRampSteps, OpaqueColorValueSchema)
-)
+  tokenRecordFields(grayRampSteps, OpaqueColorValueSchema),
+);
 export const StatusRampSchema = Schema.Struct(
-  tokenRecordFields(statusRampSteps, OpaqueColorValueSchema)
-)
+  tokenRecordFields(statusRampSteps, OpaqueColorValueSchema),
+);
 export const AlphaRampSchema = Schema.Struct(
-  tokenRecordFields(alphaRampSteps, AlphaChannelValueSchema)
-)
+  tokenRecordFields(alphaRampSteps, AlphaChannelValueSchema),
+);
 
 /**
  * The full tier-1 primitive palette: one brand ramp (Protoss blue), one cool
@@ -243,17 +276,17 @@ export const PaletteSchema = Schema.Struct({
   amber: StatusRampSchema,
   cyan: StatusRampSchema,
   violet: StatusRampSchema,
-  alpha: AlphaRampSchema
-})
+  alpha: AlphaRampSchema,
+});
 
-export type BlueRampStep = (typeof blueRampSteps)[number]
-export type GrayRampStep = (typeof grayRampSteps)[number]
-export type StatusRampStep = (typeof statusRampSteps)[number]
-export type AlphaRampStep = (typeof alphaRampSteps)[number]
-export type Palette = Schema.Schema.Type<typeof PaletteSchema>
+export type BlueRampStep = (typeof blueRampSteps)[number];
+export type GrayRampStep = (typeof grayRampSteps)[number];
+export type StatusRampStep = (typeof statusRampSteps)[number];
+export type AlphaRampStep = (typeof alphaRampSteps)[number];
+export type Palette = Schema.Schema.Type<typeof PaletteSchema>;
 
-const decodeOpaqueColor = Schema.decodeUnknownSync(OpaqueColorValueSchema)
-const decodeAlphaChannel = Schema.decodeUnknownSync(AlphaChannelValueSchema)
+const decodeOpaqueColor = Schema.decodeUnknownSync(OpaqueColorValueSchema);
+const decodeAlphaChannel = Schema.decodeUnknownSync(AlphaChannelValueSchema);
 
 /**
  * Derive an 8-digit `#rrggbbaa` overlay color from an opaque ramp step and an
@@ -262,7 +295,7 @@ const decodeAlphaChannel = Schema.decodeUnknownSync(AlphaChannelValueSchema)
  * never new hues.
  */
 export const withAlpha = (color: string, alpha: string): string =>
-  `${decodeOpaqueColor(color)}${decodeAlphaChannel(alpha)}`
+  `${decodeOpaqueColor(color)}${decodeAlphaChannel(alpha)}`;
 
 /**
  * The Khala primitive palette (tier 1). Every khalaTheme semantic color role
@@ -286,7 +319,7 @@ export const khalaPalette = PaletteSchema.make({
     "700": "#285dbd",
     "800": "#204a99",
     "900": "#183770",
-    "1000": "#0f234a"
+    "1000": "#0f234a",
   },
   // Cool gray: blue-tinted navy neutrals for text, borders, and surfaces.
   gray: {
@@ -307,37 +340,37 @@ export const khalaPalette = PaletteSchema.make({
     "900": "#0b1220",
     "925": "#0a0f1c",
     "950": "#05070d",
-    "1000": "#02040a"
+    "1000": "#02040a",
   },
   red: {
     "300": "#fca5a5",
     "400": "#f87171",
     "500": "#ef4444",
-    "600": "#dc2626"
+    "600": "#dc2626",
   },
   green: {
     "300": "#86efac",
     "400": "#4ade80",
     "500": "#22c55e",
-    "600": "#16a34a"
+    "600": "#16a34a",
   },
   amber: {
     "300": "#fcd34d",
     "400": "#fbbf24",
     "500": "#f59e0b",
-    "600": "#d97706"
+    "600": "#d97706",
   },
   cyan: {
     "300": "#7dd3fc",
     "400": "#38bdf8",
     "500": "#0ea5e9",
-    "600": "#0284c7"
+    "600": "#0284c7",
   },
   violet: {
     "300": "#d8b4fe",
     "400": "#c084fc",
     "500": "#a855f7",
-    "600": "#9333ea"
+    "600": "#9333ea",
   },
   // Alpha steps: name ≈ opacity percent; byte = round(percent × 255 / 100).
   alpha: {
@@ -352,9 +385,9 @@ export const khalaPalette = PaletteSchema.make({
     "30": "4d",
     "40": "66",
     "60": "99",
-    "86": "db"
-  }
-})
+    "86": "db",
+  },
+});
 
 // ---------------------------------------------------------------------------
 // Tier 2 — the tone × variant × state color matrix (harmonization P0.2, #75)
@@ -372,43 +405,49 @@ export const toneTokens = [
   "danger",
   "success",
   "warning",
-  "info"
-] as const
-export const toneVariantTokens = ["solid", "soft", "outline", "ghost"] as const
-export const toneStateTokens = ["rest", "hover", "active", "selected", "disabled"] as const
+  "info",
+] as const;
+export const toneVariantTokens = ["solid", "soft", "outline", "ghost"] as const;
+export const toneStateTokens = [
+  "rest",
+  "hover",
+  "active",
+  "selected",
+  "disabled",
+] as const;
 
-export const ToneTokenSchema = Schema.Literals(toneTokens)
-export const ToneVariantTokenSchema = Schema.Literals(toneVariantTokens)
-export const ToneStateTokenSchema = Schema.Literals(toneStateTokens)
+export const ToneTokenSchema = Schema.Literals(toneTokens);
+export const ToneVariantTokenSchema = Schema.Literals(toneVariantTokens);
+export const ToneStateTokenSchema = Schema.Literals(toneStateTokens);
 
-export type ToneToken = (typeof toneTokens)[number]
-export type ToneVariantToken = (typeof toneVariantTokens)[number]
-export type ToneStateToken = (typeof toneStateTokens)[number]
+export type ToneToken = (typeof toneTokens)[number];
+export type ToneVariantToken = (typeof toneVariantTokens)[number];
+export type ToneStateToken = (typeof toneStateTokens)[number];
 
 /** The fully transparent color: ghost/outline resting fills and borders. */
-export const transparentColor = "#00000000" as const
+export const transparentColor = "#00000000" as const;
 
 /** One matrix cell: the four color roles a control resolves for a state. */
 export const ToneCellSchema = Schema.Struct({
   background: ColorValueSchema,
   border: ColorValueSchema,
   text: ColorValueSchema,
-  ring: ColorValueSchema
-})
+  ring: ColorValueSchema,
+});
 export const ToneStateMapSchema = Schema.Struct(
-  tokenRecordFields(toneStateTokens, ToneCellSchema)
-)
+  tokenRecordFields(toneStateTokens, ToneCellSchema),
+);
 export const ToneVariantMapSchema = Schema.Struct(
-  tokenRecordFields(toneVariantTokens, ToneStateMapSchema)
-)
+  tokenRecordFields(toneVariantTokens, ToneStateMapSchema),
+);
 export const ColorMatrixSchema = Schema.Struct(
-  tokenRecordFields(toneTokens, ToneVariantMapSchema)
-)
+  tokenRecordFields(toneTokens, ToneVariantMapSchema),
+);
 
-export type ToneCell = Schema.Schema.Type<typeof ToneCellSchema>
-export type ToneStateMap = Schema.Schema.Type<typeof ToneStateMapSchema>
-export type ToneVariantMap = Schema.Schema.Type<typeof ToneVariantMapSchema>
-export type ColorMatrix = Schema.Schema.Type<typeof ColorMatrixSchema>
+export type ToneCell = Schema.Schema.Type<typeof ToneCellSchema>;
+export type ToneStateMap = Schema.Schema.Type<typeof ToneStateMapSchema>;
+export type ToneVariantMap = Schema.Schema.Type<typeof ToneVariantMapSchema>;
+export type ColorMatrix = Schema.Schema.Type<typeof ColorMatrixSchema>;
 
 /**
  * The per-tone inputs the matrix derivation consumes. Solid states carry
@@ -417,21 +456,21 @@ export type ColorMatrix = Schema.Schema.Type<typeof ColorMatrixSchema>
  * Non-solid states are alpha overlays of one base hue.
  */
 interface ToneSpec {
-  readonly foreground: string
-  readonly solidBackground: string
-  readonly solidBackgroundHover: string
-  readonly solidBackgroundActive: string
-  readonly solidText: string
-  readonly solidBorder: string
-  readonly hoverOverlay: string
-  readonly activeOverlay: string
-  readonly selectedOverlay: string
-  readonly softBackground: string
-  readonly softBackgroundHover: string
-  readonly softBackgroundActive: string
-  readonly outlineBorder: string
-  readonly ring: string
-  readonly disabledText: string
+  readonly foreground: string;
+  readonly solidBackground: string;
+  readonly solidBackgroundHover: string;
+  readonly solidBackgroundActive: string;
+  readonly solidText: string;
+  readonly solidBorder: string;
+  readonly hoverOverlay: string;
+  readonly activeOverlay: string;
+  readonly selectedOverlay: string;
+  readonly softBackground: string;
+  readonly softBackgroundHover: string;
+  readonly softBackgroundActive: string;
+  readonly outlineBorder: string;
+  readonly ring: string;
+  readonly disabledText: string;
 }
 
 /**
@@ -445,154 +484,157 @@ const toneCells = (spec: ToneSpec): ToneVariantMap => ({
       background: spec.solidBackground,
       border: spec.solidBorder,
       text: spec.solidText,
-      ring: spec.ring
+      ring: spec.ring,
     },
     hover: {
       background: spec.solidBackgroundHover,
       border: spec.solidBorder,
       text: spec.solidText,
-      ring: spec.ring
+      ring: spec.ring,
     },
     active: {
       background: spec.solidBackgroundActive,
       border: spec.solidBorder,
       text: spec.solidText,
-      ring: spec.ring
+      ring: spec.ring,
     },
     selected: {
       background: spec.solidBackgroundActive,
       border: spec.solidBorder,
       text: spec.solidText,
-      ring: spec.ring
+      ring: spec.ring,
     },
     disabled: {
       background: spec.solidBackground,
       border: spec.solidBorder,
       text: spec.disabledText,
-      ring: transparentColor
-    }
+      ring: transparentColor,
+    },
   },
   soft: {
     rest: {
       background: spec.softBackground,
       border: transparentColor,
       text: spec.foreground,
-      ring: spec.ring
+      ring: spec.ring,
     },
     hover: {
       background: spec.softBackgroundHover,
       border: transparentColor,
       text: spec.foreground,
-      ring: spec.ring
+      ring: spec.ring,
     },
     active: {
       background: spec.softBackgroundActive,
       border: transparentColor,
       text: spec.foreground,
-      ring: spec.ring
+      ring: spec.ring,
     },
     selected: {
       background: spec.softBackgroundActive,
       border: transparentColor,
       text: spec.foreground,
-      ring: spec.ring
+      ring: spec.ring,
     },
     disabled: {
       background: spec.softBackground,
       border: transparentColor,
       text: spec.disabledText,
-      ring: transparentColor
-    }
+      ring: transparentColor,
+    },
   },
   outline: {
     rest: {
       background: transparentColor,
       border: spec.outlineBorder,
       text: spec.foreground,
-      ring: spec.ring
+      ring: spec.ring,
     },
     hover: {
       background: spec.hoverOverlay,
       border: spec.outlineBorder,
       text: spec.foreground,
-      ring: spec.ring
+      ring: spec.ring,
     },
     active: {
       background: spec.activeOverlay,
       border: spec.outlineBorder,
       text: spec.foreground,
-      ring: spec.ring
+      ring: spec.ring,
     },
     selected: {
       background: spec.selectedOverlay,
       border: spec.outlineBorder,
       text: spec.foreground,
-      ring: spec.ring
+      ring: spec.ring,
     },
     disabled: {
       background: transparentColor,
       border: spec.outlineBorder,
       text: spec.disabledText,
-      ring: transparentColor
-    }
+      ring: transparentColor,
+    },
   },
   ghost: {
     rest: {
       background: transparentColor,
       border: transparentColor,
       text: spec.foreground,
-      ring: spec.ring
+      ring: spec.ring,
     },
     hover: {
       background: spec.hoverOverlay,
       border: transparentColor,
       text: spec.foreground,
-      ring: spec.ring
+      ring: spec.ring,
     },
     active: {
       background: spec.activeOverlay,
       border: transparentColor,
       text: spec.foreground,
-      ring: spec.ring
+      ring: spec.ring,
     },
     selected: {
       background: spec.selectedOverlay,
       border: transparentColor,
       text: spec.foreground,
-      ring: spec.ring
+      ring: spec.ring,
     },
     disabled: {
       background: transparentColor,
       border: transparentColor,
       text: spec.disabledText,
-      ring: transparentColor
-    }
-  }
-})
+      ring: transparentColor,
+    },
+  },
+});
 
 export const SpacingThemeSchema = Schema.Struct(
-  tokenRecordFields(spacingTokens, NonNegativeNumberSchema)
-)
+  tokenRecordFields(spacingTokens, NonNegativeNumberSchema),
+);
 export const ColorThemeSchema = Schema.Struct(
-  tokenRecordFields(colorTokens, ColorValueSchema)
-)
+  tokenRecordFields(colorTokens, ColorValueSchema),
+);
 export const RadiusThemeSchema = Schema.Struct(
-  tokenRecordFields(radiusTokens, NonNegativeNumberSchema)
-)
+  tokenRecordFields(radiusTokens, NonNegativeNumberSchema),
+);
 export const TypeScaleValueSchema = Schema.Struct({
   fontSize: PositiveNumberSchema,
   lineHeight: PositiveNumberSchema,
-  fontWeight: FontWeightValueSchema
-})
+  fontWeight: FontWeightValueSchema,
+});
 export const TypeScaleThemeSchema = Schema.Struct(
-  tokenRecordFields(typeScaleTokens, TypeScaleValueSchema)
-)
+  tokenRecordFields(typeScaleTokens, TypeScaleValueSchema),
+);
 export const BreakpointThemeSchema = Schema.Struct(
-  tokenRecordFields(breakpointTokens, NonNegativeNumberSchema)
-)
+  tokenRecordFields(breakpointTokens, NonNegativeNumberSchema),
+);
 export const DimensionThemeSchema = Schema.Struct(
-  tokenRecordFields(dimensionTokens, Schema.Union([NonNegativeNumberSchema, Schema.Literal("100%")]))
-)
+  tokenRecordFields(
+    dimensionTokens,
+    Schema.Union([NonNegativeNumberSchema, Schema.Literal("100%")]),
+  ),
+);
 /**
  * Motion vocabulary shared by every renderer: one basic transition for
  * hover/color/background state changes, and an enter/exit pair for
@@ -614,8 +656,8 @@ export const MotionThemeSchema = Schema.Struct({
   easeEnter: EasingValueSchema,
   easeExit: EasingValueSchema,
   easeExitSnappy: EasingValueSchema,
-  easeMove: EasingValueSchema
-})
+  easeMove: EasingValueSchema,
+});
 /**
  * Elevation vocabulary: floating overlays (menus, popovers, palettes,
  * tooltips) carry `overlayShadow` plus a hairline ring of `borderSubtle`
@@ -623,8 +665,8 @@ export const MotionThemeSchema = Schema.Struct({
  */
 export const ElevationThemeSchema = Schema.Struct({
   overlayShadow: ShadowValueSchema,
-  hairlineWidth: NonNegativeNumberSchema
-})
+  hairlineWidth: NonNegativeNumberSchema,
+});
 /**
  * One control-lattice step: fixed height paired with the horizontal gutter,
  * corner radius, label font size, and icon size that coherently size a
@@ -636,11 +678,11 @@ export const ControlSizeValueSchema = Schema.Struct({
   gutter: NonNegativeNumberSchema,
   radius: NonNegativeNumberSchema,
   fontSize: PositiveNumberSchema,
-  icon: PositiveNumberSchema
-})
+  icon: PositiveNumberSchema,
+});
 export const ControlThemeSchema = Schema.Struct(
-  tokenRecordFields(controlTokens, ControlSizeValueSchema)
-)
+  tokenRecordFields(controlTokens, ControlSizeValueSchema),
+);
 
 export const ThemeSchema = Schema.Struct({
   spacing: SpacingThemeSchema,
@@ -652,21 +694,23 @@ export const ThemeSchema = Schema.Struct({
   dimension: DimensionThemeSchema,
   motion: MotionThemeSchema,
   elevation: ElevationThemeSchema,
-  control: ControlThemeSchema
-})
+  control: ControlThemeSchema,
+});
 
-export type SpacingTheme = Schema.Schema.Type<typeof SpacingThemeSchema>
-export type ColorTheme = Schema.Schema.Type<typeof ColorThemeSchema>
-export type RadiusTheme = Schema.Schema.Type<typeof RadiusThemeSchema>
-export type TypeScaleValue = Schema.Schema.Type<typeof TypeScaleValueSchema>
-export type TypeScaleTheme = Schema.Schema.Type<typeof TypeScaleThemeSchema>
-export type BreakpointTheme = Schema.Schema.Type<typeof BreakpointThemeSchema>
-export type DimensionTheme = Schema.Schema.Type<typeof DimensionThemeSchema>
-export type MotionTheme = Schema.Schema.Type<typeof MotionThemeSchema>
-export type ElevationTheme = Schema.Schema.Type<typeof ElevationThemeSchema>
-export type ControlSizeValue = Schema.Schema.Type<typeof ControlSizeValueSchema>
-export type ControlTheme = Schema.Schema.Type<typeof ControlThemeSchema>
-export type Theme = Schema.Schema.Type<typeof ThemeSchema>
+export type SpacingTheme = Schema.Schema.Type<typeof SpacingThemeSchema>;
+export type ColorTheme = Schema.Schema.Type<typeof ColorThemeSchema>;
+export type RadiusTheme = Schema.Schema.Type<typeof RadiusThemeSchema>;
+export type TypeScaleValue = Schema.Schema.Type<typeof TypeScaleValueSchema>;
+export type TypeScaleTheme = Schema.Schema.Type<typeof TypeScaleThemeSchema>;
+export type BreakpointTheme = Schema.Schema.Type<typeof BreakpointThemeSchema>;
+export type DimensionTheme = Schema.Schema.Type<typeof DimensionThemeSchema>;
+export type MotionTheme = Schema.Schema.Type<typeof MotionThemeSchema>;
+export type ElevationTheme = Schema.Schema.Type<typeof ElevationThemeSchema>;
+export type ControlSizeValue = Schema.Schema.Type<
+  typeof ControlSizeValueSchema
+>;
+export type ControlTheme = Schema.Schema.Type<typeof ControlThemeSchema>;
+export type Theme = Schema.Schema.Type<typeof ThemeSchema>;
 
 /**
  * The neutral fixture theme's color matrix. Light engine: hovers darken via
@@ -690,7 +734,7 @@ const defaultColorMatrix: ColorMatrix = {
     softBackgroundActive: "#2563eb3d",
     outlineBorder: "#2563eb",
     ring: "#93c5fd",
-    disabledText: "#cbd5e1"
+    disabledText: "#cbd5e1",
   }),
   secondary: toneCells({
     foreground: "#0f172a",
@@ -707,7 +751,7 @@ const defaultColorMatrix: ColorMatrix = {
     softBackgroundActive: "#0f172a29",
     outlineBorder: "#94a3b8",
     ring: "#93c5fd",
-    disabledText: "#cbd5e1"
+    disabledText: "#cbd5e1",
   }),
   danger: toneCells({
     foreground: "#dc2626",
@@ -724,7 +768,7 @@ const defaultColorMatrix: ColorMatrix = {
     softBackgroundActive: "#dc26263d",
     outlineBorder: "#dc2626",
     ring: "#fca5a5",
-    disabledText: "#cbd5e1"
+    disabledText: "#cbd5e1",
   }),
   success: toneCells({
     foreground: "#16a34a",
@@ -741,7 +785,7 @@ const defaultColorMatrix: ColorMatrix = {
     softBackgroundActive: "#16a34a3d",
     outlineBorder: "#16a34a",
     ring: "#86efac",
-    disabledText: "#cbd5e1"
+    disabledText: "#cbd5e1",
   }),
   warning: toneCells({
     foreground: "#d97706",
@@ -758,7 +802,7 @@ const defaultColorMatrix: ColorMatrix = {
     softBackgroundActive: "#d977063d",
     outlineBorder: "#d97706",
     ring: "#fcd34d",
-    disabledText: "#cbd5e1"
+    disabledText: "#cbd5e1",
   }),
   info: toneCells({
     foreground: "#0ea5e9",
@@ -775,9 +819,9 @@ const defaultColorMatrix: ColorMatrix = {
     softBackgroundActive: "#0ea5e93d",
     outlineBorder: "#0ea5e9",
     ring: "#7dd3fc",
-    disabledText: "#cbd5e1"
-  })
-}
+    disabledText: "#cbd5e1",
+  }),
+};
 
 /**
  * The Khala color matrix (tier 2, harmonization P0.2): every cell derives
@@ -795,14 +839,29 @@ const khalaColorMatrix: ColorMatrix = {
     solidText: khalaPalette.gray["25"],
     solidBorder: transparentColor,
     hoverOverlay: withAlpha(khalaPalette.blue["200"], khalaPalette.alpha["8"]),
-    activeOverlay: withAlpha(khalaPalette.blue["200"], khalaPalette.alpha["13"]),
-    selectedOverlay: withAlpha(khalaPalette.blue["500"], khalaPalette.alpha["16"]),
-    softBackground: withAlpha(khalaPalette.blue["500"], khalaPalette.alpha["16"]),
-    softBackgroundHover: withAlpha(khalaPalette.blue["500"], khalaPalette.alpha["20"]),
-    softBackgroundActive: withAlpha(khalaPalette.blue["500"], khalaPalette.alpha["24"]),
+    activeOverlay: withAlpha(
+      khalaPalette.blue["200"],
+      khalaPalette.alpha["13"],
+    ),
+    selectedOverlay: withAlpha(
+      khalaPalette.blue["500"],
+      khalaPalette.alpha["16"],
+    ),
+    softBackground: withAlpha(
+      khalaPalette.blue["500"],
+      khalaPalette.alpha["16"],
+    ),
+    softBackgroundHover: withAlpha(
+      khalaPalette.blue["500"],
+      khalaPalette.alpha["20"],
+    ),
+    softBackgroundActive: withAlpha(
+      khalaPalette.blue["500"],
+      khalaPalette.alpha["24"],
+    ),
     outlineBorder: khalaPalette.blue["500"],
     ring: khalaPalette.blue["300"],
-    disabledText: khalaPalette.gray["500"]
+    disabledText: khalaPalette.gray["500"],
   }),
   secondary: toneCells({
     foreground: khalaPalette.gray["25"],
@@ -812,14 +871,29 @@ const khalaColorMatrix: ColorMatrix = {
     solidText: khalaPalette.gray["25"],
     solidBorder: khalaPalette.gray["700"],
     hoverOverlay: withAlpha(khalaPalette.blue["200"], khalaPalette.alpha["8"]),
-    activeOverlay: withAlpha(khalaPalette.blue["200"], khalaPalette.alpha["13"]),
-    selectedOverlay: withAlpha(khalaPalette.blue["500"], khalaPalette.alpha["16"]),
-    softBackground: withAlpha(khalaPalette.blue["200"], khalaPalette.alpha["8"]),
-    softBackgroundHover: withAlpha(khalaPalette.blue["200"], khalaPalette.alpha["13"]),
-    softBackgroundActive: withAlpha(khalaPalette.blue["200"], khalaPalette.alpha["16"]),
+    activeOverlay: withAlpha(
+      khalaPalette.blue["200"],
+      khalaPalette.alpha["13"],
+    ),
+    selectedOverlay: withAlpha(
+      khalaPalette.blue["500"],
+      khalaPalette.alpha["16"],
+    ),
+    softBackground: withAlpha(
+      khalaPalette.blue["200"],
+      khalaPalette.alpha["8"],
+    ),
+    softBackgroundHover: withAlpha(
+      khalaPalette.blue["200"],
+      khalaPalette.alpha["13"],
+    ),
+    softBackgroundActive: withAlpha(
+      khalaPalette.blue["200"],
+      khalaPalette.alpha["16"],
+    ),
     outlineBorder: khalaPalette.gray["600"],
     ring: khalaPalette.blue["300"],
-    disabledText: khalaPalette.gray["500"]
+    disabledText: khalaPalette.gray["500"],
   }),
   danger: toneCells({
     foreground: khalaPalette.red["400"],
@@ -830,13 +904,25 @@ const khalaColorMatrix: ColorMatrix = {
     solidBorder: transparentColor,
     hoverOverlay: withAlpha(khalaPalette.red["400"], khalaPalette.alpha["8"]),
     activeOverlay: withAlpha(khalaPalette.red["400"], khalaPalette.alpha["13"]),
-    selectedOverlay: withAlpha(khalaPalette.red["400"], khalaPalette.alpha["16"]),
-    softBackground: withAlpha(khalaPalette.red["400"], khalaPalette.alpha["16"]),
-    softBackgroundHover: withAlpha(khalaPalette.red["400"], khalaPalette.alpha["20"]),
-    softBackgroundActive: withAlpha(khalaPalette.red["400"], khalaPalette.alpha["24"]),
+    selectedOverlay: withAlpha(
+      khalaPalette.red["400"],
+      khalaPalette.alpha["16"],
+    ),
+    softBackground: withAlpha(
+      khalaPalette.red["400"],
+      khalaPalette.alpha["16"],
+    ),
+    softBackgroundHover: withAlpha(
+      khalaPalette.red["400"],
+      khalaPalette.alpha["20"],
+    ),
+    softBackgroundActive: withAlpha(
+      khalaPalette.red["400"],
+      khalaPalette.alpha["24"],
+    ),
     outlineBorder: khalaPalette.red["400"],
     ring: khalaPalette.red["300"],
-    disabledText: khalaPalette.gray["500"]
+    disabledText: khalaPalette.gray["500"],
   }),
   success: toneCells({
     foreground: khalaPalette.green["500"],
@@ -846,14 +932,29 @@ const khalaColorMatrix: ColorMatrix = {
     solidText: khalaPalette.gray["950"],
     solidBorder: transparentColor,
     hoverOverlay: withAlpha(khalaPalette.green["500"], khalaPalette.alpha["8"]),
-    activeOverlay: withAlpha(khalaPalette.green["500"], khalaPalette.alpha["13"]),
-    selectedOverlay: withAlpha(khalaPalette.green["500"], khalaPalette.alpha["16"]),
-    softBackground: withAlpha(khalaPalette.green["500"], khalaPalette.alpha["16"]),
-    softBackgroundHover: withAlpha(khalaPalette.green["500"], khalaPalette.alpha["20"]),
-    softBackgroundActive: withAlpha(khalaPalette.green["500"], khalaPalette.alpha["24"]),
+    activeOverlay: withAlpha(
+      khalaPalette.green["500"],
+      khalaPalette.alpha["13"],
+    ),
+    selectedOverlay: withAlpha(
+      khalaPalette.green["500"],
+      khalaPalette.alpha["16"],
+    ),
+    softBackground: withAlpha(
+      khalaPalette.green["500"],
+      khalaPalette.alpha["16"],
+    ),
+    softBackgroundHover: withAlpha(
+      khalaPalette.green["500"],
+      khalaPalette.alpha["20"],
+    ),
+    softBackgroundActive: withAlpha(
+      khalaPalette.green["500"],
+      khalaPalette.alpha["24"],
+    ),
     outlineBorder: khalaPalette.green["500"],
     ring: khalaPalette.green["300"],
-    disabledText: khalaPalette.gray["500"]
+    disabledText: khalaPalette.gray["500"],
   }),
   warning: toneCells({
     foreground: khalaPalette.amber["500"],
@@ -863,14 +964,29 @@ const khalaColorMatrix: ColorMatrix = {
     solidText: khalaPalette.gray["950"],
     solidBorder: transparentColor,
     hoverOverlay: withAlpha(khalaPalette.amber["500"], khalaPalette.alpha["8"]),
-    activeOverlay: withAlpha(khalaPalette.amber["500"], khalaPalette.alpha["13"]),
-    selectedOverlay: withAlpha(khalaPalette.amber["500"], khalaPalette.alpha["16"]),
-    softBackground: withAlpha(khalaPalette.amber["500"], khalaPalette.alpha["16"]),
-    softBackgroundHover: withAlpha(khalaPalette.amber["500"], khalaPalette.alpha["20"]),
-    softBackgroundActive: withAlpha(khalaPalette.amber["500"], khalaPalette.alpha["24"]),
+    activeOverlay: withAlpha(
+      khalaPalette.amber["500"],
+      khalaPalette.alpha["13"],
+    ),
+    selectedOverlay: withAlpha(
+      khalaPalette.amber["500"],
+      khalaPalette.alpha["16"],
+    ),
+    softBackground: withAlpha(
+      khalaPalette.amber["500"],
+      khalaPalette.alpha["16"],
+    ),
+    softBackgroundHover: withAlpha(
+      khalaPalette.amber["500"],
+      khalaPalette.alpha["20"],
+    ),
+    softBackgroundActive: withAlpha(
+      khalaPalette.amber["500"],
+      khalaPalette.alpha["24"],
+    ),
     outlineBorder: khalaPalette.amber["500"],
     ring: khalaPalette.amber["300"],
-    disabledText: khalaPalette.gray["500"]
+    disabledText: khalaPalette.gray["500"],
   }),
   info: toneCells({
     foreground: khalaPalette.cyan["400"],
@@ -880,16 +996,31 @@ const khalaColorMatrix: ColorMatrix = {
     solidText: khalaPalette.gray["950"],
     solidBorder: transparentColor,
     hoverOverlay: withAlpha(khalaPalette.cyan["400"], khalaPalette.alpha["8"]),
-    activeOverlay: withAlpha(khalaPalette.cyan["400"], khalaPalette.alpha["13"]),
-    selectedOverlay: withAlpha(khalaPalette.cyan["400"], khalaPalette.alpha["16"]),
-    softBackground: withAlpha(khalaPalette.cyan["400"], khalaPalette.alpha["16"]),
-    softBackgroundHover: withAlpha(khalaPalette.cyan["400"], khalaPalette.alpha["20"]),
-    softBackgroundActive: withAlpha(khalaPalette.cyan["400"], khalaPalette.alpha["24"]),
+    activeOverlay: withAlpha(
+      khalaPalette.cyan["400"],
+      khalaPalette.alpha["13"],
+    ),
+    selectedOverlay: withAlpha(
+      khalaPalette.cyan["400"],
+      khalaPalette.alpha["16"],
+    ),
+    softBackground: withAlpha(
+      khalaPalette.cyan["400"],
+      khalaPalette.alpha["16"],
+    ),
+    softBackgroundHover: withAlpha(
+      khalaPalette.cyan["400"],
+      khalaPalette.alpha["20"],
+    ),
+    softBackgroundActive: withAlpha(
+      khalaPalette.cyan["400"],
+      khalaPalette.alpha["24"],
+    ),
     outlineBorder: khalaPalette.cyan["400"],
     ring: khalaPalette.cyan["300"],
-    disabledText: khalaPalette.gray["500"]
-  })
-}
+    disabledText: khalaPalette.gray["500"],
+  }),
+};
 
 export const defaultTheme = ThemeSchema.make({
   spacing: {
@@ -914,7 +1045,7 @@ export const defaultTheme = ThemeSchema.make({
     "40": 160,
     "48": 192,
     "56": 224,
-    "64": 256
+    "64": 256,
   },
   color: {
     background: "#ffffff",
@@ -949,7 +1080,7 @@ export const defaultTheme = ThemeSchema.make({
     syntaxComment: "#64748b",
     syntaxFunction: "#7e22ce",
     syntaxNumber: "#b45309",
-    syntaxOperator: "#334155"
+    syntaxOperator: "#334155",
   },
   colorMatrix: defaultColorMatrix,
   radius: {
@@ -958,28 +1089,32 @@ export const defaultTheme = ThemeSchema.make({
     md: 6,
     lg: 8,
     xl: 12,
-    full: 9999
+    full: 9999,
   },
   typeScale: {
     caption: { fontSize: 12, lineHeight: 16, fontWeight: 400 },
     body: { fontSize: 16, lineHeight: 24, fontWeight: 400 },
     label: { fontSize: 14, lineHeight: 20, fontWeight: 500 },
     title: { fontSize: 20, lineHeight: 28, fontWeight: 600 },
-    heading: { fontSize: 30, lineHeight: 36, fontWeight: 700 }
+    heading: { fontSize: 30, lineHeight: 36, fontWeight: 700 },
   },
   breakpoint: {
     sm: 640,
     md: 768,
     lg: 1024,
-    xl: 1280
+    xl: 1280,
   },
   dimension: {
+    "4xs": 4,
+    "3xs": 56,
+    "2xs": 64,
     xs: 160,
     sm: 240,
     md: 320,
     lg: 480,
     xl: 640,
-    full: "100%"
+    "2xl": 840,
+    full: "100%",
   },
   motion: {
     durationFastMs: 150,
@@ -990,11 +1125,12 @@ export const defaultTheme = ThemeSchema.make({
     easeEnter: "cubic-bezier(0.19, 1, 0.22, 1)",
     easeExit: "cubic-bezier(0.8, 0, 0.4, 1)",
     easeExitSnappy: "cubic-bezier(0.65, 0, 0.4, 1)",
-    easeMove: "cubic-bezier(0.65, 0, 0.35, 1)"
+    easeMove: "cubic-bezier(0.65, 0, 0.35, 1)",
   },
   elevation: {
-    overlayShadow: "0 10px 15px -3px rgba(15, 23, 42, 0.12), 0 4px 6px -4px rgba(15, 23, 42, 0.12)",
-    hairlineWidth: 1
+    overlayShadow:
+      "0 10px 15px -3px rgba(15, 23, 42, 0.12), 0 4px 6px -4px rgba(15, 23, 42, 0.12)",
+    hairlineWidth: 1,
   },
   control: {
     "2xs": { height: 16, gutter: 4, radius: 2, fontSize: 11, icon: 10 },
@@ -1002,13 +1138,13 @@ export const defaultTheme = ThemeSchema.make({
     sm: { height: 24, gutter: 8, radius: 4, fontSize: 12, icon: 14 },
     md: { height: 28, gutter: 10, radius: 6, fontSize: 14, icon: 16 },
     lg: { height: 32, gutter: 12, radius: 6, fontSize: 14, icon: 18 },
-    xl: { height: 40, gutter: 14, radius: 8, fontSize: 16, icon: 20 }
-  }
-})
+    xl: { height: 40, gutter: 14, radius: 8, fontSize: 16, icon: 20 },
+  },
+});
 
-export const defineTheme = (theme: Theme): Theme => ThemeSchema.make(theme)
-export const decodeTheme = Schema.decodeUnknownSync(ThemeSchema)
-export const encodeTheme = Schema.encodeSync(ThemeSchema)
+export const defineTheme = (theme: Theme): Theme => ThemeSchema.make(theme);
+export const decodeTheme = Schema.decodeUnknownSync(ThemeSchema);
+export const encodeTheme = Schema.encodeSync(ThemeSchema);
 
 /**
  * The single Khala Protoss-blue dark theme.
@@ -1051,7 +1187,10 @@ export const khalaTheme = ThemeSchema.make({
     warning: khalaPalette.amber["500"], // #f59e0b
     stateHover: withAlpha(khalaPalette.blue["200"], khalaPalette.alpha["8"]), // #8fb3ff14
     stateActive: withAlpha(khalaPalette.blue["200"], khalaPalette.alpha["13"]), // #8fb3ff21
-    stateSelected: withAlpha(khalaPalette.blue["500"], khalaPalette.alpha["16"]), // #3b82f629
+    stateSelected: withAlpha(
+      khalaPalette.blue["500"],
+      khalaPalette.alpha["16"],
+    ), // #3b82f629
     scrim: withAlpha(khalaPalette.gray["1000"], khalaPalette.alpha["86"]), // #02040adb
     codeBackground: khalaPalette.gray["925"], // #0a0f1c
     diffAdd: khalaPalette.green["400"], // #4ade80
@@ -1061,7 +1200,7 @@ export const khalaTheme = ThemeSchema.make({
     syntaxComment: khalaPalette.gray["450"], // #5b6b8c
     syntaxFunction: khalaPalette.violet["400"], // #c084fc
     syntaxNumber: khalaPalette.amber["400"], // #fbbf24
-    syntaxOperator: khalaPalette.gray["300"] // #93a4c3
+    syntaxOperator: khalaPalette.gray["300"], // #93a4c3
   },
   colorMatrix: khalaColorMatrix,
   radius: {
@@ -1070,21 +1209,22 @@ export const khalaTheme = ThemeSchema.make({
     md: 4,
     lg: 6,
     xl: 8,
-    full: 9999
+    full: 9999,
   },
   typeScale: {
     caption: { fontSize: 12, lineHeight: 16, fontWeight: 500 },
     body: { fontSize: 14, lineHeight: 21, fontWeight: 400 },
     label: { fontSize: 13, lineHeight: 18, fontWeight: 600 },
     title: { fontSize: 18, lineHeight: 24, fontWeight: 600 },
-    heading: { fontSize: 24, lineHeight: 30, fontWeight: 600 }
+    heading: { fontSize: 24, lineHeight: 30, fontWeight: 600 },
   },
   breakpoint: defaultTheme.breakpoint,
   dimension: defaultTheme.dimension,
   motion: defaultTheme.motion,
   elevation: {
-    overlayShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.6), 0 4px 6px -4px rgba(0, 0, 0, 0.6)",
-    hairlineWidth: 1
+    overlayShadow:
+      "0 10px 15px -3px rgba(0, 0, 0, 0.6), 0 4px 6px -4px rgba(0, 0, 0, 0.6)",
+    hairlineWidth: 1,
   },
   // The Khala control lattice: heights/gutters/icons unchanged from the
   // trimmed 4-step lattice (24/28/32/40 with 2xs/xs added for dense desktop
@@ -1098,9 +1238,9 @@ export const khalaTheme = ThemeSchema.make({
     sm: { height: 24, gutter: 8, radius: 4, fontSize: 12, icon: 14 },
     md: { height: 28, gutter: 10, radius: 4, fontSize: 13, icon: 16 },
     lg: { height: 32, gutter: 12, radius: 4, fontSize: 14, icon: 18 },
-    xl: { height: 40, gutter: 14, radius: 6, fontSize: 16, icon: 20 }
-  }
-})
+    xl: { height: 40, gutter: 14, radius: 6, fontSize: 16, icon: 20 },
+  },
+});
 
 /**
  * Effect service tag for the single active theme. There is deliberately no
@@ -1108,9 +1248,12 @@ export const khalaTheme = ThemeSchema.make({
  * only sanctioned production layer) or a bespoke `Layer.succeed(ThemeService,
  * someTheme)` in tests/tooling. No light layer is exported.
  */
-export const ThemeService = Context.Service<Theme>("@effect-native/tokens/ThemeService")
+export const ThemeService = Context.Service<Theme>(
+  "@effect-native/tokens/ThemeService",
+);
 
-export const makeThemeLayer = (theme: Theme) => Layer.succeed(ThemeService, theme)
+export const makeThemeLayer = (theme: Theme) =>
+  Layer.succeed(ThemeService, theme);
 
 /** The only theme Layer wired into Khala product surfaces. */
-export const khalaThemeLayer = makeThemeLayer(khalaTheme)
+export const khalaThemeLayer = makeThemeLayer(khalaTheme);
