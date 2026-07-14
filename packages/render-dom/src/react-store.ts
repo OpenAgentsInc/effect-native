@@ -1,20 +1,20 @@
 import { Deferred, Effect, Scope, Stream } from "effect"
 import type { View } from "@effect-native/core"
 
-export type ReactViewSnapshot =
+export type ReactViewSnapshot<Value = View> =
   | { readonly status: "loading"; readonly revision: 0 }
-  | { readonly status: "ready"; readonly revision: number; readonly view: View }
+  | { readonly status: "ready"; readonly revision: number; readonly view: Value }
   | { readonly status: "failed"; readonly revision: number; readonly message: string }
 
-export interface ReactViewStore {
-  readonly getSnapshot: () => ReactViewSnapshot
-  readonly getServerSnapshot: () => ReactViewSnapshot
+export interface ReactViewStore<Value = View> {
+  readonly getSnapshot: () => ReactViewSnapshot<Value>
+  readonly getServerSnapshot: () => ReactViewSnapshot<Value>
   readonly subscribe: (listener: () => void) => () => void
   readonly firstCommit: Effect.Effect<void>
   readonly activeSubscribers: () => number
 }
 
-const loadingSnapshot: ReactViewSnapshot = { status: "loading", revision: 0 }
+const loadingSnapshot: ReactViewSnapshot<never> = { status: "loading", revision: 0 }
 
 /**
  * Opens the Effect stream exactly once in the caller's Scope and exposes the
@@ -22,17 +22,17 @@ const loadingSnapshot: ReactViewSnapshot = { status: "loading", revision: 0 }
  * attach/detach listeners during Strict Mode replay without reopening the
  * authoritative Effect source.
  */
-export const makeReactViewStore = (
-  viewStream: Stream.Stream<View>
-): Effect.Effect<ReactViewStore, never, Scope.Scope> =>
+export const makeReactViewStore = <Value = View>(
+  viewStream: Stream.Stream<Value>
+): Effect.Effect<ReactViewStore<Value>, never, Scope.Scope> =>
   Effect.gen(function*() {
-    let snapshot: ReactViewSnapshot = loadingSnapshot
+    let snapshot: ReactViewSnapshot<Value> = loadingSnapshot
     let revision = 0
     const listeners = new Set<() => void>()
     const firstCommit = yield* Deferred.make<void>()
     yield* Effect.addFinalizer(() => Effect.sync(() => listeners.clear()))
 
-    const publish = (next: ReactViewSnapshot): void => {
+    const publish = (next: ReactViewSnapshot<Value>): void => {
       snapshot = next
       for (const listener of listeners) listener()
       Effect.runFork(Deferred.succeed(firstCommit, undefined))

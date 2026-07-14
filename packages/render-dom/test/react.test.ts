@@ -86,6 +86,17 @@ describe("React DOM surface", () => {
     })))
   })
 
+  test("projects application state without introducing a second authority", async () => {
+    const state = { selectedSessionRef: "thread-1", title: "First thread" } as const
+    await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
+      const store = yield* makeReactViewStore(Stream.make(state))
+      yield* store.firstCommit
+      const snapshot = store.getSnapshot()
+      expect(snapshot.status).toBe("ready")
+      if (snapshot.status === "ready") expect(snapshot.view).toBe(state)
+    })))
+  })
+
   test("lowers semantic React elements and dispatches one exact registered intent", async () => {
     const { container, document } = installDom()
     const received: Array<{ readonly name: string; readonly payload: unknown }> = []
