@@ -8,19 +8,19 @@ conformance-checked by
 (`bun run check:catalog-reference`) so this page cannot silently drop a shipped
 component.
 
-Current catalog marker: `CatalogVersion = "effect-native/v34"` (v34 adds
+Current catalog marker: `CatalogVersion = "effect-native/v35"` (v35 adds
+`CopyButton` — the typed copy-to-clipboard control with the injected
+`Clipboard` service, copied-state feedback, and the typed `onCopy` /
+`onCopiedReset` intents — issue #84, harmonization P2.11. v34 added
 `Avatar` + `AvatarGroup` — typed identity marks with the image -> initials ->
 icon fallback chain, control-lattice sizes, Tone soft/solid variants, and
 cutout-overlap groups with a max/overflow count — issue #80, harmonization
 P2.7. v33 expanded the closed `IconName` set from 16 to 101 semantic
-PascalCase names from the OpenAgents Desktop demand audit — desktop shell
-parity plus arrows, status, git, files, edit, transcript, search,
-fleet/connectivity, account/security, payments, and common chrome — and
-normalized every glyph to the Apps SDK UI conventions: 1em × 1em box,
-`viewBox 0 0 24 24`, `currentColor` paint, size from the `--en-icon-size-*`
-tokens — issue #85, harmonization P2.12).
+PascalCase names on the Apps SDK UI conventions — issue #85, harmonization
+P2.12. v32 added `EmptyMessage`, the typed centered empty-state block —
+issue #82, harmonization P2.9).
 
-Closed component tags (`componentTags`, 73 total):
+Closed component tags (`componentTags`, 74 total):
 
 `Stack`, `Text`, `Button`, `Image`, `TextField`, `List`,
 `SectionList`, `Card`, `Spacer`, `Link`, `Modal`, `Sheet`,
@@ -33,7 +33,7 @@ Closed component tags (`componentTags`, 73 total):
 `Section`, `Hero`, `AnnouncementBadge`, `CtaSection`, `Footer`, `NavBar`,
 `Accordion`, `PricingColumn`, `PricingTable`, `LogoRow`, `StatsBand`, `Glow`,
 `MockupFrame`, `Pager`, `SwipeableListItem`, `BackgroundGradient`, `Wallpaper`, `Spotlight`, `Frame`, `BlurredPopup`,
-`IconButton`, `Toolbar`, `EmptyMessage`, `Avatar`, `AvatarGroup`.
+`IconButton`, `Toolbar`, `EmptyMessage`, `Avatar`, `AvatarGroup`, `CopyButton`.
 
 There is no escape hatch to add an ad hoc component — growing the
 catalog is a deliberate, tracked process; see
@@ -306,6 +306,25 @@ on top) with an optional positive-integer `max`; the remainder collapses into
 a `+N` overflow count in the same treatment. Group-level `size`/`tone`/
 `variant` are defaults applied to children without their own value and to the
 overflow count.
+
+### CopyButton
+
+Typed copy-to-clipboard control (v35, #84) for transcript message actions,
+diagnostics panels, and code surfaces beyond CodeBlock's built-in copy intent.
+`content` is the string to copy; the write goes through the injected
+`Clipboard` service/driver (renderer option or Layer — never a bare
+`navigator.clipboard` call in the component contract), then the typed `onCopy`
+intent fires with the content as component value. `label` absent is the
+IconButton-shaped icon-only default; present is a Button-shaped icon+label
+control. `size` rides the shared control lattice (`sm`/`md`/`lg`/`xl`) and
+`variant` reuses the Button vocabulary (`primary`/`secondary`/`ghost`, ghost
+default). Copied feedback (Check icon swap + `copiedLabel` tooltip/live
+announcement): the DOM renderer owns uncontrolled per-node feedback and
+reverts after `resetMillis` (default 2000ms); controlled `copied` data plus
+`onCopiedReset` schedules the typed reset intent on every renderer (React
+Native's parity path — RN declares uncontrolled self-feedback unsupported and,
+without an injected clipboard, fires `onCopy` so the app performs the write).
+The headless renderer records every write (`clipboardWrites`, `simulateCopy`).
 
 ## Shared vocabulary
 

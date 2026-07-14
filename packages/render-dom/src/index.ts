@@ -1,4 +1,4 @@
-import { Deferred, Effect, Exit, Layer, Scope, Stream } from "effect"
+import { Deferred, Effect, Exit, Layer, Option, Scope, Stream } from "effect"
 import {
   type BadgeView,
   type ButtonView,
@@ -44,6 +44,11 @@ import {
   type AvatarVariant,
   type AvatarView,
   type ControlToken,
+  type CopyButtonView,
+  Clipboard,
+  clipboardWriteError,
+  copyButtonDefaultResetMillis,
+  makeClipboardLayer,
   type SurfaceMaterial,
   type ComboboxOption,
   type ComboboxView,
@@ -361,7 +366,34 @@ export interface DomRendererOptions {
   // Registered host drivers, one per supported host kind. A Host node whose
   // kind has no registered driver renders a loud error marker.
   readonly hostDrivers?: ReadonlyArray<DomHostDriver>
+  // Injected clipboard driver (v35, #84). Resolution order: this option, then
+  // the `Clipboard` service from the mounting Effect context (Layer), then the
+  // navigator-backed default. Components never call `navigator.clipboard`
+  // directly.
+  readonly clipboard?: Clipboard
 }
+
+// Navigator-backed clipboard driver. The `navigator.clipboard` lookup happens
+// at write time (not construction), so mounting in a host without the async
+// clipboard API stays total — the write fails as a typed ClipboardWriteError.
+export const makeNavigatorClipboard = (document?: Document): Clipboard => ({
+  writeText: (text) =>
+    Effect.callback((resume) => {
+      const window = document?.defaultView ?? globalThis.window
+      const clipboard = window?.navigator?.clipboard
+      if (clipboard === undefined || typeof clipboard.writeText !== "function") {
+        resume(Effect.fail(clipboardWriteError("navigator.clipboard is unavailable in this host")))
+        return
+      }
+      clipboard.writeText(text).then(
+        () => resume(Effect.void),
+        (cause) => resume(Effect.fail(clipboardWriteError(String(cause))))
+      )
+    })
+})
+
+export const makeNavigatorClipboardLayer = (document?: Document) =>
+  makeClipboardLayer(makeNavigatorClipboard(document))
 
 export interface DomMountedSurface extends MountedSurface {
   readonly root: HTMLElement
@@ -799,6 +831,12 @@ class DomRendererState {
   readonly anchoredOpen = new Map<string, boolean>()
   // Scheduled toast auto-dismiss timers, keyed by notification id (issue #40).
   readonly toastTimers = new Map<string, ReturnType<typeof setTimeout>>()
+  // Uncontrolled CopyButton copied-feedback timers, keyed by node key (v35,
+  // #84). Presence of a key means the node is currently in the copied state;
+  // the timer reverts it after the typed reset delay.
+  readonly copyFeedbackTimers = new Map<string, ReturnType<typeof setTimeout>>()
+  // Injected clipboard driver (v35, #84); the only write path for copy intents.
+  readonly clipboard: Clipboard
   readonly hostDrivers: Map<HostKind, DomHostDriver>
   readonly hostInstances = new Map<string, { readonly kind: HostKind; readonly instance: DomHostInstance }>()
 
@@ -806,7 +844,8 @@ class DomRendererState {
     container: Element,
     document: Document,
     theme: Theme,
-    hostDrivers: ReadonlyArray<DomHostDriver> = []
+    hostDrivers: ReadonlyArray<DomHostDriver> = [],
+    clipboard?: Clipboard
   ) {
     this.theme = theme
     this.root = document.createElement("div")
@@ -814,6 +853,7 @@ class DomRendererState {
     container.appendChild(this.root)
     this.styles = new AtomicStyleSheet(document, theme)
     this.hostDrivers = new Map(hostDrivers.map((driver) => [driver.kind, driver] as const))
+    this.clipboard = clipboard ?? makeNavigatorClipboard(document)
   }
 
   dispose(): void {
@@ -821,6 +861,10 @@ class DomRendererState {
       clearTimeout(timer)
     }
     this.toastTimers.clear()
+    for (const timer of this.copyFeedbackTimers.values()) {
+      clearTimeout(timer)
+    }
+    this.copyFeedbackTimers.clear()
     for (const { instance } of this.hostInstances.values()) {
       instance.unmount()
     }
@@ -4546,6 +4590,8 @@ const renderView = (view: View, state: DomRendererState, report: IntentReporter)
       return renderBlurredPopup(view, state, report)
     case "IconButton":
       return renderIconButton(view, state, report)
+    case "CopyButton":
+      return renderCopyButton(view, state, report)
     case "Toolbar":
       return renderToolbar(view, state, report)
     case "EmptyMessage":
@@ -4822,7 +4868,12 @@ export const makeDomRenderer = (options: DomRendererOptions = {}): RendererAdapt
         const document = options.document ?? container.ownerDocument ?? globalThis.document
         const theme = options.theme ?? defaultTheme
         const viewport = yield* makeViewportService(options.viewport ?? readDomViewport(document), { theme })
-        const state = new DomRendererState(container, document, theme, options.hostDrivers ?? [])
+        // Clipboard resolution (v35, #84): explicit option, then the Clipboard
+        // Layer from the mounting Effect context, then the navigator default.
+        const contextClipboard = yield* Effect.serviceOption(Clipboard)
+        const clipboard = options.clipboard ??
+          (Option.isSome(contextClipboard) ? contextClipboard.value : makeNavigatorClipboard(document))
+        const state = new DomRendererState(container, document, theme, options.hostDrivers ?? [], clipboard)
         const ready = yield* Deferred.make<void>()
         const window = document.defaultView
         const resolvedViewStream = viewStream.pipe(
@@ -5558,5 +5609,187 @@ const renderToolbar = (
   applyA11y(element, view)
   applyInteractions(element, view, state, report)
   renderChildren(element, view.children, state, report)
+  return element
+}
+
+// ── CopyButton (v35, #84) ────────────────────────────────────────────────────
+//
+// Copy-to-clipboard control for transcript message actions, diagnostics
+// panels, and code surfaces. The clipboard write goes through the injected
+// `Clipboard` driver on `state` — never a bare `navigator.clipboard` call —
+// then the typed `onCopy` intent fires with the copied content.
+//
+// Copied feedback: uncontrolled (no `copied` prop) is renderer-owned — the
+// icon swaps to Check, `copiedLabel` becomes the title/live announcement, and
+// a per-node timer reverts after `resetMillis`. Controlled (`copied` as data)
+// renders from the prop and, when `onCopiedReset` is provided, schedules the
+// typed reset intent (the Toast auto-dismiss precedent, #40).
+
+const copyFeedbackKey = (view: CopyButtonView): string => `CopyButton:${view.key ?? ""}`
+
+const applyCopyButtonPresentation = (
+  element: HTMLButtonElement,
+  view: CopyButtonView,
+  copied: boolean,
+  state: DomRendererState
+): void => {
+  const document = element.ownerDocument
+  const control = state.theme.control[view.size ?? "md"]
+  element.setAttribute("data-en-copied", copied ? "true" : "false")
+  element.replaceChildren()
+
+  const glyphName: IconName = copied ? "Check" : "Copy"
+  const glyph = iconRegistry[glyphName]
+  const paint = glyph.fill
+    ? 'fill="currentColor"'
+    : 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"'
+  const icon = document.createElement("span")
+  icon.setAttribute("data-en-role", "copy-icon")
+  icon.style.display = "inline-flex"
+  icon.innerHTML =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${control.icon}" height="${control.icon}" viewBox="0 0 24 24" aria-hidden="true" ${paint}>${glyph.body}</svg>`
+  element.appendChild(icon)
+
+  const copiedLabel = view.copiedLabel ?? "Copied"
+  if (view.label !== undefined) {
+    const label = document.createElement("span")
+    label.setAttribute("data-en-role", "copy-label")
+    label.textContent = copied ? copiedLabel : view.label
+    element.appendChild(label)
+  }
+
+  // Copied announcement: a polite live region for screen readers plus the
+  // native `title` tooltip affordance while the copied state is showing.
+  const status = document.createElement("span")
+  status.setAttribute("data-en-role", "copy-status")
+  status.setAttribute("role", "status")
+  status.style.position = "absolute"
+  status.style.width = "1px"
+  status.style.height = "1px"
+  status.style.overflow = "hidden"
+  status.style.clipPath = "inset(50%)"
+  status.textContent = copied ? copiedLabel : ""
+  element.appendChild(status)
+
+  if (copied) {
+    element.title = copiedLabel
+  } else {
+    element.removeAttribute("title")
+  }
+}
+
+const renderCopyButton = (
+  view: CopyButtonView,
+  state: DomRendererState,
+  report: IntentReporter
+): HTMLElement => {
+  const element = state.keyedElement(view, "button") as HTMLButtonElement
+  state.resetListeners(element)
+  element.type = "button"
+  element.disabled = view.disabled === true
+  const variant = view.variant ?? "ghost"
+  const size = view.size ?? "md"
+  const control = state.theme.control[size]
+  element.setAttribute("data-en-variant", variant)
+  element.setAttribute("data-en-size", size)
+  element.setAttribute("aria-label", view.accessibilityLabel ?? view.label ?? "Copy")
+  if (view.surface === undefined) {
+    element.removeAttribute("data-en-surface")
+  } else {
+    element.setAttribute("data-en-surface", view.surface)
+  }
+  element.style.position = "relative"
+  element.style.display = "inline-flex"
+  element.style.alignItems = "center"
+  element.style.justifyContent = "center"
+  element.style.gap = "var(--en-spacing-1)"
+  element.style.height = `${control.height}px`
+  element.style.font = "inherit"
+  element.style.borderRadius = "var(--en-radius-md)"
+  element.style.border = "1px solid transparent"
+  element.style.cursor = view.disabled === true ? "not-allowed" : "pointer"
+  element.style.opacity = view.disabled === true ? "0.5" : "1"
+  // IconButton-shaped default: icon-only is a square control-lattice hit
+  // target; with a label it takes the lattice gutter as horizontal padding.
+  if (view.label === undefined) {
+    element.style.width = `${control.height}px`
+    element.style.padding = "0"
+  } else {
+    element.style.width = ""
+    element.style.padding = `0 ${control.gutter}px`
+  }
+  // Existing Button variant vocabulary (the full tone × variant matrix is a
+  // separate later issue).
+  switch (variant) {
+    case "primary":
+      element.style.background = colorValue("accent")
+      element.style.color = colorValue("textPrimary")
+      break
+    case "secondary":
+      element.style.background = colorValue("surface")
+      element.style.color = colorValue("textPrimary")
+      element.style.borderColor = colorValue("border")
+      break
+    case "ghost":
+      element.style.background = "transparent"
+      element.style.color = colorValue("textMuted")
+      break
+  }
+
+  const feedbackKey = copyFeedbackKey(view)
+  const controlled = view.copied !== undefined
+  const copied = controlled ? view.copied === true : state.copyFeedbackTimers.has(feedbackKey)
+  applyCopyButtonPresentation(element, view, copied, state)
+
+  // Controlled reset: while `copied` is data-true and the app asked for a
+  // typed reset, schedule it once (renderer-scheduled, like Toast
+  // auto-dismiss). The app flips `copied` back to false in its reducer.
+  if (controlled && view.copied === true && view.onCopiedReset !== undefined) {
+    const onCopiedReset = view.onCopiedReset
+    if (!state.copyFeedbackTimers.has(feedbackKey)) {
+      const timer = setTimeout(() => {
+        state.copyFeedbackTimers.delete(feedbackKey)
+        runReportedIntent(report, onCopiedReset, view.content)
+      }, view.resetMillis ?? copyButtonDefaultResetMillis)
+      state.copyFeedbackTimers.set(feedbackKey, timer)
+    }
+  }
+  if (controlled && view.copied !== true) {
+    const pending = state.copyFeedbackTimers.get(feedbackKey)
+    if (pending !== undefined) {
+      clearTimeout(pending)
+      state.copyFeedbackTimers.delete(feedbackKey)
+    }
+  }
+
+  state.addListener(element, "click", () => {
+    if (view.disabled === true) return
+    void Effect.runPromise(state.clipboard.writeText(view.content))
+      .then(() => {
+        if (!controlled) {
+          const existing = state.copyFeedbackTimers.get(feedbackKey)
+          if (existing !== undefined) clearTimeout(existing)
+          const timer = setTimeout(() => {
+            state.copyFeedbackTimers.delete(feedbackKey)
+            if (element.isConnected) {
+              applyCopyButtonPresentation(element, view, false, state)
+            }
+          }, view.resetMillis ?? copyButtonDefaultResetMillis)
+          state.copyFeedbackTimers.set(feedbackKey, timer)
+          applyCopyButtonPresentation(element, view, true, state)
+        }
+        if (view.onCopy !== undefined) {
+          runReportedIntent(report, view.onCopy, view.content)
+        }
+      })
+      .catch(() => {
+        // Clipboard write failed (driver unavailable/denied): no copied
+        // feedback, no onCopy intent; the handler stays total.
+      })
+  })
+
+  applySurfaceMergedStyle(element, view.style, view.surface, state)
+  applyA11y(element, view)
+  applyInteractions(element, view, state, report)
   return element
 }

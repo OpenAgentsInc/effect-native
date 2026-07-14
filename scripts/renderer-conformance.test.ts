@@ -12,6 +12,7 @@ import {
   Composer,
   ComponentValueBinding,
   ContextMenu,
+  CopyButton,
   DiffView,
   DropdownMenu,
   EmptyMessage,
@@ -705,6 +706,12 @@ const catalogFixturesByTag = {
       keyed(Avatar({ key: "avatar-b", initials: "WF", label: "Whitefang" })),
       keyed(Avatar({ key: "avatar-c", icon: "Circle" }))
     ]
+  }),
+  CopyButton: CopyButton({
+    key: "copy-button",
+    content: "conformance copy content",
+    accessibilityLabel: "Copy content",
+    onCopy: IntentRef("Changed", ComponentValueBinding())
   })
 } satisfies { readonly [Tag in (typeof componentTags)[number]]: View }
 
@@ -852,7 +859,8 @@ const catalogRendererTags = [
   "Toolbar",
   "EmptyMessage",
   "Avatar",
-  "AvatarGroup"
+  "AvatarGroup",
+  "CopyButton"
 ] as const
 
 // Host (issue #23) is supported by the headless recorder and the DOM renderer

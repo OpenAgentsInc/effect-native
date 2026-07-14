@@ -8,6 +8,7 @@ import {
   CompatibleViewSchema,
   GraphProvenanceCatalogVersion,
   avatarVariants,
+  compatibleCatalogVersions,
   decodeCompatibleView,
   decodeView,
   encodeView,
@@ -39,8 +40,8 @@ describe("Avatar + AvatarGroup (#80) catalog contract", () => {
       variant: "solid",
       label: "Orrery"
     })
-    expect(avatar.catalogVersion).toBe(AvatarCatalogVersion)
-    expect(CatalogVersion).toBe(AvatarCatalogVersion)
+    expect(avatar.catalogVersion).toBe(CatalogVersion)
+    expect(compatibleCatalogVersions).toContain(AvatarCatalogVersion)
     expect(avatar.size).toBe("lg")
     expect(avatarVariants).toEqual(["soft", "solid"])
 

@@ -44,6 +44,9 @@ import {
   type AvatarVariant,
   type AvatarView,
   type ControlToken,
+  type CopyButtonView,
+  type Clipboard,
+  copyButtonDefaultResetMillis,
   type ComboboxOption,
   type ComboboxView,
   type CommandPaletteView,
@@ -220,6 +223,12 @@ export interface ReactNativeRenderOptions {
   // renders on iOS 26+; this override exists for tests (inject a fake runtime)
   // — app code must never import @expo/ui.
   readonly expoUi?: ExpoUiSwiftUiRuntime
+  // Injected clipboard driver (v35, #84) for CopyButton. React Native core
+  // ships no clipboard API, so the app supplies one (e.g. expo-clipboard
+  // wrapped as a `Clipboard`). When absent, pressing a CopyButton still fires
+  // the typed `onCopy` intent with the content so the app can perform the
+  // write itself — an honest declared subset, never a silent success.
+  readonly clipboard?: Clipboard
 }
 
 export interface EffectNativeSurfaceProps extends ReactNativeRenderOptions {
@@ -4029,6 +4038,8 @@ const renderResolvedReactNativeView = (
       return renderAvatar(view, dependencies, options)
     case "AvatarGroup":
       return renderAvatarGroup(view, dependencies, options)
+    case "CopyButton":
+      return renderCopyButton(view, dependencies, report, options)
   }
 }
 
@@ -4699,6 +4710,150 @@ const renderToolbar = (
       testID: `en-toolbar:${view.placement ?? "bottom-floating"}`
     },
     ...view.children.map((child) => renderResolvedReactNativeView(child, dependencies, report, options))
+  )
+}
+
+// ── CopyButton (v35, #84) ────────────────────────────────────────────────────
+//
+// React Native lowering of the typed copy-to-clipboard control. The write goes
+// through the injected `options.clipboard` driver when present (RN core has no
+// clipboard API); without one the press fires the typed `onCopy` intent with
+// the content so the app performs the write — an honest declared subset.
+//
+// Copied feedback is the CONTROLLED path on RN: element trees are pure per
+// emission, so renderer-owned uncontrolled feedback is declared unsupported.
+// The app drives `copied` as data; while it is true and `onCopiedReset` is
+// provided, the renderer schedules the typed reset intent (the Toast
+// auto-dismiss precedent, #53).
+const scheduleCopiedReset = (
+  view: CopyButtonView,
+  report: IntentReporter
+): void => {
+  if (view.copied !== true || view.onCopiedReset === undefined) return
+  const onCopiedReset = view.onCopiedReset
+  setTimeout(() => {
+    runReportedIntent(report, onCopiedReset, view.content)
+  }, view.resetMillis ?? copyButtonDefaultResetMillis)
+}
+
+const renderCopyButton = (
+  view: CopyButtonView,
+  dependencies: ReactNativeDependencies,
+  report: IntentReporter,
+  options: ReactNativeRenderOptions
+): ReactElementLike => {
+  const theme = options.theme ?? defaultTheme
+  const variant = view.variant ?? "ghost"
+  const size = view.size ?? "md"
+  const control = theme.control[size]
+  const copied = view.copied === true
+  scheduleCopiedReset(view, report)
+
+  const variantStyle: ReactNativeStyle = variant === "primary"
+    ? { backgroundColor: colorValue(theme, "accent") }
+    : variant === "secondary"
+      ? {
+        backgroundColor: colorValue(theme, "surface"),
+        borderColor: colorValue(theme, "border"),
+        borderWidth: 1
+      }
+      : { backgroundColor: "transparent" }
+  const contentColor = variant === "primary"
+    ? colorValue(theme, "textPrimary")
+    : variant === "secondary"
+      ? colorValue(theme, "textPrimary")
+      : colorValue(theme, "textMuted")
+
+  const style = mergeNativeStyles(
+    {
+      ...variantStyle,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      height: control.height,
+      borderRadius: radiusValue(theme, "md"),
+      opacity: view.disabled === true ? 0.5 : 1,
+      // IconButton-shaped default: icon-only is a square lattice hit target;
+      // with a label it takes the lattice gutter as horizontal padding.
+      ...(view.label === undefined
+        ? { width: control.height }
+        : { paddingHorizontal: control.gutter })
+    },
+    viewStyle(view, options)
+  )
+
+  const copiedLabel = view.copiedLabel ?? "Copied"
+  const children: Array<ReactNodeLike> = [
+    createElement(
+      dependencies,
+      dependencies.ReactNative.Text,
+      {
+        key: "glyph",
+        style: { fontSize: control.icon, color: contentColor }
+      },
+      copied ? iconGlyphs.Check : iconGlyphs.Copy
+    )
+  ]
+  if (view.label !== undefined) {
+    children.push(createElement(
+      dependencies,
+      dependencies.ReactNative.Text,
+      {
+        key: "label",
+        style: mergeNativeStyles(typeScaleValue(theme, "label"), {
+          color: contentColor,
+          marginLeft: spacingValue(theme, "1")
+        })
+      },
+      copied ? copiedLabel : view.label
+    ))
+  }
+  if (copied) {
+    // Copied announcement for screen readers (polite live region).
+    children.push(createElement(
+      dependencies,
+      dependencies.ReactNative.Text,
+      {
+        key: "copied-status",
+        accessibilityLiveRegion: "polite",
+        style: { position: "absolute", width: 1, height: 1, opacity: 0 }
+      },
+      copiedLabel
+    ))
+  }
+
+  return createElement(
+    dependencies,
+    dependencies.ReactNative.Pressable,
+    {
+      ...baseProps(view, style),
+      testID: `en-copy-button${copied ? ":copied" : ""}`,
+      accessibilityRole: "button",
+      accessibilityLabel: view.accessibilityLabel ?? view.label ?? "Copy",
+      accessibilityState: { disabled: view.disabled === true },
+      disabled: view.disabled === true,
+      onPress: () => {
+        if (view.disabled === true) return
+        const clipboard = options.clipboard
+        if (clipboard === undefined) {
+          // Declared subset: no injected driver, so the app owns the write.
+          if (view.onCopy !== undefined) {
+            runReportedIntent(report, view.onCopy, view.content)
+          }
+          return
+        }
+        void Effect.runPromise(clipboard.writeText(view.content))
+          .then(() => {
+            if (view.onCopy !== undefined) {
+              runReportedIntent(report, view.onCopy, view.content)
+            }
+          })
+          .catch(() => {
+            // Clipboard write failed: no onCopy intent; handlers stay total.
+          })
+      }
+    },
+    ...children
   )
 }
 

@@ -115,5 +115,8 @@ describe("GraphFigure provenance vocabulary (#68, v31)", () => {
     expect(decoded.catalogVersion).toBe(GlassChromeIconsCatalogVersion)
     // The provenance version stays in the compatible chain (current moved on).
     expect(compatibleCatalogVersions).toContain(GraphProvenanceCatalogVersion)
+    expect(compatibleCatalogVersions.indexOf(CatalogVersion)).toBeGreaterThan(
+      compatibleCatalogVersions.indexOf(GraphProvenanceCatalogVersion)
+    )
   })
 })

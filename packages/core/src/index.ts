@@ -99,8 +99,9 @@ export const GraphProvenanceCatalogVersion = "effect-native/v31" as const
 export const EmptyMessageCatalogVersion = "effect-native/v32" as const
 export const IconExpansionCatalogVersion = "effect-native/v33" as const
 export const AvatarCatalogVersion = "effect-native/v34" as const
-export const PreviousCatalogVersion = IconExpansionCatalogVersion
-export const CatalogVersion = AvatarCatalogVersion
+export const CopyButtonCatalogVersion = "effect-native/v35" as const
+export const PreviousCatalogVersion = AvatarCatalogVersion
+export const CatalogVersion = CopyButtonCatalogVersion
 export const CatalogVersionSchema = Schema.Literal(CatalogVersion)
 export type CatalogVersion = typeof CatalogVersion
 export const compatibleCatalogVersions = [
@@ -138,7 +139,8 @@ export const compatibleCatalogVersions = [
   GraphProvenanceCatalogVersion,
   EmptyMessageCatalogVersion,
   IconExpansionCatalogVersion,
-  AvatarCatalogVersion
+  AvatarCatalogVersion,
+  CopyButtonCatalogVersion
 ] as const
 export type CompatibleCatalogVersion = (typeof compatibleCatalogVersions)[number]
 export const CompatibleCatalogVersionSchema = Schema.Literals(compatibleCatalogVersions)
@@ -216,7 +218,8 @@ export const componentTags = [
   "Toolbar",
   "EmptyMessage",
   "Avatar",
-  "AvatarGroup"
+  "AvatarGroup",
+  "CopyButton"
 ] as const
 export type ComponentTag = (typeof componentTags)[number]
 
@@ -3201,6 +3204,56 @@ export interface AvatarGroupView extends NodeBase {
   readonly style?: CardStyle
 }
 
+// CopyButton (v35, #84; harmonization audit §5/§7 Phase 2.11). A typed
+// copy-to-clipboard control for transcript message actions, diagnostics
+// panels, and code surfaces beyond CodeBlock's built-in copy intent.
+//
+// The contract never touches `navigator.clipboard` itself: renderers perform
+// the write through the injected `Clipboard` service/driver, then report the
+// typed `onCopy` intent with the copied content as the component value.
+//
+// Copied-state feedback (icon swap to Check + the `copiedLabel` announcement):
+//   - Uncontrolled: the DOM renderer owns transient per-node feedback and
+//     reverts it after `resetMillis` (default
+//     `copyButtonDefaultResetMillis`); the enter/exit transition rides the
+//     shared motion tokens (`durationFastMs`/`easeBasic`).
+//   - Controlled: the app drives `copied` as data; while `copied` is true and
+//     `onCopiedReset` is provided, renderers schedule the typed reset intent
+//     after `resetMillis` (the Toast auto-dismiss precedent, #40/#53). This is
+//     the React Native parity path — RN element trees are pure per emission,
+//     so RN declares uncontrolled self-feedback unsupported.
+//
+// `label` absent means the IconButton-shaped icon-only default; present means
+// a Button-shaped icon+label control. `size` rides the shared control lattice
+// and `variant` reuses the existing Button vocabulary (the full tone × variant
+// matrix is a separate later issue).
+export const copyButtonDefaultResetMillis = 2000
+
+export interface CopyButtonView extends NodeBase {
+  readonly _tag: "CopyButton"
+  readonly content: string
+  readonly label?: string
+  // Accessible name; defaults to "Copy" (or `label` when present).
+  readonly accessibilityLabel?: string
+  // Feedback text announced (and shown as the tooltip affordance) while
+  // copied; defaults to "Copied".
+  readonly copiedLabel?: string
+  readonly size?: ControlToken
+  readonly variant?: ButtonVariant
+  // Controlled copied state (data). Omit for renderer-managed feedback.
+  readonly copied?: boolean
+  // Fired after the injected clipboard write succeeds; componentValue is the
+  // copied content string.
+  readonly onCopy?: IntentRef
+  // Renderer-scheduled reset for the controlled path: fires once `copied` has
+  // been true for `resetMillis`.
+  readonly onCopiedReset?: IntentRef
+  readonly resetMillis?: number
+  readonly disabled?: boolean
+  readonly surface?: SurfaceMaterial
+  readonly style?: ButtonStyle
+}
+
 export type View =
   | StackView
   | TextView
@@ -3275,6 +3328,7 @@ export type View =
   | EmptyMessageView
   | AvatarView
   | AvatarGroupView
+  | CopyButtonView
 
 export type KeyedView = View & { readonly key: NodeKey }
 
@@ -4610,6 +4664,24 @@ export const AvatarGroupSchema: Schema.Codec<AvatarGroupView, AvatarGroupView> =
     style: CardStyleSchema.pipe(Schema.optionalKey)
   })
 
+export const CopyButtonSchema: Schema.Codec<CopyButtonView, CopyButtonView> =
+  Schema.TaggedStruct("CopyButton", {
+    ...CommonFields,
+    content: Schema.String,
+    label: Schema.NonEmptyString.pipe(Schema.optionalKey),
+    accessibilityLabel: Schema.NonEmptyString.pipe(Schema.optionalKey),
+    copiedLabel: Schema.NonEmptyString.pipe(Schema.optionalKey),
+    size: ControlTokenSchema.pipe(Schema.optionalKey),
+    variant: ButtonVariantSchema.pipe(Schema.optionalKey),
+    copied: Schema.Boolean.pipe(Schema.optionalKey),
+    onCopy: IntentRefSchema.pipe(Schema.optionalKey),
+    onCopiedReset: IntentRefSchema.pipe(Schema.optionalKey),
+    resetMillis: NonNegativeNumberSchema.pipe(Schema.optionalKey),
+    disabled: Schema.Boolean.pipe(Schema.optionalKey),
+    surface: SurfaceMaterialSchema.pipe(Schema.optionalKey),
+    style: ButtonStyleSchema.pipe(Schema.optionalKey)
+  })
+
 export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
   Schema.Union([
     StackSchema,
@@ -4684,7 +4756,8 @@ export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
     ToolbarSchema,
     EmptyMessageSchema,
     AvatarSchema,
-    AvatarGroupSchema
+    AvatarGroupSchema,
+    CopyButtonSchema
   ]).check(OverlayStackFilter)
 )
 
@@ -5278,6 +5351,10 @@ export type IconButtonProps = WithoutTagAndVersion<IconButtonView>
 export const IconButton = (props: IconButtonProps): IconButtonView =>
   IconButtonSchema.make({ _tag: "IconButton", catalogVersion: CatalogVersion, ...props })
 
+export type CopyButtonProps = WithoutTagAndVersion<CopyButtonView>
+export const CopyButton = (props: CopyButtonProps): CopyButtonView =>
+  CopyButtonSchema.make({ _tag: "CopyButton", catalogVersion: CatalogVersion, ...props })
+
 export type ToolbarProps = Omit<WithoutTagAndVersion<ToolbarView>, "children">
 export const Toolbar = (
   props: ToolbarProps,
@@ -5519,6 +5596,7 @@ export const resolveView = (view: View, input: ViewResolution = {}): View => {
         avatars: view.avatars.map((avatar) => resolveView(avatar, input) as KeyedAvatarView)
       }
     case "IconButton":
+    case "CopyButton":
       return {
         ...view,
         ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) })
@@ -5745,6 +5823,7 @@ export const resolveBindings = <State>(view: View, state: State): View => {
     case "IconButton":
     case "Avatar":
     case "AvatarGroup":
+    case "CopyButton":
       return view
     case "Section":
     case "Glow":
@@ -6135,6 +6214,56 @@ export interface RendererAdapter<Container, Surface extends MountedSurface = Mou
   ) => Effect.Effect<Surface, never, Scope.Scope>
 }
 
+// ── Clipboard service (v35, #84) ─────────────────────────────────────────────
+//
+// The one injection seam for copy-to-clipboard writes. Components (CopyButton,
+// CodeBlock consumers) never call `navigator.clipboard` in their contract;
+// renderers perform the write through this service — injected per renderer
+// (options) or provided as a Layer to the app's Effect program.
+
+export interface ClipboardWriteError {
+  readonly _tag: "ClipboardWriteError"
+  readonly message: string
+}
+
+export const clipboardWriteError = (message: string): ClipboardWriteError => ({
+  _tag: "ClipboardWriteError",
+  message
+})
+
+export interface Clipboard {
+  readonly writeText: (text: string) => Effect.Effect<void, ClipboardWriteError>
+}
+
+export const Clipboard = Context.Service<Clipboard>("@effect-native/core/Clipboard")
+
+export const makeClipboardLayer = (clipboard: Clipboard) => Layer.succeed(Clipboard, clipboard)
+
+// Recording clipboard for headless/conformance runs: every write is retained
+// in order so tests assert the exact copied strings.
+export interface RecordingClipboard extends Clipboard {
+  readonly writes: Effect.Effect<ReadonlyArray<string>>
+}
+
+export const makeRecordingClipboard: Effect.Effect<RecordingClipboard> = Effect.gen(function*() {
+  const writes = yield* Ref.make<ReadonlyArray<string>>([])
+  return {
+    writeText: (text: string) => Ref.update(writes, (current) => [...current, text]),
+    writes: Ref.get(writes)
+  }
+})
+
+// Depth-first search for a keyed view in a resolved tree (headless copy
+// simulation and test helpers).
+export const findViewByKey = (view: View, key: string): View | undefined => {
+  if (view.key === key) return view
+  for (const entry of childViewEntries(view)) {
+    const found = findViewByKey(entry.view, key)
+    if (found !== undefined) return found
+  }
+  return undefined
+}
+
 export interface HeadlessContainer {
   readonly onFinalize?: Effect.Effect<void>
 }
@@ -6143,6 +6272,10 @@ export interface HeadlessRendererOptions {
   readonly viewport?: ViewportInput
   readonly theme?: Theme
   readonly platform?: PlatformVariant
+  // Optional clipboard delegate. The headless renderer always records writes
+  // (exposed as `clipboardWrites`); when provided, writes are forwarded here
+  // after recording.
+  readonly clipboard?: Clipboard
 }
 
 export interface HeadlessSurface extends MountedSurface {
@@ -6151,6 +6284,13 @@ export interface HeadlessSurface extends MountedSurface {
   readonly currentViewport: Effect.Effect<Viewport>
   readonly setViewport: (input: ViewportInput) => Effect.Effect<void>
   readonly simulate: (ref: IntentRef, runtimeValue?: JsonPayload) => Effect.Effect<void, IntentError, IntentRegistry>
+  // Perform a CopyButton press by node key: write `content` through the
+  // recording clipboard, then report the node's typed `onCopy` intent with the
+  // content as component value. Fails as a defect when the key does not name a
+  // CopyButton in the current view.
+  readonly simulateCopy: (key: string) => Effect.Effect<void, IntentError | ClipboardWriteError, IntentRegistry>
+  // Every clipboard write performed through this surface, in order.
+  readonly clipboardWrites: Effect.Effect<ReadonlyArray<string>>
 }
 
 export const makeHeadlessRenderer = (
@@ -6163,6 +6303,13 @@ export const makeHeadlessRenderer = (
 
       return yield* Scope.provide(surfaceScope)(Effect.gen(function*() {
         const snapshots = yield* Ref.make<ReadonlyArray<View>>([])
+        const recorder = yield* makeRecordingClipboard
+        const clipboard: Clipboard = options.clipboard === undefined
+          ? recorder
+          : {
+            writeText: (text) =>
+              recorder.writeText(text).pipe(Effect.andThen(options.clipboard!.writeText(text)))
+          }
         const viewport = yield* makeViewportService(
           options.viewport ?? defaultViewportInput,
           options.theme === undefined ? {} : { theme: options.theme }
@@ -6205,7 +6352,23 @@ export const makeHeadlessRenderer = (
           currentViewport: viewport.current,
           setViewport: viewport.set,
           simulate: (ref: IntentRef, runtimeValue: JsonPayload = null) =>
-            report(ref, runtimeValue).pipe(Effect.andThen(Effect.yieldNow))
+            report(ref, runtimeValue).pipe(Effect.andThen(Effect.yieldNow)),
+          simulateCopy: (key: string) =>
+            Effect.gen(function*() {
+              const view = yield* current
+              const target = view === undefined ? undefined : findViewByKey(view, key)
+              if (target === undefined || target._tag !== "CopyButton") {
+                return yield* Effect.die(
+                  new Error(`simulateCopy: no CopyButton with key "${key}" in the current view`)
+                )
+              }
+              if (target.disabled === true) return
+              yield* clipboard.writeText(target.content)
+              if (target.onCopy !== undefined) {
+                yield* report(target.onCopy, target.content).pipe(Effect.andThen(Effect.yieldNow))
+              }
+            }),
+          clipboardWrites: recorder.writes
         }
       }))
     })

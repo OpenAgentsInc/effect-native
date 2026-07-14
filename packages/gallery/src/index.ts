@@ -15,6 +15,7 @@ import {
   Composer,
   ComponentValueBinding,
   ContextMenu,
+  CopyButton,
   CtaSection,
   DiffView,
   Divider,
@@ -1891,6 +1892,43 @@ const componentStoryMap = {
         enumControl("avatar-group-tone", "Tone", ["tone"], "info", tones)
       ]
     })
+  ],
+  CopyButton: [
+    story({
+      id: "copy-button-shapes",
+      component: "CopyButton",
+      title: "CopyButton",
+      description:
+        "Typed copy-to-clipboard control (#84): icon-only lattice default, labelled shape, and controlled copied feedback.",
+      view: Stack({ key: "copy-button-row", direction: "row", gap: "2", align: "center" }, [
+        CopyButton({
+          key: "copy-plain",
+          content: "bun install effect",
+          accessibilityLabel: "Copy install command",
+          onCopy: IntentRef("GalleryStory.Changed", ComponentValueBinding())
+        }),
+        CopyButton({
+          key: "copy-labelled",
+          content: "diagnostics: all systems nominal",
+          label: "Copy diagnostics",
+          size: "lg",
+          variant: "secondary",
+          onCopy: IntentRef("GalleryStory.Changed", ComponentValueBinding())
+        }),
+        CopyButton({
+          key: "copy-copied",
+          content: "already copied",
+          label: "Copy",
+          copied: true,
+          copiedLabel: "Copied"
+        }),
+        CopyButton({
+          key: "copy-disabled",
+          content: "unavailable",
+          disabled: true
+        })
+      ])
+    })
   ]
 } satisfies { readonly [Tag in ComponentTag]: ReadonlyArray<Story> }
 
@@ -2042,7 +2080,8 @@ export const componentPageSummaries = {
   Toolbar: "Floating action strip (glass surface) hosting icon buttons.",
   EmptyMessage: "Centered empty-state block: icon badge (bounded tone/size), title, description, and a typed Button action slot.",
   Avatar: "Identity mark with the typed image -> initials -> icon fallback chain, lattice size, and tone soft/solid variants.",
-  AvatarGroup: "Overlapping keyed avatars with a cutout ring and a +N overflow count past max."
+  AvatarGroup: "Overlapping keyed avatars with a cutout ring and a +N overflow count past max.",
+  CopyButton: "Copy-to-clipboard control over the injected Clipboard service: icon-only lattice default, labelled shape, copied-state feedback, typed onCopy intent."
 } as const satisfies Record<ComponentTag, string>
 
 export const foundationPageIds = [
