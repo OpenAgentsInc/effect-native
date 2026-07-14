@@ -1,10 +1,14 @@
 # @effect-native/render-dom
 
-DOM renderer package for Effect Native.
+DOM renderer package for Effect Native, with direct and React-owned entrypoints.
 
 This package lowers Effect Native view streams to direct DOM output. It is
-intentionally React-free: app code emits the shared typed view catalog, and
-this renderer maps that data to browser elements.
+React-free at its default entrypoint: app code emits the shared typed view
+catalog, and this renderer maps that data to browser elements. Applications
+whose host already standardizes on React may import
+`@effect-native/render-dom/react`; React then owns the root and lifecycle while
+the proven direct catalog lowering remains the compatibility backend. This is
+an explicit migration surface, not a second View/state/intent model.
 
 The current element mapping is deliberately small and semantic:
 
@@ -119,3 +123,22 @@ before the first commit, derives the active breakpoint from the theme, and
 re-renders on `resize`. CSS media-query emission is intentionally deferred:
 responsive props can affect renderer output such as flex direction and image
 dimensions, so a single runtime source of truth is the baseline.
+
+## React-owned host
+
+```ts
+import { makeReactDomRenderer } from "@effect-native/render-dom/react"
+
+const surface = yield* makeReactDomRenderer({ theme }).mount(
+  container,
+  program.viewStream,
+  report
+)
+```
+
+`makeReactDomRenderer().mount` has the same first-commit readiness and Scope
+semantics as `makeDomRenderer().mount`: it resolves only after the first View
+is visible, and unmount closes both the React root and nested renderer. React
+and React DOM are optional peers so direct-DOM consumers do not install them.
+Portable Effect Native programs still import no React types, JSX, callbacks,
+or class strings.
