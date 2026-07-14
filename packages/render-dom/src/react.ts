@@ -46,7 +46,7 @@ interface BoundaryState {
 }
 
 export class ReactSurfaceErrorBoundary extends Component<BoundaryProps, BoundaryState> {
-  state: BoundaryState = { error: undefined, resetKey: this.props.resetKey }
+  override state: BoundaryState = { error: undefined, resetKey: this.props.resetKey }
 
   static getDerivedStateFromError(error: Error): Partial<BoundaryState> {
     return { error }
@@ -56,22 +56,22 @@ export class ReactSurfaceErrorBoundary extends Component<BoundaryProps, Boundary
     return props.resetKey === state.resetKey ? null : { error: undefined, resetKey: props.resetKey }
   }
 
-  componentDidCatch(error: Error, _info: ErrorInfo): void {
+  override componentDidCatch(error: Error, _info: ErrorInfo): void {
     this.props.onError?.(error)
     this.props.onSettled?.()
   }
 
-  componentDidMount(): void {
+  override componentDidMount(): void {
     if (this.state.error === undefined) this.props.onSettled?.()
   }
 
-  componentDidUpdate(previous: BoundaryProps): void {
+  override componentDidUpdate(previous: BoundaryProps): void {
     if (previous.resetKey !== this.props.resetKey && this.state.error === undefined) {
       this.props.onSettled?.()
     }
   }
 
-  render(): ReactNode {
+  override render(): ReactNode {
     if (this.state.error !== undefined) {
       return createElement("section", {
         role: "alert",
