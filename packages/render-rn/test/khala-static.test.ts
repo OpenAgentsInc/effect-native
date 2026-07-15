@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vite-plus/test"
 import { Frame, Text } from "@effect-native/core"
-import { khalaTheme } from "@effect-native/tokens"
+import { khalaMotifIds, khalaTheme, type KhalaMotifId } from "@effect-native/tokens"
 import {
   renderReactNativeView,
   type ReactElementLike,
@@ -51,7 +51,7 @@ const findByTestId = (node: ReactNodeLike, testID: string): ReactElementLike | u
   return undefined
 }
 
-const frame = (motif: "cut-corner-surface" | "header-line" | "signal-separator") =>
+const frame = (motif: KhalaMotifId) =>
   Frame(
     {
       key: `rn-${motif}`,
@@ -70,7 +70,7 @@ const frame = (motif: "cut-corner-surface" | "header-line" | "signal-separator")
 
 describe("static Khala React Native lowering", () => {
   test("declares an inert semantic sibling for every motif", () => {
-    for (const motif of ["cut-corner-surface", "header-line", "signal-separator"] as const) {
+    for (const motif of khalaMotifIds) {
       const element = renderReactNativeView(frame(motif), dependencies, report as never, {
         theme: khalaTheme,
         platform: "ios"
@@ -87,16 +87,17 @@ describe("static Khala React Native lowering", () => {
     }
   })
 
-  test("documents cut-corner degradation as a themed ordinary border", () => {
+  test("lowers cut-corner polygon edges to themed native line segments", () => {
     const element = renderReactNativeView(frame("cut-corner-surface"), dependencies, report as never, {
       theme: khalaTheme,
       platform: "android"
     })
-    const border = findByTestId(element, "en-khala-rn-cut-corner-surface-degraded-border")!
-    const style = border.props.style as Record<string, unknown>
+    const edge = findByTestId(element, "en-khala-rn-cut-corner-surface-line-0")!
+    const style = edge.props.style as Record<string, unknown>
 
-    expect(style.borderWidth).toBe(1)
-    expect(style.borderColor).toBe(khalaTheme.color.focus)
+    expect(style.height).toBe(1)
+    expect(style.backgroundColor).toBe(khalaTheme.color.focus)
+    expect(style.transform).toBeDefined()
     expect(style.overflow).toBeUndefined()
   })
 

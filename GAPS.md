@@ -23,7 +23,7 @@ their reason so pressure is visible without weakening the catalog contract.
 
 ## Catalog Versioning Policy
 
-The current catalog marker is `effect-native/v42`, exposed by
+The current catalog marker is `effect-native/v43`, exposed by
 `CatalogVersion`. `compatibleCatalogVersions` is the decode allow-list, and
 `CompatibleViewSchema` is the schema app authors and renderers should use when
 accepting persisted or externally-authored trees.
@@ -33,6 +33,17 @@ still accept `vN` trees by adding a prior-version decoder/normalizer before the
 version marker is changed. Unknown component tags remain typed decode failures;
 they are not interpreted as extension points. This repository is pre-alpha, so
 compatibility stays strict: support is explicit per listed catalog version.
+
+## Khala UI visual parity program
+
+The exhaustive non-audio source map lives in
+[`docs/khala-ui-arwes-visual-parity.md`](./docs/khala-ui-arwes-visual-parity.md).
+KU-9 (#98) ships the full static foundation in v43: twelve owned frame motifs,
+generic bounded grouping/compositing scene data, stepped/strip/separator paint
+descriptors, inert DOM/React DOM SVG, and explicit React Native geometry or
+degradation. Motion (#92), Canvas backgrounds (#93), text (#99), illumination
+(#100), and final cross-renderer proof (#101) remain tracked separately. Audio
+is rejected, not a gap.
 
 ## Renderer Conformance Policy
 

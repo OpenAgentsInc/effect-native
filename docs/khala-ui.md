@@ -21,21 +21,23 @@ not a state store, and not an intent or lifecycle runtime.
 
 ## Static-first vocabulary
 
-The initial vocabulary contains exactly three motifs:
+KU-2/KU-3 established the first three motifs. KU-9 completes the static frame
+and paint vocabulary needed for full non-audio visual parity:
 
-| Motif                | Purpose                                                    | Restraint                                      |
-| -------------------- | ---------------------------------------------------------- | ---------------------------------------------- |
-| `cut-corner-surface` | a restrained edge treatment around an existing surface     | one signature surface per region               |
-| `header-line`        | a short structural accent associated with a heading        | never gates, replaces, or obscures the heading |
-| `signal-separator`   | an underline or segmented line for hierarchy or live state | never repeats into stripes or visual noise     |
+| Motif group | Owned Khala identifiers | Purpose |
+| --- | --- | --- |
+| original structural set | `cut-corner-surface`, `header-line`, `signal-separator` | restrained surface, heading, and hierarchy accents |
+| edge and bracket set | `edge-underline`, `corner-line-array`, `corner-brackets` | underline, layered corner rails, and corner-only structure |
+| shaped surfaces | `octagonal-surface`, `asymmetric-cut` | bounded polygon outlines without content clipping |
+| corner signals | `corner-chevron`, `split-corner` | sparse directional and split-corner accents |
+| instrument accents | `header-rail`, `radial-dial` | header telemetry rail and bounded radial dial outline |
 
-KU-2 adds only the geometry and token inputs required by these motifs; its
-[deterministic geometry receipt](./khala-ui-geometry.md) is now complete.
-KU-3 extends the existing `Frame` renderer vocabulary through the completed
-[static renderer lowering](./khala-ui-static-renderers.md); it does not add
-parallel product controls. Signal grids, Canvas ambience,
-choreography, pointer effects, text effects, and audio are not part of this
-static vocabulary.
+Typed paint resolvers provide stepped, repeating-strip, and directional
+separator stops without accepting arbitrary CSS strings. All twelve motifs use
+the same [deterministic geometry](./khala-ui-geometry.md), existing `Frame`
+component, and [static renderer lowering](./khala-ui-static-renderers.md). They
+do not add parallel product controls. Motion, Canvas, illumination, and text
+effects layer on later issues; audio remains permanently outside Khala UI.
 
 ## Restraint and density
 
@@ -52,8 +54,9 @@ static vocabulary.
 - Spacious surfaces may use one signature or ambient treatment; their nested
   content remains quiet.
 - Precise solid edges and semantic contrast are preferred over large blurred
-  glows. Repeating diagonal stripes, flicker, decipher text, typewriter gating,
-  and ornamental rounded-card proliferation are prohibited.
+  glows. Repeating patterns, flicker, and text effects are rare opt-in visual
+  treatments and never gate content. Ornamental card proliferation is
+  prohibited.
 
 Responsive collapse follows one rule: decoration simplifies before content
 loses width, reorders, clips, overflows, or loses focus clearance. At narrow
@@ -95,11 +98,9 @@ state distinction.
 
 These dispositions are now implemented and proven for the static renderers.
 
-| Motif              | Headless                                  | DOM                      | React DOM                                   | React Native                                               | Canvas                                               |
-| ------------------ | ----------------------------------------- | ------------------------ | ------------------------------------------- | ---------------------------------------------------------- | ---------------------------------------------------- |
-| cut-corner surface | supported: deterministic typed resolution | supported: inert CSS/SVG | supported through the React 19 DOM renderer | degraded: border/accent preserved; clipping may square off | unavailable: static geometry is not a Canvas concern |
-| header line        | supported                                 | supported                | supported                                   | supported with an inert native view                        | unavailable                                          |
-| signal separator   | supported                                 | supported                | supported                                   | supported with an inert native view                        | unavailable                                          |
+| Motif set | Headless | DOM | React DOM | React Native | Canvas |
+| --- | --- | --- | --- | --- | --- |
+| all twelve static motifs | supported: deterministic typed resolution | supported: inert SVG | supported through React 19 | supported as native line/polygon segments; radial dial is an explicit bounded approximation | unavailable: static geometry is not a Canvas concern |
 
 Every future motif or catalog node must add a disposition for all five
 renderers in the same change. Missing entries fail the gallery contract check.
@@ -148,7 +149,7 @@ Those numbers do not authorize Canvas in KU-1 through KU-3.
   fictional frame-name compatibility;
 - no new application state, intent, theme, event bus, scheduler, or global
   pointer listener;
-- no Canvas loop, animation, pointer illuminator, decipher text, audio, or
+- no static-layer scheduler, Canvas loop, animation, pointer driver, audio, or
   sound preference;
 - no `eval`, `new Function`, arbitrary expression parser, HTML string
   insertion, `innerHTML`, or Electron CSP relaxation;

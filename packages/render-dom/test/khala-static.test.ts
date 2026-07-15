@@ -2,7 +2,7 @@ import { describe, expect, test } from "vite-plus/test"
 import { Effect, Stream } from "effect"
 import { Window } from "happy-dom"
 import { Button, Frame, IntentRef, Text, resolveView, type IntentReporter, type View } from "@effect-native/core"
-import { khalaTheme } from "@effect-native/tokens"
+import { khalaMotifIds, khalaTheme, type KhalaMotifId } from "@effect-native/tokens"
 import { makeDomRenderer } from "../src/index"
 
 const createDom = () => {
@@ -31,7 +31,7 @@ const mountView = (view: View, report: IntentReporter = noopReport) =>
     )
   )
 
-const khalaFrame = (motif: "cut-corner-surface" | "header-line" | "signal-separator", forcedColors = false) =>
+const khalaFrame = (motif: KhalaMotifId, forcedColors = false) =>
   Frame(
     {
       key: `frame-${motif}`,
@@ -52,8 +52,8 @@ const khalaFrame = (motif: "cut-corner-surface" | "header-line" | "signal-separa
   )
 
 describe("static Khala DOM lowering", () => {
-  test("renders all three motifs as inert, bounded SVG siblings of complete semantic content", async () => {
-    for (const motif of ["cut-corner-surface", "header-line", "signal-separator"] as const) {
+  test("renders the complete motif vocabulary as inert, bounded SVG siblings of complete semantic content", async () => {
+    for (const motif of khalaMotifIds) {
       const { html } = await mountView(khalaFrame(motif))
       const { container } = createDom()
       container.innerHTML = html

@@ -28,29 +28,21 @@ const unavailable = (rationale: string): KhalaUiCapability => ({ disposition: "u
  * Target capability contract. KU-1 defines the disposition; KU-2 and KU-3
  * must fill the corresponding proof slots before claiming implementation.
  */
-export const khalaUiCapabilityMatrix = {
-  "cut-corner-surface": {
-    headless: supported("Preserve and resolve the deterministic motif as typed data."),
-    dom: supported("Lower to semantic content plus an inert CSS/SVG edge layer."),
-    "react-dom": supported("Use the DOM lowering through the existing React 19 renderer."),
-    "react-native": degraded("Preserve spacing, border, and accents; clipping may simplify to a square edge."),
-    canvas: unavailable("Static surface geometry is not a Canvas responsibility.")
-  },
-  "header-line": {
-    headless: supported("Preserve and resolve the deterministic line geometry as typed data."),
-    dom: supported("Lower to an inert stable line node or pseudo-element."),
-    "react-dom": supported("Use the DOM lowering through the existing React 19 renderer."),
-    "react-native": supported("Lower to an inert native border/view without interaction."),
-    canvas: unavailable("Static header accents do not allocate a Canvas surface.")
-  },
-  "signal-separator": {
-    headless: supported("Preserve and resolve the deterministic separator as typed data."),
-    dom: supported("Lower to an inert stable line node or pseudo-element."),
-    "react-dom": supported("Use the DOM lowering through the existing React 19 renderer."),
-    "react-native": supported("Lower to an inert native border/view without interaction."),
-    canvas: unavailable("Static separators do not allocate a Canvas surface.")
-  }
-} as const satisfies KhalaUiCapabilityMatrix
+export const khalaUiCapabilityMatrix = Object.fromEntries(
+  khalaUiMotifIds.map((motif) => [
+    motif,
+    {
+      headless: supported("Preserve and resolve deterministic bounded geometry as typed data."),
+      dom: supported("Lower to complete semantic content plus an inert SVG edge layer."),
+      "react-dom": supported("Use the same DOM lowering through the React 19 renderer."),
+      "react-native":
+        motif === "radial-dial"
+          ? degraded("Approximate the elliptical dial with bounded native line segments.")
+          : supported("Lower logical polygon and line segments to inert native views."),
+      canvas: unavailable("Static frame geometry does not allocate a Canvas surface.")
+    }
+  ])
+) as KhalaUiCapabilityMatrix
 
 export const missingKhalaUiCapabilityDispositions = (
   motifs: ReadonlyArray<string>,
@@ -355,7 +347,59 @@ export const khalaUiGoldenFixtures = [
       owner: "KU-3",
       receipt: "All shipping static renderers preserve the separator hierarchy without an intent or lifecycle."
     }
-  }
+  },
+  ...khalaUiMotifIds
+    .filter((motif) => !["cut-corner-surface", "header-line", "signal-separator"].includes(motif))
+    .map((motif) => {
+      const semantic = semanticPanel(
+        `khala-${motif}-semantic`,
+        motif
+          .split("-")
+          .map((word) => `${word.slice(0, 1).toUpperCase()}${word.slice(1)}`)
+          .join(" "),
+        "Available",
+        "The complete static Khala frame vocabulary is renderer-owned typed geometry."
+      )
+      const semanticText = [
+        motif
+          .split("-")
+          .map((word) => `${word.slice(0, 1).toUpperCase()}${word.slice(1)}`)
+          .join(" "),
+        "Available",
+        "The complete static Khala frame vocabulary is renderer-owned typed geometry.",
+        "Open details"
+      ]
+      return {
+        id: `khala-${motif}-golden`,
+        motif,
+        density: "comfortable" as const,
+        semanticText,
+        semanticView: semantic,
+        decoratedView: Frame(
+          {
+            key: `khala-${motif}-frame`,
+            khala: {
+              id: `khala-${motif}-golden`,
+              motif,
+              width: 320,
+              height: 140,
+              density: "comfortable"
+            }
+          },
+          [semantic]
+        ),
+        geometryProof: {
+          _tag: "Passing" as const,
+          owner: "KU-2" as const,
+          receipt: `${motif} resolves deterministically across collapse, zoom, and forced-color inputs.`
+        },
+        decorationProof: {
+          _tag: "Passing" as const,
+          owner: "KU-3" as const,
+          receipt: `${motif} lowers to inert DOM/React DOM SVG and explicit React Native geometry or degradation.`
+        }
+      }
+    })
 ] as const satisfies ReadonlyArray<KhalaUiGoldenFixture>
 
 export const khalaUiArwesReference = {

@@ -2838,7 +2838,7 @@ const khalaUiContractPageView: View = Stack({ key: "page-khala-ui", direction: "
     message:
       "Effect Native owns components, views, intents, and lifecycle. @effect-native/tokens and khalaTheme remain the only theme authority."
   }),
-  pageSectionTitle("page-khala-ui-vocabulary-title", "Initial vocabulary: exactly three motifs"),
+  pageSectionTitle("page-khala-ui-vocabulary-title", "Complete static vocabulary: twelve motifs"),
   ...khalaUiMotifIds.map((motif) =>
     Card({ key: `page-khala-ui-motif-${motif}`, padding: "3", radius: "md" }, [
       Stack({ key: `page-khala-ui-motif-${motif}-content`, direction: "column", gap: "1" }, [
@@ -2849,7 +2849,9 @@ const khalaUiContractPageView: View = Stack({ key: "page-khala-ui", direction: "
             ? "One restrained surface-edge treatment; semantic content remains the existing component."
             : motif === "header-line"
               ? "One short structural line that reinforces a section heading without gating it."
-              : "One underline or signal separator for hierarchy or live state; never a repeating stripe."
+              : motif === "signal-separator"
+                ? "One separator for hierarchy or live state; never a semantic signal by itself."
+                : "Owned bounded frame geometry; decoration stays inert and yields before semantic content."
         )
       ])
     ])

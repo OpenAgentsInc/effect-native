@@ -8,7 +8,7 @@ conformance-checked by
 (`pnpm run check:catalog-reference`) so this page cannot silently drop a shipped
 component.
 
-Current catalog marker: `CatalogVersion = "effect-native/v42"` (v42, issue
+Current catalog marker: `CatalogVersion = "effect-native/v43"` (v43, issue
 #96: `cut-corner-surface` no longer overlays a full-width top stroke across its
 clipped corners). v41, issue #95, made `header-line` signal and structural
 strokes share one continuous baseline. v40, issue #91, made the existing
@@ -429,7 +429,7 @@ Focus glow intensity (`sm`/`md`/`lg`) around a child slot.
 ### Frame
 
 Arcade bordered frame (`square`/`rounded`/`arcade`). Optional `khala` data adds
-one of the three static Khala motifs through a stable caller-owned id, bounded
+one of the twelve static Khala motifs through a stable caller-owned id, bounded
 logical width/height, optional zoom, density, and forced-color input. The
 semantic children remain ordinary `View` data and the decoration owns no
 intent or state.
@@ -555,7 +555,7 @@ Every component accepts these two, inherited from `NodeBase`:
 | Field            | Type                  | Notes                                                                                                                          |
 | ---------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | `key`            | `string` (optional)   | Required (enforced by the schema, not just convention) on any view placed inside a `List`/`SectionList`/`Link` children array. |
-| `catalogVersion` | `"effect-native/v42"` | Set automatically by every constructor function — you never pass this yourself.                                                |
+| `catalogVersion` | `"effect-native/v43"` | Set automatically by every constructor function — you never pass this yourself.                                                |
 
 ### Design tokens
 

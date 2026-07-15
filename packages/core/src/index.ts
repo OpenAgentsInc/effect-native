@@ -135,8 +135,9 @@ export const MatrixAxesCatalogVersion = "effect-native/v39" as const
 export const KhalaStaticCatalogVersion = "effect-native/v40" as const
 export const KhalaHeaderLineContinuityCatalogVersion = "effect-native/v41" as const
 export const KhalaCutCornerContinuityCatalogVersion = "effect-native/v42" as const
-export const PreviousCatalogVersion = KhalaHeaderLineContinuityCatalogVersion
-export const CatalogVersion = KhalaCutCornerContinuityCatalogVersion
+export const KhalaCompleteStaticCatalogVersion = "effect-native/v43" as const
+export const PreviousCatalogVersion = KhalaCutCornerContinuityCatalogVersion
+export const CatalogVersion = KhalaCompleteStaticCatalogVersion
 export const CatalogVersionSchema = Schema.Literal(CatalogVersion)
 export type CatalogVersion = typeof CatalogVersion
 export const compatibleCatalogVersions = [
@@ -182,7 +183,8 @@ export const compatibleCatalogVersions = [
   MatrixAxesCatalogVersion,
   KhalaStaticCatalogVersion,
   KhalaHeaderLineContinuityCatalogVersion,
-  KhalaCutCornerContinuityCatalogVersion
+  KhalaCutCornerContinuityCatalogVersion,
+  KhalaCompleteStaticCatalogVersion
 ] as const
 export type CompatibleCatalogVersion = (typeof compatibleCatalogVersions)[number]
 export const CompatibleCatalogVersionSchema = Schema.Literals(compatibleCatalogVersions)

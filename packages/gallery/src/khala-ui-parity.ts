@@ -64,7 +64,7 @@ export const khalaUiVisualParity = [
     rendererContract: "CSS gradient on DOM/React DOM; explicit band geometry on RN/Canvas.",
     accessibilityCorrection: "Decoration only; forced colors resolves to a solid structural line.",
     issue: "#98",
-    status: "planned"
+    status: "shipped"
   }),
   capability({
     id: "foundation.strip",
@@ -76,7 +76,7 @@ export const khalaUiVisualParity = [
     rendererContract: "CSS gradient on DOM/React DOM; explicit bands on RN/Canvas.",
     accessibilityCorrection: "No semantic meaning and no unbounded CSS input.",
     issue: "#98",
-    status: "planned"
+    status: "shipped"
   }),
   capability({
     id: "foundation.separator",
@@ -88,7 +88,7 @@ export const khalaUiVisualParity = [
     rendererContract: "Logical segments lower to DOM/SVG, RN views, or Canvas paths.",
     accessibilityCorrection: "Forced colors uses system stroke; never the sole state signal.",
     issue: "#98",
-    status: "planned"
+    status: "shipped"
   }),
   capability({
     id: "motion.easing",
@@ -190,7 +190,7 @@ export const khalaUiVisualParity = [
       rendererContract: "Exact inert SVG on DOM/React DOM; declared native geometry or static degradation on RN.",
       accessibilityCorrection: "Decoration is pointer-inert/aria-hidden, collapses before content, and preserves focus clearance.",
       issue: "#98",
-      status: "planned"
+      status: "shipped"
     })
   ),
   capability({
@@ -203,7 +203,7 @@ export const khalaUiVisualParity = [
     rendererContract: "Headless scene is canonical; DOM/React DOM emit SVG; RN lowers supported nodes or documented static fallback.",
     accessibilityCorrection: "No eval, innerHTML, arbitrary selector, or unbounded markup/style escape hatch.",
     issue: "#98",
-    status: "planned"
+    status: "shipped"
   }),
   capability({
     id: "frame.clipping",
@@ -215,7 +215,7 @@ export const khalaUiVisualParity = [
     rendererContract: "CSS clip-path on DOM/React DOM; native mask where available; border-only fallback otherwise.",
     accessibilityCorrection: "Content and focus are never clipped; clipping applies only to decorative/background layers.",
     issue: "#98",
-    status: "planned"
+    status: "shipped"
   }),
   capability({
     id: "frame.assembly",
@@ -308,4 +308,3 @@ export const khalaUiAudioExclusions = [
 ] as const
 
 export const khalaUiExcludedVisualRuntimeDependencies = ["arwes", "@arwes/", "@motionone/", "motion"] as const
-

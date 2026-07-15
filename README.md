@@ -182,6 +182,11 @@ The [KU-2 geometry kernel](./docs/khala-ui-geometry.md) provides the closed,
 bounded headless algebra and canonical theme roles; the
 [KU-3 static renderers](./docs/khala-ui-static-renderers.md) lower the existing
 `Frame` through DOM, React DOM, and the declared React Native equivalents.
+[KU-9](https://github.com/OpenAgentsInc/effect-native/issues/98) expands that
+same contract to the complete twelve-motif static frame vocabulary plus typed
+steps, strip, and separator paint data; it adds no Arwes runtime or second
+component/theme authority. The exhaustive non-audio source map is
+[`docs/khala-ui-arwes-visual-parity.md`](./docs/khala-ui-arwes-visual-parity.md).
 
 Phase 4 (desktop + canvas) is demand-driven by the Khala Code Desktop port —
 a **UI migration, not a backend rewrite**. Catalog demand through

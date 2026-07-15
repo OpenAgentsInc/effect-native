@@ -11,6 +11,10 @@ import {
   khalaGeometryLimits,
   khalaMotifIds,
   khalaTheme,
+  resolveKhalaSeparatorPaint,
+  resolveKhalaFrameScene,
+  resolveKhalaStepsPaint,
+  resolveKhalaStripPaint,
   resolveKhalaMotif,
   type KhalaDimension
 } from "../src/index"
@@ -31,7 +35,20 @@ const boundedExpression = fc.oneof(
 
 describe("Khala UI canonical theme tokens", () => {
   test("exposes only the agreed density, ambient, collapse, and motif vocabulary", () => {
-    expect(khalaMotifIds).toEqual(["cut-corner-surface", "header-line", "signal-separator"])
+    expect(khalaMotifIds).toEqual([
+      "cut-corner-surface",
+      "header-line",
+      "signal-separator",
+      "edge-underline",
+      "corner-line-array",
+      "corner-brackets",
+      "octagonal-surface",
+      "corner-chevron",
+      "split-corner",
+      "asymmetric-cut",
+      "header-rail",
+      "radial-dial"
+    ])
     expect(khalaDensityTokens).toEqual(["compact", "comfortable", "spacious"])
     expect(khalaAmbientQualityTokens).toEqual(["off", "restrained", "enhanced"])
     expect(khalaCollapseRoles).toEqual(["border-only", "simplified", "full"])
@@ -42,6 +59,57 @@ describe("Khala UI canonical theme tokens", () => {
       focus: "focus"
     })
     expect(khalaTheme.khalaUi.focusClearance).toBeGreaterThanOrEqual(4)
+  })
+})
+
+describe("bounded Khala static paint vocabulary", () => {
+  test("resolves steps, strips, and directional separators without CSS-string input", () => {
+    const steps = resolveKhalaStepsPaint(4, "vertical", "signal")
+    expect(steps.direction).toBe("vertical")
+    expect(steps.repeating).toBe(false)
+    expect(steps.stops).toHaveLength(14)
+    expect(steps.stops.some((stop) => stop.role === "transparent")).toBe(true)
+
+    const strip = resolveKhalaStripPaint(["quiet", "signal", "focus"])
+    expect(strip.repeating).toBe(true)
+    expect(strip.stops).toHaveLength(6)
+
+    const separator = resolveKhalaSeparatorPaint("both")
+    expect(separator.stops[0]).toEqual({ offset: 0, role: "signal" })
+    expect(separator.stops.at(-1)).toEqual({ offset: 1, role: "signal" })
+  })
+})
+
+describe("generic Khala frame scene", () => {
+  test("groups every motif into bounded inert geometry with explicit compositing", () => {
+    for (const motif of khalaMotifIds) {
+      const scene = Effect.runSync(
+        resolveKhalaFrameScene(
+          { motif, width: 320, height: 140, zoom: 1, density: "comfortable", forcedColors: false },
+          khalaTheme.khalaUi
+        )
+      )
+      expect(scene.elements.length).toBeGreaterThan(0)
+      expect(scene.elements.every((element) => element.group === "background" || element.group === "line" || element.group === "deco")).toBe(true)
+      expect(scene.geometry.contentInset).toBe(0)
+    }
+
+    const clipped = Effect.runSync(
+      resolveKhalaFrameScene(
+        { motif: "octagonal-surface", width: 320, height: 140, zoom: 1, density: "comfortable", forcedColors: false },
+        khalaTheme.khalaUi
+      )
+    )
+    expect(clipped.clip).toEqual(clipped.geometry.polygon)
+    expect(clipped.mask).toBeNull()
+
+    const patterned = Effect.runSync(
+      resolveKhalaFrameScene(
+        { motif: "corner-line-array", width: 320, height: 140, zoom: 1, density: "comfortable", forcedColors: false },
+        khalaTheme.khalaUi
+      )
+    )
+    expect(patterned.pattern?.stops.length).toBeGreaterThan(0)
   })
 })
 

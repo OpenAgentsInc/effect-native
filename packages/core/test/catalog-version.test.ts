@@ -42,6 +42,7 @@ import {
   KhalaStaticCatalogVersion,
   KhalaHeaderLineContinuityCatalogVersion,
   KhalaCutCornerContinuityCatalogVersion,
+  KhalaCompleteStaticCatalogVersion,
   OverlayCatalogVersion,
   PreviousCatalogVersion,
   ResponsiveCatalogVersion,
@@ -116,11 +117,12 @@ describe("catalog version compatibility", () => {
       MatrixAxesCatalogVersion,
       KhalaStaticCatalogVersion,
       KhalaHeaderLineContinuityCatalogVersion,
-      KhalaCutCornerContinuityCatalogVersion
+      KhalaCutCornerContinuityCatalogVersion,
+      KhalaCompleteStaticCatalogVersion
     ])
     // The current marker is the last entry; the previous marker is second-last.
-    expect(CatalogVersion).toBe(KhalaCutCornerContinuityCatalogVersion)
-    expect(PreviousCatalogVersion).toBe(KhalaHeaderLineContinuityCatalogVersion)
+    expect(CatalogVersion).toBe(KhalaCompleteStaticCatalogVersion)
+    expect(PreviousCatalogVersion).toBe(KhalaCutCornerContinuityCatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 1]).toBe(CatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 2]).toBe(PreviousCatalogVersion)
   })
