@@ -140,7 +140,7 @@ describe("deterministic Khala motif geometry", () => {
         { x: 0, y: 112 },
         { x: 0, y: 8 }
       ],
-      lines: [{ from: { x: 0, y: 0 }, to: { x: 320, y: 0 }, role: "structural", width: 1 }]
+      lines: []
     })
 
     const atTwoHundredPercent = Effect.runSync(
@@ -190,6 +190,33 @@ describe("deterministic Khala motif geometry", () => {
           expect(geometry.lines).toHaveLength(2)
           expect(geometry.lines[0]?.to).toEqual(geometry.lines[1]?.from)
           expect(geometry.lines[0]?.from.y).toBe(geometry.lines[1]?.to.y)
+        }
+      ),
+      { numRuns: 300 }
+    )
+  })
+
+  test("never overlays a full-width top stroke across cut-corner geometry", () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 1, max: 2_000 }),
+        fc.integer({ min: 1, max: 1_200 }),
+        fc.integer({ min: 1, max: 4 }),
+        fc.constantFrom(...khalaDensityTokens),
+        (width, height, zoom, density) => {
+          const geometry = Effect.runSync(
+            resolveKhalaMotif(
+              { motif: "cut-corner-surface", width, height, zoom, density, forcedColors: false },
+              khalaTheme.khalaUi
+            )
+          )
+          expect(geometry.lines).toEqual([])
+          if (geometry.collapse !== "border-only") {
+            expect(geometry.polygon[0]?.y).toBe(0)
+            expect(geometry.polygon[1]?.y).toBe(0)
+            expect(geometry.polygon[0]?.x).toBeGreaterThan(0)
+            expect(geometry.polygon[1]?.x).toBeLessThan(width)
+          }
         }
       ),
       { numRuns: 300 }

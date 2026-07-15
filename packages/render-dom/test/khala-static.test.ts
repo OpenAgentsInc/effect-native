@@ -88,6 +88,17 @@ describe("static Khala DOM lowering", () => {
     expect(first.html).toContain('stroke="CanvasText"')
   })
 
+  test("draws one closed cut-corner path without a crossing full-width top stroke", async () => {
+    const { html } = await mountView(khalaFrame("cut-corner-surface", true))
+    const { container } = createDom()
+    container.innerHTML = html
+    const paths = container.querySelectorAll('[data-en-khala="cut-corner-surface"] path')
+
+    expect(paths).toHaveLength(1)
+    expect(paths[0]?.getAttribute("d")).toContain("M4 0 L316 0")
+    expect(paths[0]?.getAttribute("d")).not.toContain("M0 0 L320 0")
+  })
+
   test("keeps focus and intents on semantic controls above pointer-inert decoration", async () => {
     const received: Array<string> = []
     const report: IntentReporter = (ref) => Effect.sync(() => received.push(ref.name)).pipe(Effect.asVoid)

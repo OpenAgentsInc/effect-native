@@ -342,7 +342,7 @@ export const resolveKhalaMotif = (input: unknown, theme: unknown) =>
         focusClearance: decodedTheme.focusClearance,
         forcedColors: decodedInput.forcedColors,
         polygon,
-        lines: [line(0, 0, decodedInput.width, 0, quietRole, strokeWidth)]
+        lines: []
       } satisfies KhalaMotifGeometry
     }
 

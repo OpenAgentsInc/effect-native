@@ -16,13 +16,16 @@ or theme.
 - optional 1×–4× zoom, density, and forced-color input; and
 - ordinary Effect Native semantic children.
 
-The catalog marker is `effect-native/v41`. Older Frame trees remain valid
+The catalog marker is `effect-native/v42`. Older Frame trees remain valid
 because `khala` is optional and every prior catalog version remains in the
 compatible decoder.
 
 `header-line` uses two semantic stroke roles but one continuous baseline: the
 signal segment ends at the exact point where the structural segment begins.
 Density may change accent length, never introduce a visible registration gap.
+
+`cut-corner-surface` is one closed polygon. Its top edge starts and ends at the
+cut points; no second full-width stroke may cross the clipped corners.
 
 The caller owns the stable id instead of relying on a renderer counter or
 React `useId`. Server rendering, hydration, compatibility DOM, React DOM, and
