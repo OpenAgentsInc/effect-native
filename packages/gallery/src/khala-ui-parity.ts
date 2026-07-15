@@ -239,7 +239,7 @@ export const khalaUiVisualParity = [
     rendererContract: "DOM/React DOM visual duplicate; RN bounded or static native degradation.",
     accessibilityCorrection: "One complete stable semantic string remains exposed and visible without motion.",
     issue: "#99",
-    status: "planned"
+    status: "shipped"
   }),
   capability({
     id: "text.decipher",
@@ -251,7 +251,7 @@ export const khalaUiVisualParity = [
     rendererContract: "DOM/React DOM supported; RN explicit bounded/static degradation.",
     accessibilityCorrection: "Deterministic visual duplicate only; never mutates or hides the semantic text node.",
     issue: "#99",
-    status: "planned"
+    status: "shipped"
   }),
   capability({
     id: "illumination.html",

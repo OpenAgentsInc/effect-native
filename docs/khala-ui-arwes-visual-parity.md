@@ -18,7 +18,7 @@ renderer contract, accessibility correction, issue, and implementation status.
 | Motion | 31 easing names; among/steps interpolation; typed style projection; driver; element/X state transitions; property/fade/flicker/draw presets | #92 shipped |
 | Choreography | four transition states; parallel, sequence/reverse, stagger/reverse, switch, merge/combine plan semantics | #92 shipped |
 | Frames | generic SVG scene; Underline, Lines, Corners, Octagon, Nero, Nefrex, Kranox, Header, Circle; Octagon/Kranox clipping; assembly | static #98; assembly #92 |
-| Text | sequence/caret and seeded decipher/recipher plus duration derivation | #99 |
+| Text | sequence/caret and seeded decipher/recipher plus duration derivation | #99 shipped |
 | Illumination | HTML radial illumination and SVG radial illumination | #100 |
 | Backgrounds | Dots (box/circle/cross), GridLines, MovingLines, Puffs | #93 |
 | Final adapters/proof | headless, DOM, React DOM, React Native, native degradation, SVG, Canvas, React 19/Electron | #101 |

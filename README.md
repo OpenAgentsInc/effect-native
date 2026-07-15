@@ -191,6 +191,9 @@ The [Khala motion contract](./docs/khala-ui-motion.md) adds the dedicated
 `@effect-native/khala-ui` package: pure easing/keyframe math, modeled manager
 plans, and one Effect Scope-owned choreography runtime with DOM and native-plan
 drivers. Reduced motion reaches stable output with zero scheduled work.
+The [Khala text-effects contract](./docs/khala-ui-text-effects.md) adds
+grapheme-aware sequence/caret and seeded decipher effects while preserving one
+complete semantic string for assistive technology and React/Electron hosts.
 
 Phase 4 (desktop + canvas) is demand-driven by the Khala Code Desktop port —
 a **UI migration, not a backend rewrite**. Catalog demand through
