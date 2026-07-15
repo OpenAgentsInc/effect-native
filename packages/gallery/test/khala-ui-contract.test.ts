@@ -37,6 +37,7 @@ describe("Khala UI language contract", () => {
       expect(Schema.decodeUnknownSync(ViewSchema)(roundTrip)).toEqual(fixture.semanticView)
       const serialized = JSON.stringify(fixture.semanticView)
       for (const text of fixture.semanticText) expect(serialized).toContain(text)
+      expect(fixture.geometryProof).toMatchObject({ _tag: "Passing", owner: "KU-2" })
       expect(fixture.decorationProof._tag).toBe("Empty")
     }
   })
@@ -45,7 +46,10 @@ describe("Khala UI language contract", () => {
     expect(khalaUiProofCases.map((proof) => proof.id)).toEqual([...khalaUiProofCaseIds])
     expect(new Set(khalaUiProofCaseIds).size).toBe(khalaUiProofCaseIds.length)
     expect(khalaUiProofCases.find((proof) => proof.id === "semantic-without-decoration")?.status).toBe("passing")
-    expect(khalaUiProofCases.filter((proof) => proof.owner !== "KU-1").every((proof) => proof.status === "empty")).toBe(
+    expect(
+      khalaUiProofCases.filter((proof) => proof.owner === "KU-2").every((proof) => proof.status === "passing")
+    ).toBe(true)
+    expect(khalaUiProofCases.filter((proof) => proof.owner === "KU-3").every((proof) => proof.status === "empty")).toBe(
       true
     )
   })

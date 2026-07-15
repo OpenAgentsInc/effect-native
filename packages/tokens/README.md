@@ -3,7 +3,7 @@
 Typed token package for Effect Native.
 
 This package holds the shared spacing, color, radius, type scale, breakpoint,
-dimension, and theme schemas used by the core catalog and renderers. Tokens are
+dimension, Khala geometry, and theme schemas used by the core catalog and renderers. Tokens are
 referenced by name in view/style data; renderers resolve names to platform
 values through a theme.
 
@@ -61,6 +61,36 @@ Khala product surfaces mount exactly one theme. `defaultTheme` remains only
 as the neutral schema-completeness fixture used by generic tests and
 tooling that need _a_ valid theme and are not making a Khala product
 statement; it is not a "light mode" for the product.
+
+### Static Khala geometry
+
+`khalaTheme.khalaUi` supplies the canonical edge widths, cut sizes, accent
+lengths, luminance roles, density values, ambient-quality data, responsive
+collapse thresholds, and focus clearance consumed by the renderer-neutral
+KU-2 kernel.
+
+```ts
+import { Effect } from "effect"
+import { khalaTheme, resolveKhalaMotif } from "@effect-native/tokens"
+
+const geometry = Effect.runSync(
+  resolveKhalaMotif(
+    {
+      motif: "cut-corner-surface",
+      width: 320,
+      height: 120,
+      zoom: 1,
+      density: "comfortable",
+      forcedColors: false
+    },
+    khalaTheme.khalaUi
+  )
+)
+```
+
+The result is serializable logical geometry, not renderer output. See
+[`docs/khala-ui-geometry.md`](../../docs/khala-ui-geometry.md) for its closed
+dimension algebra, typed failure modes, responsive rule, and verification.
 
 State variants (hover/press/focus/disabled) do not live in the token
 contract. They are already expressible through `@effect-native/core`'s

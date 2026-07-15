@@ -1,6 +1,7 @@
 import { Button, Card, IntentRef, Stack, StaticPayload, Text, type View } from "@effect-native/core"
+import { khalaMotifIds } from "@effect-native/tokens"
 
-export const khalaUiMotifIds = ["cut-corner-surface", "header-line", "signal-separator"] as const
+export const khalaUiMotifIds = khalaMotifIds
 export type KhalaUiMotifId = (typeof khalaUiMotifIds)[number]
 
 export const khalaUiRendererIds = ["headless", "dom", "react-dom", "react-native", "canvas"] as const
@@ -122,19 +123,19 @@ export const khalaUiProofCases = [
   {
     id: "viewport-phone-390x844",
     owner: "KU-2",
-    status: "empty",
+    status: "passing",
     expectation: "Decoration collapses before content width, reading order, or focus clearance changes."
   },
   {
     id: "viewport-tablet-820x1180",
     owner: "KU-2",
-    status: "empty",
+    status: "passing",
     expectation: "The same logical motif resolves deterministically at the tablet fixture size."
   },
   {
     id: "viewport-desktop-1280x832",
     owner: "KU-2",
-    status: "empty",
+    status: "passing",
     expectation: "The same logical motif resolves deterministically at the desktop fixture size."
   },
   {
@@ -196,7 +197,7 @@ export const khalaUiProofCases = [
   {
     id: "headless-resolution",
     owner: "KU-2",
-    status: "empty",
+    status: "passing",
     expectation: "Bounded geometry resolves deterministically without DOM, React, React Native, Canvas, or timers."
   },
   {
@@ -209,8 +210,14 @@ export const khalaUiProofCases = [
 
 export interface KhalaUiEmptyDecorationProof {
   readonly _tag: "Empty"
-  readonly owner: "KU-2/KU-3"
+  readonly owner: "KU-3"
   readonly expectation: string
+}
+
+export interface KhalaUiGeometryProof {
+  readonly _tag: "Passing"
+  readonly owner: "KU-2"
+  readonly receipt: string
 }
 
 export interface KhalaUiGoldenFixture {
@@ -219,6 +226,7 @@ export interface KhalaUiGoldenFixture {
   readonly density: "compact" | "comfortable" | "spacious"
   readonly semanticText: ReadonlyArray<string>
   readonly semanticView: View
+  readonly geometryProof: KhalaUiGeometryProof
   readonly decorationProof: KhalaUiEmptyDecorationProof
 }
 
@@ -249,9 +257,14 @@ export const khalaUiGoldenFixtures = [
       "Ready",
       "Start a coding session from the selected repository."
     ),
+    geometryProof: {
+      _tag: "Passing",
+      owner: "KU-2",
+      receipt: "Bounded cut-corner geometry resolves deterministically at phone, tablet, desktop, and 200% zoom inputs."
+    },
     decorationProof: {
       _tag: "Empty",
-      owner: "KU-2/KU-3",
+      owner: "KU-3",
       expectation: "Cut-corner geometry wraps this unchanged semantic panel."
     }
   },
@@ -266,9 +279,14 @@ export const khalaUiGoldenFixtures = [
       "Connected",
       "All local services are available."
     ),
+    geometryProof: {
+      _tag: "Passing",
+      owner: "KU-2",
+      receipt: "Header segments collapse from full to simplified to a visible border without consuming content inset."
+    },
     decorationProof: {
       _tag: "Empty",
-      owner: "KU-2/KU-3",
+      owner: "KU-3",
       expectation: "A restrained header line accents this unchanged semantic panel."
     }
   },
@@ -283,9 +301,14 @@ export const khalaUiGoldenFixtures = [
       "Live",
       "Recent conversations are available below."
     ),
+    geometryProof: {
+      _tag: "Passing",
+      owner: "KU-2",
+      receipt: "Signal segments preserve a canonical focus-color fallback and deterministic narrow-container collapse."
+    },
     decorationProof: {
       _tag: "Empty",
-      owner: "KU-2/KU-3",
+      owner: "KU-3",
       expectation: "A signal separator accents this unchanged semantic panel."
     }
   }

@@ -2842,7 +2842,7 @@ const khalaUiContractPageView: View = Stack({ key: "page-khala-ui", direction: "
       )
     })
   ),
-  pageSectionTitle("page-khala-ui-golden-title", "Golden fixtures: semantics now, decoration proof empty"),
+  pageSectionTitle("page-khala-ui-golden-title", "Golden fixtures: headless geometry passing, rendering pending"),
   ...khalaUiGoldenFixtures.map((fixture) =>
     Card({ key: `page-khala-ui-golden-${fixture.id}`, padding: "4", radius: "lg" }, [
       Stack({ key: `page-khala-ui-golden-${fixture.id}-content`, direction: "column", gap: "3" }, [
@@ -2860,6 +2860,13 @@ const khalaUiContractPageView: View = Stack({ key: "page-khala-ui", direction: "
           })
         ]),
         fixture.semanticView,
+        Alert({
+          key: `page-khala-ui-golden-${fixture.id}-geometry`,
+          tone: "success",
+          variant: "outline",
+          title: `${fixture.geometryProof._tag} proof · ${fixture.geometryProof.owner}`,
+          message: fixture.geometryProof.receipt
+        }),
         Alert({
           key: `page-khala-ui-golden-${fixture.id}-empty`,
           tone: "warning",

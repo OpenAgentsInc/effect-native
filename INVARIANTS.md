@@ -41,6 +41,11 @@
   levels, and decoration collapses before content width or focus clearance.
 - Every motif declares supported, degraded, or unavailable behavior for
   headless, DOM, React DOM, React Native, and Canvas.
+- Khala geometry accepts only the closed bounded Effect Schema algebra,
+  resolves deterministically from canonical theme roles, and contains no
+  parser, renderer access, ambient work, global randomness, or scheduler.
+- Static geometry preserves `contentInset: 0`, at least four units of focus
+  clearance, and collapses to a visible ordinary border before semantic space.
 - The Arwes website sound assets are prohibited from copying or reuse.
 
 Changes that add, remove, relax, or reinterpret an invariant update this file

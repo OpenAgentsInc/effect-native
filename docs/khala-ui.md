@@ -29,7 +29,8 @@ The initial vocabulary contains exactly three motifs:
 | `header-line`        | a short structural accent associated with a heading        | never gates, replaces, or obscures the heading |
 | `signal-separator`   | an underline or segmented line for hierarchy or live state | never repeats into stripes or visual noise     |
 
-KU-2 may add only the geometry and token inputs required by these motifs.
+KU-2 adds only the geometry and token inputs required by these motifs; its
+[deterministic geometry receipt](./khala-ui-geometry.md) is now complete.
 KU-3 extends the existing `Frame`, `Glow`, and related renderer vocabulary; it
 does not add parallel product controls. Signal grids, Canvas ambience,
 choreography, pointer effects, text effects, and audio are not part of this
@@ -91,8 +92,8 @@ state distinction.
 
 ## Renderer capability matrix
 
-These are target dispositions. KU-2 and KU-3 own the currently empty proof
-slots in the golden gallery.
+These are target dispositions. KU-2 now fills the headless geometry proof;
+KU-3 owns the still-empty renderer proof slots in the golden gallery.
 
 | Motif              | Headless                                  | DOM                      | React DOM                                   | React Native                                               | Canvas                                               |
 | ------------------ | ----------------------------------------- | ------------------------ | ------------------------------------------- | ---------------------------------------------------------- | ---------------------------------------------------- |
@@ -107,8 +108,9 @@ renderers in the same change. Missing entries fail the gallery contract check.
 ## Golden fixtures and proof slots
 
 The `khala-ui` gallery foundation page owns one semantic fixture per motif.
-Each fixture currently renders complete Effect Native content without the new
-decoration and pairs it with an explicit `Empty` KU-2/KU-3 proof slot. The
+Each fixture renders complete Effect Native content without decoration, pairs
+it with a passing KU-2 headless geometry receipt, and retains an explicit
+`Empty` KU-3 renderer proof slot. The
 fixtures cover:
 
 - phone 390×844, tablet 820×1180, and desktop 1280×832;
@@ -119,7 +121,7 @@ fixtures cover:
 - React Native equivalence/degradation and headless geometry resolution; and
 - the static bundle budget.
 
-KU-2 fills deterministic headless geometry slots. KU-3 fills renderer,
+KU-2 has filled the deterministic headless geometry slots. KU-3 fills renderer,
 server/hydration, accessibility, and bundle slots. A slot changes from `Empty`
 to passing only with an automated receipt; screenshots alone are insufficient.
 

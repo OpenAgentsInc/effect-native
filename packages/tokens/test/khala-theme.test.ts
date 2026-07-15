@@ -139,6 +139,24 @@ describe("khalaTheme (Protoss-blue dark theme)", () => {
       lg: { height: 32, gutter: 12, radius: 4, fontSize: 14, icon: 18 },
       xl: { height: 40, gutter: 14, radius: 6, fontSize: 16, icon: 20 }
     })
+    expect(khalaTheme.khalaUi).toEqual({
+      edgeWidth: { hairline: 1, structural: 1, emphasis: 2 },
+      cutSize: { none: 0, small: 4, medium: 8, large: 12 },
+      accentLength: { short: 24, medium: 48, long: 72 },
+      luminance: { quiet: "borderSubtle", structural: "borderStrong", signal: "accent", focus: "focus" },
+      density: {
+        compact: { gap: 4, cut: "small", accent: "short" },
+        comfortable: { gap: 8, cut: "medium", accent: "medium" },
+        spacious: { gap: 12, cut: "large", accent: "long" }
+      },
+      ambientQuality: {
+        off: { opacity: 0, detail: 0 },
+        restrained: { opacity: 0.08, detail: 1 },
+        enhanced: { opacity: 0.12, detail: 2 }
+      },
+      responsiveCollapse: { borderOnlyBelow: 160, simplifiedBelow: 280 },
+      focusClearance: 4
+    })
   })
 
   test("records UI-component contrast for the third dim level and disabled text", () => {
