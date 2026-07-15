@@ -263,7 +263,7 @@ export const khalaUiVisualParity = [
     rendererContract: "DOM/React DOM supported; focus/static native degradation on RN.",
     accessibilityCorrection: "Local Pointer Events, cached bounds, frame coalescing, coarse-pointer/focus/reduced-motion fallbacks.",
     issue: "#100",
-    status: "planned"
+    status: "shipped"
   }),
   capability({
     id: "illumination.svg",
@@ -275,7 +275,7 @@ export const khalaUiVisualParity = [
     rendererContract: "SVG DOM/React DOM supported; stable structural highlight elsewhere.",
     accessibilityCorrection: "Deterministic IDs, inert nodes, local events, zero driver for reduced/coarse input.",
     issue: "#100",
-    status: "planned"
+    status: "shipped"
   }),
   ...([
     ["dots", "createBackgroundDots", "Dots", "box/circle/cross lattice with origin-progress reveal"],

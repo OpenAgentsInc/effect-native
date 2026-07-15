@@ -194,6 +194,9 @@ drivers. Reduced motion reaches stable output with zero scheduled work.
 The [Khala text-effects contract](./docs/khala-ui-text-effects.md) adds
 grapheme-aware sequence/caret and seeded decipher effects while preserving one
 complete semantic string for assistive technology and React/Electron hosts.
+The [Khala illumination contract](./docs/khala-ui-illumination.md) adds one
+container-local driver for HTML radial paint and SVG gradient positioning,
+with deterministic IDs and static native/coarse-pointer/reduced-motion output.
 
 Phase 4 (desktop + canvas) is demand-driven by the Khala Code Desktop port —
 a **UI migration, not a backend rewrite**. Catalog demand through

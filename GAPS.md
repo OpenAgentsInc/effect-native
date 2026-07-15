@@ -42,8 +42,10 @@ KU-9 (#98) ships the full static foundation in v43: twelve owned frame motifs,
 generic bounded grouping/compositing scene data, stepped/strip/separator paint
 descriptors, inert DOM/React DOM SVG, and explicit React Native geometry or
 degradation. Motion/choreography (#92) is shipped in the dedicated
-`@effect-native/khala-ui` package. Canvas backgrounds (#93), illumination
-(#100), and final cross-renderer proof (#101) remain tracked separately. Text
+`@effect-native/khala-ui` package. Canvas backgrounds (#93) and final
+cross-renderer proof (#101) remain tracked separately. HTML/SVG illumination
+ships in #100 with local events, frame coalescing, deterministic SVG IDs,
+Scope cleanup, and static coarse-pointer/reduced-motion/native treatments. Text
 sequence and decipher effects ship in #99 with a stable semantic layer and a
 short-lived inert visual layer. They are grapheme-aware, deterministically
 seeded, bounded, interruptible, and perform zero animation work under reduced
