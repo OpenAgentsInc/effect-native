@@ -123,6 +123,18 @@ import {
   toneTokens,
   toneVariantTokens
 } from "@effect-native/tokens"
+import {
+  khalaUiArwesReference,
+  khalaUiCapabilityMatrix,
+  khalaUiGoldenFixtures,
+  khalaUiMotifIds,
+  khalaUiPerformanceBudgets,
+  khalaUiProofCases,
+  khalaUiRendererIds,
+  khalaUiRestraintLimits
+} from "./khala-ui-contract"
+
+export * from "./khala-ui-contract"
 
 export const packageName = "@effect-native/gallery" as const
 
@@ -2424,7 +2436,7 @@ export const componentPageSummaries = {
     "Shimmer sweep over real pending text or a skeleton placeholder width; reduced motion is a static affordance."
 } as const satisfies Record<ComponentTag, string>
 
-export const foundationPageIds = ["design-tokens", "colors", "typography", "icons", "responsive"] as const
+export const foundationPageIds = ["khala-ui", "design-tokens", "colors", "typography", "icons", "responsive"] as const
 export type FoundationPageId = (typeof foundationPageIds)[number]
 
 export type GalleryPageKind = "component" | "foundation"
@@ -2760,7 +2772,148 @@ const responsivePageView: View = Stack({ key: "page-responsive", direction: "col
   )
 ])
 
+const khalaUiContractPageView: View = Stack({ key: "page-khala-ui", direction: "column", gap: "4" }, [
+  Text({ key: "page-khala-ui-title", content: "Khala UI contract", variant: "heading", color: "textPrimary" }),
+  Text({
+    key: "page-khala-ui-summary",
+    content:
+      "Khala UI is the owned OpenAgents visual language inside Effect Native. It is not a component runtime, state store, intent system, React library, or second theme.",
+    variant: "body",
+    color: "textMuted"
+  }),
+  Alert({
+    key: "page-khala-ui-authority",
+    tone: "info",
+    variant: "soft",
+    title: "Authority stays singular",
+    message:
+      "Effect Native owns components, views, intents, and lifecycle. @effect-native/tokens and khalaTheme remain the only theme authority."
+  }),
+  pageSectionTitle("page-khala-ui-vocabulary-title", "Initial vocabulary: exactly three motifs"),
+  ...khalaUiMotifIds.map((motif) =>
+    Card({ key: `page-khala-ui-motif-${motif}`, padding: "3", radius: "md" }, [
+      Stack({ key: `page-khala-ui-motif-${motif}-content`, direction: "column", gap: "1" }, [
+        Text({ key: `page-khala-ui-motif-${motif}-name`, content: motif, variant: "title", color: "textPrimary" }),
+        pageCaption(
+          `page-khala-ui-motif-${motif}-rule`,
+          motif === "cut-corner-surface"
+            ? "One restrained surface-edge treatment; semantic content remains the existing component."
+            : motif === "header-line"
+              ? "One short structural line that reinforces a section heading without gating it."
+              : "One underline or signal separator for hierarchy or live state; never a repeating stripe."
+        )
+      ])
+    ])
+  ),
+  pageSectionTitle("page-khala-ui-restraint-title", "Density and nesting limits"),
+  pageCaption(
+    "page-khala-ui-restraint-numbers",
+    `one signature frame per region · max decorated nesting ${khalaUiRestraintLimits.maxDecoratedSurfaceNesting} · max motifs per surface ${khalaUiRestraintLimits.maxMotifsPerSurface} · focus clearance ${khalaUiRestraintLimits.minFocusClearancePx}px`
+  ),
+  pageCaption("page-khala-ui-restraint-compact", `compact: ${khalaUiRestraintLimits.compact}`),
+  pageCaption("page-khala-ui-restraint-comfortable", `comfortable: ${khalaUiRestraintLimits.comfortable}`),
+  pageCaption("page-khala-ui-restraint-spacious", `spacious: ${khalaUiRestraintLimits.spacious}`),
+  pageSectionTitle("page-khala-ui-capabilities-title", "Renderer capability dispositions"),
+  ...khalaUiMotifIds.flatMap((motif) =>
+    khalaUiRendererIds.map((renderer) => {
+      const capability = khalaUiCapabilityMatrix[motif][renderer]
+      return Stack(
+        { key: `page-khala-ui-capability-${motif}-${renderer}`, direction: "row", gap: "2", align: "center" },
+        [
+          Text({
+            key: `page-khala-ui-capability-${motif}-${renderer}-label`,
+            content: `${motif} / ${renderer}`,
+            variant: "label",
+            color: "textPrimary",
+            style: { width: 280 }
+          }),
+          Badge({
+            key: `page-khala-ui-capability-${motif}-${renderer}-status`,
+            label: capability.disposition,
+            tone:
+              capability.disposition === "supported"
+                ? "success"
+                : capability.disposition === "degraded"
+                  ? "warn"
+                  : "neutral"
+          }),
+          pageCaption(`page-khala-ui-capability-${motif}-${renderer}-reason`, capability.rationale)
+        ]
+      )
+    })
+  ),
+  pageSectionTitle("page-khala-ui-golden-title", "Golden fixtures: semantics now, decoration proof empty"),
+  ...khalaUiGoldenFixtures.map((fixture) =>
+    Card({ key: `page-khala-ui-golden-${fixture.id}`, padding: "4", radius: "lg" }, [
+      Stack({ key: `page-khala-ui-golden-${fixture.id}-content`, direction: "column", gap: "3" }, [
+        Stack({ key: `page-khala-ui-golden-${fixture.id}-heading`, direction: "row", gap: "2", align: "center" }, [
+          Text({
+            key: `page-khala-ui-golden-${fixture.id}-title`,
+            content: fixture.motif,
+            variant: "title",
+            color: "textPrimary"
+          }),
+          Badge({
+            key: `page-khala-ui-golden-${fixture.id}-density`,
+            label: fixture.density,
+            tone: "neutral"
+          })
+        ]),
+        fixture.semanticView,
+        Alert({
+          key: `page-khala-ui-golden-${fixture.id}-empty`,
+          tone: "warning",
+          variant: "outline",
+          title: `${fixture.decorationProof._tag} proof slot · ${fixture.decorationProof.owner}`,
+          message: fixture.decorationProof.expectation
+        })
+      ])
+    ])
+  ),
+  pageSectionTitle("page-khala-ui-proof-title", "KU-2 / KU-3 proof matrix"),
+  ...khalaUiProofCases.map((proof) =>
+    Stack({ key: `page-khala-ui-proof-${proof.id}`, direction: "row", gap: "2", align: "center" }, [
+      Text({
+        key: `page-khala-ui-proof-${proof.id}-label`,
+        content: proof.id,
+        variant: "label",
+        color: "textPrimary",
+        style: { width: 240 }
+      }),
+      Badge({
+        key: `page-khala-ui-proof-${proof.id}-status`,
+        label: `${proof.status} · ${proof.owner}`,
+        tone: proof.status === "passing" ? "success" : "warn"
+      }),
+      pageCaption(`page-khala-ui-proof-${proof.id}-expectation`, proof.expectation)
+    ])
+  ),
+  pageSectionTitle("page-khala-ui-budget-title", "Performance budgets"),
+  pageCaption(
+    "page-khala-ui-budget-static",
+    `static delta ≤ ${khalaUiPerformanceBudgets.staticBundleGzipBytes} gzip bytes · ≤ ${khalaUiPerformanceBudgets.maxDecorativeNodesPerMotif} inert nodes per motif · zero static schedulers/timers/observers/layout reads`
+  ),
+  pageCaption(
+    "page-khala-ui-budget-canvas",
+    `future Canvas: ≤ ${khalaUiPerformanceBudgets.maxCanvasSurfacesPerProductRegion} surface per region · DPR ≤ ${khalaUiPerformanceBudgets.maxCanvasDevicePixelRatio} · p95 work ≤ ${khalaUiPerformanceBudgets.maxCanvasFrameWorkMsP95}ms · memory ≤ ${khalaUiPerformanceBudgets.maxCanvasMemoryMiB}MiB`
+  ),
+  pageSectionTitle("page-khala-ui-provenance-title", "Arwes provenance boundary"),
+  pageCaption(
+    "page-khala-ui-provenance",
+    `reference ${khalaUiArwesReference.commit} · ${khalaUiArwesReference.license} · behavior studied, source adapted: ${String(khalaUiArwesReference.sourceAdapted)}`
+  ),
+  Alert({
+    key: "page-khala-ui-sound-prohibition",
+    tone: "warning",
+    variant: "outline",
+    title: "Sound assets prohibited",
+    message:
+      "The Arwes website sound assets are website-only and must never be copied or redistributed by Effect Native or OpenAgents."
+  })
+])
+
 const foundationPageViews: Record<FoundationPageId, View> = {
+  "khala-ui": khalaUiContractPageView,
   "design-tokens": designTokensPageView,
   colors: colorsPageView,
   typography: typographyPageView,
@@ -2769,6 +2922,11 @@ const foundationPageViews: Record<FoundationPageId, View> = {
 }
 
 const foundationPageMeta: Record<FoundationPageId, { readonly title: string; readonly description: string }> = {
+  "khala-ui": {
+    title: "Khala UI",
+    description:
+      "Language authority, three-motif vocabulary, restraint limits, renderer dispositions, golden fixtures, proof slots, budgets, and provenance."
+  },
   "design-tokens": {
     title: "Design tokens",
     description:

@@ -173,6 +173,12 @@ home page through component library, built and statically prerendered
 entirely with Effect Native itself -- is in this repository too; hosting is
 tracked separately.
 
+The [Khala UI language contract](./docs/khala-ui.md) freezes the owned
+static-first visual vocabulary, renderer dispositions, restraint rules,
+accessibility/performance budgets, golden gallery proof slots, and
+[Arwes provenance boundary](./docs/khala-ui-provenance.md) before any new
+geometry or product decoration is implemented.
+
 Phase 4 (desktop + canvas) is demand-driven by the Khala Code Desktop port —
 a **UI migration, not a backend rewrite**. Catalog demand through
 `effect-native/v35` is shipped (marketing landing, mobile Pager/pull-to-refresh/SwipeableListItem, the media-video live attach host, the GL-1 glass set, the Forum markdown-link href grammar, the OpenAgents Desktop chat chrome + composer submit lifecycle, the Sarah Blueprint-map GraphFigure provenance vocabulary, the desktop-harmonization EmptyMessage empty-state block, the 101-name desktop icon set on the Apps SDK UI conventions, the Avatar/AvatarGroup identity marks, the harmonization CopyButton with the injected Clipboard service); the chat vertical-slice proof is in

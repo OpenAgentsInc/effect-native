@@ -30,6 +30,19 @@
 - No renderer may require `eval`, `new Function`, arbitrary HTML insertion, or
   a weakened consumer security policy.
 
+## Khala UI language
+
+- Khala UI is a visual language inside Effect Native, never a second catalog,
+  state, intent, lifecycle, React, or theme authority.
+- The initial static vocabulary contains exactly `cut-corner-surface`,
+  `header-line`, and `signal-separator`. Expansion requires a new reviewed
+  contract and renderer disposition.
+- A region has at most one signature frame, decorated surfaces nest at most two
+  levels, and decoration collapses before content width or focus clearance.
+- Every motif declares supported, degraded, or unavailable behavior for
+  headless, DOM, React DOM, React Native, and Canvas.
+- The Arwes website sound assets are prohibited from copying or reuse.
+
 Changes that add, remove, relax, or reinterpret an invariant update this file
 and the corresponding conformance test, model note, or explicit boundary
 exception in the same commit.

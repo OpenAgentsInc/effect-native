@@ -17,6 +17,12 @@ is itself an Effect Native `ViewProgram`.
 The gallery intentionally does not introduce a custom component escape hatch.
 Stories are built from the same closed catalog any app uses.
 
+The `khala-ui` foundation page is also the KU-1 golden review surface. It shows
+the complete semantic fixture for each initial motif and an explicit empty
+KU-2/KU-3 decoration proof slot, plus density limits, renderer capability
+dispositions, accessibility/performance cases, and the Arwes provenance and
+sound-asset boundary. See [`khala-ui.md`](./khala-ui.md).
+
 ## Run The Web Gallery
 
 ```sh

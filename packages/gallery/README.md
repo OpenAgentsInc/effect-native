@@ -34,8 +34,11 @@ Beyond the story browser, the gallery ships typed documentation pages
 - one docs page per catalog component (`component:<Tag>`, e.g.
   `component:Button`) rendering the component's summary plus every live story
   with its variant option sets spelled out as text, and
-- five foundation pages: `design-tokens`, `colors`, `typography`, `icons`,
-  and `responsive`, rendering the token scales and live `khalaTheme` values.
+- six foundation pages: `khala-ui`, `design-tokens`, `colors`, `typography`,
+  `icons`, and `responsive`. The Khala page reviews the language contract,
+  three-motif vocabulary, restraint limits, renderer dispositions, golden
+  fixtures, proof slots, budgets, and provenance; the others render token
+  scales and live `khalaTheme` values.
 
 Pages are reachable in-app ("Docs & foundations" in the component nav, "Open
 … docs page" in the story nav) or by deep link with `?page=<id>`, e.g.
