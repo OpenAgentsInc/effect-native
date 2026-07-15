@@ -293,7 +293,7 @@ export const khalaUiVisualParity = [
       rendererContract: "Canvas in DOM/React/Electron hosts; deterministic static image/geometry degradation on unsupported renderers.",
       accessibilityCorrection: "One Scope-owned scheduler, DPR cap, visibility/power suspension, deterministic seed, zero loop for reduced motion.",
       issue: "#93",
-      status: "planned"
+      status: "shipped"
     })
   )
 ] as const satisfies ReadonlyArray<KhalaUiParityCapability>

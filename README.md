@@ -197,6 +197,10 @@ complete semantic string for assistive technology and React/Electron hosts.
 The [Khala illumination contract](./docs/khala-ui-illumination.md) adds one
 container-local driver for HTML radial paint and SVG gradient positioning,
 with deterministic IDs and static native/coarse-pointer/reduced-motion output.
+The [Khala Canvas backgrounds contract](./docs/khala-ui-canvas-backgrounds.md)
+ships Dots, GridLines, MovingLines, and Puffs through the Effect Native Canvas
+renderer for DOM, React, and Electron hosts, with deterministic static frame
+plans for unsupported renderers.
 
 Phase 4 (desktop + canvas) is demand-driven by the Khala Code Desktop port —
 a **UI migration, not a backend rewrite**. Catalog demand through

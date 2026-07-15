@@ -20,7 +20,7 @@ renderer contract, accessibility correction, issue, and implementation status.
 | Frames | generic SVG scene; Underline, Lines, Corners, Octagon, Nero, Nefrex, Kranox, Header, Circle; Octagon/Kranox clipping; assembly | static #98; assembly #92 |
 | Text | sequence/caret and seeded decipher/recipher plus duration derivation | #99 shipped |
 | Illumination | HTML radial illumination and SVG radial illumination | #100 shipped |
-| Backgrounds | Dots (box/circle/cross), GridLines, MovingLines, Puffs | #93 |
+| Backgrounds | Dots (box/circle/cross), GridLines, MovingLines, Puffs | #93 shipped |
 | Final adapters/proof | headless, DOM, React DOM, React Native, native degradation, SVG, Canvas, React 19/Electron | #101 |
 
 React and Solid packages in the reference are adapter APIs around these same
