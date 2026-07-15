@@ -24,6 +24,7 @@ The current mapping is:
 | `Spacer`      | accessibility-hidden `View`                           |
 | `Modal`       | host `Modal`                                          |
 | `Sheet`       | absolute overlay with `View` / `Pressable` primitives |
+| `Frame`       | semantic content plus inert Khala line/border sibling |
 
 Styles are lowered from typed Effect Native style objects to React Native
 style objects. Spacing, radii, dimensions, colors, and type scale values are
@@ -139,3 +140,9 @@ metric changes update the renderer viewport, the shared runtime resolver
 flattens breakpoint props and styles, and the RN surface re-renders through the
 same `RendererAdapter` path. Tests may also call `setViewport` on the mounted
 surface for deterministic snapshots.
+
+Static Khala `Frame` motifs use inaccessible, pointer-inert native `View`
+decoration. Header and separator lines are supported; cut-corner surfaces use
+the capability matrix's explicit ordinary-border degradation because this
+renderer adds no SVG/native clipping dependency. See
+[`docs/khala-ui-static-renderers.md`](../../docs/khala-ui-static-renderers.md).

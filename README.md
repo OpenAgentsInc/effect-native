@@ -178,9 +178,10 @@ static-first visual vocabulary, renderer dispositions, restraint rules,
 accessibility/performance budgets, golden gallery proof slots, and
 [Arwes provenance boundary](./docs/khala-ui-provenance.md) before any new
 geometry or product decoration is implemented.
-The [KU-2 geometry kernel](./docs/khala-ui-geometry.md) now provides the closed,
-bounded headless algebra and canonical theme roles; host rendering remains a
-separate KU-3 step.
+The [KU-2 geometry kernel](./docs/khala-ui-geometry.md) provides the closed,
+bounded headless algebra and canonical theme roles; the
+[KU-3 static renderers](./docs/khala-ui-static-renderers.md) lower the existing
+`Frame` through DOM, React DOM, and the declared React Native equivalents.
 
 Phase 4 (desktop + canvas) is demand-driven by the Khala Code Desktop port —
 a **UI migration, not a backend rewrite**. Catalog demand through

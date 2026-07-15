@@ -37,7 +37,7 @@ Beyond the story browser, the gallery ships typed documentation pages
 - six foundation pages: `khala-ui`, `design-tokens`, `colors`, `typography`,
   `icons`, and `responsive`. The Khala page reviews the language contract,
   three-motif vocabulary, restraint limits, renderer dispositions, golden
-  fixtures, proof slots, budgets, and provenance; the others render token
+  fixtures, passing KU-2/KU-3 proof receipts, budgets, and provenance; the others render token
   scales and live `khalaTheme` values.
 
 Pages are reachable in-app ("Docs & foundations" in the component nav, "Open

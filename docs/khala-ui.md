@@ -31,8 +31,9 @@ The initial vocabulary contains exactly three motifs:
 
 KU-2 adds only the geometry and token inputs required by these motifs; its
 [deterministic geometry receipt](./khala-ui-geometry.md) is now complete.
-KU-3 extends the existing `Frame`, `Glow`, and related renderer vocabulary; it
-does not add parallel product controls. Signal grids, Canvas ambience,
+KU-3 extends the existing `Frame` renderer vocabulary through the completed
+[static renderer lowering](./khala-ui-static-renderers.md); it does not add
+parallel product controls. Signal grids, Canvas ambience,
 choreography, pointer effects, text effects, and audio are not part of this
 static vocabulary.
 
@@ -92,8 +93,7 @@ state distinction.
 
 ## Renderer capability matrix
 
-These are target dispositions. KU-2 now fills the headless geometry proof;
-KU-3 owns the still-empty renderer proof slots in the golden gallery.
+These dispositions are now implemented and proven for the static renderers.
 
 | Motif              | Headless                                  | DOM                      | React DOM                                   | React Native                                               | Canvas                                               |
 | ------------------ | ----------------------------------------- | ------------------------ | ------------------------------------------- | ---------------------------------------------------------- | ---------------------------------------------------- |
@@ -108,10 +108,9 @@ renderers in the same change. Missing entries fail the gallery contract check.
 ## Golden fixtures and proof slots
 
 The `khala-ui` gallery foundation page owns one semantic fixture per motif.
-Each fixture renders complete Effect Native content without decoration, pairs
-it with a passing KU-2 headless geometry receipt, and retains an explicit
-`Empty` KU-3 renderer proof slot. The
-fixtures cover:
+Each fixture preserves a complete undecorated semantic view, pairs it with a
+passing KU-2 headless geometry receipt, and renders the passing KU-3 `Frame`
+lowering. The fixtures cover:
 
 - phone 390×844, tablet 820×1180, and desktop 1280×832;
 - 200% zoom and 200% text expansion;
@@ -121,9 +120,9 @@ fixtures cover:
 - React Native equivalence/degradation and headless geometry resolution; and
 - the static bundle budget.
 
-KU-2 has filled the deterministic headless geometry slots. KU-3 fills renderer,
-server/hydration, accessibility, and bundle slots. A slot changes from `Empty`
-to passing only with an automated receipt; screenshots alone are insufficient.
+KU-2 and KU-3 have filled the deterministic headless, renderer,
+server/hydration, accessibility, and bundle slots with automated receipts;
+screenshots alone were not treated as proof.
 
 ## Performance budgets
 

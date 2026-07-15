@@ -8,8 +8,12 @@ conformance-checked by
 (`pnpm run check:catalog-reference`) so this page cannot silently drop a shipped
 component.
 
-Current catalog marker: `CatalogVersion = "effect-native/v39"` (v39,
-harmonization P1.6, issue #79: matrix axes on the remaining PARTIAL
+Current catalog marker: `CatalogVersion = "effect-native/v40"` (v40, issue
+#91: the existing `Frame` gains optional bounded Khala static decoration with
+a stable caller-owned id and complete DOM, React DOM, and React Native
+support/degradation receipts).
+
+v39 added harmonization P1.6, issue #79: matrix axes on the remaining PARTIAL
 components from the harmonization audit. `Badge`/`Chip` gain `variant`
 (`solid`/`soft`/`outline`) + lattice `size`; omitting both keeps the exact
 pre-v39 tone-colored-text-only look (`resolveBadgeAppearance`'s `isLegacy`
@@ -421,7 +425,11 @@ Focus glow intensity (`sm`/`md`/`lg`) around a child slot.
 
 ### Frame
 
-Arcade bordered frame (`square`/`rounded`/`arcade`).
+Arcade bordered frame (`square`/`rounded`/`arcade`). Optional `khala` data adds
+one of the three static Khala motifs through a stable caller-owned id, bounded
+logical width/height, optional zoom, density, and forced-color input. The
+semantic children remain ordinary `View` data and the decoration owns no
+intent or state.
 
 ### BlurredPopup
 
@@ -544,7 +552,7 @@ Every component accepts these two, inherited from `NodeBase`:
 | Field            | Type                  | Notes                                                                                                                          |
 | ---------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | `key`            | `string` (optional)   | Required (enforced by the schema, not just convention) on any view placed inside a `List`/`SectionList`/`Link` children array. |
-| `catalogVersion` | `"effect-native/v39"` | Set automatically by every constructor function — you never pass this yourself.                                                |
+| `catalogVersion` | `"effect-native/v40"` | Set automatically by every constructor function — you never pass this yourself.                                                |
 
 ### Design tokens
 

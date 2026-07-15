@@ -18,7 +18,7 @@ describe("Khala UI gallery/testkit golden fixtures", () => {
   for (const fixture of khalaUiGoldenFixtures) {
     for (const viewport of viewports) {
       test(`${fixture.motif} preserves semantic content at ${viewport.width}x${viewport.height}`, async () => {
-        const target = { view: fixture.semanticView, viewport, label: fixture.id }
+        const target = { view: fixture.decoratedView, viewport, label: fixture.id }
         const [firstStructural, secondStructural, dom] = await Promise.all([
           Effect.runPromise(structuralVisualCapture.capture(target)),
           Effect.runPromise(structuralVisualCapture.capture(target)),

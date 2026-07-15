@@ -1,4 +1,4 @@
-import { Button, Card, IntentRef, Stack, StaticPayload, Text, type View } from "@effect-native/core"
+import { Button, Card, Frame, IntentRef, Stack, StaticPayload, Text, type View } from "@effect-native/core"
 import { khalaMotifIds } from "@effect-native/tokens"
 
 export const khalaUiMotifIds = khalaMotifIds
@@ -141,57 +141,57 @@ export const khalaUiProofCases = [
   {
     id: "zoom-200-percent",
     owner: "KU-3",
-    status: "empty",
+    status: "passing",
     expectation: "At 200% zoom, semantic content reflows and decoration neither clips nor creates horizontal overflow."
   },
   {
     id: "text-expansion-200-percent",
     owner: "KU-3",
-    status: "empty",
+    status: "passing",
     expectation: "At 200% text expansion, labels remain complete and focusable controls remain visible."
   },
   {
     id: "forced-colors",
     owner: "KU-3",
-    status: "empty",
+    status: "passing",
     expectation:
       "Visible system borders and separators replace translucent luminance without losing state distinctions."
   },
   {
     id: "reduced-motion",
     owner: "KU-3",
-    status: "empty",
+    status: "passing",
     expectation: "Static output is identical and no scheduler, timer, observer, animation, or frame loop is allocated."
   },
   {
     id: "keyboard-focus",
     owner: "KU-3",
-    status: "empty",
+    status: "passing",
     expectation: "Keyboard order is semantic, decoration is skipped, and focus rings paint above unclipped edges."
   },
   {
     id: "server-markup",
     owner: "KU-3",
-    status: "empty",
+    status: "passing",
     expectation: "Complete visible semantic content and deterministic decoration identifiers exist in server markup."
   },
   {
     id: "hydration",
     owner: "KU-3",
-    status: "empty",
+    status: "passing",
     expectation: "Hydration reports no warning, key/id drift, semantic reorder, or duplicate subscription."
   },
   {
     id: "react-strict-mode",
     owner: "KU-3",
-    status: "empty",
+    status: "passing",
     expectation:
       "React 19 double mount/replay leaves no Scope, listener, observer, subscription, or decorative node leak."
   },
   {
     id: "react-native",
     owner: "KU-3",
-    status: "empty",
+    status: "passing",
     expectation: "Each motif meets its declared equivalent or named degradation with semantic parity."
   },
   {
@@ -203,15 +203,15 @@ export const khalaUiProofCases = [
   {
     id: "static-bundle-budget",
     owner: "KU-3",
-    status: "empty",
+    status: "passing",
     expectation: "The measured static renderer delta remains within the KU-1 bundle and node-count budgets."
   }
 ] as const satisfies ReadonlyArray<KhalaUiProofCase>
 
-export interface KhalaUiEmptyDecorationProof {
-  readonly _tag: "Empty"
+export interface KhalaUiDecorationProof {
+  readonly _tag: "Passing"
   readonly owner: "KU-3"
-  readonly expectation: string
+  readonly receipt: string
 }
 
 export interface KhalaUiGeometryProof {
@@ -226,8 +226,9 @@ export interface KhalaUiGoldenFixture {
   readonly density: "compact" | "comfortable" | "spacious"
   readonly semanticText: ReadonlyArray<string>
   readonly semanticView: View
+  readonly decoratedView: View
   readonly geometryProof: KhalaUiGeometryProof
-  readonly decorationProof: KhalaUiEmptyDecorationProof
+  readonly decorationProof: KhalaUiDecorationProof
 }
 
 const semanticPanel = (key: string, title: string, status: string, body: string): View =>
@@ -245,17 +246,44 @@ const semanticPanel = (key: string, title: string, status: string, body: string)
     ])
   ])
 
+const cutCornerSemantic = semanticPanel(
+  "khala-cut-corner-semantic",
+  "Project home",
+  "Ready",
+  "Start a coding session from the selected repository."
+)
+const headerLineSemantic = semanticPanel(
+  "khala-header-line-semantic",
+  "Runtime status",
+  "Connected",
+  "All local services are available."
+)
+const signalSeparatorSemantic = semanticPanel(
+  "khala-signal-separator-semantic",
+  "Forum board",
+  "Live",
+  "Recent conversations are available below."
+)
+
 export const khalaUiGoldenFixtures = [
   {
     id: "khala-cut-corner-golden",
     motif: "cut-corner-surface",
     density: "comfortable",
     semanticText: ["Project home", "Ready", "Start a coding session from the selected repository.", "Open details"],
-    semanticView: semanticPanel(
-      "khala-cut-corner-semantic",
-      "Project home",
-      "Ready",
-      "Start a coding session from the selected repository."
+    semanticView: cutCornerSemantic,
+    decoratedView: Frame(
+      {
+        key: "khala-cut-corner-frame",
+        khala: {
+          id: "khala-cut-corner-golden",
+          motif: "cut-corner-surface",
+          width: 320,
+          height: 140,
+          density: "comfortable"
+        }
+      },
+      [cutCornerSemantic]
     ),
     geometryProof: {
       _tag: "Passing",
@@ -263,9 +291,9 @@ export const khalaUiGoldenFixtures = [
       receipt: "Bounded cut-corner geometry resolves deterministically at phone, tablet, desktop, and 200% zoom inputs."
     },
     decorationProof: {
-      _tag: "Empty",
+      _tag: "Passing",
       owner: "KU-3",
-      expectation: "Cut-corner geometry wraps this unchanged semantic panel."
+      receipt: "DOM/React DOM lower to inert SVG; React Native preserves the ordinary-border degradation."
     }
   },
   {
@@ -273,11 +301,19 @@ export const khalaUiGoldenFixtures = [
     motif: "header-line",
     density: "compact",
     semanticText: ["Runtime status", "Connected", "All local services are available.", "Open details"],
-    semanticView: semanticPanel(
-      "khala-header-line-semantic",
-      "Runtime status",
-      "Connected",
-      "All local services are available."
+    semanticView: headerLineSemantic,
+    decoratedView: Frame(
+      {
+        key: "khala-header-line-frame",
+        khala: {
+          id: "khala-header-line-golden",
+          motif: "header-line",
+          width: 320,
+          height: 140,
+          density: "compact"
+        }
+      },
+      [headerLineSemantic]
     ),
     geometryProof: {
       _tag: "Passing",
@@ -285,9 +321,9 @@ export const khalaUiGoldenFixtures = [
       receipt: "Header segments collapse from full to simplified to a visible border without consuming content inset."
     },
     decorationProof: {
-      _tag: "Empty",
+      _tag: "Passing",
       owner: "KU-3",
-      expectation: "A restrained header line accents this unchanged semantic panel."
+      receipt: "DOM, React DOM, and React Native render inert line equivalents above unchanged semantic content."
     }
   },
   {
@@ -295,11 +331,19 @@ export const khalaUiGoldenFixtures = [
     motif: "signal-separator",
     density: "spacious",
     semanticText: ["Forum board", "Live", "Recent conversations are available below.", "Open details"],
-    semanticView: semanticPanel(
-      "khala-signal-separator-semantic",
-      "Forum board",
-      "Live",
-      "Recent conversations are available below."
+    semanticView: signalSeparatorSemantic,
+    decoratedView: Frame(
+      {
+        key: "khala-signal-separator-frame",
+        khala: {
+          id: "khala-signal-separator-golden",
+          motif: "signal-separator",
+          width: 320,
+          height: 140,
+          density: "spacious"
+        }
+      },
+      [signalSeparatorSemantic]
     ),
     geometryProof: {
       _tag: "Passing",
@@ -307,9 +351,9 @@ export const khalaUiGoldenFixtures = [
       receipt: "Signal segments preserve a canonical focus-color fallback and deterministic narrow-container collapse."
     },
     decorationProof: {
-      _tag: "Empty",
+      _tag: "Passing",
       owner: "KU-3",
-      expectation: "A signal separator accents this unchanged semantic panel."
+      receipt: "All shipping static renderers preserve the separator hierarchy without an intent or lifecycle."
     }
   }
 ] as const satisfies ReadonlyArray<KhalaUiGoldenFixture>

@@ -19,6 +19,10 @@ import {
   ColorTokenSchema,
   ControlTokenSchema,
   DimensionTokenSchema,
+  KhalaDensityTokenSchema,
+  KhalaPositiveLengthSchema,
+  KhalaMotifIdSchema,
+  KhalaZoomSchema,
   RadiusTokenSchema,
   SpacingTokenSchema,
   ToneTokenSchema,
@@ -33,6 +37,8 @@ import {
   type ColorToken,
   type ControlToken,
   type DimensionToken,
+  type KhalaDensityToken,
+  type KhalaMotifId,
   type RadiusToken,
   type SpacingToken,
   type Theme,
@@ -46,6 +52,10 @@ export {
   ColorTokenSchema,
   ControlTokenSchema,
   DimensionTokenSchema,
+  KhalaDensityTokenSchema,
+  KhalaPositiveLengthSchema,
+  KhalaMotifIdSchema,
+  KhalaZoomSchema,
   RadiusTokenSchema,
   SpacingTokenSchema,
   ToneTokenSchema,
@@ -66,6 +76,8 @@ export {
   type ColorToken,
   type ControlToken,
   type DimensionToken,
+  type KhalaDensityToken,
+  type KhalaMotifId,
   type RadiusToken,
   type SpacingToken,
   type Theme,
@@ -120,8 +132,9 @@ export const LoadingIndicatorCatalogVersion = "effect-native/v38" as const
 // Alert component (see the AlertView doc comment for the Alert-vs-StatusBanner
 // decision).
 export const MatrixAxesCatalogVersion = "effect-native/v39" as const
-export const PreviousCatalogVersion = LoadingIndicatorCatalogVersion
-export const CatalogVersion = MatrixAxesCatalogVersion
+export const KhalaStaticCatalogVersion = "effect-native/v40" as const
+export const PreviousCatalogVersion = MatrixAxesCatalogVersion
+export const CatalogVersion = KhalaStaticCatalogVersion
 export const CatalogVersionSchema = Schema.Literal(CatalogVersion)
 export type CatalogVersion = typeof CatalogVersion
 export const compatibleCatalogVersions = [
@@ -164,7 +177,8 @@ export const compatibleCatalogVersions = [
   SegmentedControlCatalogVersion,
   ButtonMatrixCatalogVersion,
   LoadingIndicatorCatalogVersion,
-  MatrixAxesCatalogVersion
+  MatrixAxesCatalogVersion,
+  KhalaStaticCatalogVersion
 ] as const
 export type CompatibleCatalogVersion = (typeof compatibleCatalogVersions)[number]
 export const CompatibleCatalogVersionSchema = Schema.Literals(compatibleCatalogVersions)
@@ -3223,6 +3237,17 @@ export type WallpaperVariant = "plain" | "city" | "mesh"
 export type FrameVariant = "square" | "rounded" | "arcade"
 export type SpotlightIntensity = "sm" | "md" | "lg"
 
+/** Stable, bounded KU-3 input for the existing Frame component. */
+export interface KhalaFrameDecoration {
+  readonly id: string
+  readonly motif: KhalaMotifId
+  readonly width: number
+  readonly height: number
+  readonly zoom?: number
+  readonly density?: KhalaDensityToken
+  readonly forcedColors?: boolean
+}
+
 export interface BackgroundGradientView extends NodeBase {
   readonly _tag: "BackgroundGradient"
   readonly direction?: GradientDirection
@@ -3249,6 +3274,7 @@ export interface SpotlightView extends NodeBase {
 export interface FrameView extends NodeBase {
   readonly _tag: "Frame"
   readonly variant?: FrameVariant
+  readonly khala?: KhalaFrameDecoration
   readonly children: ReadonlyArray<View>
   readonly style?: CardStyle
 }
@@ -5025,6 +5051,19 @@ export const GradientDirectionSchema = Schema.Literals(["vertical", "horizontal"
 export const WallpaperVariantSchema = Schema.Literals(["plain", "city", "mesh"] as const)
 export const FrameVariantSchema = Schema.Literals(["square", "rounded", "arcade"] as const)
 export const SpotlightIntensitySchema = Schema.Literals(["sm", "md", "lg"] as const)
+export const KhalaFrameIdSchema = Schema.String.check(
+  Schema.isPattern(/^[A-Za-z][A-Za-z0-9_-]{0,63}$/, { title: "KhalaFrameStableId" })
+)
+
+export const KhalaFrameDecorationSchema: Schema.Codec<KhalaFrameDecoration, KhalaFrameDecoration> = Schema.Struct({
+  id: KhalaFrameIdSchema,
+  motif: KhalaMotifIdSchema,
+  width: KhalaPositiveLengthSchema,
+  height: KhalaPositiveLengthSchema,
+  zoom: KhalaZoomSchema.pipe(Schema.optionalKey),
+  density: KhalaDensityTokenSchema.pipe(Schema.optionalKey),
+  forcedColors: Schema.Boolean.pipe(Schema.optionalKey)
+})
 
 export const BackgroundGradientSchema: Schema.Codec<BackgroundGradientView, BackgroundGradientView> =
   Schema.TaggedStruct("BackgroundGradient", {
@@ -5053,6 +5092,7 @@ export const SpotlightSchema: Schema.Codec<SpotlightView, SpotlightView> = Schem
 export const FrameSchema: Schema.Codec<FrameView, FrameView> = Schema.TaggedStruct("Frame", {
   ...CommonFields,
   variant: FrameVariantSchema.pipe(Schema.optionalKey),
+  khala: KhalaFrameDecorationSchema.pipe(Schema.optionalKey),
   children: Schema.Array(ViewSelf),
   style: CardStyleSchema.pipe(Schema.optionalKey)
 })

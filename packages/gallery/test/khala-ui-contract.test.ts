@@ -35,10 +35,13 @@ describe("Khala UI language contract", () => {
     for (const fixture of khalaUiGoldenFixtures) {
       const roundTrip = JSON.parse(JSON.stringify(fixture.semanticView))
       expect(Schema.decodeUnknownSync(ViewSchema)(roundTrip)).toEqual(fixture.semanticView)
+      expect(Schema.decodeUnknownSync(ViewSchema)(JSON.parse(JSON.stringify(fixture.decoratedView)))).toEqual(
+        fixture.decoratedView
+      )
       const serialized = JSON.stringify(fixture.semanticView)
       for (const text of fixture.semanticText) expect(serialized).toContain(text)
       expect(fixture.geometryProof).toMatchObject({ _tag: "Passing", owner: "KU-2" })
-      expect(fixture.decorationProof._tag).toBe("Empty")
+      expect(fixture.decorationProof).toMatchObject({ _tag: "Passing", owner: "KU-3" })
     }
   })
 
@@ -49,9 +52,9 @@ describe("Khala UI language contract", () => {
     expect(
       khalaUiProofCases.filter((proof) => proof.owner === "KU-2").every((proof) => proof.status === "passing")
     ).toBe(true)
-    expect(khalaUiProofCases.filter((proof) => proof.owner === "KU-3").every((proof) => proof.status === "empty")).toBe(
-      true
-    )
+    expect(
+      khalaUiProofCases.filter((proof) => proof.owner === "KU-3").every((proof) => proof.status === "passing")
+    ).toBe(true)
   })
 
   test("restraint and performance budgets are bounded and static-first", () => {
@@ -73,6 +76,7 @@ describe("Khala UI language contract", () => {
     for (const proof of khalaUiProofCaseIds) expect(rendered).toContain(proof)
     expect(rendered).toContain(`max decorated nesting ${khalaUiRestraintLimits.maxDecoratedSurfaceNesting}`)
     expect(rendered).toContain(khalaUiArwesReference.commit)
+    expect(rendered).toContain("passes the 8 KiB gzip gate")
     expect(rendered).toContain("Sound assets prohibited")
   })
 

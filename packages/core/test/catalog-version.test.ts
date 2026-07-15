@@ -39,6 +39,7 @@ import {
   LegacyCatalogVersion,
   LinkCatalogVersion,
   MatrixAxesCatalogVersion,
+  KhalaStaticCatalogVersion,
   OverlayCatalogVersion,
   PreviousCatalogVersion,
   ResponsiveCatalogVersion,
@@ -110,11 +111,12 @@ describe("catalog version compatibility", () => {
       SegmentedControlCatalogVersion,
       ButtonMatrixCatalogVersion,
       LoadingIndicatorCatalogVersion,
-      MatrixAxesCatalogVersion
+      MatrixAxesCatalogVersion,
+      KhalaStaticCatalogVersion
     ])
     // The current marker is the last entry; the previous marker is second-last.
-    expect(CatalogVersion).toBe(MatrixAxesCatalogVersion)
-    expect(PreviousCatalogVersion).toBe(LoadingIndicatorCatalogVersion)
+    expect(CatalogVersion).toBe(KhalaStaticCatalogVersion)
+    expect(PreviousCatalogVersion).toBe(MatrixAxesCatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 1]).toBe(CatalogVersion)
     expect(compatibleCatalogVersions[compatibleCatalogVersions.length - 2]).toBe(PreviousCatalogVersion)
   })

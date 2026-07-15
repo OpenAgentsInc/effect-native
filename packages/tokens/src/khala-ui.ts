@@ -37,6 +37,7 @@ const boundedNumber = (minimum: number, maximum: number, title: string) =>
   )
 
 export const KhalaLengthSchema = boundedNumber(0, 16_384, "KhalaLength")
+export const KhalaPositiveLengthSchema = boundedNumber(Number.EPSILON, 16_384, "KhalaPositiveLength")
 export const KhalaScalarSchema = boundedNumber(-16, 16, "KhalaScalar")
 export const KhalaPercentageSchema = boundedNumber(0, 100, "KhalaPercentage")
 export const KhalaOpacitySchema = boundedNumber(0, 1, "KhalaOpacity")
@@ -233,8 +234,8 @@ export const evaluateKhalaDimension = (expression: unknown, percentageBasis: unk
 
 export const KhalaMotifInputSchema = Schema.Struct({
   motif: KhalaMotifIdSchema,
-  width: KhalaLengthSchema,
-  height: KhalaLengthSchema,
+  width: KhalaPositiveLengthSchema,
+  height: KhalaPositiveLengthSchema,
   zoom: KhalaZoomSchema,
   density: KhalaDensityTokenSchema,
   forcedColors: Schema.Boolean

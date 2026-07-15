@@ -2016,13 +2016,61 @@ const componentStoryMap = {
   ],
   Frame: [
     story({
-      id: "frame-arcade",
+      id: "frame-khala-cut-corner",
       component: "Frame",
-      title: "Frame",
-      description: "Arcade bordered frame around content.",
-      view: Frame({ key: "frame-arcade", variant: "arcade" }, [
-        Text({ key: "frame-label", content: "Framed", variant: "body" })
-      ])
+      title: "Frame · Khala cut corner",
+      description: "Static inert cut-corner geometry around unchanged semantic content.",
+      view: Frame(
+        {
+          key: "frame-khala-cut-corner",
+          khala: {
+            id: "gallery-frame-cut-corner",
+            motif: "cut-corner-surface",
+            width: 320,
+            height: 120,
+            density: "comfortable"
+          }
+        },
+        [Text({ key: "frame-cut-label", content: "Framed", variant: "body" })]
+      )
+    }),
+    story({
+      id: "frame-khala-header-line",
+      component: "Frame",
+      title: "Frame · Khala header line",
+      description: "Static inert heading accent with ordinary semantic content.",
+      view: Frame(
+        {
+          key: "frame-khala-header-line",
+          khala: {
+            id: "gallery-frame-header-line",
+            motif: "header-line",
+            width: 320,
+            height: 120,
+            density: "compact"
+          }
+        },
+        [Text({ key: "frame-header-label", content: "Runtime status", variant: "title" })]
+      )
+    }),
+    story({
+      id: "frame-khala-signal-separator",
+      component: "Frame",
+      title: "Frame · Khala signal separator",
+      description: "Static inert separator using the same bounded Frame contract.",
+      view: Frame(
+        {
+          key: "frame-khala-signal-separator",
+          khala: {
+            id: "gallery-frame-signal-separator",
+            motif: "signal-separator",
+            width: 320,
+            height: 120,
+            density: "spacious"
+          }
+        },
+        [Text({ key: "frame-signal-label", content: "Live signal", variant: "body" })]
+      )
     })
   ],
   BlurredPopup: [
@@ -2842,7 +2890,7 @@ const khalaUiContractPageView: View = Stack({ key: "page-khala-ui", direction: "
       )
     })
   ),
-  pageSectionTitle("page-khala-ui-golden-title", "Golden fixtures: headless geometry passing, rendering pending"),
+  pageSectionTitle("page-khala-ui-golden-title", "Golden fixtures: static renderer proofs passing"),
   ...khalaUiGoldenFixtures.map((fixture) =>
     Card({ key: `page-khala-ui-golden-${fixture.id}`, padding: "4", radius: "lg" }, [
       Stack({ key: `page-khala-ui-golden-${fixture.id}-content`, direction: "column", gap: "3" }, [
@@ -2859,7 +2907,7 @@ const khalaUiContractPageView: View = Stack({ key: "page-khala-ui", direction: "
             tone: "neutral"
           })
         ]),
-        fixture.semanticView,
+        fixture.decoratedView,
         Alert({
           key: `page-khala-ui-golden-${fixture.id}-geometry`,
           tone: "success",
@@ -2868,11 +2916,11 @@ const khalaUiContractPageView: View = Stack({ key: "page-khala-ui", direction: "
           message: fixture.geometryProof.receipt
         }),
         Alert({
-          key: `page-khala-ui-golden-${fixture.id}-empty`,
-          tone: "warning",
+          key: `page-khala-ui-golden-${fixture.id}-renderer`,
+          tone: "success",
           variant: "outline",
-          title: `${fixture.decorationProof._tag} proof slot · ${fixture.decorationProof.owner}`,
-          message: fixture.decorationProof.expectation
+          title: `${fixture.decorationProof._tag} renderer proof · ${fixture.decorationProof.owner}`,
+          message: fixture.decorationProof.receipt
         })
       ])
     ])
@@ -2899,6 +2947,10 @@ const khalaUiContractPageView: View = Stack({ key: "page-khala-ui", direction: "
   pageCaption(
     "page-khala-ui-budget-static",
     `static delta ≤ ${khalaUiPerformanceBudgets.staticBundleGzipBytes} gzip bytes · ≤ ${khalaUiPerformanceBudgets.maxDecorativeNodesPerMotif} inert nodes per motif · zero static schedulers/timers/observers/layout reads`
+  ),
+  pageCaption(
+    "page-khala-ui-budget-receipt",
+    "measured combined KU-2/KU-3 delta passes the 8 KiB gzip gate · see the static renderer receipt"
   ),
   pageCaption(
     "page-khala-ui-budget-canvas",

@@ -12,20 +12,21 @@ an explicit migration surface, not a second View/state/intent model.
 
 The current element mapping is deliberately small and semantic:
 
-| View          | DOM                                        |
-| ------------- | ------------------------------------------ |
-| `Stack`       | `div` with flex layout                     |
-| `Text`        | `span`, or `p` for title/heading variants  |
-| `Button`      | real `button`                              |
-| `Link`        | real `a` with `href`                       |
-| `Image`       | `img` with required `alt`                  |
-| `TextField`   | `label` with `input` or `textarea`         |
-| `List`        | `ul` / `li`                                |
-| `SectionList` | grouped `section` rows with sticky headers |
-| `Card`        | `section`                                  |
-| `Spacer`      | `div aria-hidden="true"`                   |
-| `Modal`       | `dialog` with modal semantics              |
-| `Sheet`       | edge-anchored `aside` dialog               |
+| View          | DOM                                                    |
+| ------------- | ------------------------------------------------------ |
+| `Stack`       | `div` with flex layout                                 |
+| `Text`        | `span`, or `p` for title/heading variants              |
+| `Button`      | real `button`                                          |
+| `Link`        | real `a` with `href`                                   |
+| `Image`       | `img` with required `alt`                              |
+| `TextField`   | `label` with `input` or `textarea`                     |
+| `List`        | `ul` / `li`                                            |
+| `SectionList` | grouped `section` rows with sticky headers             |
+| `Card`        | `section`                                              |
+| `Spacer`      | `div aria-hidden="true"`                               |
+| `Modal`       | `dialog` with modal semantics                          |
+| `Sheet`       | edge-anchored `aside` dialog                           |
+| `Frame`       | semantic content plus optional inert Khala SVG sibling |
 
 Styles are private renderer output. Public views still use typed style objects
 and design tokens; the DOM renderer lowers those to CSS custom properties plus
@@ -146,8 +147,15 @@ beneath one React root. `react` opens the Effect stream once in the mounting
 Scope, exposes one stable synchronous snapshot through `useSyncExternalStore`,
 and lowers supported portable nodes to ordinary semantic React elements. Its
 foundation subset is `Stack`, `Text`, `Button`, `Card`, `Spacer`, and
-`Divider`; unsupported tags render a public incompatible state instead of
+`Divider`, and static `Frame`; unsupported tags render a public incompatible state instead of
 silently nesting or switching backends.
+
+Static Khala `Frame` data lowers through both DOM backends with the same
+caller-owned id and logical SVG paths. The SVG is aria-hidden, unfocusable,
+pointer-inert, and structurally separate from semantic children. This makes the
+React backend directly composable in an existing Electron/React host without
+giving React a second state, intent, lifecycle, or theme authority. See
+[`docs/khala-ui-static-renderers.md`](../../docs/khala-ui-static-renderers.md).
 
 Both modes have the same first-visible-commit and Scope semantics. Unmount is
 idempotent and closes the selected backend, subscription, React root, and

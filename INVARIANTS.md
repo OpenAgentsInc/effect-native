@@ -46,6 +46,9 @@
   parser, renderer access, ambient work, global randomness, or scheduler.
 - Static geometry preserves `contentInset: 0`, at least four units of focus
   clearance, and collapses to a visible ordinary border before semantic space.
+- Static host decoration is a pointer-inert, accessibility-hidden sibling of
+  complete semantic content. It never owns an intent, state, timer, observer,
+  motion runtime, generated identifier, or clipping ancestor for focus.
 - The Arwes website sound assets are prohibited from copying or reuse.
 
 Changes that add, remove, relax, or reinterpret an invariant update this file

@@ -48,8 +48,9 @@ becomes an ordinary visible line or rectangular edge. Every output keeps:
 - at least four units of focus clearance; and
 - a canonical `focus` luminance role when forced colors are requested.
 
-KU-3 owns host lowering. Until then, the gallery shows the headless proof as
-passing and the renderer proof as explicitly empty.
+KU-3 now owns the completed [static host lowerings](./khala-ui-static-renderers.md).
+The geometry kernel remains renderer-neutral; the gallery separately records
+the passing headless and host receipts.
 
 ## Verification
 

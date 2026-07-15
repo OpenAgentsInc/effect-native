@@ -737,7 +737,19 @@ const catalogFixturesByTag = {
   Spotlight: Spotlight({ key: "spot", intensity: "sm" }, [
     Text({ key: "spot-child", content: "Spot", variant: "body" })
   ]),
-  Frame: Frame({ key: "frame", variant: "rounded" }, [Text({ key: "frame-child", content: "Frame", variant: "body" })]),
+  Frame: Frame(
+    {
+      key: "frame",
+      khala: {
+        id: "conformance-frame",
+        motif: "signal-separator",
+        width: 320,
+        height: 120,
+        density: "comfortable"
+      }
+    },
+    [Text({ key: "frame-child", content: "Frame", variant: "body" })]
+  ),
   BlurredPopup: BlurredPopup(
     {
       key: "popup",

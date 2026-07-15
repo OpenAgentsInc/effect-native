@@ -1,8 +1,12 @@
 import { afterEach, describe, expect, test } from "vite-plus/test"
 import { Effect, Stream } from "effect"
 import { Window } from "happy-dom"
-import { Button, Icon, IntentRef, Stack, Text, type IntentReporter } from "@effect-native/core"
-import { makeReactDomRenderer, makeReactViewStore } from "../src/react"
+import { createElement, StrictMode } from "react"
+import { hydrateRoot } from "react-dom/client"
+import { renderToString } from "react-dom/server"
+import { Button, Frame, Icon, IntentRef, Stack, Text, type IntentReporter } from "@effect-native/core"
+import { khalaTheme } from "@effect-native/tokens"
+import { makeReactDomRenderer, makeReactViewStore, renderReactDomView } from "../src/react"
 
 const restoreGlobals: Array<() => void> = []
 
@@ -47,6 +51,84 @@ afterEach(async () => {
 const noopReport: IntentReporter = () => Effect.void
 
 describe("React DOM surface", () => {
+  const khalaFrame = Frame(
+    {
+      key: "react-khala-frame",
+      khala: {
+        id: "react-project-home",
+        motif: "cut-corner-surface",
+        width: 320,
+        height: 120,
+        zoom: 2,
+        density: "comfortable",
+        forcedColors: false
+      }
+    },
+    [
+      Text({ key: "react-khala-heading", content: "Server-visible project home", variant: "heading" }),
+      Button({ key: "react-khala-action", label: "Open project", onPress: IntentRef("Project.Open") })
+    ]
+  )
+
+  test("server rendering emits complete semantics plus inert deterministic decoration", () => {
+    const markup = renderToString(renderReactDomView(khalaFrame, { report: noopReport, theme: khalaTheme }))
+
+    expect(markup).toContain("Server-visible project home")
+    expect(markup).toContain("Open project")
+    expect(markup).toContain('id="en-khala-react-project-home"')
+    expect(markup).toContain('aria-hidden="true"')
+    expect(markup).toContain('data-en-khala-content="true"')
+    expect(markup).not.toContain("useId")
+  })
+
+  test("hydrates the exact server tree without warning, id drift, or semantic reorder", async () => {
+    const { container } = installDom()
+    const element = createElement(
+      StrictMode,
+      null,
+      renderReactDomView(khalaFrame, { report: noopReport, theme: khalaTheme })
+    )
+    container.innerHTML = renderToString(element)
+    const before = container.textContent
+    const recoverable: Array<unknown> = []
+    const errors: Array<unknown> = []
+    const previousError = console.error
+    console.error = (...values: ReadonlyArray<unknown>) => errors.push(values)
+    try {
+      const root = hydrateRoot(container, element, { onRecoverableError: (error) => recoverable.push(error) })
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(recoverable).toEqual([])
+      expect(errors).toEqual([])
+      expect(container.textContent).toBe(before)
+      expect(container.querySelectorAll("#en-khala-react-project-home").length).toBe(1)
+      root.unmount()
+    } finally {
+      console.error = previousError
+    }
+  })
+
+  test("Strict Mode replay keeps one decoration and releases the one Effect subscription", async () => {
+    const { container, document } = installDom()
+
+    await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const surface = yield* makeReactDomRenderer({ document, backend: "react", theme: khalaTheme }).mount(
+            container,
+            Stream.make(khalaFrame),
+            noopReport
+          )
+
+          expect(container.querySelectorAll("#en-khala-react-project-home").length).toBe(1)
+          expect(surface.activeReactSubscribers()).toBeLessThanOrEqual(1)
+          yield* surface.unmount
+          expect(surface.activeReactSubscribers()).toBe(0)
+          expect(container.childElementCount).toBe(0)
+        })
+      )
+    )
+  })
+
   test("waits for the first Effect Native View commit and disposes the React root", async () => {
     const { container, document } = installDom()
 

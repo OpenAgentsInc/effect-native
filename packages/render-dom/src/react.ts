@@ -12,6 +12,7 @@ import {
 import { createRoot, type Root } from "react-dom/client"
 import { Deferred, Effect, Exit, Fiber, Scope, Stream } from "effect"
 import type { IntentReporter, MountedSurface, RendererAdapter, View } from "@effect-native/core"
+import { defaultTheme } from "@effect-native/tokens"
 import {
   makeDomRenderer,
   mountDomThemeStyleSheet,
@@ -96,8 +97,11 @@ export class ReactSurfaceErrorBoundary extends Component<BoundaryProps, Boundary
   }
 }
 
-const ReactLoweredView = (props: { readonly view: View; readonly report: IntentReporter }): ReactElement =>
-  renderReactDomView(props.view, { report: props.report })
+const ReactLoweredView = (props: {
+  readonly view: View
+  readonly report: IntentReporter
+  readonly theme: EffectNativeReactDomSurfaceProps["theme"]
+}): ReactElement => renderReactDomView(props.view, { report: props.report, theme: props.theme ?? defaultTheme })
 
 const ReactStatus = (props: { readonly state: "loading" | "failed"; readonly onCommit?: () => void }): ReactElement => {
   useLayoutEffect(() => props.onCommit?.(), [props.onCommit])
@@ -132,7 +136,7 @@ const ReactViewProjection = (props: EffectNativeReactDomSurfaceProps): ReactElem
             onSettled: () => queueMicrotask(() => props.onCommit?.(snapshot))
           })
     },
-    createElement(ReactLoweredView, { view: snapshot.view, report: props.report })
+    createElement(ReactLoweredView, { view: snapshot.view, report: props.report, theme: props.theme })
   )
 }
 
