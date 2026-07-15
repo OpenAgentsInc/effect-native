@@ -1,4 +1,5 @@
 import { Effect, Schema, SubscriptionRef } from "effect"
+export * from "./khala-ui-parity.js"
 import {
   Accordion,
   Alert,
