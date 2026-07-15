@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect, Schema, SubscriptionRef } from "effect"
 import {
   ComponentValueBinding,
@@ -43,31 +43,33 @@ describe("tabs (#30)", () => {
   test("tabs round-trip as serializable data and reject an empty tab list", () => {
     const view = tabsView("chat")
     expect(decodeView(encodeView(view))).toEqual(view)
-    expect(() =>
-      Tabs({ key: "x", selectedId: "a", onSelect: IntentRef("SelectTab"), tabs: [], panels: [] })
-    ).toThrow()
+    expect(() => Tabs({ key: "x", selectedId: "a", onSelect: IntentRef("SelectTab"), tabs: [], panels: [] })).toThrow()
   })
 
   test("headless records tab selection through the typed intent", async () => {
-    const result = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const state = yield* SubscriptionRef.make("chat")
-      const program = makeViewProgramFromState(state, tabsView)
-      const handlers: IntentHandlers<typeof definitions> = {
-        SelectTab: (id) => SubscriptionRef.set(state, id)
-      }
-      const registry = yield* makeIntentRegistry(definitions, handlers, { now: () => 0 })
-      const report: IntentReporter = (ref, value) => registry.dispatch(resolveIntentRef(ref, value))
-      const surface = yield* makeHeadlessRenderer().mount(undefined, program.viewStream, report)
-      const simulate = (ref: IntentRef, value: unknown) =>
-        Effect.provideService(surface.simulate(ref, value as never), IntentRegistry, registry)
+    const result = await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const state = yield* SubscriptionRef.make("chat")
+          const program = makeViewProgramFromState(state, tabsView)
+          const handlers: IntentHandlers<typeof definitions> = {
+            SelectTab: (id) => SubscriptionRef.set(state, id)
+          }
+          const registry = yield* makeIntentRegistry(definitions, handlers, { now: () => 0 })
+          const report: IntentReporter = (ref, value) => registry.dispatch(resolveIntentRef(ref, value))
+          const surface = yield* makeHeadlessRenderer().mount(undefined, program.viewStream, report)
+          const simulate = (ref: IntentRef, value: unknown) =>
+            Effect.provideService(surface.simulate(ref, value as never), IntentRegistry, registry)
 
-      const selectedOf = (view: View | undefined) => (view?._tag === "Tabs" ? view.selectedId : undefined)
-      const initial = selectedOf(yield* surface.current)
-      yield* simulate(IntentRef("SelectTab", ComponentValueBinding()), "editor")
-      const switched = selectedOf(yield* surface.current)
+          const selectedOf = (view: View | undefined) => (view?._tag === "Tabs" ? view.selectedId : undefined)
+          const initial = selectedOf(yield* surface.current)
+          yield* simulate(IntentRef("SelectTab", ComponentValueBinding()), "editor")
+          const switched = selectedOf(yield* surface.current)
 
-      return { initial, switched, state: yield* program.currentState }
-    })))
+          return { initial, switched, state: yield* program.currentState }
+        })
+      )
+    )
 
     expect(result.initial).toBe("chat")
     expect(result.switched).toBe("editor")

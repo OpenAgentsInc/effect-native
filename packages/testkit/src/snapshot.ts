@@ -2,7 +2,7 @@
  * A stable, versioned, human-readable stringifier for a view tree.
  *
  * The headless snapshot is a public API surface once app authors commit it
- * as a test fixture (inline snapshots under `bun test`, or file baselines).
+ * as a test fixture (inline snapshots under Vite Plus Test, or file baselines).
  * Two constraints follow from that:
  *
  * - The format is versioned (`SnapshotFormatVersion`), so a future catalog

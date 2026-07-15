@@ -19,13 +19,13 @@ prefix for time-travel.
 Start the browser panel and WebSocket relay:
 
 ```sh
-bun run devtools
+pnpm run devtools
 ```
 
 Attach the web proof example:
 
 ```sh
-bun run example:web
+pnpm run example:web
 ```
 
 Then open:
@@ -37,7 +37,7 @@ http://localhost:4173/?devtools=ws://localhost:4327/session
 Attach the Expo proof example by starting it with:
 
 ```sh
-EXPO_PUBLIC_EFFECT_NATIVE_DEVTOOLS_WS=ws://localhost:4327/session bun --cwd examples/mobile start
+EXPO_PUBLIC_EFFECT_NATIVE_DEVTOOLS_WS=ws://localhost:4327/session pnpm --dir examples/mobile start
 ```
 
 The panel is built with Effect Native itself. Its `devtoolsPanelView` is a

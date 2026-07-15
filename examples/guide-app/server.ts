@@ -1,19 +1,9 @@
-import { join } from "node:path"
+import { resolve } from "node:path"
+import { startStaticServer } from "../../scripts/node-static-server"
 
-const publicDir = join(import.meta.dir, "public")
-const port = Number(process.env.PORT ?? 4177)
-
-Bun.serve({
-  port,
-  async fetch(request) {
-    const url = new URL(request.url)
-    const path = url.pathname === "/" ? "/index.html" : url.pathname
-    const file = Bun.file(join(publicDir, path))
-    if (await file.exists()) {
-      return new Response(file)
-    }
-    return new Response("Not found", { status: 404 })
-  }
+const server = await startStaticServer({
+  root: resolve(import.meta.dirname, "public"),
+  port: Number(process.env.PORT ?? 4177)
 })
 
-console.log(`guide-app: http://127.0.0.1:${port}/`)
+console.log(`guide-app: ${server.url}/`)

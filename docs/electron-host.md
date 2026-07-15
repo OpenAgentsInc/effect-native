@@ -37,13 +37,13 @@ app.
    preload), and the whole contract is testable headlessly. A test pins this:
    the package's dependency sets must never contain `electron`.
 2. **Both sides decode.** Every request is Schema-decoded in the preload
-   (before `invoke`) *and again* in main; every response is Schema-encoded in
+   (before `invoke`) _and again_ in main; every response is Schema-encoded in
    main and Schema-decoded in the renderer client. Garbage on either side fails
    closed to a typed refusal.
 3. **Closed refusal envelope.** Every main-side outcome is one of
    `{ _tag: "ok", value }` or
    `{ _tag: "refused", reason: "invalid-sender" | "malformed-request" |
-   "handler-error" | "malformed-response" }`. Handler failures and defects
+"handler-error" | "malformed-response" }`. Handler failures and defects
    never throw across IPC and never leak internals.
 4. **Scoped resources.** Main-process resources are modeled as scoped Effect
    layers/acquisitions; `registerElectronMainHandler` itself is scoped — the
@@ -56,22 +56,22 @@ app.
 
 ## Security invariants
 
-| Invariant | Enforced by | Refusal shape |
-| --- | --- | --- |
-| `contextIsolation: true` | `HardenedWebPreferencesSchema` (literal field) | `InsecureWebPreferencesError` |
-| `nodeIntegration: false` (+ subframes, workers) | `HardenedWebPreferencesSchema` | `InsecureWebPreferencesError` |
-| `sandbox: true` | `HardenedWebPreferencesSchema` | `InsecureWebPreferencesError` |
-| `webviewTag: false` | `HardenedWebPreferencesSchema` | `InsecureWebPreferencesError` |
-| `webSecurity: true`, `allowRunningInsecureContent: false` | `HardenedWebPreferencesSchema` | `InsecureWebPreferencesError` |
-| Restrictive CSP (`'self'`-pinned, no `unsafe-eval`, no `*`) | `RestrictiveCspSchema` + `applyRendererCsp` | `InsecureCspError` (fails closed before touching the session) |
-| Permissions deny-by-default | `applyElectronSecurityPolicy` | permission callback `false` |
-| Navigation deny-by-default (origin allowlist) | `applyElectronSecurityPolicy` | `will-navigate` prevented |
-| `<webview>` attachment always denied | `applyElectronSecurityPolicy` | `will-attach-webview` prevented |
-| `window.open` always denied | `applyElectronSecurityPolicy` | `{ action: "deny" }` |
-| External links: allowlisted protocols only (default `https:`) | `SafeExternalOpener` | `ExternalOpenRefusedError` |
-| IPC sender frame/origin validation | `registerElectronMainHandler` + `ElectronSenderPolicy` | `refused: "invalid-sender"` |
-| Schema-decoded IPC both ways | preload bridge, main handler, renderer client | `refused: "malformed-request" / "malformed-response"` |
-| Packaged fuses (runAsNode off, NODE_OPTIONS off, inspect off, ASAR-only + integrity, cookie encryption) | `expectedPackagedFuses` + `verifyPackagedFuses` | `PackagedFusesMismatchError` with each mismatch named |
+| Invariant                                                                                               | Enforced by                                            | Refusal shape                                                 |
+| ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------- |
+| `contextIsolation: true`                                                                                | `HardenedWebPreferencesSchema` (literal field)         | `InsecureWebPreferencesError`                                 |
+| `nodeIntegration: false` (+ subframes, workers)                                                         | `HardenedWebPreferencesSchema`                         | `InsecureWebPreferencesError`                                 |
+| `sandbox: true`                                                                                         | `HardenedWebPreferencesSchema`                         | `InsecureWebPreferencesError`                                 |
+| `webviewTag: false`                                                                                     | `HardenedWebPreferencesSchema`                         | `InsecureWebPreferencesError`                                 |
+| `webSecurity: true`, `allowRunningInsecureContent: false`                                               | `HardenedWebPreferencesSchema`                         | `InsecureWebPreferencesError`                                 |
+| Restrictive CSP (`'self'`-pinned, no `unsafe-eval`, no `*`)                                             | `RestrictiveCspSchema` + `applyRendererCsp`            | `InsecureCspError` (fails closed before touching the session) |
+| Permissions deny-by-default                                                                             | `applyElectronSecurityPolicy`                          | permission callback `false`                                   |
+| Navigation deny-by-default (origin allowlist)                                                           | `applyElectronSecurityPolicy`                          | `will-navigate` prevented                                     |
+| `<webview>` attachment always denied                                                                    | `applyElectronSecurityPolicy`                          | `will-attach-webview` prevented                               |
+| `window.open` always denied                                                                             | `applyElectronSecurityPolicy`                          | `{ action: "deny" }`                                          |
+| External links: allowlisted protocols only (default `https:`)                                           | `SafeExternalOpener`                                   | `ExternalOpenRefusedError`                                    |
+| IPC sender frame/origin validation                                                                      | `registerElectronMainHandler` + `ElectronSenderPolicy` | `refused: "invalid-sender"`                                   |
+| Schema-decoded IPC both ways                                                                            | preload bridge, main handler, renderer client          | `refused: "malformed-request" / "malformed-response"`         |
+| Packaged fuses (runAsNode off, NODE_OPTIONS off, inspect off, ASAR-only + integrity, cookie encryption) | `expectedPackagedFuses` + `verifyPackagedFuses`        | `PackagedFusesMismatchError` with each mismatch named         |
 
 Sender/navigation allowlist entries are either full origins
 (`"https://app.example"`, `"app://renderer"`) or protocol entries ending in
@@ -113,7 +113,7 @@ import {
 } from "@effect-native/platform-electron"
 import { PingChannel } from "./contract"
 
-const main = Effect.gen(function*() {
+const main = Effect.gen(function* () {
   // Deny-by-default permissions / navigation / webview / window-open.
   yield* applyElectronSecurityPolicy({ app, session: session.defaultSession })
   // Restrictive CSP on every renderer response (fails closed on a loose CSP).
@@ -181,7 +181,7 @@ const definitions = [Pinged] as const
 const api = (globalThis as Record<string, unknown>)["appHost"] as Readonly<Record<string, unknown>>
 const client = makeElectronRendererClient({ api, channels })
 
-const boot = Effect.gen(function*() {
+const boot = Effect.gen(function* () {
   const state = yield* SubscriptionRef.make({ count: 0 })
   const view = ({ count }: { readonly count: number }): View =>
     Stack({ key: "root", direction: "column", gap: "2" }, [
@@ -195,7 +195,7 @@ const boot = Effect.gen(function*() {
   const program = makeViewProgramFromState(state, view)
   const handlers: IntentHandlers<typeof definitions> = {
     "App.Pinged": () =>
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const response = yield* client.ping({ amount: 1 })
         yield* SubscriptionRef.update(state, () => ({ count: response.total }))
       })
@@ -263,7 +263,7 @@ These deliberately live outside this package:
 
 ## Conformance fixtures
 
-`packages/platform-electron/test/` proves, headlessly (bun test + happy-dom +
+`packages/platform-electron/test/` proves, headlessly (Vite Plus Test + happy-dom +
 structural fakes):
 
 - every insecure `webPreferences` flip is a typed decode failure; the canonical

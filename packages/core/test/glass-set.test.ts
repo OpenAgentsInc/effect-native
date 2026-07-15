@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Exit, Schema } from "effect"
 import {
   Button,
@@ -41,35 +41,40 @@ describe("glass set catalog v27 (GL-1, openagents#8647)", () => {
 
   test("IconButton requires a non-empty accessibility label and a known icon", () => {
     const decode = Schema.decodeUnknownExit(ViewSchema)
-    expect(Exit.isFailure(decode({
-      _tag: "IconButton",
-      catalogVersion: CatalogVersion,
-      icon: "Play",
-      accessibilityLabel: "",
-      onPress: { name: "FleetStart" }
-    }))).toBe(true)
-    expect(Exit.isFailure(decode({
-      _tag: "IconButton",
-      catalogVersion: CatalogVersion,
-      icon: "Sparkle",
-      accessibilityLabel: "Start fleet",
-      onPress: { name: "FleetStart" }
-    }))).toBe(true)
+    expect(
+      Exit.isFailure(
+        decode({
+          _tag: "IconButton",
+          catalogVersion: CatalogVersion,
+          icon: "Play",
+          accessibilityLabel: "",
+          onPress: { name: "FleetStart" }
+        })
+      )
+    ).toBe(true)
+    expect(
+      Exit.isFailure(
+        decode({
+          _tag: "IconButton",
+          catalogVersion: CatalogVersion,
+          icon: "Sparkle",
+          accessibilityLabel: "Start fleet",
+          onPress: { name: "FleetStart" }
+        })
+      )
+    ).toBe(true)
   })
 
   test("Toolbar constructs and round-trips with children and placement", () => {
-    const bar = Toolbar(
-      { key: "actions", placement: "bottom-floating", surface: "glass" },
-      [
-        IconButton({
-          key: "reload",
-          icon: "Reload",
-          accessibilityLabel: "Reload",
-          onPress: IntentRef("Reload", StaticPayload({}))
-        }),
-        Text({ key: "hint", content: "Ready", variant: "caption" })
-      ]
-    )
+    const bar = Toolbar({ key: "actions", placement: "bottom-floating", surface: "glass" }, [
+      IconButton({
+        key: "reload",
+        icon: "Reload",
+        accessibilityLabel: "Reload",
+        onPress: IntentRef("Reload", StaticPayload({}))
+      }),
+      Text({ key: "hint", content: "Ready", variant: "caption" })
+    ])
 
     expect(bar._tag).toBe("Toolbar")
     expect(bar.children).toHaveLength(2)
@@ -78,19 +83,22 @@ describe("glass set catalog v27 (GL-1, openagents#8647)", () => {
 
   test("Toolbar rejects unknown placements", () => {
     const decode = Schema.decodeUnknownExit(ViewSchema)
-    expect(Exit.isFailure(decode({
-      _tag: "Toolbar",
-      catalogVersion: CatalogVersion,
-      placement: "left-docked",
-      children: []
-    }))).toBe(true)
+    expect(
+      Exit.isFailure(
+        decode({
+          _tag: "Toolbar",
+          catalogVersion: CatalogVersion,
+          placement: "left-docked",
+          children: []
+        })
+      )
+    ).toBe(true)
   })
 
   test("surface: 'glass' rides on Card/Stack (CardStyle) and Button (ButtonStyle) styles", () => {
-    const card = Card(
-      { key: "glass-card", style: { surface: "glass", borderRadius: "lg" } },
-      [Text({ key: "copy", content: "Glass", variant: "body" })]
-    )
+    const card = Card({ key: "glass-card", style: { surface: "glass", borderRadius: "lg" } }, [
+      Text({ key: "copy", content: "Glass", variant: "body" })
+    ])
     const button = Button({
       key: "glass-button",
       label: "Send",
@@ -104,10 +112,14 @@ describe("glass set catalog v27 (GL-1, openagents#8647)", () => {
 
     // The material set is closed: unknown surface values are decode failures.
     const decode = Schema.decodeUnknownExit(ViewSchema)
-    expect(Exit.isFailure(decode({
-      ...encodeView(button),
-      style: { surface: "frosted" }
-    }))).toBe(true)
+    expect(
+      Exit.isFailure(
+        decode({
+          ...encodeView(button),
+          style: { surface: "frosted" }
+        })
+      )
+    ).toBe(true)
   })
 
   test("Sheet accepts optional native presentationDetents; existing trees stay valid", () => {
@@ -142,9 +154,13 @@ describe("glass set catalog v27 (GL-1, openagents#8647)", () => {
 
     // The detent vocabulary is closed.
     const decode = Schema.decodeUnknownExit(ViewSchema)
-    expect(Exit.isFailure(decode({
-      ...encodeView(legacy),
-      presentationDetents: ["quarter"]
-    }))).toBe(true)
+    expect(
+      Exit.isFailure(
+        decode({
+          ...encodeView(legacy),
+          presentationDetents: ["quarter"]
+        })
+      )
+    ).toBe(true)
   })
 })

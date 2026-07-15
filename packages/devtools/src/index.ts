@@ -40,11 +40,12 @@ export const makeRecordingSink = (initialState: JsonPayload = null): RecordingSi
         timeline = [...timeline, event]
       }
     },
-    recording: () => RecordingSchema.make({
-      version: "effect-native/devtools-recording/v0",
-      initialState,
-      timeline
-    }),
+    recording: () =>
+      RecordingSchema.make({
+        version: "effect-native/devtools-recording/v0",
+        initialState,
+        timeline
+      }),
     events: () => timeline,
     clear: () => {
       timeline = []
@@ -112,43 +113,36 @@ export const replayRecording = <State>(
   makeRuntime: () => Effect.Effect<ReplayRuntime<State>>,
   options: { readonly intentLimit?: number } = {}
 ): Effect.Effect<ReplayResult<State>, IntentError> =>
-  Effect.scoped(Effect.gen(function*() {
-    const runtime = yield* makeRuntime()
-    const surface = yield* makeHeadlessRenderer().mount(
-      undefined,
-      runtime.program.viewStream,
-      runtime.program.report
-    )
-    const intents = recordingIntents(recording).slice(0, options.intentLimit)
-    for (const intent of intents) {
-      yield* runtime.registry.dispatch(intent)
+  Effect.scoped(
+    Effect.gen(function* () {
+      const runtime = yield* makeRuntime()
+      const surface = yield* makeHeadlessRenderer().mount(undefined, runtime.program.viewStream, runtime.program.report)
+      const intents = recordingIntents(recording).slice(0, options.intentLimit)
+      for (const intent of intents) {
+        yield* runtime.registry.dispatch(intent)
+        yield* Effect.yieldNow
+      }
       yield* Effect.yieldNow
-    }
-    yield* Effect.yieldNow
-    return {
-      state: yield* runtime.program.currentState,
-      snapshots: yield* surface.snapshots,
-      events: yield* runtime.registry.events
-    }
-  }))
+      return {
+        state: yield* runtime.program.currentState,
+        snapshots: yield* surface.snapshots,
+        events: yield* runtime.registry.events
+      }
+    })
+  )
 
 export const replayStateAtIntentStep = <State>(
   recording: Recording,
   step: number,
   makeRuntime: () => Effect.Effect<ReplayRuntime<State>>
 ): Effect.Effect<State, IntentError> =>
-  replayRecording(recording, makeRuntime, { intentLimit: step }).pipe(
-    Effect.map((result) => result.state)
-  )
+  replayRecording(recording, makeRuntime, { intentLimit: step }).pipe(Effect.map((result) => result.state))
 
 export interface WebSocketSinkOptions {
   readonly WebSocketCtor?: typeof WebSocket
 }
 
-export const makeWebSocketDevtoolsSink = (
-  url: string,
-  options: WebSocketSinkOptions = {}
-): DevtoolsSink => {
+export const makeWebSocketDevtoolsSink = (url: string, options: WebSocketSinkOptions = {}): DevtoolsSink => {
   const WebSocketCtor = options.WebSocketCtor ?? globalThis.WebSocket
   let socket: WebSocket | undefined
   let queue: ReadonlyArray<string> = []
@@ -176,16 +170,14 @@ export const makeWebSocketDevtoolsSink = (
 
   return {
     emit: (event) => {
-      sendOrQueue(JSON.stringify({
-        type: "devtools:event",
-        event
-      }))
+      sendOrQueue(
+        JSON.stringify({
+          type: "devtools:event",
+          event
+        })
+      )
     }
   }
 }
 
-export {
-  DevtoolsEventSchema,
-  type DevtoolsEvent,
-  type DevtoolsSink
-} from "@effect-native/core"
+export { DevtoolsEventSchema, type DevtoolsEvent, type DevtoolsSink } from "@effect-native/core"

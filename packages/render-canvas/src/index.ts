@@ -24,7 +24,4 @@ export * from "./frame"
 export * from "./headless"
 export * from "./three-backend"
 export * from "./graph-figure"
-export {
-  createSceneNodeReconciler,
-  createSceneResourceScope
-} from "./scene-node-reconciler"
+export { createSceneNodeReconciler, createSceneResourceScope } from "./scene-node-reconciler"

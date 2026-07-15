@@ -59,31 +59,28 @@ export const notesView = (state: NotesState): View =>
       fit: "cover",
       style: { borderRadius: "lg" }
     }),
-    Card(
-      { key: "composer", padding: "4", radius: "lg", style: { borderColor: "border", borderWidth: 1 } },
-      [
-        Stack({ key: "composer-stack", direction: "column", gap: "2" }, [
-          Text({ key: "title", content: "Notes", variant: "heading" }),
-          TextField({
-            key: "draft",
-            value: state.draft,
-            placeholder: "Write a note",
-            onChange: IntentRef("DraftChanged", ComponentValueBinding()),
-            onSubmit: IntentRef("AddNote")
-          }),
-          Stack({ key: "actions", direction: "row", align: "center", gap: "2" }, [
-            Button({ key: "add", label: "Add note", variant: "primary", onPress: IntentRef("AddNote") }),
-            Spacer({ key: "push", flex: true }),
-            Text({
-              key: "count",
-              content: `${state.notes.length} notes`,
-              variant: "caption",
-              color: "textMuted"
-            })
-          ])
+    Card({ key: "composer", padding: "4", radius: "lg", style: { borderColor: "border", borderWidth: 1 } }, [
+      Stack({ key: "composer-stack", direction: "column", gap: "2" }, [
+        Text({ key: "title", content: "Notes", variant: "heading" }),
+        TextField({
+          key: "draft",
+          value: state.draft,
+          placeholder: "Write a note",
+          onChange: IntentRef("DraftChanged", ComponentValueBinding()),
+          onSubmit: IntentRef("AddNote")
+        }),
+        Stack({ key: "actions", direction: "row", align: "center", gap: "2" }, [
+          Button({ key: "add", label: "Add note", variant: "primary", onPress: IntentRef("AddNote") }),
+          Spacer({ key: "push", flex: true }),
+          Text({
+            key: "count",
+            content: `${state.notes.length} notes`,
+            variant: "caption",
+            color: "textMuted"
+          })
         ])
-      ]
-    ),
+      ])
+    ]),
     List(
       { key: "notes" },
       state.notes.map((note) =>
@@ -180,8 +177,8 @@ Run it with the standard Expo flow, same as the shipped proof app:
 
 ```sh
 cd examples/mobile   # or your own Expo project with the same wiring
-bun install
-bun run ios
+pnpm install
+pnpm run ios
 ```
 
 ## What's actually shared, and what isn't

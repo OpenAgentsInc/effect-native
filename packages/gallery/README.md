@@ -50,13 +50,13 @@ story).
 Run the browser gallery from the repository root:
 
 ```sh
-bun run gallery
+pnpm run gallery
 ```
 
 Build static deployable files:
 
 ```sh
-bun run gallery:build
+pnpm run gallery:build
 ```
 
 The generated files land in `dist/gallery/` and are safe to serve from either

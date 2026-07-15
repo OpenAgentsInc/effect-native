@@ -65,7 +65,7 @@ const assertReplayExpectations = <State>(
  * `Recording` fixture plus this call is a full regression test: "this
  * exact captured session must still end here."
  *
- * A mismatch throws synchronously (surfaced by `bun test` as a normal
+ * A mismatch throws synchronously (surfaced by Vite Plus Test as a normal
  * assertion failure -- an Effect defect, not the typed `IntentError`
  * channel, since it is a test-authoring bug, not a runtime error).
  */

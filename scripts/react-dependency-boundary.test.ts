@@ -1,13 +1,8 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 
-const dependencyFields = [
-  "dependencies",
-  "devDependencies",
-  "peerDependencies",
-  "optionalDependencies"
-] as const
+const dependencyFields = ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"] as const
 
 type DependencyField = (typeof dependencyFields)[number]
 type PackageJson = {
@@ -19,7 +14,7 @@ const rendererPeers: Readonly<Record<string, ReadonlySet<string>>> = {
   "render-dom": new Set(["react", "react-dom"]),
   "render-rn": new Set(["react", "react-native"])
 }
-const packagesDir = join(import.meta.dir, "..", "packages")
+const packagesDir = join(import.meta.dirname, "..", "packages")
 
 const readPackageJson = (dir: string): PackageJson =>
   JSON.parse(readFileSync(join(packagesDir, dir, "package.json"), "utf8")) as PackageJson

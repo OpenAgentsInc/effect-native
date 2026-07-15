@@ -12,20 +12,20 @@ an explicit migration surface, not a second View/state/intent model.
 
 The current element mapping is deliberately small and semantic:
 
-| View | DOM |
-|---|---|
-| `Stack` | `div` with flex layout |
-| `Text` | `span`, or `p` for title/heading variants |
-| `Button` | real `button` |
-| `Link` | real `a` with `href` |
-| `Image` | `img` with required `alt` |
-| `TextField` | `label` with `input` or `textarea` |
-| `List` | `ul` / `li` |
+| View          | DOM                                        |
+| ------------- | ------------------------------------------ |
+| `Stack`       | `div` with flex layout                     |
+| `Text`        | `span`, or `p` for title/heading variants  |
+| `Button`      | real `button`                              |
+| `Link`        | real `a` with `href`                       |
+| `Image`       | `img` with required `alt`                  |
+| `TextField`   | `label` with `input` or `textarea`         |
+| `List`        | `ul` / `li`                                |
 | `SectionList` | grouped `section` rows with sticky headers |
-| `Card` | `section` |
-| `Spacer` | `div aria-hidden="true"` |
-| `Modal` | `dialog` with modal semantics |
-| `Sheet` | edge-anchored `aside` dialog |
+| `Card`        | `section`                                  |
+| `Spacer`      | `div aria-hidden="true"`                   |
+| `Modal`       | `dialog` with modal semantics              |
+| `Sheet`       | edge-anchored `aside` dialog               |
 
 Styles are private renderer output. Public views still use typed style objects
 and design tokens; the DOM renderer lowers those to CSS custom properties plus
@@ -48,42 +48,44 @@ import {
 } from "@effect-native/core"
 import { makeDomRenderer } from "@effect-native/render-dom"
 
-const Pressed = defineIntent("Pressed", Schema.Struct({
-  amount: Schema.Number
-}))
-
-await Effect.runPromise(Effect.gen(function*() {
-  const state = yield* SubscriptionRef.make({ count: 0 })
-  const program = makeViewProgramFromState(state, (current) =>
-    Stack({ direction: "column", gap: "2" }, [
-      Text({ content: Binding(["count"]), variant: "heading" }),
-      Button({
-        label: `Increment from ${current.count}`,
-        variant: "primary",
-        onPress: IntentRef("Pressed", StaticPayload({ amount: 1 }))
-      })
-    ])
-  )
-
-  const registry = yield* makeIntentRegistry([Pressed] as const, {
-    Pressed: (payload) =>
-      SubscriptionRef.update(state, (value) => ({
-        count: value.count + payload.amount
-      }))
+const Pressed = defineIntent(
+  "Pressed",
+  Schema.Struct({
+    amount: Schema.Number
   })
-  const report: IntentReporter = (ref, runtimeValue) =>
-    registry.dispatch(resolveIntentRef(ref, runtimeValue))
+)
 
-  return yield* Effect.scoped(Effect.gen(function*() {
-    const surface = yield* makeDomRenderer().mount(
-      document.body,
-      program.viewStream,
-      report
+await Effect.runPromise(
+  Effect.gen(function* () {
+    const state = yield* SubscriptionRef.make({ count: 0 })
+    const program = makeViewProgramFromState(state, (current) =>
+      Stack({ direction: "column", gap: "2" }, [
+        Text({ content: Binding(["count"]), variant: "heading" }),
+        Button({
+          label: `Increment from ${current.count}`,
+          variant: "primary",
+          onPress: IntentRef("Pressed", StaticPayload({ amount: 1 }))
+        })
+      ])
     )
 
-    return yield* surface.serialize
-  }))
-}))
+    const registry = yield* makeIntentRegistry([Pressed] as const, {
+      Pressed: (payload) =>
+        SubscriptionRef.update(state, (value) => ({
+          count: value.count + payload.amount
+        }))
+    })
+    const report: IntentReporter = (ref, runtimeValue) => registry.dispatch(resolveIntentRef(ref, runtimeValue))
+
+    return yield* Effect.scoped(
+      Effect.gen(function* () {
+        const surface = yield* makeDomRenderer().mount(document.body, program.viewStream, report)
+
+        return yield* surface.serialize
+      })
+    )
+  })
+)
 ```
 
 `mount` is scoped. Closing the returned surface removes the rendered subtree,
@@ -129,18 +131,14 @@ dimensions, so a single runtime source of truth is the baseline.
 ```ts
 import { makeReactDomRenderer } from "@effect-native/render-dom/react"
 
-const surface = yield* makeReactDomRenderer({ theme }).mount(
-  container,
-  program.viewStream,
-  report
-)
+const surface = yield * makeReactDomRenderer({ theme }).mount(container, program.viewStream, report)
 ```
 
 The backend is a whole-surface decision:
 
 ```ts
 makeReactDomRenderer({ backend: "compatibility", theme }) // complete catalog
-makeReactDomRenderer({ backend: "react", theme })         // declared React subset
+makeReactDomRenderer({ backend: "react", theme }) // declared React subset
 ```
 
 `compatibility` is the default and preserves the complete direct-DOM catalog

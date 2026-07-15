@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect, Schema, SubscriptionRef } from "effect"
 import {
   Binding,
@@ -62,33 +62,41 @@ describe("command palette + combobox (#29)", () => {
   })
 
   test("headless records query, highlight, and selection through typed intents", async () => {
-    const result = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const state = yield* SubscriptionRef.make<PaletteState>({
-        open: true,
-        query: "",
-        highlightedId: "composer",
-        selected: null
-      })
-      const program = makeViewProgramFromState(state, paletteView)
-      const handlers: IntentHandlers<typeof definitions> = {
-        Query: (query) => SubscriptionRef.update(state, (current) => ({ ...current, query })),
-        Highlight: (id) => SubscriptionRef.update(state, (current) => ({ ...current, highlightedId: id })),
-        Select: (id) => SubscriptionRef.update(state, (current) => ({ ...current, selected: id, open: false }))
-      }
-      const registry = yield* makeIntentRegistry(definitions, handlers, { now: () => 0 })
-      const report: IntentReporter = (ref, value) => registry.dispatch(resolveIntentRef(ref, value))
-      const surface = yield* makeHeadlessRenderer().mount(undefined, program.viewStream, report)
-      const simulate = (ref: IntentRef, value: unknown) =>
-        Effect.provideService(surface.simulate(ref, value as never), IntentRegistry, registry)
+    const result = await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const state = yield* SubscriptionRef.make<PaletteState>({
+            open: true,
+            query: "",
+            highlightedId: "composer",
+            selected: null
+          })
+          const program = makeViewProgramFromState(state, paletteView)
+          const handlers: IntentHandlers<typeof definitions> = {
+            Query: (query) => SubscriptionRef.update(state, (current) => ({ ...current, query })),
+            Highlight: (id) => SubscriptionRef.update(state, (current) => ({ ...current, highlightedId: id })),
+            Select: (id) => SubscriptionRef.update(state, (current) => ({ ...current, selected: id, open: false }))
+          }
+          const registry = yield* makeIntentRegistry(definitions, handlers, { now: () => 0 })
+          const report: IntentReporter = (ref, value) => registry.dispatch(resolveIntentRef(ref, value))
+          const surface = yield* makeHeadlessRenderer().mount(undefined, program.viewStream, report)
+          const simulate = (ref: IntentRef, value: unknown) =>
+            Effect.provideService(surface.simulate(ref, value as never), IntentRegistry, registry)
 
-      yield* simulate(IntentRef("Query", ComponentValueBinding()), "fo")
-      yield* simulate(IntentRef("Highlight", ComponentValueBinding()), "files")
-      yield* simulate(IntentRef("Select", ComponentValueBinding()), "files")
-      const current = yield* surface.current
+          yield* simulate(IntentRef("Query", ComponentValueBinding()), "fo")
+          yield* simulate(IntentRef("Highlight", ComponentValueBinding()), "files")
+          yield* simulate(IntentRef("Select", ComponentValueBinding()), "files")
+          const current = yield* surface.current
 
-      const paletteOpen = current?._tag === "CommandPalette" && current.open === true
-      return { paletteOpen, state: yield* program.currentState, events: (yield* registry.events).map((e) => e.intent.name) }
-    })))
+          const paletteOpen = current?._tag === "CommandPalette" && current.open === true
+          return {
+            paletteOpen,
+            state: yield* program.currentState,
+            events: (yield* registry.events).map((e) => e.intent.name)
+          }
+        })
+      )
+    )
 
     expect(result.paletteOpen).toBe(false)
     expect(result.state).toEqual({ open: false, query: "fo", highlightedId: "files", selected: "files" })

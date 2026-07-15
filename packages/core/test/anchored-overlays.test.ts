@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect, Exit, Schema, SubscriptionRef } from "effect"
 import {
   Binding,
@@ -50,14 +50,17 @@ const menuView = (state: MenuState): View =>
 
 describe("anchored overlays (#28)", () => {
   test("popover, menus, and tooltip round-trip as serializable data", () => {
-    const popover = Popover({
-      key: "pop",
-      open: true,
-      placement: { side: "bottom", align: "center" },
-      anchorKey: "trigger",
-      dismissable: true,
-      onDismiss: IntentRef("Dismiss", StaticPayload({ surface: "pop" }))
-    }, [Text({ key: "pop-copy", content: "Details", variant: "body" })])
+    const popover = Popover(
+      {
+        key: "pop",
+        open: true,
+        placement: { side: "bottom", align: "center" },
+        anchorKey: "trigger",
+        dismissable: true,
+        onDismiss: IntentRef("Dismiss", StaticPayload({ surface: "pop" }))
+      },
+      [Text({ key: "pop-copy", content: "Details", variant: "body" })]
+    )
     const context = ContextMenu({
       key: "ctx",
       open: true,
@@ -89,33 +92,37 @@ describe("anchored overlays (#28)", () => {
   })
 
   test("headless records open state and typed selection through the menu", async () => {
-    const result = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const state = yield* SubscriptionRef.make<MenuState>({ open: false, lastSelected: null })
-      const program = makeViewProgramFromState(state, menuView)
-      const handlers: IntentHandlers<typeof definitions> = {
-        SelectItem: (id) => SubscriptionRef.update(state, (current) => ({ ...current, lastSelected: id, open: false })),
-        Dismiss: () => SubscriptionRef.update(state, (current) => ({ ...current, open: false }))
-      }
-      const registry = yield* makeIntentRegistry(definitions, handlers, { now: () => 0 })
-      const report: IntentReporter = (ref, value) => registry.dispatch(resolveIntentRef(ref, value))
-      const surface = yield* makeHeadlessRenderer().mount(undefined, program.viewStream, report)
-      const simulate = (ref: IntentRef, value: unknown) =>
-        Effect.provideService(surface.simulate(ref, value as never), IntentRegistry, registry)
+    const result = await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const state = yield* SubscriptionRef.make<MenuState>({ open: false, lastSelected: null })
+          const program = makeViewProgramFromState(state, menuView)
+          const handlers: IntentHandlers<typeof definitions> = {
+            SelectItem: (id) =>
+              SubscriptionRef.update(state, (current) => ({ ...current, lastSelected: id, open: false })),
+            Dismiss: () => SubscriptionRef.update(state, (current) => ({ ...current, open: false }))
+          }
+          const registry = yield* makeIntentRegistry(definitions, handlers, { now: () => 0 })
+          const report: IntentReporter = (ref, value) => registry.dispatch(resolveIntentRef(ref, value))
+          const surface = yield* makeHeadlessRenderer().mount(undefined, program.viewStream, report)
+          const simulate = (ref: IntentRef, value: unknown) =>
+            Effect.provideService(surface.simulate(ref, value as never), IntentRegistry, registry)
 
-      yield* SubscriptionRef.set(state, { open: true, lastSelected: null })
-      yield* Effect.yieldNow
-      const opened = yield* surface.current
-      yield* simulate(IntentRef("SelectItem", ComponentValueBinding()), "rename")
-      const closed = yield* surface.current
+          yield* SubscriptionRef.set(state, { open: true, lastSelected: null })
+          yield* Effect.yieldNow
+          const opened = yield* surface.current
+          yield* simulate(IntentRef("SelectItem", ComponentValueBinding()), "rename")
+          const closed = yield* surface.current
 
-      const openOf = (view: View | undefined): boolean =>
-        view?._tag === "DropdownMenu" && view.open === true
-      return {
-        opened: openOf(opened),
-        closed: openOf(closed),
-        state: yield* program.currentState
-      }
-    })))
+          const openOf = (view: View | undefined): boolean => view?._tag === "DropdownMenu" && view.open === true
+          return {
+            opened: openOf(opened),
+            closed: openOf(closed),
+            state: yield* program.currentState
+          }
+        })
+      )
+    )
 
     expect(result.opened).toBe(true)
     expect(result.closed).toBe(false)

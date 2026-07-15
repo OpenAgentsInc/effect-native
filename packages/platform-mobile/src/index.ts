@@ -21,12 +21,7 @@ export const packageName = "@effect-native/platform-mobile" as const
 // App lifecycle — foreground / background / active (Expo AppState peer)
 // ---------------------------------------------------------------------------
 
-export const AppLifecycleStateSchema = Schema.Literals([
-  "active",
-  "background",
-  "inactive",
-  "unknown"
-] as const)
+export const AppLifecycleStateSchema = Schema.Literals(["active", "background", "inactive", "unknown"] as const)
 export type AppLifecycleState = Schema.Schema.Type<typeof AppLifecycleStateSchema>
 
 export interface AppLifecycle {
@@ -34,9 +29,7 @@ export interface AppLifecycle {
   readonly changes: Stream.Stream<AppLifecycleState>
 }
 
-export const AppLifecycle = Context.Service<AppLifecycle>(
-  "@effect-native/platform-mobile/AppLifecycle"
-)
+export const AppLifecycle = Context.Service<AppLifecycle>("@effect-native/platform-mobile/AppLifecycle")
 
 // ---------------------------------------------------------------------------
 // Push token — device token as typed value/stream (backend registration is app-owned)
@@ -54,9 +47,7 @@ export interface PushToken {
   readonly requestPermission: Effect.Effect<boolean>
 }
 
-export const PushToken = Context.Service<PushToken>(
-  "@effect-native/platform-mobile/PushToken"
-)
+export const PushToken = Context.Service<PushToken>("@effect-native/platform-mobile/PushToken")
 
 // ---------------------------------------------------------------------------
 // Notifications — notification-tap becomes a typed intent payload stream
@@ -74,9 +65,7 @@ export interface Notifications {
   readonly taps: Stream.Stream<NotificationTap>
 }
 
-export const Notifications = Context.Service<Notifications>(
-  "@effect-native/platform-mobile/Notifications"
-)
+export const Notifications = Context.Service<Notifications>("@effect-native/platform-mobile/Notifications")
 
 // ---------------------------------------------------------------------------
 // Deep links — inbound URL stream (navigation adapter decodes to intents)
@@ -91,9 +80,7 @@ export interface MobileDeepLink {
   readonly events: Stream.Stream<MobileDeepLinkEvent>
 }
 
-export const MobileDeepLink = Context.Service<MobileDeepLink>(
-  "@effect-native/platform-mobile/MobileDeepLink"
-)
+export const MobileDeepLink = Context.Service<MobileDeepLink>("@effect-native/platform-mobile/MobileDeepLink")
 
 // ---------------------------------------------------------------------------
 // Safe area insets — runtime geometry, not free-form padding in every view
@@ -112,9 +99,7 @@ export interface SafeArea {
   readonly changes: Stream.Stream<SafeAreaInsets>
 }
 
-export const SafeArea = Context.Service<SafeArea>(
-  "@effect-native/platform-mobile/SafeArea"
-)
+export const SafeArea = Context.Service<SafeArea>("@effect-native/platform-mobile/SafeArea")
 
 // ---------------------------------------------------------------------------
 // Keyboard — height as a runtime concern for avoidance layouts
@@ -131,9 +116,7 @@ export interface Keyboard {
   readonly changes: Stream.Stream<KeyboardState>
 }
 
-export const Keyboard = Context.Service<Keyboard>(
-  "@effect-native/platform-mobile/Keyboard"
-)
+export const Keyboard = Context.Service<Keyboard>("@effect-native/platform-mobile/Keyboard")
 
 // ---------------------------------------------------------------------------
 // runMainMobile — boot an Effect Native app inside the Expo/RN host
@@ -159,16 +142,14 @@ export interface MobileMountedApp extends MountedSurface {
 export const runMainMobile = <State>(
   options: RunMainMobileOptions<State>
 ): Effect.Effect<MobileMountedApp, never, Scope.Scope> =>
-  Effect.gen(function*() {
-    const renderer = options.renderer ?? makeReactNativeRenderer({
-      ...(options.rendererOptions ?? {}),
-      ...(options.dependencies === undefined ? {} : { dependencies: options.dependencies })
-    })
-    const surface = yield* renderer.mount(
-      options.container,
-      options.runtime.program.viewStream,
-      options.runtime.report
-    )
+  Effect.gen(function* () {
+    const renderer =
+      options.renderer ??
+      makeReactNativeRenderer({
+        ...(options.rendererOptions ?? {}),
+        ...(options.dependencies === undefined ? {} : { dependencies: options.dependencies })
+      })
+    const surface = yield* renderer.mount(options.container, options.runtime.program.viewStream, options.runtime.report)
     return {
       surface,
       unmount: surface.unmount
@@ -191,7 +172,7 @@ export interface AppLifecycleTestHarness {
 export const makeAppLifecycleTestHarness = (
   initial: AppLifecycleState = "active"
 ): Effect.Effect<AppLifecycleTestHarness> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const stateRef = yield* Ref.make<AppLifecycleState>(initial)
     const events = yield* PubSub.unbounded<AppLifecycleState>()
     const lifecycle: AppLifecycle = {
@@ -201,11 +182,7 @@ export const makeAppLifecycleTestHarness = (
     return {
       lifecycle,
       layer: Layer.succeed(AppLifecycle, lifecycle),
-      set: (state) =>
-        Ref.set(stateRef, state).pipe(
-          Effect.andThen(PubSub.publish(events, state)),
-          Effect.asVoid
-        )
+      set: (state) => Ref.set(stateRef, state).pipe(Effect.andThen(PubSub.publish(events, state)), Effect.asVoid)
     }
   })
 
@@ -219,7 +196,7 @@ export interface PushTokenTestHarness {
 export const makePushTokenTestHarness = (
   initial: PushTokenValue | undefined = undefined
 ): Effect.Effect<PushTokenTestHarness> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const tokenRef = yield* Ref.make<PushTokenValue | undefined>(initial)
     const permissionRef = yield* Ref.make(false)
     const events = yield* PubSub.unbounded<PushTokenValue>()
@@ -233,9 +210,7 @@ export const makePushTokenTestHarness = (
       layer: Layer.succeed(PushToken, pushToken),
       set: (value) =>
         Ref.set(tokenRef, value).pipe(
-          Effect.andThen(
-            value === undefined ? Effect.void : PubSub.publish(events, value).pipe(Effect.asVoid)
-          )
+          Effect.andThen(value === undefined ? Effect.void : PubSub.publish(events, value).pipe(Effect.asVoid))
         ),
       grantPermission: (granted) => Ref.set(permissionRef, granted)
     }
@@ -248,7 +223,7 @@ export interface NotificationsTestHarness {
 }
 
 export const makeNotificationsTestHarness = (): Effect.Effect<NotificationsTestHarness> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const events = yield* PubSub.unbounded<NotificationTap>()
     const notifications: Notifications = { taps: Stream.fromPubSub(events) }
     return {
@@ -265,14 +240,13 @@ export interface MobileDeepLinkTestHarness {
 }
 
 export const makeMobileDeepLinkTestHarness = (): Effect.Effect<MobileDeepLinkTestHarness> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const events = yield* PubSub.unbounded<MobileDeepLinkEvent>()
     const deepLink: MobileDeepLink = { events: Stream.fromPubSub(events) }
     return {
       deepLink,
       layer: Layer.succeed(MobileDeepLink, deepLink),
-      emit: (event) =>
-        PubSub.publish(events, MobileDeepLinkEventSchema.make(event)).pipe(Effect.asVoid)
+      emit: (event) => PubSub.publish(events, MobileDeepLinkEventSchema.make(event)).pipe(Effect.asVoid)
     }
   })
 
@@ -290,7 +264,7 @@ export const makeSafeAreaTestHarness = (
     left: 0
   })
 ): Effect.Effect<SafeAreaTestHarness> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const insetsRef = yield* Ref.make<SafeAreaInsets>(initial)
     const events = yield* PubSub.unbounded<SafeAreaInsets>()
     const safeArea: SafeArea = {
@@ -317,7 +291,7 @@ export interface KeyboardTestHarness {
 export const makeKeyboardTestHarness = (
   initial: KeyboardState = KeyboardStateSchema.make({ visible: false, height: 0 })
 ): Effect.Effect<KeyboardTestHarness> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const stateRef = yield* Ref.make<KeyboardState>(initial)
     const events = yield* PubSub.unbounded<KeyboardState>()
     const keyboard: Keyboard = {
@@ -337,11 +311,9 @@ export const makeKeyboardTestHarness = (
 
 /** Composed headless Layer of every mobile host service (test defaults). */
 export const makeMobileHostTestLayer = (): Effect.Effect<
-  Layer.Layer<
-    AppLifecycle | PushToken | Notifications | MobileDeepLink | SafeArea | Keyboard
-  >
+  Layer.Layer<AppLifecycle | PushToken | Notifications | MobileDeepLink | SafeArea | Keyboard>
 > =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const lifecycle = yield* makeAppLifecycleTestHarness()
     const push = yield* makePushTokenTestHarness()
     const notifications = yield* makeNotificationsTestHarness()
@@ -362,11 +334,7 @@ export const makeMobileHostTestLayer = (): Effect.Effect<
 // Navigation adapter (#55) — typed stack/drawer/modal model + intent decode
 // ---------------------------------------------------------------------------
 
-export const NavigationPresentationSchema = Schema.Literals([
-  "card",
-  "modal",
-  "transparentModal"
-] as const)
+export const NavigationPresentationSchema = Schema.Literals(["card", "modal", "transparentModal"] as const)
 export type NavigationPresentation = Schema.Schema.Type<typeof NavigationPresentationSchema>
 
 export const NavigationRouteSchema = Schema.Struct({
@@ -414,9 +382,7 @@ export interface Navigation {
   readonly dispatch: (action: NavigationAction) => Effect.Effect<NavigationState>
 }
 
-export const Navigation = Context.Service<Navigation>(
-  "@effect-native/platform-mobile/Navigation"
-)
+export const Navigation = Context.Service<Navigation>("@effect-native/platform-mobile/Navigation")
 
 export const initialNavigationState = (
   root: NavigationState["root"],
@@ -429,10 +395,7 @@ export const initialNavigationState = (
     drawerOpen: false
   })
 
-export const reduceNavigation = (
-  state: NavigationState,
-  action: NavigationAction
-): NavigationState => {
+export const reduceNavigation = (state: NavigationState, action: NavigationAction): NavigationState => {
   switch (action.type) {
     case "navigate":
     case "push":
@@ -443,17 +406,24 @@ export const reduceNavigation = (
         ...(action.params === undefined ? {} : { params: action.params }),
         ...(action.type === "presentModal" ? { presentation: "modal" as const } : {})
       })
-      const routes = action.type === "navigate" && state.routes.some((r) => r.name === action.routeName)
-        ? state.routes.map((r) => (r.name === action.routeName
-          ? NavigationRouteSchema.make({
-              ...r,
-              ...(action.params === undefined ? {} : { params: action.params })
-            })
-          : r))
-        : [...state.routes, next]
-      const index = action.type === "navigate"
-        ? Math.max(0, routes.findIndex((r) => r.name === action.routeName))
-        : routes.length - 1
+      const routes =
+        action.type === "navigate" && state.routes.some((r) => r.name === action.routeName)
+          ? state.routes.map((r) =>
+              r.name === action.routeName
+                ? NavigationRouteSchema.make({
+                    ...r,
+                    ...(action.params === undefined ? {} : { params: action.params })
+                  })
+                : r
+            )
+          : [...state.routes, next]
+      const index =
+        action.type === "navigate"
+          ? Math.max(
+              0,
+              routes.findIndex((r) => r.name === action.routeName)
+            )
+          : routes.length - 1
       return NavigationStateSchema.make({ ...state, routes, index, drawerOpen: false })
     }
     case "pop": {
@@ -485,7 +455,11 @@ export const reduceNavigation = (
 /** Decode a deep link URL into a navigation action (shared with cold start + push taps). */
 export const deepLinkToNavigationAction = (
   url: string,
-  patterns: ReadonlyArray<{ readonly pattern: RegExp; readonly routeName: string; readonly paramKeys?: ReadonlyArray<string> }>
+  patterns: ReadonlyArray<{
+    readonly pattern: RegExp
+    readonly routeName: string
+    readonly paramKeys?: ReadonlyArray<string>
+  }>
 ): NavigationAction | undefined => {
   for (const entry of patterns) {
     const match = entry.pattern.exec(url)
@@ -515,11 +489,11 @@ export const makeNavigationTestHarness = (
     NavigationRouteSchema.make({ id: "root", name: "Threads" })
   ])
 ): Effect.Effect<NavigationTestHarness> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const stateRef = yield* Ref.make<NavigationState>(initial)
     const events = yield* PubSub.unbounded<NavigationState>()
     const dispatch = (action: NavigationAction) =>
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const current = yield* Ref.get(stateRef)
         const next = reduceNavigation(current, action)
         yield* Ref.set(stateRef, next)

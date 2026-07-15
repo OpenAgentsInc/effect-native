@@ -2,7 +2,7 @@
  * One-off generator for `test/fixtures/recording.json`. Not part of the
  * package's public surface or its test run -- regenerate with:
  *
- *   bun packages/testkit/scripts/gen-recording-fixture.ts \
+ *   pnpm exec tsx packages/testkit/scripts/gen-recording-fixture.ts \
  *     > packages/testkit/test/fixtures/recording.json
  *
  * whenever the fixture app's scripted session needs to change.
@@ -20,7 +20,7 @@ const scriptedIntents: ReadonlyArray<Intent<string, JsonPayload>> = [
 ]
 
 const record = Effect.scoped(
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     let tick = 0
     const recorder = makeRecordingSink(initialCounterState as unknown as JsonPayload)
     const { program, registry } = yield* makeCounterRuntime({

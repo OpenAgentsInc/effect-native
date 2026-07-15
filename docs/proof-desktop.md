@@ -60,8 +60,8 @@ the behavioral receipt; screenshots are visual evidence.
 
 The committed proof and reference screenshots are:
 
-| Effect Native proof | Running Khala reference | Khala palette reference |
-|---|---|---|
+| Effect Native proof                                                      | Running Khala reference                                                     | Khala palette reference                                                                                     |
+| ------------------------------------------------------------------------ | --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | ![Khala chat Effect Native proof](./assets/proof-desktop-khala-chat.png) | ![Khala Code Desktop reference](./assets/proof-desktop-khala-reference.png) | ![Khala Code Desktop command palette reference](./assets/proof-desktop-khala-reference-command-palette.png) |
 
 The Khala reference images were produced by the running
@@ -73,9 +73,9 @@ owner-blessed baseline files.
 ## Run It
 
 ```sh
-bun install
-bun run check
-bun run example:desktop-khala-chat
+pnpm install
+pnpm run check
+pnpm run example:desktop-khala-chat
 ```
 
 Then open `http://localhost:4174`.
@@ -86,7 +86,7 @@ To refresh the screenshot, run the example host and capture
 To refresh the reference images, run:
 
 ```sh
-bun run --cwd ../openagents/clients/khala-code-desktop smoke:composer-visual
+pnpm run --cwd ../openagents/clients/khala-code-desktop smoke:composer-visual
 ```
 
 Then copy the desktop Khala screenshots from

@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import {
   Alert,
   Badge,
@@ -126,7 +126,12 @@ describe("Badge/Chip matrix axes (#79) React Native rendering", () => {
 describe("TextField matrix axes (#79) React Native rendering", () => {
   test("a legacy TextField (no variant/size) draws no renderer chrome", () => {
     const element = renderReactNativeView(
-      TextField({ key: "field-legacy", value: "Ada", label: "Name", onChange: IntentRef("Changed", StaticPayload({})) }),
+      TextField({
+        key: "field-legacy",
+        value: "Ada",
+        label: "Name",
+        onChange: IntentRef("Changed", StaticPayload({}))
+      }),
       dependencies,
       report as never,
       { theme: khalaTheme }
@@ -137,7 +142,13 @@ describe("TextField matrix axes (#79) React Native rendering", () => {
 
   test("an explicit variant opts a TextField into the matrix box chrome", () => {
     const element = renderReactNativeView(
-      TextField({ key: "field-matrix", value: "", variant: "soft", size: "lg", onChange: IntentRef("Changed", StaticPayload({})) }),
+      TextField({
+        key: "field-matrix",
+        value: "",
+        variant: "soft",
+        size: "lg",
+        onChange: IntentRef("Changed", StaticPayload({}))
+      }),
       dependencies,
       report as never,
       { theme: khalaTheme }

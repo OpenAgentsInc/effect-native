@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect } from "effect"
 import {
   IntentRef,
@@ -74,7 +74,11 @@ describe("feedback surfaces (#40) React Native renderer", () => {
       })
 
     const toast = renderReactNativeView(
-      Toast({ key: "toast", notification: { id: "n1", tone: "danger", title: "Failed" }, onDismiss: IntentRef("Dismissed") }) as View,
+      Toast({
+        key: "toast",
+        notification: { id: "n1", tone: "danger", title: "Failed" },
+        onDismiss: IntentRef("Dismissed")
+      }) as View,
       dependencies,
       report
     )
@@ -86,7 +90,15 @@ describe("feedback surfaces (#40) React Native renderer", () => {
     expect(dismissed).toEqual(["n1"])
 
     const region = renderReactNativeView(
-      ToastRegion({ key: "region", placement: "top-end", onDismiss: IntentRef("Dismissed"), notifications: [{ id: "a", tone: "info", title: "One" }, { id: "b", tone: "success", title: "Two" }] }) as View,
+      ToastRegion({
+        key: "region",
+        placement: "top-end",
+        onDismiss: IntentRef("Dismissed"),
+        notifications: [
+          { id: "a", tone: "info", title: "One" },
+          { id: "b", tone: "success", title: "Two" }
+        ]
+      }) as View,
       dependencies,
       report
     )
@@ -95,7 +107,13 @@ describe("feedback surfaces (#40) React Native renderer", () => {
     expect(find(region, (e) => e.props.testID === "en-notification:b")).not.toBeUndefined()
 
     const banner = renderReactNativeView(
-      StatusBanner({ key: "banner", tone: "warn", message: "Degraded", onRetry: IntentRef("Retry"), onDismiss: IntentRef("Dismissed") }) as View,
+      StatusBanner({
+        key: "banner",
+        tone: "warn",
+        message: "Degraded",
+        onRetry: IntentRef("Retry"),
+        onDismiss: IntentRef("Dismissed")
+      }) as View,
       dependencies,
       report
     )
@@ -105,13 +123,21 @@ describe("feedback surfaces (#40) React Native renderer", () => {
     expect(retried.length).toBe(1)
 
     const recovery = renderReactNativeView(
-      RecoveryOverlay({ key: "recovery", open: true, title: "Recovering", status: "Reconnecting", actions: [{ id: "retry", label: "Retry now", action: IntentRef("Recover") }] }) as View,
+      RecoveryOverlay({
+        key: "recovery",
+        open: true,
+        title: "Recovering",
+        status: "Reconnecting",
+        actions: [{ id: "retry", label: "Retry now", action: IntentRef("Recover") }]
+      }) as View,
       dependencies,
       report
     )
     expect(recovery.props.testID).toBe("en-recovery-overlay")
     expect(recovery.props.accessibilityViewIsModal).toBe(true)
-    ;(find(recovery, (e) => e.props.testID === "en-recovery-action:retry")?.props.onPress as (() => void) | undefined)?.()
+    ;(
+      find(recovery, (e) => e.props.testID === "en-recovery-action:retry")?.props.onPress as (() => void) | undefined
+    )?.()
     await wait()
     expect(actions).toEqual(["retry"])
   })

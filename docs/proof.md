@@ -3,8 +3,8 @@
 One screen is defined once as typed Effect Native data in
 `examples/signup-activity/index.ts`, then rendered by both priority hosts:
 
-| Web | Mobile |
-|---|---|
+| Web                                             | Mobile                                                |
+| ----------------------------------------------- | ----------------------------------------------------- |
 | ![Web proof screenshot](./assets/proof-web.png) | ![Mobile proof screenshot](./assets/proof-mobile.png) |
 
 See [Proof Screenshot Runbook](./screenshot-runbook.md) for the methodology
@@ -23,14 +23,14 @@ imports. The web and mobile hosts are thin shells around that module.
 From a fresh clone:
 
 ```sh
-bun install
-bun run check
+pnpm install
+pnpm run check
 ```
 
 Run the web host:
 
 ```sh
-bun run example:web
+pnpm run example:web
 ```
 
 Then open `http://localhost:4173`.
@@ -39,8 +39,8 @@ Run the mobile host with the standard Expo flow:
 
 ```sh
 cd examples/mobile
-bun install
-bun run ios
+pnpm install
+pnpm run ios
 ```
 
 The mobile shell is intentionally bare. It supplies Expo, React, and React

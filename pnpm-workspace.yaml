@@ -1,0 +1,35 @@
+packages:
+  - packages/*
+  - examples/mobile
+
+catalog:
+  "@types/node": 24.13.1
+  "@types/react": 19.2.14
+  "@types/react-dom": 19.2.3
+  "@types/ws": 8.18.1
+  effect: 4.0.0-beta.94
+  happy-dom: 20.10.6
+  react: 19.2.7
+  react-dom: 19.2.7
+  typescript: 5.8.3
+  vite: npm:@voidzero-dev/vite-plus-core@0.2.4
+  vite-plus: 0.2.4
+  ws: 8.18.3
+
+overrides:
+  "@types/node": "catalog:"
+  effect: "catalog:"
+  vite: "catalog:"
+
+packageExtensions:
+  vite-plus@*:
+    dependencies:
+      vite: "catalog:"
+
+peerDependencyRules:
+  allowAny:
+    - vite
+
+allowBuilds:
+  esbuild: true
+  msgpackr-extract: true

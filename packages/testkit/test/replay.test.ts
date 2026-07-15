@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect, Schema } from "effect"
 import recordingFixtureJson from "./fixtures/recording.json"
 import { resolveBindings } from "@effect-native/core"
@@ -9,16 +9,11 @@ import {
   replayStateAtIntentStep,
   stateAtTimelineStep
 } from "../src/index"
-import {
-  counterView,
-  initialCounterState,
-  makeCounterRuntime,
-  type CounterState
-} from "./fixtures/counter-runtime"
+import { counterView, initialCounterState, makeCounterRuntime, type CounterState } from "./fixtures/counter-runtime"
 
 // A committed session: two increments, a field-bound name change, and a
 // navigation. Regenerate with
-// `bun packages/testkit/scripts/gen-recording-fixture.ts` if the fixture
+// `pnpm exec tsx packages/testkit/scripts/gen-recording-fixture.ts` if the fixture
 // app's scripted session changes.
 const recording = Schema.decodeUnknownSync(RecordingSchema)(recordingFixtureJson)
 
@@ -30,14 +25,12 @@ const expectedFinalState: CounterState = {
 
 describe("expectReplay", () => {
   test("a committed Recording fixture replays to the expected final state and screen", async () => {
-    const result = await Effect.runPromise(expectReplay(
-      recording,
-      () => makeCounterRuntime(),
-      {
+    const result = await Effect.runPromise(
+      expectReplay(recording, () => makeCounterRuntime(), {
         finalState: expectedFinalState,
         finalScreen: resolveBindings(counterView(expectedFinalState), expectedFinalState)
-      }
-    ))
+      })
+    )
 
     expect(result.state).toEqual(expectedFinalState)
   })
@@ -52,31 +45,30 @@ describe("expectReplay", () => {
 
   test("expectReplay rejects when the expected final state does not match", async () => {
     await expect(
-      Effect.runPromise(expectReplay(recording, () => makeCounterRuntime(), {
-        finalState: { ...expectedFinalState, count: 999 }
-      }))
+      Effect.runPromise(
+        expectReplay(recording, () => makeCounterRuntime(), {
+          finalState: { ...expectedFinalState, count: 999 }
+        })
+      )
     ).rejects.toThrow(/final state mismatch/)
   })
 
   test("expectReplay rejects when the expected final screen does not match", async () => {
     await expect(
-      Effect.runPromise(expectReplay(recording, () => makeCounterRuntime(), {
-        finalScreen: resolveBindings(
-          counterView({ ...expectedFinalState, count: 999 }),
-          { ...expectedFinalState, count: 999 }
-        )
-      }))
+      Effect.runPromise(
+        expectReplay(recording, () => makeCounterRuntime(), {
+          finalScreen: resolveBindings(counterView({ ...expectedFinalState, count: 999 }), {
+            ...expectedFinalState,
+            count: 999
+          })
+        })
+      )
     ).rejects.toThrow(/final screen mismatch/)
   })
 
   test("recordingIntents extracts the four dispatched intents from the committed timeline", () => {
     const intents = recordingIntents(recording)
-    expect(intents.map((intent) => intent.name)).toEqual([
-      "Increment",
-      "Increment",
-      "FormFieldChanged",
-      "Navigate"
-    ])
+    expect(intents.map((intent) => intent.name)).toEqual(["Increment", "Increment", "FormFieldChanged", "Navigate"])
   })
 
   test("stateAtTimelineStep(0) reflects the first recorded snapshot", () => {

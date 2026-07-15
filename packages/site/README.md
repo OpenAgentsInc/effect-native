@@ -11,8 +11,8 @@ the design decisions this package makes.
 Quick reference:
 
 ```sh
-bun run site         # local dev server at http://localhost:4176
-bun run site:build   # static output at dist/site/
+pnpm run site         # local dev server at http://localhost:4176
+pnpm run site:build   # static output at dist/site/
 ```
 
 This package (`content.ts`, `pages.ts`, `runtime.ts`, `sample-app.ts`) only

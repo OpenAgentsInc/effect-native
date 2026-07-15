@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Button, IntentRef, StaticPayload } from "@effect-native/core"
 import { khalaTheme } from "@effect-native/tokens"
 import {
@@ -139,14 +139,14 @@ describe("render-rn Button tone/variant/size matrix (#78)", () => {
     expect(labelStyle(element).color).toBe(cell.text)
   })
 
-  test("legacy `variant: \"primary\"` and the equivalent `tone: \"accent\", variant: \"solid\"` render identically", () => {
+  test('legacy `variant: "primary"` and the equivalent `tone: "accent", variant: "solid"` render identically', () => {
     const legacy = render("primary")
     const matrix = renderMatrix({ tone: "accent", variant: "solid" })
     expect(pressableStyle(matrix)).toEqual(pressableStyle(legacy))
     expect(labelStyle(matrix)).toEqual(labelStyle(legacy))
   })
 
-  test("legacy `variant: \"secondary\"` and the equivalent `tone: \"secondary\", variant: \"solid\"` render identically", () => {
+  test('legacy `variant: "secondary"` and the equivalent `tone: "secondary", variant: "solid"` render identically', () => {
     const legacy = render("secondary")
     const matrix = renderMatrix({ tone: "secondary", variant: "solid" })
     expect(pressableStyle(matrix)).toEqual(pressableStyle(legacy))

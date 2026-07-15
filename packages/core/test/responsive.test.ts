@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect, Stream } from "effect"
 import {
   Image,
@@ -17,29 +17,32 @@ const nextTask = Effect.promise<void>(() => new Promise((resolve) => setTimeout(
 const noopReport: IntentReporter = () => Effect.succeed(undefined)
 
 const responsiveView = (): View =>
-  Stack({
-    key: "root",
-    direction: { base: "column", md: "row" },
-    gap: { base: "1", lg: "4" },
-    padding: { base: "2", md: "3" },
-    style: {
-      marginTop: "1",
-      variants: {
-        breakpoint: {
-          md: { marginTop: "4" }
+  Stack(
+    {
+      key: "root",
+      direction: { base: "column", md: "row" },
+      gap: { base: "1", lg: "4" },
+      padding: { base: "2", md: "3" },
+      style: {
+        marginTop: "1",
+        variants: {
+          breakpoint: {
+            md: { marginTop: "4" }
+          }
         }
       }
-    }
-  }, [
-    Text({ key: "copy", content: "Responsive", variant: "body" }),
-    Image({
-      key: "hero",
-      source: "https://example.com/hero.png",
-      alt: "Hero",
-      width: { base: "sm", md: "lg" },
-      height: { base: 80, md: 160 }
-    })
-  ])
+    },
+    [
+      Text({ key: "copy", content: "Responsive", variant: "body" }),
+      Image({
+        key: "hero",
+        source: "https://example.com/hero.png",
+        alt: "Hero",
+        width: { base: "sm", md: "lg" },
+        height: { base: 80, md: 160 }
+      })
+    ]
+  )
 
 const imageChild = (view: View) => {
   if (view._tag !== "Stack") {
@@ -92,24 +95,26 @@ describe("responsive viewport resolution", () => {
 
   test("headless renderer re-emits deterministic snapshots for viewport sequences", async () => {
     const runSequence = (widths: ReadonlyArray<number>) =>
-      Effect.scoped(Effect.gen(function*() {
-        const surface = yield* makeHeadlessRenderer({
-          viewport: { width: 390, height: 800 }
-        }).mount(undefined, Stream.make(responsiveView()), noopReport)
+      Effect.scoped(
+        Effect.gen(function* () {
+          const surface = yield* makeHeadlessRenderer({
+            viewport: { width: 390, height: 800 }
+          }).mount(undefined, Stream.make(responsiveView()), noopReport)
 
-        for (const width of widths) {
-          yield* surface.setViewport({ width, height: 800 })
-          yield* nextTask
-          yield* Effect.yieldNow
-        }
+          for (const width of widths) {
+            yield* surface.setViewport({ width, height: 800 })
+            yield* nextTask
+            yield* Effect.yieldNow
+          }
 
-        return yield* surface.snapshots
-      }))
+          return yield* surface.snapshots
+        })
+      )
 
     const first = await Effect.runPromise(runSequence([390, 820, 1100]))
     const second = await Effect.runPromise(runSequence([390, 820, 1100]))
 
-    expect(first.map((view) => view._tag === "Stack" ? view.direction : "missing")).toEqual([
+    expect(first.map((view) => (view._tag === "Stack" ? view.direction : "missing"))).toEqual([
       "column",
       "column",
       "row",

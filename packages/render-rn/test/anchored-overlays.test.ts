@@ -1,6 +1,15 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect } from "effect"
-import { ContextMenu, DropdownMenu, IntentRef, Popover, Text, Tooltip, type IntentReporter, type View } from "@effect-native/core"
+import {
+  ContextMenu,
+  DropdownMenu,
+  IntentRef,
+  Popover,
+  Text,
+  Tooltip,
+  type IntentReporter,
+  type View
+} from "@effect-native/core"
 import {
   renderReactNativeView,
   type ReactElementLike,
@@ -81,9 +90,9 @@ describe("anchored overlays (#28) React Native renderer", () => {
     expect(rename?.type).toBe("Pressable")
     // #71-class regression: menu-row glyph/label must be THEMED — RN Text
     // does not inherit color and would render default-black on dark surfaces.
-    const renameChildren = (Array.isArray(rename?.props.children)
-      ? rename?.props.children
-      : [rename?.props.children]) as ReadonlyArray<{ props: { style?: { color?: string } } }>
+    const renameChildren = (
+      Array.isArray(rename?.props.children) ? rename?.props.children : [rename?.props.children]
+    ) as ReadonlyArray<{ props: { style?: { color?: string } } }>
     for (const part of renameChildren) {
       expect(part.props.style?.color).toBeDefined()
     }
@@ -101,13 +110,16 @@ describe("anchored overlays (#28) React Native renderer", () => {
     expect(tooltip.props.accessibilityHint).toBe("Run the cell")
 
     const popover = renderReactNativeView(
-      Popover({
-        key: "pop",
-        open: true,
-        placement: { side: "top", align: "center" },
-        dismissable: true,
-        onDismiss: IntentRef("Dismissed")
-      }, [Text({ key: "c", content: "Popover copy", variant: "body" })]) as View,
+      Popover(
+        {
+          key: "pop",
+          open: true,
+          placement: { side: "top", align: "center" },
+          dismissable: true,
+          onDismiss: IntentRef("Dismissed")
+        },
+        [Text({ key: "c", content: "Popover copy", variant: "body" })]
+      ) as View,
       dependencies,
       noop
     )

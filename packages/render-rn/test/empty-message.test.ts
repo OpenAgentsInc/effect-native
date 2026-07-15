@@ -1,13 +1,6 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect } from "effect"
-import {
-  Button,
-  EmptyMessage,
-  IntentRef,
-  StaticPayload,
-  type IntentReporter,
-  type View
-} from "@effect-native/core"
+import { Button, EmptyMessage, IntentRef, StaticPayload, type IntentReporter, type View } from "@effect-native/core"
 import {
   renderReactNativeView,
   type ReactElementLike,
@@ -115,8 +108,12 @@ describe("EmptyMessage (#82) React Native renderer", () => {
       "No workers online"
     )
     expect(
-      find(element, (candidate) => typeof candidate.props.testID === "string" &&
-        (candidate.props.testID as string).startsWith("en-empty-message-icon"))
+      find(
+        element,
+        (candidate) =>
+          typeof candidate.props.testID === "string" &&
+          (candidate.props.testID as string).startsWith("en-empty-message-icon")
+      )
     ).toBeUndefined()
     expect(find(element, (candidate) => candidate.props.testID === "en-empty-message-description")).toBeUndefined()
     expect(find(element, (candidate) => candidate.props.testID === "en-empty-message-action")).toBeUndefined()

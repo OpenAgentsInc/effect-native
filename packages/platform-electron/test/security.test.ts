@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect, Exit, Schema } from "effect"
 import {
   SafeExternalOpener,
@@ -62,14 +62,15 @@ describe("hardened webPreferences", () => {
 
   for (const [label, flip] of insecureFlips) {
     test(`insecure flip ${label} is a typed decode failure`, async () => {
-      const exit = await Effect.runPromiseExit(
-        decodeHardenedWebPreferences({ ...hardenedWebPreferences(), ...flip })
-      )
+      const exit = await Effect.runPromiseExit(decodeHardenedWebPreferences({ ...hardenedWebPreferences(), ...flip }))
       expect(Exit.isFailure(exit)).toBe(true)
       if (Exit.isFailure(exit)) {
         const reason = exit.cause.reasons[0]
-        expect(reason !== undefined && "error" in reason &&
-          (reason.error as { readonly _tag?: string })._tag === "InsecureWebPreferencesError").toBe(true)
+        expect(
+          reason !== undefined &&
+            "error" in reason &&
+            (reason.error as { readonly _tag?: string })._tag === "InsecureWebPreferencesError"
+        ).toBe(true)
       }
     })
   }
@@ -106,9 +107,9 @@ describe("restrictive renderer CSP", () => {
   test("applyRendererCsp stamps the CSP header on every response", async () => {
     let registered:
       | ((
-        details: { readonly responseHeaders?: ElectronResponseHeadersLike },
-        callback: (response: { readonly responseHeaders?: ElectronResponseHeadersLike }) => void
-      ) => void)
+          details: { readonly responseHeaders?: ElectronResponseHeadersLike },
+          callback: (response: { readonly responseHeaders?: ElectronResponseHeadersLike }) => void
+        ) => void)
       | undefined
     const session: ElectronCspSessionLike = {
       webRequest: {
@@ -136,9 +137,7 @@ describe("restrictive renderer CSP", () => {
         }
       }
     }
-    const exit = await Effect.runPromiseExit(
-      applyRendererCsp(session, "default-src *; script-src 'unsafe-eval'")
-    )
+    const exit = await Effect.runPromiseExit(applyRendererCsp(session, "default-src *; script-src 'unsafe-eval'"))
     expect(Exit.isFailure(exit)).toBe(true)
     expect(registered).toBe(false)
   })
@@ -148,11 +147,7 @@ describe("restrictive renderer CSP", () => {
 // Security policy — deny-by-default permissions / navigation / window-open
 // ---------------------------------------------------------------------------
 
-type PermissionHandler = (
-  webContents: unknown,
-  permission: string,
-  callback: (granted: boolean) => void
-) => void
+type PermissionHandler = (webContents: unknown, permission: string, callback: (granted: boolean) => void) => void
 
 const makeSecurityFixture = () => {
   let permissionHandler: PermissionHandler | null = null
@@ -169,9 +164,7 @@ const makeSecurityFixture = () => {
     }
   }
   const contentsListeners = new Map<string, (...args: ReadonlyArray<never>) => void>()
-  let windowOpenHandler:
-    | ((details: { readonly url: string }) => { readonly action: "allow" | "deny" })
-    | undefined
+  let windowOpenHandler: ((details: { readonly url: string }) => { readonly action: "allow" | "deny" }) | undefined
   const contents: ElectronWebContentsLike = {
     on: (event: string, listener: (...args: ReadonlyArray<never>) => void) => {
       contentsListeners.set(event, listener)
@@ -237,30 +230,34 @@ describe("applyElectronSecurityPolicy", () => {
     expect(denied.requestPermission("notifications")).toBe(false)
 
     const allowed = makeSecurityFixture()
-    await Effect.runPromise(applyElectronSecurityPolicy({
-      app: allowed.app,
-      session: allowed.session,
-      policy: ElectronSecurityPolicySchema.make({
-        allowedNavigationOrigins: [],
-        allowedExternalProtocols: ["https:"],
-        allowedPermissions: ["clipboard-read"]
+    await Effect.runPromise(
+      applyElectronSecurityPolicy({
+        app: allowed.app,
+        session: allowed.session,
+        policy: ElectronSecurityPolicySchema.make({
+          allowedNavigationOrigins: [],
+          allowedExternalProtocols: ["https:"],
+          allowedPermissions: ["clipboard-read"]
+        })
       })
-    }))
+    )
     expect(allowed.requestPermission("clipboard-read")).toBe(true)
     expect(allowed.requestPermission("media")).toBe(false)
   })
 
   test("will-navigate is prevented by default and allowed only for allowlisted origins", async () => {
     const fixture = makeSecurityFixture()
-    await Effect.runPromise(applyElectronSecurityPolicy({
-      app: fixture.app,
-      session: fixture.session,
-      policy: ElectronSecurityPolicySchema.make({
-        allowedNavigationOrigins: ["https://app.openagents.com"],
-        allowedExternalProtocols: ["https:"],
-        allowedPermissions: []
+    await Effect.runPromise(
+      applyElectronSecurityPolicy({
+        app: fixture.app,
+        session: fixture.session,
+        policy: ElectronSecurityPolicySchema.make({
+          allowedNavigationOrigins: ["https://app.openagents.com"],
+          allowedExternalProtocols: ["https:"],
+          allowedPermissions: []
+        })
       })
-    }))
+    )
     fixture.createWebContents()
     expect(fixture.emitWillNavigate("https://evil.example/phish")).toBe(true)
     expect(fixture.emitWillNavigate("not a url")).toBe(true)
@@ -276,30 +273,34 @@ describe("applyElectronSecurityPolicy", () => {
 
   test("will-attach-webview is ALWAYS prevented, even with allowlisted origins", async () => {
     const fixture = makeSecurityFixture()
-    await Effect.runPromise(applyElectronSecurityPolicy({
-      app: fixture.app,
-      session: fixture.session,
-      policy: ElectronSecurityPolicySchema.make({
-        allowedNavigationOrigins: ["https://app.openagents.com"],
-        allowedExternalProtocols: ["https:"],
-        allowedPermissions: ["media"]
+    await Effect.runPromise(
+      applyElectronSecurityPolicy({
+        app: fixture.app,
+        session: fixture.session,
+        policy: ElectronSecurityPolicySchema.make({
+          allowedNavigationOrigins: ["https://app.openagents.com"],
+          allowedExternalProtocols: ["https:"],
+          allowedPermissions: ["media"]
+        })
       })
-    }))
+    )
     fixture.createWebContents()
     expect(fixture.emitWillAttachWebview()).toBe(true)
   })
 
   test("window.open is always denied", async () => {
     const fixture = makeSecurityFixture()
-    await Effect.runPromise(applyElectronSecurityPolicy({
-      app: fixture.app,
-      session: fixture.session,
-      policy: ElectronSecurityPolicySchema.make({
-        allowedNavigationOrigins: ["https://app.openagents.com"],
-        allowedExternalProtocols: ["https:"],
-        allowedPermissions: []
+    await Effect.runPromise(
+      applyElectronSecurityPolicy({
+        app: fixture.app,
+        session: fixture.session,
+        policy: ElectronSecurityPolicySchema.make({
+          allowedNavigationOrigins: ["https://app.openagents.com"],
+          allowedExternalProtocols: ["https:"],
+          allowedPermissions: []
+        })
       })
-    }))
+    )
     fixture.createWebContents()
     expect(fixture.windowOpen("https://app.openagents.com/")).toEqual({ action: "deny" })
     expect(fixture.windowOpen("https://evil.example/")).toEqual({ action: "deny" })
@@ -318,19 +319,16 @@ describe("verifyPackagedFuses", () => {
 
   for (const [fuse, expected] of Object.entries(expectedPackagedFuses)) {
     test(`a flipped ${fuse} fuse fails with the mismatch named`, async () => {
-      const exit = await Effect.runPromiseExit(
-        verifyPackagedFuses({ ...expectedPackagedFuses, [fuse]: !expected })
-      )
+      const exit = await Effect.runPromiseExit(verifyPackagedFuses({ ...expectedPackagedFuses, [fuse]: !expected }))
       expect(Exit.isFailure(exit)).toBe(true)
       if (Exit.isFailure(exit)) {
         const reason = exit.cause.reasons[0]
-        const error = reason !== undefined && "error" in reason
-          ? reason.error as { readonly _tag?: string; readonly mismatches?: ReadonlyArray<string> }
-          : undefined
+        const error =
+          reason !== undefined && "error" in reason
+            ? (reason.error as { readonly _tag?: string; readonly mismatches?: ReadonlyArray<string> })
+            : undefined
         expect(error?._tag).toBe("PackagedFusesMismatchError")
-        expect(error?.mismatches).toEqual([
-          `${fuse}: expected ${String(expected)}, found ${String(!expected)}`
-        ])
+        expect(error?.mismatches).toEqual([`${fuse}: expected ${String(expected)}, found ${String(!expected)}`])
       }
     })
   }
@@ -358,24 +356,26 @@ describe("SafeExternalOpener", () => {
     }
     const layer = makeElectronSafeExternalOpenerLayer({ shell })
 
-    const result = await Effect.runPromise(Effect.provide(
-      Effect.gen(function*() {
-        const opener = yield* SafeExternalOpener
-        yield* opener.open("https://openagents.com/promises")
-        const refusals: Array<ExternalOpenRefusedError["reason"]> = []
-        for (const url of ["javascript:alert(1)", "file:///etc/passwd", "khala-code://legacy", "not a url"]) {
-          const exit = yield* Effect.exit(opener.open(url))
-          if (Exit.isFailure(exit)) {
-            const reason = exit.cause.reasons[0]
-            if (reason !== undefined && "error" in reason) {
-              refusals.push((reason.error as ExternalOpenRefusedError).reason)
+    const result = await Effect.runPromise(
+      Effect.provide(
+        Effect.gen(function* () {
+          const opener = yield* SafeExternalOpener
+          yield* opener.open("https://openagents.com/promises")
+          const refusals: Array<ExternalOpenRefusedError["reason"]> = []
+          for (const url of ["javascript:alert(1)", "file:///etc/passwd", "khala-code://legacy", "not a url"]) {
+            const exit = yield* Effect.exit(opener.open(url))
+            if (Exit.isFailure(exit)) {
+              const reason = exit.cause.reasons[0]
+              if (reason !== undefined && "error" in reason) {
+                refusals.push((reason.error as ExternalOpenRefusedError).reason)
+              }
             }
           }
-        }
-        return refusals
-      }),
-      layer
-    ))
+          return refusals
+        }),
+        layer
+      )
+    )
 
     expect(opened).toEqual(["https://openagents.com/promises"])
     expect(result).toEqual([
@@ -387,13 +387,15 @@ describe("SafeExternalOpener", () => {
   })
 
   test("the headless harness enforces the same allowlist and records opens", async () => {
-    const result = await Effect.runPromise(Effect.gen(function*() {
-      const harness = yield* makeSafeExternalOpenerTestHarness(["https:", "openagents:"])
-      yield* harness.opener.open("https://openagents.com/")
-      yield* harness.opener.open("openagents://thread/42")
-      const refused = yield* Effect.exit(harness.opener.open("javascript:alert(1)"))
-      return { opened: yield* harness.opened, refused: Exit.isFailure(refused) }
-    }))
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const harness = yield* makeSafeExternalOpenerTestHarness(["https:", "openagents:"])
+        yield* harness.opener.open("https://openagents.com/")
+        yield* harness.opener.open("openagents://thread/42")
+        const refused = yield* Effect.exit(harness.opener.open("javascript:alert(1)"))
+        return { opened: yield* harness.opened, refused: Exit.isFailure(refused) }
+      })
+    )
     expect(result.opened).toEqual(["https://openagents.com/", "openagents://thread/42"])
     expect(result.refused).toBe(true)
   })

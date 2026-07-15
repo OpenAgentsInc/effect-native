@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect, Schema, SubscriptionRef } from "effect"
 import fc from "fast-check"
 import { Window } from "happy-dom"
@@ -44,63 +44,59 @@ const recordProofSession = (): Effect.Effect<{
   readonly finalState: unknown
   readonly snapshots: ReadonlyArray<View>
 }> =>
-  Effect.scoped(Effect.gen(function*() {
-    let tick = 0
-    const recorder = makeRecordingSink(redactSignupActivityState(initialSignupActivityState))
-    const runtime = yield* makeSignupActivityRuntime(initialSignupActivityState, {
-      devtoolsSink: recorder.sink,
-      now: () => ++tick
+  Effect.scoped(
+    Effect.gen(function* () {
+      let tick = 0
+      const recorder = makeRecordingSink(redactSignupActivityState(initialSignupActivityState))
+      const runtime = yield* makeSignupActivityRuntime(initialSignupActivityState, {
+        devtoolsSink: recorder.sink,
+        now: () => ++tick
+      })
+      const surface = yield* makeHeadlessRenderer().mount(undefined, runtime.program.viewStream, runtime.report)
+
+      for (const step of scriptedProofSteps) {
+        yield* runtime.registry.dispatch(resolveIntentRef(step.ref, step.runtimeValue ?? null))
+        yield* Effect.yieldNow
+      }
+
+      return {
+        recording: recorder.recording(),
+        finalState: yield* runtime.program.currentState,
+        snapshots: yield* surface.snapshots
+      }
     })
-    const surface = yield* makeHeadlessRenderer().mount(
-      undefined,
-      runtime.program.viewStream,
-      runtime.report
-    )
-
-    for (const step of scriptedProofSteps) {
-      yield* runtime.registry.dispatch(resolveIntentRef(step.ref, step.runtimeValue ?? null))
-      yield* Effect.yieldNow
-    }
-
-    return {
-      recording: recorder.recording(),
-      finalState: yield* runtime.program.currentState,
-      snapshots: yield* surface.snapshots
-    }
-  }))
+  )
 
 describe("@effect-native/devtools recording", () => {
   test("record -> serialize -> load -> replay reproduces final state and snapshots", async () => {
     const proof = await Effect.runPromise(recordProofSession())
     const loaded = parseRecording(serializeRecording(proof.recording))
-    const replayed = await Effect.runPromise(replayRecording(
-      loaded,
-      () => makeSignupActivityRuntime(initialSignupActivityState)
-    ))
+    const replayed = await Effect.runPromise(
+      replayRecording(loaded, () => makeSignupActivityRuntime(initialSignupActivityState))
+    )
 
     expect(replayed.state).toEqual(proof.finalState)
-    expect(replayed.snapshots[replayed.snapshots.length - 1]).toEqual(
-      proof.snapshots[proof.snapshots.length - 1]
-    )
+    expect(replayed.snapshots[replayed.snapshots.length - 1]).toEqual(proof.snapshots[proof.snapshots.length - 1])
   })
 
   test("time-travel state at step equals fresh replay prefixes", async () => {
     const proof = await Effect.runPromise(recordProofSession())
     const intentCount = proof.recording.timeline.filter((event) => event._tag === "IntentDispatched").length
 
-    await fc.assert(fc.asyncProperty(fc.integer({ min: 0, max: intentCount }), async (step) => {
-      const state = await Effect.runPromise(replayStateAtIntentStep(
-        proof.recording,
-        step,
-        () => makeSignupActivityRuntime(initialSignupActivityState)
-      ))
-      const replayed = await Effect.runPromise(replayRecording(
-        proof.recording,
-        () => makeSignupActivityRuntime(initialSignupActivityState),
-        { intentLimit: step }
-      ))
-      expect(state).toEqual(replayed.state)
-    }), { numRuns: 20 })
+    await fc.assert(
+      fc.asyncProperty(fc.integer({ min: 0, max: intentCount }), async (step) => {
+        const state = await Effect.runPromise(
+          replayStateAtIntentStep(proof.recording, step, () => makeSignupActivityRuntime(initialSignupActivityState))
+        )
+        const replayed = await Effect.runPromise(
+          replayRecording(proof.recording, () => makeSignupActivityRuntime(initialSignupActivityState), {
+            intentLimit: step
+          })
+        )
+        expect(state).toEqual(replayed.state)
+      }),
+      { numRuns: 20 }
+    )
   })
 
   test("secure field values are absent from recordings", async () => {
@@ -116,49 +112,54 @@ describe("@effect-native/devtools recording", () => {
       ]
     } as const)
 
-    const result = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      let tick = 0
-      const recorder = makeRecordingSink(null)
-      const state = yield* SubscriptionRef.make({ form: makeFormState(secret) })
-      const view = (current: { readonly form: ReturnType<typeof makeFormState> }): View =>
-        TextField({
-          key: "password",
-          value: formFieldValue(current.form, "password"),
-          field: FieldBinding("secret", "password"),
-          secure: true
-        })
-      const program = makeViewProgramFromState(state, view, {
-        devtoolsSink: recorder.sink,
-        now: () => ++tick,
-        redactState: (current): JsonPayload => ({
-          form: redactFormState(current.form)
-        })
-      })
-      const handlers: IntentHandlers<typeof formIntentDefinitions> = {
-        FormFieldChanged: (payload) =>
-          SubscriptionRef.update(state, (current) => ({
-            form: setFormFieldValue(secret, current.form, payload.field, payload.value)
-          })),
-        FormFieldBlurred: () => Effect.succeed(undefined),
-        FormSubmitRequested: () => Effect.succeed(undefined)
-      }
-      const registry = yield* makeIntentRegistry(formIntentDefinitions, handlers, {
-        now: () => ++tick,
-        redactIntent: makeFormIntentRedactor([secret]),
-        devtoolsSink: recorder.sink
-      })
-      const report: IntentReporter = (ref, runtimeValue) =>
-        registry.dispatch(resolveIntentRef(ref, runtimeValue))
-      yield* makeHeadlessRenderer().mount(undefined, program.viewStream, report)
+    const result = await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          let tick = 0
+          const recorder = makeRecordingSink(null)
+          const state = yield* SubscriptionRef.make({ form: makeFormState(secret) })
+          const view = (current: { readonly form: ReturnType<typeof makeFormState> }): View =>
+            TextField({
+              key: "password",
+              value: formFieldValue(current.form, "password"),
+              field: FieldBinding("secret", "password"),
+              secure: true
+            })
+          const program = makeViewProgramFromState(state, view, {
+            devtoolsSink: recorder.sink,
+            now: () => ++tick,
+            redactState: (current): JsonPayload => ({
+              form: redactFormState(current.form)
+            })
+          })
+          const handlers: IntentHandlers<typeof formIntentDefinitions> = {
+            FormFieldChanged: (payload) =>
+              SubscriptionRef.update(state, (current) => ({
+                form: setFormFieldValue(secret, current.form, payload.field, payload.value)
+              })),
+            FormFieldBlurred: () => Effect.succeed(undefined),
+            FormSubmitRequested: () => Effect.succeed(undefined)
+          }
+          const registry = yield* makeIntentRegistry(formIntentDefinitions, handlers, {
+            now: () => ++tick,
+            redactIntent: makeFormIntentRedactor([secret]),
+            devtoolsSink: recorder.sink
+          })
+          const report: IntentReporter = (ref, runtimeValue) => registry.dispatch(resolveIntentRef(ref, runtimeValue))
+          yield* makeHeadlessRenderer().mount(undefined, program.viewStream, report)
 
-      yield* registry.dispatch(resolveIntentRef(
-        IntentRef("FormFieldChanged", FormFieldValueBinding(FieldBinding("secret", "password"))),
-        "swordfish"
-      ))
-      yield* Effect.yieldNow
+          yield* registry.dispatch(
+            resolveIntentRef(
+              IntentRef("FormFieldChanged", FormFieldValueBinding(FieldBinding("secret", "password"))),
+              "swordfish"
+            )
+          )
+          yield* Effect.yieldNow
 
-      return serializeRecording(recorder.recording())
-    })))
+          return serializeRecording(recorder.recording())
+        })
+      )
+    )
 
     expect(result).not.toContain("swordfish")
     expect(result).toContain("[redacted]")
@@ -171,13 +172,17 @@ describe("@effect-native/devtools recording", () => {
     const container = document.createElement("main")
     document.body.appendChild(container)
 
-    await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const panel = yield* mountDevtoolsPanel(container, proof.recording)
-      expect(container.textContent).toContain("Effect Native DevTools")
-      expect(container.textContent).toContain("Timeline")
-      expect(container.textContent).toContain("View tree")
-      expect(container.querySelector('[data-en-key="devtools"]')).not.toBeNull()
-      yield* panel.unmount
-    })))
+    await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const panel = yield* mountDevtoolsPanel(container, proof.recording)
+          expect(container.textContent).toContain("Effect Native DevTools")
+          expect(container.textContent).toContain("Timeline")
+          expect(container.textContent).toContain("View tree")
+          expect(container.querySelector('[data-en-key="devtools"]')).not.toBeNull()
+          yield* panel.unmount
+        })
+      )
+    )
   })
 })

@@ -1,8 +1,8 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { readFileSync, readdirSync } from "node:fs"
 import { join } from "node:path"
 
-const srcDir = join(import.meta.dir, "..", "src")
+const srcDir = join(import.meta.dirname, "..", "src")
 
 // The site's page/state layer must stay renderer-agnostic -- only `effect`
 // and `@effect-native/core` -- so the same pages can be mounted by

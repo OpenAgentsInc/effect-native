@@ -12,10 +12,9 @@ export const noteList = (notes: ReadonlyArray<{ id: string; title: string }>) =>
     { key: "notes" },
     notes.map(
       (note) =>
-        Card(
-          { key: note.id, padding: "3", radius: "md" },
-          [Text({ key: `${note.id}-title`, content: note.title, variant: "body" })]
-        ) as KeyedView
+        Card({ key: note.id, padding: "3", radius: "md" }, [
+          Text({ key: `${note.id}-title`, content: note.title, variant: "body" })
+        ]) as KeyedView
     )
   )
 ```

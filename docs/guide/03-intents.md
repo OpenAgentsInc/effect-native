@@ -8,12 +8,12 @@ closure can do anything: call `fetch`, read `Date.now()`, reach into a ref,
 throw. It is not data, so it cannot be logged, replayed, or validated before
 it runs.
 
-In Effect Native, a view can only ever carry an `IntentRef` — a *typed name*
+In Effect Native, a view can only ever carry an `IntentRef` — a _typed name_
 plus how to fill its payload — never a function. You saw this already:
 `Button({ onPress: IntentRef("AddNote") })`. The button doesn't know what
 `"AddNote"` does. It just says: dispatch this, when pressed.
 
-What `"AddNote"` actually *does* is defined once, separately, and it's
+What `"AddNote"` actually _does_ is defined once, separately, and it's
 itself typed: a name, a payload `Schema`, and a handler `Effect` — not an
 arbitrary function pointer.
 

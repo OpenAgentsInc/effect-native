@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect, SubscriptionRef } from "effect"
 import {
   Binding,
@@ -27,10 +27,39 @@ import { Schema } from "effect"
 describe("feedback surfaces (#40)", () => {
   test("toast, region, banner, and recovery overlay round-trip as data", () => {
     const views = [
-      Toast({ key: "toast", notification: { id: "n1", tone: "danger", title: "Failed", detail: "d", actionLabel: "Retry", action: IntentRef("A"), autoDismissMillis: 5000 }, onDismiss: IntentRef("D") }),
-      ToastRegion({ key: "region", placement: "bottom-end", notifications: [{ id: "n1", tone: "info", title: "Hi" }], onDismiss: IntentRef("D") }),
-      StatusBanner({ key: "banner", tone: "warn", message: "Degraded", onRetry: IntentRef("R"), onDismiss: IntentRef("D") }),
-      RecoveryOverlay({ key: "recovery", open: true, title: "Recovering", status: "Reconnecting", actions: [{ id: "retry", label: "Retry", variant: "primary", action: IntentRef("A") }] })
+      Toast({
+        key: "toast",
+        notification: {
+          id: "n1",
+          tone: "danger",
+          title: "Failed",
+          detail: "d",
+          actionLabel: "Retry",
+          action: IntentRef("A"),
+          autoDismissMillis: 5000
+        },
+        onDismiss: IntentRef("D")
+      }),
+      ToastRegion({
+        key: "region",
+        placement: "bottom-end",
+        notifications: [{ id: "n1", tone: "info", title: "Hi" }],
+        onDismiss: IntentRef("D")
+      }),
+      StatusBanner({
+        key: "banner",
+        tone: "warn",
+        message: "Degraded",
+        onRetry: IntentRef("R"),
+        onDismiss: IntentRef("D")
+      }),
+      RecoveryOverlay({
+        key: "recovery",
+        open: true,
+        title: "Recovering",
+        status: "Reconnecting",
+        actions: [{ id: "retry", label: "Retry", variant: "primary", action: IntentRef("A") }]
+      })
     ]
     for (const view of views) {
       expect(decodeView(encodeView(view))).toEqual(view)
@@ -64,30 +93,34 @@ describe("feedback surfaces (#40)", () => {
       })
     }
 
-    const result = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const state = yield* SubscriptionRef.make<BootState>({ degraded: true, recoveryOpen: true })
-      const program = makeViewProgramFromState(state, bootView)
-      const handlers: IntentHandlers<typeof definitions> = {
-        Recover: () => SubscriptionRef.update(state, (current) => ({ ...current, degraded: false })),
-        RecoveryAction: () => SubscriptionRef.update(state, (current) => ({ ...current, recoveryOpen: false }))
-      }
-      const registry = yield* makeIntentRegistry(definitions, handlers, { now: () => 0 })
-      const report: IntentReporter = (ref, value) => registry.dispatch(resolveIntentRef(ref, value))
-      const surface = yield* makeHeadlessRenderer().mount(undefined, program.viewStream, report)
-      const simulate = (ref: IntentRef, value: unknown) =>
-        Effect.provideService(surface.simulate(ref, value as never), IntentRegistry, registry)
+    const result = await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const state = yield* SubscriptionRef.make<BootState>({ degraded: true, recoveryOpen: true })
+          const program = makeViewProgramFromState(state, bootView)
+          const handlers: IntentHandlers<typeof definitions> = {
+            Recover: () => SubscriptionRef.update(state, (current) => ({ ...current, degraded: false })),
+            RecoveryAction: () => SubscriptionRef.update(state, (current) => ({ ...current, recoveryOpen: false }))
+          }
+          const registry = yield* makeIntentRegistry(definitions, handlers, { now: () => 0 })
+          const report: IntentReporter = (ref, value) => registry.dispatch(resolveIntentRef(ref, value))
+          const surface = yield* makeHeadlessRenderer().mount(undefined, program.viewStream, report)
+          const simulate = (ref: IntentRef, value: unknown) =>
+            Effect.provideService(surface.simulate(ref, value as never), IntentRegistry, registry)
 
-      const degraded = (yield* surface.current)?._tag
-      yield* simulate(IntentRef("Recover", StaticPayload(null)), null)
-      const afterRecover = yield* surface.current
-      const recoveredTag = afterRecover?._tag
-      const recoveryOpen = afterRecover?._tag === "RecoveryOverlay" && afterRecover.open === true
-      yield* simulate(IntentRef("RecoveryAction", ComponentValueBinding()), "retry")
-      const closed = yield* surface.current
-      const closedOpen = closed?._tag === "RecoveryOverlay" && closed.open === true
+          const degraded = (yield* surface.current)?._tag
+          yield* simulate(IntentRef("Recover", StaticPayload(null)), null)
+          const afterRecover = yield* surface.current
+          const recoveredTag = afterRecover?._tag
+          const recoveryOpen = afterRecover?._tag === "RecoveryOverlay" && afterRecover.open === true
+          yield* simulate(IntentRef("RecoveryAction", ComponentValueBinding()), "retry")
+          const closed = yield* surface.current
+          const closedOpen = closed?._tag === "RecoveryOverlay" && closed.open === true
 
-      return { degraded, recoveredTag, recoveryOpen, closedOpen }
-    })))
+          return { degraded, recoveredTag, recoveryOpen, closedOpen }
+        })
+      )
+    )
 
     expect(result.degraded).toBe("StatusBanner")
     expect(result.recoveredTag).toBe("RecoveryOverlay")

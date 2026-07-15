@@ -1,5 +1,14 @@
 /** React-owned Effect Native DOM surface with an explicit whole-surface backend. */
-import { Component, StrictMode, createElement, useLayoutEffect, useSyncExternalStore, type ErrorInfo, type ReactElement, type ReactNode } from "react"
+import {
+  Component,
+  StrictMode,
+  createElement,
+  useLayoutEffect,
+  useSyncExternalStore,
+  type ErrorInfo,
+  type ReactElement,
+  type ReactNode
+} from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { Deferred, Effect, Exit, Fiber, Scope, Stream } from "effect"
 import type { IntentReporter, MountedSurface, RendererAdapter, View } from "@effect-native/core"
@@ -29,9 +38,9 @@ export type ReactDomMountedSurface = MountedSurface & {
   readonly backend: ReactDomBackend
   readonly activeReactSubscribers: () => number
 } & (
-  | { readonly backend: "react"; readonly stylesheet: DomThemeStyleSheet }
-  | { readonly backend: "compatibility"; readonly domSurface: DomMountedSurface }
-)
+    | { readonly backend: "react"; readonly stylesheet: DomThemeStyleSheet }
+    | { readonly backend: "compatibility"; readonly domSurface: DomMountedSurface }
+  )
 
 interface BoundaryProps {
   readonly children?: ReactNode
@@ -73,25 +82,24 @@ export class ReactSurfaceErrorBoundary extends Component<BoundaryProps, Boundary
 
   override render(): ReactNode {
     if (this.state.error !== undefined) {
-      return createElement("section", {
-        role: "alert",
-        "data-en-react-state": "incompatible",
-        "data-en-react-error": this.state.error.name
-      }, "This surface is not available in the React renderer yet.")
+      return createElement(
+        "section",
+        {
+          role: "alert",
+          "data-en-react-state": "incompatible",
+          "data-en-react-error": this.state.error.name
+        },
+        "This surface is not available in the React renderer yet."
+      )
     }
     return this.props.children
   }
 }
 
-const ReactLoweredView = (props: {
-  readonly view: View
-  readonly report: IntentReporter
-}): ReactElement => renderReactDomView(props.view, { report: props.report })
+const ReactLoweredView = (props: { readonly view: View; readonly report: IntentReporter }): ReactElement =>
+  renderReactDomView(props.view, { report: props.report })
 
-const ReactStatus = (props: {
-  readonly state: "loading" | "failed"
-  readonly onCommit?: () => void
-}): ReactElement => {
+const ReactStatus = (props: { readonly state: "loading" | "failed"; readonly onCommit?: () => void }): ReactElement => {
   useLayoutEffect(() => props.onCommit?.(), [props.onCommit])
   return props.state === "loading"
     ? createElement("div", { role: "status", "data-en-react-state": "loading" }, "Loading…")
@@ -113,18 +121,23 @@ const ReactViewProjection = (props: EffectNativeReactDomSurfaceProps): ReactElem
       ...(props.onCommit === undefined ? {} : { onCommit: () => props.onCommit?.(snapshot) })
     })
   }
-  return createElement(ReactSurfaceErrorBoundary, {
-    resetKey: snapshot.revision,
-    ...(props.onError === undefined ? {} : { onError: props.onError }),
-    ...(props.onCommit === undefined ? {} : {
-      onSettled: () => queueMicrotask(() => props.onCommit?.(snapshot))
-    })
-  }, createElement(ReactLoweredView, { view: snapshot.view, report: props.report }))
+  return createElement(
+    ReactSurfaceErrorBoundary,
+    {
+      resetKey: snapshot.revision,
+      ...(props.onError === undefined ? {} : { onError: props.onError }),
+      ...(props.onCommit === undefined
+        ? {}
+        : {
+            onSettled: () => queueMicrotask(() => props.onCommit?.(snapshot))
+          })
+    },
+    createElement(ReactLoweredView, { view: snapshot.view, report: props.report })
+  )
 }
 
-export const EffectNativeReactDomSurface = (
-  props: EffectNativeReactDomSurfaceProps
-): ReactElement => createElement(ReactViewProjection, props)
+export const EffectNativeReactDomSurface = (props: EffectNativeReactDomSurfaceProps): ReactElement =>
+  createElement(ReactViewProjection, props)
 
 const mountCompatibilityBackend = (
   container: Element,
@@ -132,26 +145,30 @@ const mountCompatibilityBackend = (
   report: IntentReporter,
   options: DomRendererOptions
 ): Effect.Effect<ReactDomMountedSurface, never, Scope.Scope> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const ready = yield* Deferred.make<DomMountedSurface, unknown>()
     const attached = yield* Deferred.make<void>()
     const reactRoot = yield* Effect.sync(() => createRoot(container))
     const host = options.document?.createElement("div") ?? container.ownerDocument.createElement("div")
     host.setAttribute("data-en-react-surface", "true")
     host.setAttribute("data-en-react-backend", "compatibility")
-    yield* Effect.sync(() => reactRoot.render(createElement("div", {
-      ref: (element: HTMLDivElement | null) => {
-        if (element !== null && host.parentNode === null) {
-          element.appendChild(host)
-          Effect.runFork(Deferred.succeed(attached, undefined))
-        }
-      }
-    })))
+    yield* Effect.sync(() =>
+      reactRoot.render(
+        createElement("div", {
+          ref: (element: HTMLDivElement | null) => {
+            if (element !== null && host.parentNode === null) {
+              element.appendChild(host)
+              Effect.runFork(Deferred.succeed(attached, undefined))
+            }
+          }
+        })
+      )
+    )
     yield* Deferred.await(attached)
     const backendScope = yield* Scope.make()
-    const mountFiber = Effect.runFork(Scope.provide(backendScope)(
-      makeDomRenderer(options).mount(host, viewStream, report)
-    ))
+    const mountFiber = Effect.runFork(
+      Scope.provide(backendScope)(makeDomRenderer(options).mount(host, viewStream, report))
+    )
     void Effect.runPromise(Fiber.join(mountFiber)).then(
       (surface) => Effect.runFork(Deferred.succeed(ready, surface)),
       (error) => Effect.runFork(Deferred.fail(ready, error))
@@ -182,7 +199,7 @@ const mountReactBackend = (
   report: IntentReporter,
   options: DomRendererOptions
 ): Effect.Effect<ReactDomMountedSurface, never, Scope.Scope> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const document = options.document ?? container.ownerDocument
     const viewStore = yield* makeReactViewStore(viewStream)
     const committed = yield* Deferred.make<void>()
@@ -196,22 +213,32 @@ const mountReactBackend = (
       stylesheet.dispose()
     })
     yield* Effect.addFinalizer(() => unmount)
-    yield* Effect.sync(() => reactRoot.render(createElement(StrictMode, null,
-      createElement("div", {
-        "data-effect-native-surface": "dom",
-        "data-en-react-surface": "true",
-        "data-en-react-backend": "react"
-      }, createElement(EffectNativeReactDomSurface, {
-        ...options,
-        viewStore,
-        report,
-        onCommit: (snapshot) => {
-          if (snapshot.status === "ready" || snapshot.status === "failed") {
-            Effect.runFork(Deferred.succeed(committed, undefined))
-          }
-        }
-      }))
-    )))
+    yield* Effect.sync(() =>
+      reactRoot.render(
+        createElement(
+          StrictMode,
+          null,
+          createElement(
+            "div",
+            {
+              "data-effect-native-surface": "dom",
+              "data-en-react-surface": "true",
+              "data-en-react-backend": "react"
+            },
+            createElement(EffectNativeReactDomSurface, {
+              ...options,
+              viewStore,
+              report,
+              onCommit: (snapshot) => {
+                if (snapshot.status === "ready" || snapshot.status === "failed") {
+                  Effect.runFork(Deferred.succeed(committed, undefined))
+                }
+              }
+            })
+          )
+        )
+      )
+    )
     yield* viewStore.firstCommit
     yield* Deferred.await(committed)
     return {

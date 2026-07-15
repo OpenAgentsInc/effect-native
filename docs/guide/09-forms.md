@@ -50,10 +50,7 @@ export const titleField = (form: FormState) =>
     label: "Title",
     value: formFieldValue(form, "title"),
     field: FieldBinding("guide-note", "title"),
-    onChange: IntentRef(
-      "FormFieldChanged",
-      FormFieldValueBinding(FieldBinding("guide-note", "title"))
-    ),
+    onChange: IntentRef("FormFieldChanged", FormFieldValueBinding(FieldBinding("guide-note", "title"))),
     placeholder: "Note title"
   })
 
@@ -71,6 +68,6 @@ and `submitForm(spec, form)` in handlers. Secure fields redact through
 `examples/guide-app` is a full form + list + modal app:
 
 ```sh
-bun run example:guide
-bun test ./examples/guide-app
+pnpm run example:guide
+pnpm exec vp test --run ./examples/guide-app
 ```

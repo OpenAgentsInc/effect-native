@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect } from "effect"
 import {
   IntentRef,
@@ -67,23 +67,23 @@ describe("@effect-native/gallery", () => {
   })
 
   test("gallery program mounts through the headless renderer", async () => {
-    const result = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const runtime = yield* makeGalleryRuntime()
-      const headless = yield* makeHeadlessRenderer().mount(
-        undefined,
-        runtime.program.viewStream,
-        runtime.report
+    const result = await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const runtime = yield* makeGalleryRuntime()
+          const headless = yield* makeHeadlessRenderer().mount(undefined, runtime.program.viewStream, runtime.report)
+          const initial = yield* headless.current
+          yield* runtime.registry.dispatch(
+            resolveIntentRef(IntentRef("Gallery.ComponentSelected", StaticPayload("Button")))
+          )
+          yield* Effect.yieldNow
+          return {
+            initialTag: initial?._tag,
+            active: activeStory(yield* runtime.program.currentState).component
+          }
+        })
       )
-      const initial = yield* headless.current
-      yield* runtime.registry.dispatch(resolveIntentRef(
-        IntentRef("Gallery.ComponentSelected", StaticPayload("Button"))
-      ))
-      yield* Effect.yieldNow
-      return {
-        initialTag: initial?._tag,
-        active: activeStory(yield* runtime.program.currentState).component
-      }
-    })))
+    )
 
     expect(result.initialTag).toBe("Stack")
     expect(result.active).toBe("Button")
@@ -162,32 +162,28 @@ describe("@effect-native/gallery", () => {
   })
 
   test("page selection swaps the gallery into docs mode and back", async () => {
-    const result = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const runtime = yield* makeGalleryRuntime()
-      const headless = yield* makeHeadlessRenderer().mount(
-        undefined,
-        runtime.program.viewStream,
-        runtime.report
+    const result = await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const runtime = yield* makeGalleryRuntime()
+          const headless = yield* makeHeadlessRenderer().mount(undefined, runtime.program.viewStream, runtime.report)
+          yield* runtime.registry.dispatch(resolveIntentRef(IntentRef("Gallery.PageSelected", StaticPayload("colors"))))
+          yield* Effect.yieldNow
+          const pageState = yield* runtime.program.currentState
+          const pageView = JSON.stringify(galleryView(pageState))
+          yield* runtime.registry.dispatch(
+            resolveIntentRef(IntentRef("Gallery.PageSelected", StaticPayload("not-a-real-page")))
+          )
+          yield* Effect.yieldNow
+          const afterUnknown = (yield* runtime.program.currentState).activePageId
+          yield* runtime.registry.dispatch(resolveIntentRef(IntentRef("Gallery.PageSelected", StaticPayload(""))))
+          yield* Effect.yieldNow
+          const afterBack = (yield* runtime.program.currentState).activePageId
+          const mounted = yield* headless.current
+          return { pageActive: pageState.activePageId, pageView, afterUnknown, afterBack, mountedTag: mounted?._tag }
+        })
       )
-      yield* runtime.registry.dispatch(resolveIntentRef(
-        IntentRef("Gallery.PageSelected", StaticPayload("colors"))
-      ))
-      yield* Effect.yieldNow
-      const pageState = yield* runtime.program.currentState
-      const pageView = JSON.stringify(galleryView(pageState))
-      yield* runtime.registry.dispatch(resolveIntentRef(
-        IntentRef("Gallery.PageSelected", StaticPayload("not-a-real-page"))
-      ))
-      yield* Effect.yieldNow
-      const afterUnknown = (yield* runtime.program.currentState).activePageId
-      yield* runtime.registry.dispatch(resolveIntentRef(
-        IntentRef("Gallery.PageSelected", StaticPayload(""))
-      ))
-      yield* Effect.yieldNow
-      const afterBack = (yield* runtime.program.currentState).activePageId
-      const mounted = yield* headless.current
-      return { pageActive: pageState.activePageId, pageView, afterUnknown, afterBack, mountedTag: mounted?._tag }
-    })))
+    )
 
     expect(result.pageActive).toBe("colors")
     expect(result.pageView).toContain("pages-nav")

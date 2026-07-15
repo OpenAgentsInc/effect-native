@@ -28,7 +28,7 @@ Defined in `@effect-native/core` (issue #23, catalog `effect-native/v7`):
 - **`_tag: "Host"`** — ordinary catalog node in the view tree
 - **`kind`** — member of the closed `hostKinds` registry
   (`"code-editor" | "terminal" | "canvas" | "voice-input" | "on-device-model" |
-  "media-video"` today)
+"media-video"` today)
 - **serializable props** — JSON-safe data only (no functions, no class
   instances). Drivers receive props on mount/update.
 - **`onEvent` intent** — the host emits a typed event union; the runtime
@@ -43,12 +43,12 @@ bounded prop schemas. They do **not** add new tags.
 
 ## Renderer duties
 
-| Renderer | Duty |
-|---|---|
-| DOM | Host-driver registry; stub drivers (`makeStubCodeEditorDriver`, `makeStubTerminalDriver`) and the minimal `makeMediaVideoDriver` prove the lifecycle. Apps swap in Monaco/xterm/WebGL or bind a live `MediaStream` through `onElement` with the **same** prop/event contract. |
-| React Native | Declares unsupported host kinds **loudly** (typed failure), unless a reviewed RN driver is registered. |
-| Headless | Records mount/update/unmount + events for tests — no real native widgets. |
-| Canvas package | Separate scene catalog (`@effect-native/render-canvas`); `Host(kind: "canvas")` is the catalog seam when a UI tree embeds a scene surface. |
+| Renderer       | Duty                                                                                                                                                                                                                                                                          |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| DOM            | Host-driver registry; stub drivers (`makeStubCodeEditorDriver`, `makeStubTerminalDriver`) and the minimal `makeMediaVideoDriver` prove the lifecycle. Apps swap in Monaco/xterm/WebGL or bind a live `MediaStream` through `onElement` with the **same** prop/event contract. |
+| React Native   | Declares unsupported host kinds **loudly** (typed failure), unless a reviewed RN driver is registered.                                                                                                                                                                        |
+| Headless       | Records mount/update/unmount + events for tests — no real native widgets.                                                                                                                                                                                                     |
+| Canvas package | Separate scene catalog (`@effect-native/render-canvas`); `Host(kind: "canvas")` is the catalog seam when a UI tree embeds a scene surface.                                                                                                                                    |
 
 ## Review bar (growth rule for host kinds)
 

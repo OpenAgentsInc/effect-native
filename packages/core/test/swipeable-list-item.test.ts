@@ -1,13 +1,5 @@
-import { describe, expect, test } from "bun:test"
-import {
-  CatalogVersion,
-  IntentRef,
-  StaticPayload,
-  SwipeableListItem,
-  Text,
-  decodeView,
-  encodeView
-} from "../src/index"
+import { describe, expect, test } from "vite-plus/test"
+import { CatalogVersion, IntentRef, StaticPayload, SwipeableListItem, Text, decodeView, encodeView } from "../src/index"
 
 describe("SwipeableListItem catalog v23 (#60)", () => {
   test("constructs and round-trips a swipeable row", () => {

@@ -5,4 +5,6 @@ import { writeGeneratedSiteContentJson } from "../packages/site/src/content-load
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const content = writeGeneratedSiteContentJson(root)
 
-console.log(`Generated site content (version ${content.version}, ${content.roleRows.length} role rows, ${content.phases.length} phases)`)
+console.log(
+  `Generated site content (version ${content.version}, ${content.roleRows.length} role rows, ${content.phases.length} phases)`
+)

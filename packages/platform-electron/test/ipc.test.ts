@@ -1,5 +1,6 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect, Exit, Schema } from "effect"
+import { readFile } from "node:fs/promises"
 import * as PlatformElectron from "../src/index"
 import {
   defineElectronChannel,
@@ -68,10 +69,9 @@ const makeFakeIpcPair = (senderUrl: string | null = `${rendererOrigin}/index.htm
       if (listener === undefined) {
         throw new Error(`no handler registered for ${channel}`)
       }
-      return Promise.resolve(listener(
-        { senderFrame: senderFrameUrl === null ? null : { url: senderFrameUrl } },
-        value
-      )) as Promise<ElectronIpcEnvelope>
+      return Promise.resolve(
+        listener({ senderFrame: senderFrameUrl === null ? null : { url: senderFrameUrl } }, value)
+      ) as Promise<ElectronIpcEnvelope>
     }
   }
 }
@@ -92,63 +92,76 @@ const refusalReasonOf = (exit: Exit.Exit<unknown, ElectronIpcRefusedError>) => {
     return undefined
   }
   const reason = exit.cause.reasons[0]
-  return reason !== undefined && "error" in reason
-    ? (reason.error as ElectronIpcRefusedError).reason
-    : undefined
+  return reason !== undefined && "error" in reason ? (reason.error as ElectronIpcRefusedError).reason : undefined
 }
 
 describe("typed IPC channels", () => {
   test("a well-formed request round-trips to an ok envelope through preload, main, and renderer client", async () => {
     const pair = makeFakeIpcPair()
-    const result = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      yield* registerPing(pair.ipcMain, ({ amount }) => Effect.succeed({ total: amount + 41 }))
-      const bridge = makeElectronPreloadBridge({ ipcRenderer: pair.ipcRenderer, channels })
-      const client = makeElectronRendererClient({ api: bridge, channels })
-      return yield* client.ping({ amount: 1 })
-    })))
+    const result = await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          yield* registerPing(pair.ipcMain, ({ amount }) => Effect.succeed({ total: amount + 41 }))
+          const bridge = makeElectronPreloadBridge({ ipcRenderer: pair.ipcRenderer, channels })
+          const client = makeElectronRendererClient({ api: bridge, channels })
+          return yield* client.ping({ amount: 1 })
+        })
+      )
+    )
     expect(result).toEqual({ total: 42 })
     expect(pair.invokeCount()).toBe(1)
   })
 
   test("a malformed request is refused by the preload bridge WITHOUT invoke ever firing", async () => {
     const pair = makeFakeIpcPair()
-    const envelope = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      yield* registerPing(pair.ipcMain, ({ amount }) => Effect.succeed({ total: amount }))
-      const bridge = makeElectronPreloadBridge({ ipcRenderer: pair.ipcRenderer, channels })
-      return yield* Effect.promise(() => bridge.ping({ amount: "not-a-number" }))
-    })))
+    const envelope = await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          yield* registerPing(pair.ipcMain, ({ amount }) => Effect.succeed({ total: amount }))
+          const bridge = makeElectronPreloadBridge({ ipcRenderer: pair.ipcRenderer, channels })
+          return yield* Effect.promise(() => bridge.ping({ amount: "not-a-number" }))
+        })
+      )
+    )
     expect(envelope).toEqual({ _tag: "refused", reason: "malformed-request" })
     expect(pair.invokeCount()).toBe(0)
   })
 
   test("a malformed request reaching main DIRECTLY (bypassing the preload) is refused by main's own decode", async () => {
     const pair = makeFakeIpcPair()
-    const envelope = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      yield* registerPing(pair.ipcMain, ({ amount }) => Effect.succeed({ total: amount }))
-      return yield* Effect.promise(() =>
-        pair.invokeAsMain(PingChannel.name, { amount: "garbage" }, `${rendererOrigin}/index.html`)
+    const envelope = await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          yield* registerPing(pair.ipcMain, ({ amount }) => Effect.succeed({ total: amount }))
+          return yield* Effect.promise(() =>
+            pair.invokeAsMain(PingChannel.name, { amount: "garbage" }, `${rendererOrigin}/index.html`)
+          )
+        })
       )
-    })))
+    )
     expect(envelope).toEqual({ _tag: "refused", reason: "malformed-request" })
   })
 
   test("an invalid sender frame origin is refused before the request is even decoded", async () => {
     const pair = makeFakeIpcPair()
-    const result = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      let handled = 0
-      yield* registerPing(pair.ipcMain, ({ amount }) =>
-        Effect.sync(() => {
-          handled += 1
-          return { total: amount }
-        }))
-      const wrongOrigin = yield* Effect.promise(() =>
-        pair.invokeAsMain(PingChannel.name, { amount: 1 }, "https://evil.example/inject")
+    const result = await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          let handled = 0
+          yield* registerPing(pair.ipcMain, ({ amount }) =>
+            Effect.sync(() => {
+              handled += 1
+              return { total: amount }
+            })
+          )
+          const wrongOrigin = yield* Effect.promise(() =>
+            pair.invokeAsMain(PingChannel.name, { amount: 1 }, "https://evil.example/inject")
+          )
+          const nullFrame = yield* Effect.promise(() => pair.invokeAsMain(PingChannel.name, { amount: 1 }, null))
+          return { wrongOrigin, nullFrame, handled }
+        })
       )
-      const nullFrame = yield* Effect.promise(() =>
-        pair.invokeAsMain(PingChannel.name, { amount: 1 }, null)
-      )
-      return { wrongOrigin, nullFrame, handled }
-    })))
+    )
     expect(result.wrongOrigin).toEqual({ _tag: "refused", reason: "invalid-sender" })
     expect(result.nullFrame).toEqual({ _tag: "refused", reason: "invalid-sender" })
     expect(result.handled).toBe(0)
@@ -156,63 +169,85 @@ describe("typed IPC channels", () => {
 
   test("protocol-style sender allowlist entries admit packaged file:// renderers", async () => {
     const pair = makeFakeIpcPair()
-    const envelope = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      yield* registerElectronMainHandler({
-        ipcMain: pair.ipcMain,
-        channel: PingChannel,
-        handler: ({ amount }) => Effect.succeed({ total: amount }),
-        senderPolicy: { allowedSenderOrigins: ["file:"] }
-      })
-      return yield* Effect.promise(() =>
-        pair.invokeAsMain(PingChannel.name, { amount: 7 }, "file:///Applications/App.app/renderer/index.html")
+    const envelope = await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          yield* registerElectronMainHandler({
+            ipcMain: pair.ipcMain,
+            channel: PingChannel,
+            handler: ({ amount }) => Effect.succeed({ total: amount }),
+            senderPolicy: { allowedSenderOrigins: ["file:"] }
+          })
+          return yield* Effect.promise(() =>
+            pair.invokeAsMain(PingChannel.name, { amount: 7 }, "file:///Applications/App.app/renderer/index.html")
+          )
+        })
       )
-    })))
+    )
     expect(envelope).toEqual({ _tag: "ok", value: { total: 7 } })
   })
 
   test("a failing handler Effect becomes a handler-error refusal (internals never leak)", async () => {
     const pair = makeFakeIpcPair()
-    const envelope = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      yield* registerPing(pair.ipcMain, () => Effect.fail(new Error("secret internal detail")))
-      const bridge = makeElectronPreloadBridge({ ipcRenderer: pair.ipcRenderer, channels })
-      return yield* Effect.promise(() => bridge.ping({ amount: 1 }))
-    })))
+    const envelope = await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          yield* registerPing(pair.ipcMain, () => Effect.fail(new Error("secret internal detail")))
+          const bridge = makeElectronPreloadBridge({ ipcRenderer: pair.ipcRenderer, channels })
+          return yield* Effect.promise(() => bridge.ping({ amount: 1 }))
+        })
+      )
+    )
     expect(envelope).toEqual({ _tag: "refused", reason: "handler-error" })
     expect(JSON.stringify(envelope)).not.toContain("secret internal detail")
   })
 
   test("a defecting handler Effect is also a handler-error refusal, never a thrown defect across IPC", async () => {
     const pair = makeFakeIpcPair()
-    const envelope = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      yield* registerPing(pair.ipcMain, () =>
-        Effect.sync(() => {
-          throw new Error("defect")
-        }))
-      return yield* Effect.promise(() =>
-        pair.invokeAsMain(PingChannel.name, { amount: 1 }, `${rendererOrigin}/index.html`)
+    const envelope = await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          yield* registerPing(pair.ipcMain, () =>
+            Effect.sync(() => {
+              throw new Error("defect")
+            })
+          )
+          return yield* Effect.promise(() =>
+            pair.invokeAsMain(PingChannel.name, { amount: 1 }, `${rendererOrigin}/index.html`)
+          )
+        })
       )
-    })))
+    )
     expect(envelope).toEqual({ _tag: "refused", reason: "handler-error" })
   })
 
   test("a handler response that violates the response schema is a malformed-response refusal", async () => {
     const pair = makeFakeIpcPair()
-    const envelope = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      yield* registerPing(pair.ipcMain, () =>
-        Effect.succeed("not-a-response" as unknown as { readonly total: number }))
-      return yield* Effect.promise(() =>
-        pair.invokeAsMain(PingChannel.name, { amount: 1 }, `${rendererOrigin}/index.html`)
+    const envelope = await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          yield* registerPing(pair.ipcMain, () =>
+            Effect.succeed("not-a-response" as unknown as { readonly total: number })
+          )
+          return yield* Effect.promise(() =>
+            pair.invokeAsMain(PingChannel.name, { amount: 1 }, `${rendererOrigin}/index.html`)
+          )
+        })
       )
-    })))
+    )
     expect(envelope).toEqual({ _tag: "refused", reason: "malformed-response" })
   })
 
   test("handler registration is scoped: the ipcMain handler is removed when the scope closes", async () => {
     const pair = makeFakeIpcPair()
-    await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      yield* registerPing(pair.ipcMain, ({ amount }) => Effect.succeed({ total: amount }))
-      expect(pair.handlers.size).toBe(1)
-    })))
+    await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          yield* registerPing(pair.ipcMain, ({ amount }) => Effect.succeed({ total: amount }))
+          expect(pair.handlers.size).toBe(1)
+        })
+      )
+    )
     expect(pair.handlers.size).toBe(0)
   })
 })
@@ -257,7 +292,7 @@ describe("preload bridge boundary", () => {
   })
 
   test("the package has no electron dependency at all — structural interfaces only", async () => {
-    const packageJson = await Bun.file(new URL("../package.json", import.meta.url)).json() as {
+    const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8")) as {
       readonly dependencies?: Record<string, string>
       readonly devDependencies?: Record<string, string>
       readonly peerDependencies?: Record<string, string>
@@ -305,9 +340,7 @@ describe("renderer client decode discipline", () => {
       }
     }
     const client = makeElectronRendererClient({ api, channels })
-    const exit = await Effect.runPromiseExit(
-      client.ping({ amount: "bad" } as unknown as { readonly amount: number })
-    )
+    const exit = await Effect.runPromiseExit(client.ping({ amount: "bad" } as unknown as { readonly amount: number }))
     expect(refusalReasonOf(exit)).toBe("malformed-request")
     expect(called).toBe(0)
   })

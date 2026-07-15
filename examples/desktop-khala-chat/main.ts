@@ -1,13 +1,9 @@
 import { Effect, Exit, Scope } from "effect"
 import { makeDomRenderer } from "@effect-native/render-dom"
 import { runMainDesktop } from "@effect-native/platform-desktop"
-import {
-  khalaDesktopTheme,
-  makeKhalaChatRuntime,
-  replayRecordedKhalaTurn
-} from "../khala-chat/index"
+import { khalaDesktopTheme, makeKhalaChatRuntime, replayRecordedKhalaTurn } from "../khala-chat/index"
 
-const boot = Effect.gen(function*() {
+const boot = Effect.gen(function* () {
   const root = document.getElementById("app")
   if (root === null) {
     throw new Error("Missing #app root")

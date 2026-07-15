@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect, Exit, Schema } from "effect"
 import {
   Button,
@@ -44,9 +44,12 @@ interface CounterState {
   readonly count: number
 }
 
-const Pressed = defineIntent("Pressed", Schema.Struct({
-  amount: Schema.Number
-}))
+const Pressed = defineIntent(
+  "Pressed",
+  Schema.Struct({
+    amount: Schema.Number
+  })
+)
 
 const counterView = (state: CounterState): View =>
   Stack({ direction: "column", gap: "2" }, [
@@ -80,54 +83,64 @@ const makeCounterApp = TestApp.make({
 
 describe("TestApp harness", () => {
   test("press drives the real intent pipeline and the screen re-renders", async () => {
-    await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const app = yield* makeCounterApp
+    await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const app = yield* makeCounterApp
 
-      yield* app.press({ key: "increment" })
-      yield* app.press({ text: "Increment" })
+          yield* app.press({ key: "increment" })
+          yield* app.press({ text: "Increment" })
 
-      expect(yield* app.state).toEqual({ count: 2 })
+          expect(yield* app.state).toEqual({ count: 2 })
 
-      const heading = yield* app.find({ kind: "Text", key: "count" })
-      expect(heading.content).toBe("Count: 2")
+          const heading = yield* app.find({ kind: "Text", key: "count" })
+          expect(heading.content).toBe("Count: 2")
 
-      const screens = yield* app.screens
-      expect(screens.length).toBe(3)
+          const screens = yield* app.screens
+          expect(screens.length).toBe(3)
 
-      const events = yield* app.intentEvents
-      expect(events.map((event) => event.intent.name)).toEqual(["Pressed", "Pressed"])
-      expect(events.every((event) => Exit.isSuccess(event.result))).toBe(true)
-    })))
+          const events = yield* app.intentEvents
+          expect(events.map((event) => event.intent.name)).toEqual(["Pressed", "Pressed"])
+          expect(events.every((event) => Exit.isSuccess(event.result))).toBe(true)
+        })
+      )
+    )
   })
 
   test("pressing a disabled button is a typed error and dispatches nothing", async () => {
-    await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const app = yield* makeCounterApp
+    await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const app = yield* makeCounterApp
 
-      const exit = yield* Effect.exit(app.press({ key: "reset" }))
-      if (!Exit.isFailure(exit)) {
-        throw new Error("expected press on disabled button to fail")
-      }
-      expect(yield* app.state).toEqual({ count: 0 })
-      expect((yield* app.intentEvents).length).toBe(0)
-      const error = yield* Effect.flip(app.press({ key: "reset" }))
-      expect(error).toBeInstanceOf(DisabledElementError)
-    })))
+          const exit = yield* Effect.exit(app.press({ key: "reset" }))
+          if (!Exit.isFailure(exit)) {
+            throw new Error("expected press on disabled button to fail")
+          }
+          expect(yield* app.state).toEqual({ count: 0 })
+          expect((yield* app.intentEvents).length).toBe(0)
+          const error = yield* Effect.flip(app.press({ key: "reset" }))
+          expect(error).toBeInstanceOf(DisabledElementError)
+        })
+      )
+    )
   })
 
   test("identical runs produce byte-identical screen histories", async () => {
-    const run = Effect.scoped(Effect.gen(function*() {
-      const app = yield* makeCounterApp
-      yield* app.press({ key: "increment" })
-      yield* app.press({ key: "increment" })
-      return JSON.stringify({
-        screens: yield* app.screens,
-        events: (yield* app.intentEvents).map((event) => ({
-          timestamp: event.timestamp,
-          intent: event.intent
-        }))
+    const run = Effect.scoped(
+      Effect.gen(function* () {
+        const app = yield* makeCounterApp
+        yield* app.press({ key: "increment" })
+        yield* app.press({ key: "increment" })
+        return JSON.stringify({
+          screens: yield* app.screens,
+          events: (yield* app.intentEvents).map((event) => ({
+            timestamp: event.timestamp,
+            intent: event.intent
+          }))
+        })
       })
-    }))
+    )
 
     const first = await Effect.runPromise(run)
     const second = await Effect.runPromise(run)
@@ -156,52 +169,64 @@ const makeSelectorApp = TestApp.make({
 
 describe("typed selectors", () => {
   test("find by kind, key, and text — kind-narrowed result", async () => {
-    await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const app = yield* makeSelectorApp
+    await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const app = yield* makeSelectorApp
 
-      const byKey = yield* app.find({ kind: "Button", key: "go" })
-      // Kind narrowing: `label` typechecks without casting.
-      expect(byKey.label).toBe("Go")
-      expect(byKey.variant).toBe("primary")
+          const byKey = yield* app.find({ kind: "Button", key: "go" })
+          // Kind narrowing: `label` typechecks without casting.
+          expect(byKey.label).toBe("Go")
+          expect(byKey.variant).toBe("primary")
 
-      const byText = yield* app.find({ kind: "Text", text: /card/ })
-      expect(byText.key).toBe("body")
+          const byText = yield* app.find({ kind: "Text", text: /card/ })
+          expect(byText.key).toBe("body")
 
-      const nested = yield* app.find({ text: "Inside the card" })
-      expect(nested._tag).toBe("Text")
-    })))
+          const nested = yield* app.find({ text: "Inside the card" })
+          expect(nested._tag).toBe("Text")
+        })
+      )
+    )
   })
 
   test("findAll returns matches in tree order; find on many is a typed error", async () => {
-    await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const app = yield* makeSelectorApp
+    await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const app = yield* makeSelectorApp
 
-      const buttons = yield* app.findAll({ kind: "Button" })
-      expect(buttons.map((button) => button.key)).toEqual(["go", "also-go"])
+          const buttons = yield* app.findAll({ kind: "Button" })
+          expect(buttons.map((button) => button.key)).toEqual(["go", "also-go"])
 
-      const error = yield* Effect.flip(app.find({ kind: "Button", text: "Go" }))
-      expect(error).toBeInstanceOf(AmbiguousElementError)
-      if (error._tag !== "AmbiguousElementError") {
-        throw new Error("expected AmbiguousElementError")
-      }
-      expect(error.matched).toBe(2)
-    })))
+          const error = yield* Effect.flip(app.find({ kind: "Button", text: "Go" }))
+          expect(error).toBeInstanceOf(AmbiguousElementError)
+          if (error._tag !== "AmbiguousElementError") {
+            throw new Error("expected AmbiguousElementError")
+          }
+          expect(error.matched).toBe(2)
+        })
+      )
+    )
   })
 
   test("a miss is a typed ElementNotFoundError, never undefined", async () => {
-    await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const app = yield* makeSelectorApp
+    await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const app = yield* makeSelectorApp
 
-      const error = yield* Effect.flip(app.find({ kind: "Image" }))
-      expect(error).toBeInstanceOf(ElementNotFoundError)
-      if (error._tag !== "ElementNotFoundError") {
-        throw new Error("expected ElementNotFoundError")
-      }
-      expect(error.selector).toBe("kind=Image")
+          const error = yield* Effect.flip(app.find({ kind: "Image" }))
+          expect(error).toBeInstanceOf(ElementNotFoundError)
+          if (error._tag !== "ElementNotFoundError") {
+            throw new Error("expected ElementNotFoundError")
+          }
+          expect(error.selector).toBe("kind=Image")
 
-      const none = yield* app.findAll({ key: "missing" })
-      expect(none).toEqual([])
-    })))
+          const none = yield* app.findAll({ key: "missing" })
+          expect(none).toEqual([])
+        })
+      )
+    )
   })
 })
 
@@ -276,61 +301,77 @@ const makeSignupApp = TestApp.make({
 
 describe("form interactions", () => {
   test("type routes through FormFieldChanged for a form-bound field", async () => {
-    await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const app = yield* makeSignupApp
+    await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const app = yield* makeSignupApp
 
-      yield* app.type({ key: "email" }, "ada@example.com")
+          yield* app.type({ key: "email" }, "ada@example.com")
 
-      const field = yield* app.find({ kind: "TextField", key: "email" })
-      expect(field.value).toBe("ada@example.com")
+          const field = yield* app.find({ kind: "TextField", key: "email" })
+          expect(field.value).toBe("ada@example.com")
 
-      const events = yield* app.intentEvents
-      expect(events.map((event) => event.intent.name)).toEqual(["FormFieldChanged"])
-      expect(events[0]?.intent.payload).toEqual({
-        form: "signup",
-        field: "email",
-        value: "ada@example.com"
-      })
-    })))
+          const events = yield* app.intentEvents
+          expect(events.map((event) => event.intent.name)).toEqual(["FormFieldChanged"])
+          expect(events[0]?.intent.payload).toEqual({
+            form: "signup",
+            field: "email",
+            value: "ada@example.com"
+          })
+        })
+      )
+    )
   })
 
   test("blur validates per the spec's validateOn policy", async () => {
-    await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const app = yield* makeSignupApp
+    await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const app = yield* makeSignupApp
 
-      yield* app.type({ key: "email" }, "not-an-email")
-      yield* app.blur({ key: "email" })
+          yield* app.type({ key: "email" }, "not-an-email")
+          yield* app.blur({ key: "email" })
 
-      const error = yield* app.find({ kind: "Text", key: "error" })
-      expect(error.content).toBe("Enter a valid email.")
-    })))
+          const error = yield* app.find({ kind: "Text", key: "error" })
+          expect(error.content).toBe("Enter a valid email.")
+        })
+      )
+    )
   })
 
   test("submit dispatches the field's onSubmit with its current value", async () => {
-    await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const app = yield* makeSignupApp
+    await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const app = yield* makeSignupApp
 
-      yield* app.type({ key: "email" }, "ada@example.com")
-      yield* app.submit({ key: "email" })
+          yield* app.type({ key: "email" }, "ada@example.com")
+          yield* app.submit({ key: "email" })
 
-      expect((yield* app.state).submitted).toEqual(["ada@example.com"])
-    })))
+          expect((yield* app.state).submitted).toEqual(["ada@example.com"])
+        })
+      )
+    )
   })
 
   test("type on a field with neither form binding nor onChange is a typed error", async () => {
-    await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const app = yield* TestApp.make({
-        initialState: {},
-        render: () => TextField({ key: "static", value: "read-only" })
-      })
+    await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const app = yield* TestApp.make({
+            initialState: {},
+            render: () => TextField({ key: "static", value: "read-only" })
+          })
 
-      const error = yield* Effect.flip(app.type({ key: "static" }, "nope"))
-      expect(error).toBeInstanceOf(MissingIntentError)
-      if (error._tag !== "MissingIntentError") {
-        throw new Error("expected MissingIntentError")
-      }
-      expect(error.intent).toBe("onChange")
-    })))
+          const error = yield* Effect.flip(app.type({ key: "static" }, "nope"))
+          expect(error).toBeInstanceOf(MissingIntentError)
+          if (error._tag !== "MissingIntentError") {
+            throw new Error("expected MissingIntentError")
+          }
+          expect(error.intent).toBe("onChange")
+        })
+      )
+    )
   })
 })
 
@@ -348,24 +389,28 @@ const navView = (state: NavState): View =>
     Link({ key: "docs", destination: { kind: "path", path: "/docs" } }, [
       Text({ content: "Read the docs", variant: "body" })
     ]),
-    Modal({
-      key: "confirm",
-      title: "Confirm",
-      open: state.modalOpen,
-      dismissable: true,
-      size: "md",
-      onDismiss: IntentRef("Dismissed")
-    }, [
-      Text({ content: "Are you sure?", variant: "body" })
-    ]),
-    Modal({
-      key: "forced",
-      title: "No escape",
-      open: true,
-      dismissable: false,
-      size: "md",
-      onDismiss: IntentRef("Dismissed")
-    }, [])
+    Modal(
+      {
+        key: "confirm",
+        title: "Confirm",
+        open: state.modalOpen,
+        dismissable: true,
+        size: "md",
+        onDismiss: IntentRef("Dismissed")
+      },
+      [Text({ content: "Are you sure?", variant: "body" })]
+    ),
+    Modal(
+      {
+        key: "forced",
+        title: "No escape",
+        open: true,
+        dismissable: false,
+        size: "md",
+        onDismiss: IntentRef("Dismissed")
+      },
+      []
+    )
   ])
 
 const Dismissed = defineIntent("Dismissed", Schema.Null)
@@ -381,32 +426,39 @@ const makeNavApp = TestApp.make({
           ...state,
           destinations: [...state.destinations, destination]
         })),
-      Dismissed: () =>
-        program.updateState((state) => ({ ...state, modalOpen: false }))
+      Dismissed: () => program.updateState((state) => ({ ...state, modalOpen: false }))
     }
   })
 })
 
 describe("navigation and overlays", () => {
   test("follow dispatches the typed Navigate intent for the link destination", async () => {
-    await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const app = yield* makeNavApp
+    await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const app = yield* makeNavApp
 
-      yield* app.follow({ text: "Read the docs" })
+          yield* app.follow({ text: "Read the docs" })
 
-      expect((yield* app.state).destinations).toEqual([{ kind: "path", path: "/docs" }])
-    })))
+          expect((yield* app.state).destinations).toEqual([{ kind: "path", path: "/docs" }])
+        })
+      )
+    )
   })
 
   test("dismiss drives onDismiss; non-dismissable overlays are a typed error", async () => {
-    await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const app = yield* makeNavApp
+    await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const app = yield* makeNavApp
 
-      yield* app.dismiss({ key: "confirm" })
-      expect((yield* app.state).modalOpen).toBe(false)
+          yield* app.dismiss({ key: "confirm" })
+          expect((yield* app.state).modalOpen).toBe(false)
 
-      const error = yield* Effect.flip(app.dismiss({ key: "forced" }))
-      expect(error).toBeInstanceOf(NotDismissableError)
-    })))
+          const error = yield* Effect.flip(app.dismiss({ key: "forced" }))
+          expect(error).toBeInstanceOf(NotDismissableError)
+        })
+      )
+    )
   })
 })

@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, test } from "bun:test"
+import { afterAll, beforeAll, describe, expect, test } from "vite-plus/test"
 import { mkdir, rm } from "node:fs/promises"
 import { Effect } from "effect"
 import { Button, IntentRef, Stack, StaticPayload, Text } from "@effect-native/core"
@@ -35,7 +35,7 @@ const changedView = Stack({ direction: "column", gap: "2" }, [
 const target: VisualTarget = { view, viewport: { width: 390, height: 844 }, label: "welcome" }
 const changedTarget: VisualTarget = { ...target, view: changedView }
 
-const baselineDir = `${import.meta.dir}/__baselines__/tmp-${Date.now()}`
+const baselineDir = `${import.meta.dirname}/__baselines__/tmp-${Date.now()}`
 
 beforeAll(async () => {
   await mkdir(baselineDir, { recursive: true })

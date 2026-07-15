@@ -259,9 +259,7 @@ export const JsonPayloadSchema = Schema.Json
 export type JsonPayload = Schema.Schema.Type<typeof JsonPayloadSchema>
 
 export const BindingSchema = Schema.TaggedStruct("Binding", {
-  path: Schema.Array(Schema.NonEmptyString).check(
-    Schema.isMinLength(1, { title: "NonEmptyBindingPath" })
-  )
+  path: Schema.Array(Schema.NonEmptyString).check(Schema.isMinLength(1, { title: "NonEmptyBindingPath" }))
 })
 export type Binding = Schema.Schema.Type<typeof BindingSchema>
 export type Bound<T> = T | Binding
@@ -311,8 +309,7 @@ export const ComponentValueBinding = (path?: string): ComponentValueBinding =>
     ? ComponentValueBindingSchema.make({ _tag: "ComponentValueBinding" })
     : ComponentValueBindingSchema.make({ _tag: "ComponentValueBinding", path })
 
-export const FieldBinding = (form: string, field: string): FieldBinding =>
-  FieldBindingSchema.make({ form, field })
+export const FieldBinding = (form: string, field: string): FieldBinding => FieldBindingSchema.make({ form, field })
 
 export const FormFieldValueBinding = (binding: FieldBinding): FormFieldValueBinding =>
   FormFieldValueBindingSchema.make({ _tag: "FormFieldValueBinding", ...binding })
@@ -325,11 +322,10 @@ export interface Intent<Name extends string = string, Payload = JsonPayload> {
   readonly payload: Payload
 }
 
-export const IntentSchema: Schema.Codec<Intent<string, JsonPayload>, Intent<string, JsonPayload>> =
-  Schema.Struct({
-    name: Schema.NonEmptyString,
-    payload: JsonPayloadSchema
-  })
+export const IntentSchema: Schema.Codec<Intent<string, JsonPayload>, Intent<string, JsonPayload>> = Schema.Struct({
+  name: Schema.NonEmptyString,
+  payload: JsonPayloadSchema
+})
 
 export const makeIntent = <const Name extends string, Payload extends JsonPayload>(
   name: Name,
@@ -339,10 +335,7 @@ export const makeIntent = <const Name extends string, Payload extends JsonPayloa
 export const encodeIntent = Schema.encodeSync(IntentSchema)
 export const decodeIntent = Schema.decodeUnknownSync(IntentSchema)
 
-export const resolveIntentRef = (
-  ref: IntentRef,
-  componentValue: JsonPayload = null
-): Intent<string, JsonPayload> => {
+export const resolveIntentRef = (ref: IntentRef, componentValue: JsonPayload = null): Intent<string, JsonPayload> => {
   if (ref.payload === undefined) {
     return makeIntent(ref.name, null)
   }
@@ -370,10 +363,7 @@ export interface IntentDefinition<
   readonly payloadSchema: PayloadSchema
 }
 
-export const defineIntent = <
-  const Name extends string,
-  const S extends Schema.ConstraintDecoder<any, never>
->(
+export const defineIntent = <const Name extends string, const S extends Schema.ConstraintDecoder<any, never>>(
   name: Name,
   payloadSchema: S
 ): { readonly name: Name; readonly payloadSchema: S } => ({ name, payloadSchema })
@@ -391,12 +381,9 @@ export type IntentHandlers<Definitions extends ReadonlyArray<IntentDefinition>> 
   readonly [D in Definitions[number] as D["name"]]: IntentHandler<D>
 }
 
-export class UnknownIntentError extends Schema.TaggedErrorClass<UnknownIntentError>()(
-  "UnknownIntentError",
-  {
-    name: Schema.String
-  }
-) {}
+export class UnknownIntentError extends Schema.TaggedErrorClass<UnknownIntentError>()("UnknownIntentError", {
+  name: Schema.String
+}) {}
 
 export class IntentPayloadDecodeError extends Schema.TaggedErrorClass<IntentPayloadDecodeError>()(
   "IntentPayloadDecodeError",
@@ -406,13 +393,10 @@ export class IntentPayloadDecodeError extends Schema.TaggedErrorClass<IntentPayl
   }
 ) {}
 
-export class IntentHandlerError extends Schema.TaggedErrorClass<IntentHandlerError>()(
-  "IntentHandlerError",
-  {
-    name: Schema.String,
-    message: Schema.String
-  }
-) {}
+export class IntentHandlerError extends Schema.TaggedErrorClass<IntentHandlerError>()("IntentHandlerError", {
+  name: Schema.String,
+  message: Schema.String
+}) {}
 
 export type IntentError = UnknownIntentError | IntentPayloadDecodeError | IntentHandlerError
 
@@ -480,11 +464,9 @@ const isIntentError = (value: unknown): value is IntentError =>
   typeof value === "object" &&
   value !== null &&
   "_tag" in value &&
-  (
-    value._tag === "UnknownIntentError" ||
+  (value._tag === "UnknownIntentError" ||
     value._tag === "IntentPayloadDecodeError" ||
-    value._tag === "IntentHandlerError"
-  )
+    value._tag === "IntentHandlerError")
 
 export const serializeIntentEvent = (event: IntentEvent): SerializableIntentEvent => {
   if (Exit.isSuccess(event.result)) {
@@ -501,13 +483,14 @@ export const serializeIntentEvent = (event: IntentEvent): SerializableIntentEven
     intent: event.intent,
     result: {
       _tag: "Failure",
-      error: Option.isSome(error) && isIntentError(error.value)
-        ? serializeIntentError(error.value)
-        : {
-            _tag: "IntentHandlerError",
-            name: event.intent.name,
-            message: String(event.result.cause)
-          }
+      error:
+        Option.isSome(error) && isIntentError(error.value)
+          ? serializeIntentError(error.value)
+          : {
+              _tag: "IntentHandlerError",
+              name: event.intent.name,
+              message: String(event.result.cause)
+            }
     }
   })
 }
@@ -561,7 +544,7 @@ export const makeIntentRegistry = <const Definitions extends ReadonlyArray<Inten
   handlers: IntentHandlers<Definitions>,
   options: IntentRegistryOptions = {}
 ): Effect.Effect<IntentRegistry> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const eventsRef = yield* Ref.make<ReadonlyArray<IntentEvent>>([])
     const eventsPubSub = yield* PubSub.unbounded<IntentEvent>({ replay: 1024 })
     const now = options.now ?? Date.now
@@ -572,7 +555,7 @@ export const makeIntentRegistry = <const Definitions extends ReadonlyArray<Inten
     )
 
     const appendEvent = (event: IntentEvent) =>
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         yield* Ref.update(eventsRef, (events) => [...events, event])
         yield* PubSub.publish(eventsPubSub, event)
         if (devtoolsSink !== undefined) {
@@ -585,14 +568,14 @@ export const makeIntentRegistry = <const Definitions extends ReadonlyArray<Inten
       })
 
     const failWith = (intent: Intent<string, JsonPayload>, error: IntentError) =>
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const result = Exit.fail(error)
         yield* appendEvent({ timestamp: now(), intent: redactIntent(intent), result })
         return yield* Effect.fail(error)
       })
 
     const dispatch = (intent: Intent<string, JsonPayload>): Effect.Effect<void, IntentError> =>
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const definition = definitionsByName.get(intent.name)
         if (definition === undefined) {
           return yield* failWith(intent, new UnknownIntentError({ name: intent.name }))
@@ -650,32 +633,28 @@ export const makeIntentRegistryLayer = <const Definitions extends ReadonlyArray<
 ) => Layer.effect(IntentRegistry, makeIntentRegistry(definitions, handlers, options))
 
 export const dispatchIntent = (intent: Intent<string, JsonPayload>): Effect.Effect<void, IntentError, IntentRegistry> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const registry = yield* IntentRegistry
     yield* registry.dispatch(intent)
   })
 
-export const getIntentEvents: Effect.Effect<ReadonlyArray<IntentEvent>, never, IntentRegistry> =
-  Effect.gen(function*() {
+export const getIntentEvents: Effect.Effect<ReadonlyArray<IntentEvent>, never, IntentRegistry> = Effect.gen(
+  function* () {
     const registry = yield* IntentRegistry
     return yield* registry.events
-  })
+  }
+)
 
-export const getIntentEventStream: Effect.Effect<Stream.Stream<IntentEvent>, never, IntentRegistry> =
-  Effect.gen(function*() {
+export const getIntentEventStream: Effect.Effect<Stream.Stream<IntentEvent>, never, IntentRegistry> = Effect.gen(
+  function* () {
     const registry = yield* IntentRegistry
     return registry.stream
-  })
+  }
+)
 
 export const StackDirectionSchema = Schema.Literals(["row", "column"] as const)
 export const StackAlignSchema = Schema.Literals(["start", "center", "end", "stretch"] as const)
-export const StackJustifySchema = Schema.Literals([
-  "start",
-  "center",
-  "end",
-  "between",
-  "around"
-] as const)
+export const StackJustifySchema = Schema.Literals(["start", "center", "end", "between", "around"] as const)
 export const TextWeightSchema = Schema.Literals(["regular", "medium", "semibold", "bold"] as const)
 export const ButtonVariantSchema = Schema.Literals(["primary", "secondary", "ghost"] as const)
 export const ImageFitSchema = Schema.Literals(["contain", "cover", "fill"] as const)
@@ -762,21 +741,16 @@ export const navigationIntentDefinitions = [Navigate] as const
 export const makeNavigationIntentHandlers = (
   handler: NavigationHandler
 ): IntentHandlers<typeof navigationIntentDefinitions> => ({
-  Navigate: (destination) =>
-    handler.navigate(destination)
+  Navigate: (destination) => handler.navigate(destination)
 })
 export const makeNavigateIntent = (destination: NavigationDestination): IntentRef =>
   IntentRef("Navigate", StaticPayload(destination))
 export const makeNavigationIntentRegistryLayer = (options?: IntentRegistryOptions) =>
   Layer.effect(
     IntentRegistry,
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const handler = yield* NavigationHandler
-      return yield* makeIntentRegistry(
-        navigationIntentDefinitions,
-        makeNavigationIntentHandlers(handler),
-        options
-      )
+      return yield* makeIntentRegistry(navigationIntentDefinitions, makeNavigationIntentHandlers(handler), options)
     })
   )
 
@@ -851,12 +825,13 @@ const fieldState = (
     readonly error?: string | undefined
     readonly secure?: boolean | undefined
   }
-): FormFieldState => FormFieldStateSchema.make({
-  value,
-  touched: input.touched,
-  ...(input.error === undefined ? {} : { error: input.error }),
-  ...(input.secure === undefined ? {} : { secure: input.secure })
-})
+): FormFieldState =>
+  FormFieldStateSchema.make({
+    value,
+    touched: input.touched,
+    ...(input.error === undefined ? {} : { error: input.error }),
+    ...(input.secure === undefined ? {} : { secure: input.secure })
+  })
 
 const findFormFieldSpec = (spec: FormSpec, field: string): FormFieldSpec => {
   const found = spec.fields.find((candidate) => candidate.name === field)
@@ -893,16 +868,19 @@ const validateFieldState = (
   }
 }
 
-export const makeFormState = (spec: FormSpec): FormState => FormStateSchema.make({
-  id: spec.id,
-  fields: Object.fromEntries(spec.fields.map((field) => [
-    field.name,
-    fieldState(field.initialValue, {
-      touched: false,
-      secure: field.secure
-    })
-  ]))
-})
+export const makeFormState = (spec: FormSpec): FormState =>
+  FormStateSchema.make({
+    id: spec.id,
+    fields: Object.fromEntries(
+      spec.fields.map((field) => [
+        field.name,
+        fieldState(field.initialValue, {
+          touched: false,
+          secure: field.secure
+        })
+      ])
+    )
+  })
 
 const shouldValidateField = (field: FormFieldSpec, trigger: ValidateOn): boolean =>
   (field.validateOn ?? "submit") === trigger
@@ -914,10 +892,12 @@ const updateFormField = (
   f: (field: FormFieldSpec, state: FormFieldState) => FormFieldState
 ): FormState => {
   const fieldSpec = findFormFieldSpec(spec, field)
-  const current = form.fields[field] ?? fieldState(fieldSpec.initialValue, {
-    touched: false,
-    secure: fieldSpec.secure
-  })
+  const current =
+    form.fields[field] ??
+    fieldState(fieldSpec.initialValue, {
+      touched: false,
+      secure: fieldSpec.secure
+    })
   const updated = f(fieldSpec, current)
   return FormStateSchema.make({
     id: form.id,
@@ -929,12 +909,7 @@ const updateFormField = (
   })
 }
 
-export const setFormFieldValue = (
-  spec: FormSpec,
-  form: FormState,
-  field: string,
-  value: JsonPayload
-): FormState =>
+export const setFormFieldValue = (spec: FormSpec, form: FormState, field: string, value: JsonPayload): FormState =>
   updateFormField(spec, form, field, (fieldSpec, current) => {
     const next = fieldState(value, {
       touched: true,
@@ -943,11 +918,7 @@ export const setFormFieldValue = (
     return shouldValidateField(fieldSpec, "change") ? validateFieldState(fieldSpec, next).state : next
   })
 
-export const blurFormField = (
-  spec: FormSpec,
-  form: FormState,
-  field: string
-): FormState =>
+export const blurFormField = (spec: FormSpec, form: FormState, field: string): FormState =>
   updateFormField(spec, form, field, (fieldSpec, current) => {
     const next = fieldState(current.value, {
       touched: true,
@@ -969,23 +940,25 @@ export type FormSubmitResult<Spec extends FormSpec = FormSpec> =
       readonly firstInvalid?: string
     }
 
-export const submitForm = <Spec extends FormSpec>(
-  spec: Spec,
-  form: FormState
-): FormSubmitResult<Spec> => {
+export const submitForm = <Spec extends FormSpec>(spec: Spec, form: FormState): FormSubmitResult<Spec> => {
   const fields: Record<string, FormFieldState> = { ...form.fields }
   const value: Record<string, JsonPayload> = {}
   let firstInvalid: string | undefined
 
   for (const field of spec.fields) {
-    const current = fields[field.name] ?? fieldState(field.initialValue, {
-      touched: false,
-      secure: field.secure
-    })
-    const checked = validateFieldState(field, fieldState(current.value, {
-      touched: true,
-      secure: current.secure
-    }))
+    const current =
+      fields[field.name] ??
+      fieldState(field.initialValue, {
+        touched: false,
+        secure: field.secure
+      })
+    const checked = validateFieldState(
+      field,
+      fieldState(current.value, {
+        touched: true,
+        secure: current.secure
+      })
+    )
     fields[field.name] = checked.state
     if (checked.value === undefined) {
       firstInvalid ??= field.name
@@ -1016,18 +989,13 @@ export const formFieldValue = (form: FormState, field: string): string => {
   return typeof value === "string" ? value : value === undefined || value === null ? "" : String(value)
 }
 
-export const formFieldError = (form: FormState, field: string): string =>
-  form.fields[field]?.error ?? ""
+export const formFieldError = (form: FormState, field: string): string => form.fields[field]?.error ?? ""
 
-export const formFieldFocused = (form: FormState, field: string): boolean =>
-  form.focusedField === field
+export const formFieldFocused = (form: FormState, field: string): boolean => form.focusedField === field
 
 export const redactedValue = "[redacted]" as const
 
-const redactPayloadFields = (
-  spec: FormSpec,
-  payload: JsonPayload
-): JsonPayload => {
+const redactPayloadFields = (spec: FormSpec, payload: JsonPayload): JsonPayload => {
   if (typeof payload !== "object" || payload === null || Array.isArray(payload)) {
     return payload
   }
@@ -1041,12 +1009,7 @@ const redactPayloadFields = (
       next[field] = redactedValue
     }
   }
-  if (
-    next.form === spec.id &&
-    typeof next.field === "string" &&
-    secure.has(next.field) &&
-    "value" in next
-  ) {
+  if (next.form === spec.id && typeof next.field === "string" && secure.has(next.field) && "value" in next) {
     next.value = redactedValue
   }
   return next
@@ -1075,17 +1038,20 @@ export const makeFormIntentRedactor = (
   }
 }
 
-export const redactFormState = (form: FormState): FormState => FormStateSchema.make({
-  id: form.id,
-  fields: Object.fromEntries(Object.entries(form.fields).map(([field, state]) => [
-    field,
-    {
-      ...state,
-      value: state.secure === true ? redactedValue : state.value
-    }
-  ])),
-  ...(form.focusedField === undefined ? {} : { focusedField: form.focusedField })
-})
+export const redactFormState = (form: FormState): FormState =>
+  FormStateSchema.make({
+    id: form.id,
+    fields: Object.fromEntries(
+      Object.entries(form.fields).map(([field, state]) => [
+        field,
+        {
+          ...state,
+          value: state.secure === true ? redactedValue : state.value
+        }
+      ])
+    ),
+    ...(form.focusedField === undefined ? {} : { focusedField: form.focusedField })
+  })
 
 export const NonNegativeNumberSchema = Schema.Number.check(
   Schema.isFinite({ title: "FiniteNumber" }),
@@ -1124,14 +1090,12 @@ export const deriveActiveBreakpoint = (
   return active
 }
 
-export const makeViewport = (
-  input: ViewportInput = defaultViewportInput,
-  theme: Theme = defaultTheme
-): Viewport => ViewportSchema.make({
-  width: input.width,
-  height: input.height,
-  breakpoint: deriveActiveBreakpoint(input.width, theme.breakpoint)
-})
+export const makeViewport = (input: ViewportInput = defaultViewportInput, theme: Theme = defaultTheme): Viewport =>
+  ViewportSchema.make({
+    width: input.width,
+    height: input.height,
+    breakpoint: deriveActiveBreakpoint(input.width, theme.breakpoint)
+  })
 
 export interface ViewportService {
   readonly current: Effect.Effect<Viewport>
@@ -1145,7 +1109,7 @@ export const makeViewportService = (
   initial: ViewportInput = defaultViewportInput,
   options: { readonly theme?: Theme } = {}
 ): Effect.Effect<ViewportService> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const theme = options.theme ?? defaultTheme
     const ref = yield* SubscriptionRef.make(makeViewport(initial, theme))
 
@@ -1188,7 +1152,7 @@ export const MotionPreferenceService = Context.Service<MotionPreferenceService>(
 export const makeMotionPreferenceService = (
   initial: MotionPreferenceInput = defaultMotionPreferenceInput
 ): Effect.Effect<MotionPreferenceService> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const ref = yield* SubscriptionRef.make(initial)
 
     return {
@@ -1198,9 +1162,8 @@ export const makeMotionPreferenceService = (
     }
   })
 
-export const makeMotionPreferenceServiceLayer = (
-  initial: MotionPreferenceInput = defaultMotionPreferenceInput
-) => Layer.effect(MotionPreferenceService, makeMotionPreferenceService(initial))
+export const makeMotionPreferenceServiceLayer = (initial: MotionPreferenceInput = defaultMotionPreferenceInput) =>
+  Layer.effect(MotionPreferenceService, makeMotionPreferenceService(initial))
 
 export const OpacitySchema = Schema.Number.check(
   Schema.isFinite({ title: "FiniteNumber" }),
@@ -1924,14 +1887,9 @@ const activeStates = (state: StyleResolution["state"]): ReadonlySet<StateVariant
 }
 
 const isResponsiveBreakpoints = <T>(value: ResponsiveValue<T>): value is ResponsiveBreakpoints<T> =>
-  typeof value === "object" &&
-  value !== null &&
-  "base" in value
+  typeof value === "object" && value !== null && "base" in value
 
-export const resolveResponsiveValue = <T>(
-  value: ResponsiveValue<T>,
-  viewport?: Viewport
-): T => {
+export const resolveResponsiveValue = <T>(value: ResponsiveValue<T>, viewport?: Viewport): T => {
   if (!isResponsiveBreakpoints(value)) {
     return value
   }
@@ -2830,7 +2788,11 @@ export type MarkdownInline =
   | { readonly kind: "link"; readonly href: string; readonly children: ReadonlyArray<MarkdownInline> }
 
 export type MarkdownBlock =
-  | { readonly kind: "heading"; readonly level: 1 | 2 | 3 | 4 | 5 | 6; readonly children: ReadonlyArray<MarkdownInline> }
+  | {
+      readonly kind: "heading"
+      readonly level: 1 | 2 | 3 | 4 | 5 | 6
+      readonly children: ReadonlyArray<MarkdownInline>
+    }
   | { readonly kind: "paragraph"; readonly children: ReadonlyArray<MarkdownInline> }
   | { readonly kind: "list"; readonly ordered: boolean; readonly items: ReadonlyArray<ReadonlyArray<MarkdownBlock>> }
   | { readonly kind: "blockquote"; readonly children: ReadonlyArray<MarkdownBlock> }
@@ -3048,7 +3010,6 @@ export interface TranscriptView extends NodeBase {
   readonly style?: ListStyle
 }
 
-
 // ---------------------------------------------------------------------------
 // Marketing catalog (issues #46–#51, v20) — openagents.com landing demand
 // ---------------------------------------------------------------------------
@@ -3237,7 +3198,6 @@ export interface PagerView extends NodeBase {
   readonly style?: CardStyle
 }
 
-
 // Swipe-action list row (issue #60) — composition target for List renderItem.
 export interface SwipeableListAction {
   readonly id: string
@@ -3256,7 +3216,6 @@ export interface SwipeableListItemView extends NodeBase {
   readonly onAction: IntentRef
   readonly style?: CardStyle
 }
-
 
 // Mobile surface treatments (issue #63) — arcade visual identity as catalog data.
 export type GradientDirection = "vertical" | "horizontal" | "radial"
@@ -3650,7 +3609,8 @@ const childViewEntries = (
         row.cells.map((cell, cellIndex) => ({
           path: ["rows", rowIndex, "cells", cellIndex],
           view: cell
-        })))
+        }))
+      )
     case "SplitPane":
       return view.panes.map((pane, index) => ({ path: ["panes", index, "content"], view: pane.content }))
     case "Workbench":
@@ -3677,7 +3637,8 @@ const childViewEntries = (
         message.body.map((child, bodyIndex) => ({
           path: ["messages", messageIndex, "body", bodyIndex],
           view: child
-        })))
+        }))
+      )
     case "Section":
     case "Glow":
     case "MockupFrame":
@@ -3757,12 +3718,7 @@ const findOverlayStackIssue = (
 
   const children = childViewEntries(view)
   for (const child of children) {
-    const issue = findOverlayStackIssue(
-      child.view,
-      [...path, ...child.path],
-      insideOverlay || isOverlay,
-      counts
-    )
+    const issue = findOverlayStackIssue(child.view, [...path, ...child.path], insideOverlay || isOverlay, counts)
     if (issue !== undefined) {
       return issue
     }
@@ -3778,9 +3734,7 @@ const ViewSelf = Schema.suspend((): Schema.Codec<View, View> => ViewSchema)
 const KeyedViewArraySchema = Schema.Array(ViewSelf).check(
   Schema.makeFilter<ReadonlyArray<View>>((items) => {
     const unkeyedIndex = items.findIndex((item) => item.key === undefined)
-    return unkeyedIndex === -1
-      ? undefined
-      : { path: [unkeyedIndex, "key"], issue: "List items require explicit keys" }
+    return unkeyedIndex === -1 ? undefined : { path: [unkeyedIndex, "key"], issue: "List items require explicit keys" }
   })
 ) as Schema.Codec<ReadonlyArray<KeyedView>, ReadonlyArray<KeyedView>>
 
@@ -3940,9 +3894,11 @@ const legacyToneToMatrixTone: Record<Tone, ToneToken> = {
  * renderers must use `isLegacy` (not a `=== "ghost"` check) to decide whether
  * to draw the pre-#79 legacy look or the matrix cell.
  */
-export const resolveBadgeAppearance = (
-  view: { readonly tone?: Tone; readonly variant?: BadgeVariantToken; readonly size?: ControlToken }
-): ResolvedBadgeAppearance => ({
+export const resolveBadgeAppearance = (view: {
+  readonly tone?: Tone
+  readonly variant?: BadgeVariantToken
+  readonly size?: ControlToken
+}): ResolvedBadgeAppearance => ({
   tone: legacyToneToMatrixTone[view.tone ?? "neutral"],
   variant: view.variant ?? "ghost",
   size: view.size ?? "md",
@@ -3967,9 +3923,11 @@ export interface ResolvedTextFieldAppearance {
  * tone drives the border/ring so invalid fields read as invalid even without
  * touching `style`.
  */
-export const resolveTextFieldAppearance = (
-  view: { readonly variant?: TextFieldVariantToken; readonly size?: ControlToken; readonly invalid?: boolean }
-): ResolvedTextFieldAppearance => ({
+export const resolveTextFieldAppearance = (view: {
+  readonly variant?: TextFieldVariantToken
+  readonly size?: ControlToken
+  readonly invalid?: boolean
+}): ResolvedTextFieldAppearance => ({
   tone: view.invalid === true ? "danger" : "secondary",
   variant: view.variant ?? "outline",
   size: view.size ?? "md",
@@ -3994,14 +3952,12 @@ export interface ResolvedSelectAppearance {
  * "solid" variant (a trigger is never a call-to-action) — the public
  * `SelectVariantToken` is `soft | outline | ghost` only.
  */
-export const resolveSelectAppearance = (
-  view: {
-    readonly variant?: SelectVariantToken
-    readonly size?: ControlToken
-    readonly pill?: boolean
-    readonly dropdownIcon?: IconName
-  }
-): ResolvedSelectAppearance => ({
+export const resolveSelectAppearance = (view: {
+  readonly variant?: SelectVariantToken
+  readonly size?: ControlToken
+  readonly pill?: boolean
+  readonly dropdownIcon?: IconName
+}): ResolvedSelectAppearance => ({
   tone: "secondary",
   variant: view.variant ?? "outline",
   size: view.size ?? "md",
@@ -4033,9 +3989,11 @@ export interface ResolvedAlertAppearance {
  * catalog version ever shipped it), so there is no legacy-omitted-look to
  * preserve — every field always resolves to a concrete default.
  */
-export const resolveAlertAppearance = (
-  view: { readonly tone?: ToneToken; readonly variant?: ToneVariantToken; readonly icon?: IconName }
-): ResolvedAlertAppearance => {
+export const resolveAlertAppearance = (view: {
+  readonly tone?: ToneToken
+  readonly variant?: ToneVariantToken
+  readonly icon?: IconName
+}): ResolvedAlertAppearance => {
   const tone = view.tone ?? "info"
   return {
     tone,
@@ -4072,20 +4030,24 @@ const BaseTextFieldFields = {
   style: TextFieldStyleSchema.pipe(Schema.optionalKey)
 } as const
 
-export const SecureTextFieldSchema: Schema.Codec<SecureTextFieldView, SecureTextFieldView> =
-  Schema.TaggedStruct("TextField", {
+export const SecureTextFieldSchema: Schema.Codec<SecureTextFieldView, SecureTextFieldView> = Schema.TaggedStruct(
+  "TextField",
+  {
     ...BaseTextFieldFields,
     secure: Schema.Literal(true),
     multiline: Schema.Literal(false).pipe(Schema.optionalKey)
-  })
+  }
+)
 
-export const PlainTextFieldSchema: Schema.Codec<PlainTextFieldView, PlainTextFieldView> =
-  Schema.TaggedStruct("TextField", {
+export const PlainTextFieldSchema: Schema.Codec<PlainTextFieldView, PlainTextFieldView> = Schema.TaggedStruct(
+  "TextField",
+  {
     ...BaseTextFieldFields,
     secure: Schema.Literal(false).pipe(Schema.optionalKey),
     multiline: Schema.Boolean.pipe(Schema.optionalKey),
     autoResize: Schema.Boolean.pipe(Schema.optionalKey)
-  })
+  }
+)
 
 export const TextFieldSchema: Schema.Codec<TextFieldView, TextFieldView> = Schema.Union([
   SecureTextFieldSchema,
@@ -4103,23 +4065,21 @@ export const ListSchema: Schema.Codec<ListView, ListView> = Schema.TaggedStruct(
   items: KeyedViewArraySchema
 }).check(VirtualizationFilter)
 
-export const SectionListSectionSchema: Schema.Codec<SectionListSection, SectionListSection> =
-  Schema.Struct({
-    key: NodeKeySchema,
-    header: ViewSelf,
-    items: KeyedViewArraySchema
-  })
+export const SectionListSectionSchema: Schema.Codec<SectionListSection, SectionListSection> = Schema.Struct({
+  key: NodeKeySchema,
+  header: ViewSelf,
+  items: KeyedViewArraySchema
+})
 
-export const SectionListSchema: Schema.Codec<SectionListView, SectionListView> =
-  Schema.TaggedStruct("SectionList", {
-    ...CommonFields,
-    style: ListStyleSchema.pipe(Schema.optionalKey),
-    ...VirtualizationFields,
-    stickyHeaders: Schema.Boolean.pipe(Schema.optionalKey),
-    refreshing: Schema.Boolean.pipe(Schema.optionalKey),
-    onRefresh: IntentRefSchema.pipe(Schema.optionalKey),
-    sections: Schema.Array(SectionListSectionSchema)
-  }).check(VirtualizationFilter)
+export const SectionListSchema: Schema.Codec<SectionListView, SectionListView> = Schema.TaggedStruct("SectionList", {
+  ...CommonFields,
+  style: ListStyleSchema.pipe(Schema.optionalKey),
+  ...VirtualizationFields,
+  stickyHeaders: Schema.Boolean.pipe(Schema.optionalKey),
+  refreshing: Schema.Boolean.pipe(Schema.optionalKey),
+  onRefresh: IntentRefSchema.pipe(Schema.optionalKey),
+  sections: Schema.Array(SectionListSectionSchema)
+}).check(VirtualizationFilter)
 
 export const CardSchema: Schema.Codec<CardView, CardView> = Schema.TaggedStruct("Card", {
   ...CommonFields,
@@ -4129,25 +4089,20 @@ export const CardSchema: Schema.Codec<CardView, CardView> = Schema.TaggedStruct(
   children: Schema.Array(ViewSelf)
 })
 
-export const SpacerSizeSchema: Schema.Codec<SpacerSizeView, SpacerSizeView> =
-  Schema.TaggedStruct("Spacer", {
-    ...CommonFields,
-    size: SpacingTokenSchema,
-    flex: Schema.Literal(false).pipe(Schema.optionalKey),
-    style: SpacerStyleSchema.pipe(Schema.optionalKey)
-  })
+export const SpacerSizeSchema: Schema.Codec<SpacerSizeView, SpacerSizeView> = Schema.TaggedStruct("Spacer", {
+  ...CommonFields,
+  size: SpacingTokenSchema,
+  flex: Schema.Literal(false).pipe(Schema.optionalKey),
+  style: SpacerStyleSchema.pipe(Schema.optionalKey)
+})
 
-export const SpacerFlexSchema: Schema.Codec<SpacerFlexView, SpacerFlexView> =
-  Schema.TaggedStruct("Spacer", {
-    ...CommonFields,
-    flex: Schema.Literal(true),
-    style: SpacerStyleSchema.pipe(Schema.optionalKey)
-  })
+export const SpacerFlexSchema: Schema.Codec<SpacerFlexView, SpacerFlexView> = Schema.TaggedStruct("Spacer", {
+  ...CommonFields,
+  flex: Schema.Literal(true),
+  style: SpacerStyleSchema.pipe(Schema.optionalKey)
+})
 
-export const SpacerSchema: Schema.Codec<SpacerView, SpacerView> = Schema.Union([
-  SpacerSizeSchema,
-  SpacerFlexSchema
-])
+export const SpacerSchema: Schema.Codec<SpacerView, SpacerView> = Schema.Union([SpacerSizeSchema, SpacerFlexSchema])
 
 export const LinkChildSchema: Schema.Codec<LinkChildView, LinkChildView> = Schema.Union([
   TextSchema,
@@ -4159,9 +4114,7 @@ export const LinkSchema: Schema.Codec<LinkView, LinkView> = Schema.TaggedStruct(
   ...CommonFields,
   destination: NavigationDestinationSchema,
   style: LinkStyleSchema.pipe(Schema.optionalKey),
-  children: Schema.Array(LinkChildSchema).check(
-    Schema.isMinLength(1, { title: "NonEmptyLinkChildren" })
-  )
+  children: Schema.Array(LinkChildSchema).check(Schema.isMinLength(1, { title: "NonEmptyLinkChildren" }))
 })
 
 const SheetDetentsSchema = Schema.Array(DimensionTokenSchema).check(
@@ -4290,9 +4243,7 @@ export const SplitPanePaneSchema: Schema.Codec<SplitPanePane, SplitPanePane> = S
 export const SplitPaneSchema: Schema.Codec<SplitPaneView, SplitPaneView> = Schema.TaggedStruct("SplitPane", {
   ...CommonFields,
   orientation: StackDirectionSchema,
-  panes: Schema.Array(SplitPanePaneSchema).check(
-    Schema.isMinLength(1, { title: "NonEmptySplitPanePanes" })
-  ),
+  panes: Schema.Array(SplitPanePaneSchema).check(Schema.isMinLength(1, { title: "NonEmptySplitPanePanes" })),
   onResize: IntentRefSchema.pipe(Schema.optionalKey),
   onCollapseToggle: IntentRefSchema.pipe(Schema.optionalKey),
   style: CardStyleSchema.pipe(Schema.optionalKey)
@@ -4338,9 +4289,7 @@ export const WorkbenchPaneSchema: Schema.Codec<WorkbenchPane, WorkbenchPane> = S
 
 export const WorkbenchSchema: Schema.Codec<WorkbenchView, WorkbenchView> = Schema.TaggedStruct("Workbench", {
   ...CommonFields,
-  panes: Schema.Array(WorkbenchPaneSchema).check(
-    Schema.isMinLength(1, { title: "NonEmptyWorkbenchPanes" })
-  ),
+  panes: Schema.Array(WorkbenchPaneSchema).check(Schema.isMinLength(1, { title: "NonEmptyWorkbenchPanes" })),
   activePaneId: Schema.NonEmptyString,
   keepMounted: Schema.Boolean.pipe(Schema.optionalKey),
   style: CardStyleSchema.pipe(Schema.optionalKey)
@@ -4374,8 +4323,9 @@ export const PopoverSchema: Schema.Codec<PopoverView, PopoverView> = Schema.Tagg
   children: Schema.Array(ViewSelf)
 })
 
-export const DropdownMenuSchema: Schema.Codec<DropdownMenuView, DropdownMenuView> =
-  Schema.TaggedStruct("DropdownMenu", {
+export const DropdownMenuSchema: Schema.Codec<DropdownMenuView, DropdownMenuView> = Schema.TaggedStruct(
+  "DropdownMenu",
+  {
     ...CommonFields,
     open: BoundBooleanSchema,
     placement: PlacementSchema,
@@ -4384,19 +4334,19 @@ export const DropdownMenuSchema: Schema.Codec<DropdownMenuView, DropdownMenuView
     onSelect: IntentRefSchema,
     onDismiss: IntentRefSchema,
     style: CardStyleSchema.pipe(Schema.optionalKey)
-  })
+  }
+)
 
-export const ContextMenuSchema: Schema.Codec<ContextMenuView, ContextMenuView> =
-  Schema.TaggedStruct("ContextMenu", {
-    ...CommonFields,
-    open: BoundBooleanSchema,
-    x: NonNegativeNumberSchema,
-    y: NonNegativeNumberSchema,
-    items: Schema.Array(MenuItemSchema),
-    onSelect: IntentRefSchema,
-    onDismiss: IntentRefSchema,
-    style: CardStyleSchema.pipe(Schema.optionalKey)
-  })
+export const ContextMenuSchema: Schema.Codec<ContextMenuView, ContextMenuView> = Schema.TaggedStruct("ContextMenu", {
+  ...CommonFields,
+  open: BoundBooleanSchema,
+  x: NonNegativeNumberSchema,
+  y: NonNegativeNumberSchema,
+  items: Schema.Array(MenuItemSchema),
+  onSelect: IntentRefSchema,
+  onDismiss: IntentRefSchema,
+  style: CardStyleSchema.pipe(Schema.optionalKey)
+})
 
 export const TooltipSchema: Schema.Codec<TooltipView, TooltipView> = Schema.TaggedStruct("Tooltip", {
   ...CommonFields,
@@ -4435,14 +4385,16 @@ export const ComboboxSchema: Schema.Codec<ComboboxView, ComboboxView> = Schema.T
   style: CardStyleSchema.pipe(Schema.optionalKey)
 })
 
-export const CommandPaletteSchema: Schema.Codec<CommandPaletteView, CommandPaletteView> =
-  Schema.TaggedStruct("CommandPalette", {
+export const CommandPaletteSchema: Schema.Codec<CommandPaletteView, CommandPaletteView> = Schema.TaggedStruct(
+  "CommandPalette",
+  {
     ...CommonFields,
     open: BoundBooleanSchema,
     title: Schema.String.pipe(Schema.optionalKey),
     combobox: ComboboxSchema,
     onDismiss: IntentRefSchema
-  })
+  }
+)
 
 export const TabItemSchema: Schema.Codec<TabItem, TabItem> = Schema.Struct({
   id: Schema.NonEmptyString,
@@ -4560,7 +4512,10 @@ export const SliderSchema: Schema.Codec<SliderView, SliderView> = Schema.TaggedS
   value: FiniteNumberSchema,
   min: FiniteNumberSchema,
   max: FiniteNumberSchema,
-  step: Schema.Number.check(Schema.isFinite({ title: "FiniteStep" }), Schema.isGreaterThan(0, { title: "PositiveStep" })).pipe(Schema.optionalKey),
+  step: Schema.Number.check(
+    Schema.isFinite({ title: "FiniteStep" }),
+    Schema.isGreaterThan(0, { title: "PositiveStep" })
+  ).pipe(Schema.optionalKey),
   style: CardStyleSchema.pipe(Schema.optionalKey)
 })
 
@@ -4569,7 +4524,10 @@ export const NumberFieldSchema: Schema.Codec<NumberFieldView, NumberFieldView> =
   value: FiniteNumberSchema,
   min: FiniteNumberSchema.pipe(Schema.optionalKey),
   max: FiniteNumberSchema.pipe(Schema.optionalKey),
-  step: Schema.Number.check(Schema.isFinite({ title: "FiniteStep" }), Schema.isGreaterThan(0, { title: "PositiveStep" })).pipe(Schema.optionalKey),
+  step: Schema.Number.check(
+    Schema.isFinite({ title: "FiniteStep" }),
+    Schema.isGreaterThan(0, { title: "PositiveStep" })
+  ).pipe(Schema.optionalKey),
   placeholder: Schema.String.pipe(Schema.optionalKey),
   style: TextFieldStyleSchema.pipe(Schema.optionalKey)
 })
@@ -4609,14 +4567,17 @@ export const ToastRegionSchema: Schema.Codec<ToastRegionView, ToastRegionView> =
   style: CardStyleSchema.pipe(Schema.optionalKey)
 })
 
-export const StatusBannerSchema: Schema.Codec<StatusBannerView, StatusBannerView> = Schema.TaggedStruct("StatusBanner", {
-  ...CommonFields,
-  tone: ToneSchema,
-  message: Schema.String,
-  onRetry: IntentRefSchema.pipe(Schema.optionalKey),
-  onDismiss: IntentRefSchema.pipe(Schema.optionalKey),
-  style: CardStyleSchema.pipe(Schema.optionalKey)
-})
+export const StatusBannerSchema: Schema.Codec<StatusBannerView, StatusBannerView> = Schema.TaggedStruct(
+  "StatusBanner",
+  {
+    ...CommonFields,
+    tone: ToneSchema,
+    message: Schema.String,
+    onRetry: IntentRefSchema.pipe(Schema.optionalKey),
+    onDismiss: IntentRefSchema.pipe(Schema.optionalKey),
+    style: CardStyleSchema.pipe(Schema.optionalKey)
+  }
+)
 
 export const AlertSchema: Schema.Codec<AlertView, AlertView> = Schema.TaggedStruct("Alert", {
   ...CommonFields,
@@ -4636,15 +4597,17 @@ export const RecoveryActionModelSchema: Schema.Codec<RecoveryActionModel, Recove
   variant: ButtonVariantSchema.pipe(Schema.optionalKey)
 })
 
-export const RecoveryOverlaySchema: Schema.Codec<RecoveryOverlayView, RecoveryOverlayView> =
-  Schema.TaggedStruct("RecoveryOverlay", {
+export const RecoveryOverlaySchema: Schema.Codec<RecoveryOverlayView, RecoveryOverlayView> = Schema.TaggedStruct(
+  "RecoveryOverlay",
+  {
     ...CommonFields,
     open: BoundBooleanSchema,
     title: Schema.String,
     message: Schema.String.pipe(Schema.optionalKey),
     status: Schema.String.pipe(Schema.optionalKey),
     actions: Schema.Array(RecoveryActionModelSchema)
-  })
+  }
+)
 
 const MarkdownInlineSelf = Schema.suspend((): Schema.Codec<MarkdownInline, MarkdownInline> => MarkdownInlineSchema)
 export const MarkdownInlineSchema: Schema.Codec<MarkdownInline, MarkdownInline> = Schema.Union([
@@ -4652,14 +4615,26 @@ export const MarkdownInlineSchema: Schema.Codec<MarkdownInline, MarkdownInline> 
   Schema.Struct({ kind: Schema.Literal("code"), text: Schema.String }),
   Schema.Struct({ kind: Schema.Literal("strong"), children: Schema.Array(MarkdownInlineSelf) }),
   Schema.Struct({ kind: Schema.Literal("emphasis"), children: Schema.Array(MarkdownInlineSelf) }),
-  Schema.Struct({ kind: Schema.Literal("link"), href: MarkdownLinkHrefSchema, children: Schema.Array(MarkdownInlineSelf) })
+  Schema.Struct({
+    kind: Schema.Literal("link"),
+    href: MarkdownLinkHrefSchema,
+    children: Schema.Array(MarkdownInlineSelf)
+  })
 ]) as unknown as Schema.Codec<MarkdownInline, MarkdownInline>
 
 const MarkdownBlockSelf = Schema.suspend((): Schema.Codec<MarkdownBlock, MarkdownBlock> => MarkdownBlockSchema)
 export const MarkdownBlockSchema: Schema.Codec<MarkdownBlock, MarkdownBlock> = Schema.Union([
-  Schema.Struct({ kind: Schema.Literal("heading"), level: Schema.Literals([1, 2, 3, 4, 5, 6] as const), children: Schema.Array(MarkdownInlineSchema) }),
+  Schema.Struct({
+    kind: Schema.Literal("heading"),
+    level: Schema.Literals([1, 2, 3, 4, 5, 6] as const),
+    children: Schema.Array(MarkdownInlineSchema)
+  }),
   Schema.Struct({ kind: Schema.Literal("paragraph"), children: Schema.Array(MarkdownInlineSchema) }),
-  Schema.Struct({ kind: Schema.Literal("list"), ordered: Schema.Boolean, items: Schema.Array(Schema.Array(MarkdownBlockSelf)) }),
+  Schema.Struct({
+    kind: Schema.Literal("list"),
+    ordered: Schema.Boolean,
+    items: Schema.Array(Schema.Array(MarkdownBlockSelf))
+  }),
   Schema.Struct({ kind: Schema.Literal("blockquote"), children: Schema.Array(MarkdownBlockSelf) })
 ]) as unknown as Schema.Codec<MarkdownBlock, MarkdownBlock>
 
@@ -4693,10 +4668,11 @@ export const DiffHunkSchema: Schema.Codec<DiffHunk, DiffHunk> = Schema.Struct({
   header: Schema.String,
   rows: Schema.Array(DiffRowSchema)
 })
-export const DiffSourceControlActionSchema: Schema.Codec<DiffSourceControlAction, DiffSourceControlAction> = Schema.Struct({
-  id: Schema.NonEmptyString,
-  label: Schema.String
-})
+export const DiffSourceControlActionSchema: Schema.Codec<DiffSourceControlAction, DiffSourceControlAction> =
+  Schema.Struct({
+    id: Schema.NonEmptyString,
+    label: Schema.String
+  })
 export const DiffViewSchema: Schema.Codec<DiffViewView, DiffViewView> = Schema.TaggedStruct("DiffView", {
   ...CommonFields,
   language: Schema.String.pipe(Schema.optionalKey),
@@ -4720,11 +4696,13 @@ export const GraphNodeChipSchema: Schema.Codec<GraphNodeChip, GraphNodeChip> = S
   kind: Schema.Literals(graphChipKinds).pipe(Schema.optionalKey),
   ref: Schema.String.pipe(Schema.optionalKey)
 })
-export const GraphChipSelectPayloadSchema: Schema.Codec<GraphChipSelectPayload, GraphChipSelectPayload> = Schema.Struct({
-  nodeId: Schema.NonEmptyString,
-  chipId: Schema.NonEmptyString,
-  ref: Schema.String.pipe(Schema.optionalKey)
-})
+export const GraphChipSelectPayloadSchema: Schema.Codec<GraphChipSelectPayload, GraphChipSelectPayload> = Schema.Struct(
+  {
+    nodeId: Schema.NonEmptyString,
+    chipId: Schema.NonEmptyString,
+    ref: Schema.String.pipe(Schema.optionalKey)
+  }
+)
 export const GraphNodeModelSchema: Schema.Codec<GraphNodeModel, GraphNodeModel> = Schema.Struct({
   id: Schema.NonEmptyString,
   label: Schema.String,
@@ -4745,7 +4723,10 @@ export const GraphEdgeModelSchema: Schema.Codec<GraphEdgeModel, GraphEdgeModel> 
 export const GraphCameraSchema: Schema.Codec<GraphCamera, GraphCamera> = Schema.Struct({
   x: GraphNumberSchema,
   y: GraphNumberSchema,
-  zoom: Schema.Number.check(Schema.isFinite({ title: "FiniteZoom" }), Schema.isGreaterThan(0, { title: "PositiveZoom" }))
+  zoom: Schema.Number.check(
+    Schema.isFinite({ title: "FiniteZoom" }),
+    Schema.isGreaterThan(0, { title: "PositiveZoom" })
+  )
 })
 export const GraphFigureSchema: Schema.Codec<GraphFigureView, GraphFigureView> = Schema.TaggedStruct("GraphFigure", {
   ...CommonFields,
@@ -4770,7 +4751,9 @@ export const TimelineEventSchema: Schema.Codec<TimelineEvent, TimelineEvent> = S
   detail: Schema.String.pipe(Schema.optionalKey),
   time: Schema.String.pipe(Schema.optionalKey),
   status: Schema.Literals(graphStatuses).pipe(Schema.optionalKey),
-  variant: Schema.Literals(["message", "tool", "agent", "reasoning", "divider", "error", "metadata"] as const).pipe(Schema.optionalKey),
+  variant: Schema.Literals(["message", "tool", "agent", "reasoning", "divider", "error", "metadata"] as const).pipe(
+    Schema.optionalKey
+  ),
   icon: IconNameSchema.pipe(Schema.optionalKey),
   accessibilityLabel: Schema.NonEmptyString.pipe(Schema.optionalKey),
   onSelect: IntentRefSchema.pipe(Schema.optionalKey),
@@ -4825,7 +4808,6 @@ export const TranscriptSchema: Schema.Codec<TranscriptView, TranscriptView> = Sc
   style: ListStyleSchema.pipe(Schema.optionalKey)
 })
 
-
 export const SectionWidthSchema = Schema.Literals(["full", "contained"] as const)
 export const HeroAlignSchema = Schema.Literals(["start", "center"] as const)
 export const AccordionModeSchema = Schema.Literals(["single", "multi"] as const)
@@ -4853,14 +4835,16 @@ export const HeroSchema: Schema.Codec<HeroView, HeroView> = Schema.TaggedStruct(
   style: CardStyleSchema.pipe(Schema.optionalKey)
 })
 
-export const AnnouncementBadgeSchema: Schema.Codec<AnnouncementBadgeView, AnnouncementBadgeView> =
-  Schema.TaggedStruct("AnnouncementBadge", {
+export const AnnouncementBadgeSchema: Schema.Codec<AnnouncementBadgeView, AnnouncementBadgeView> = Schema.TaggedStruct(
+  "AnnouncementBadge",
+  {
     ...CommonFields,
     label: Schema.String,
     actionLabel: Schema.String.pipe(Schema.optionalKey),
     onPress: IntentRefSchema.pipe(Schema.optionalKey),
     style: CardStyleSchema.pipe(Schema.optionalKey)
-  })
+  }
+)
 
 export const CtaSectionSchema: Schema.Codec<CtaSectionView, CtaSectionView> = Schema.TaggedStruct("CtaSection", {
   ...CommonFields,
@@ -4980,16 +4964,13 @@ export const GlowSchema: Schema.Codec<GlowView, GlowView> = Schema.TaggedStruct(
   style: CardStyleSchema.pipe(Schema.optionalKey)
 })
 
-export const MockupFrameSchema: Schema.Codec<MockupFrameView, MockupFrameView> = Schema.TaggedStruct(
-  "MockupFrame",
-  {
-    ...CommonFields,
-    variant: MockupVariantSchema.pipe(Schema.optionalKey),
-    tilt: MockupTiltSchema.pipe(Schema.optionalKey),
-    children: Schema.Array(ViewSelf),
-    style: CardStyleSchema.pipe(Schema.optionalKey)
-  }
-)
+export const MockupFrameSchema: Schema.Codec<MockupFrameView, MockupFrameView> = Schema.TaggedStruct("MockupFrame", {
+  ...CommonFields,
+  variant: MockupVariantSchema.pipe(Schema.optionalKey),
+  tilt: MockupTiltSchema.pipe(Schema.optionalKey),
+  children: Schema.Array(ViewSelf),
+  style: CardStyleSchema.pipe(Schema.optionalKey)
+})
 
 export const PagerStepSchema: Schema.Codec<PagerStep, PagerStep> = Schema.Struct({
   id: Schema.NonEmptyString,
@@ -5019,7 +5000,6 @@ export const PagerSchema: Schema.Codec<PagerView, PagerView> = Schema.TaggedStru
   style: CardStyleSchema.pipe(Schema.optionalKey)
 })
 
-
 export const SwipeableListActionSchema: Schema.Codec<SwipeableListAction, SwipeableListAction> = Schema.Struct({
   id: Schema.NonEmptyString,
   label: Schema.String,
@@ -5028,8 +5008,9 @@ export const SwipeableListActionSchema: Schema.Codec<SwipeableListAction, Swipea
   destructive: Schema.Boolean.pipe(Schema.optionalKey)
 })
 
-export const SwipeableListItemSchema: Schema.Codec<SwipeableListItemView, SwipeableListItemView> =
-  Schema.TaggedStruct("SwipeableListItem", {
+export const SwipeableListItemSchema: Schema.Codec<SwipeableListItemView, SwipeableListItemView> = Schema.TaggedStruct(
+  "SwipeableListItem",
+  {
     ...CommonFields,
     child: ViewSelf,
     leadingActions: Schema.Array(SwipeableListActionSchema).pipe(Schema.optionalKey),
@@ -5037,8 +5018,8 @@ export const SwipeableListItemSchema: Schema.Codec<SwipeableListItemView, Swipea
     fullSwipeActionId: Schema.NonEmptyString.pipe(Schema.optionalKey),
     onAction: IntentRefSchema,
     style: CardStyleSchema.pipe(Schema.optionalKey)
-  })
-
+  }
+)
 
 export const GradientDirectionSchema = Schema.Literals(["vertical", "horizontal", "radial"] as const)
 export const WallpaperVariantSchema = Schema.Literals(["plain", "city", "mesh"] as const)
@@ -5076,34 +5057,34 @@ export const FrameSchema: Schema.Codec<FrameView, FrameView> = Schema.TaggedStru
   style: CardStyleSchema.pipe(Schema.optionalKey)
 })
 
-export const BlurredPopupSchema: Schema.Codec<BlurredPopupView, BlurredPopupView> =
-  Schema.TaggedStruct("BlurredPopup", {
+export const BlurredPopupSchema: Schema.Codec<BlurredPopupView, BlurredPopupView> = Schema.TaggedStruct(
+  "BlurredPopup",
+  {
     ...CommonFields,
     open: Schema.Boolean,
     onDismiss: IntentRefSchema,
     children: Schema.Array(ViewSelf),
     style: CardStyleSchema.pipe(Schema.optionalKey)
-  })
+  }
+)
 
-export const IconButtonSchema: Schema.Codec<IconButtonView, IconButtonView> =
-  Schema.TaggedStruct("IconButton", {
-    ...CommonFields,
-    icon: IconNameSchema,
-    accessibilityLabel: Schema.NonEmptyString,
-    onPress: IntentRefSchema,
-    disabled: Schema.Boolean.pipe(Schema.optionalKey),
-    surface: SurfaceMaterialSchema.pipe(Schema.optionalKey),
-    style: ButtonStyleSchema.pipe(Schema.optionalKey)
-  })
+export const IconButtonSchema: Schema.Codec<IconButtonView, IconButtonView> = Schema.TaggedStruct("IconButton", {
+  ...CommonFields,
+  icon: IconNameSchema,
+  accessibilityLabel: Schema.NonEmptyString,
+  onPress: IntentRefSchema,
+  disabled: Schema.Boolean.pipe(Schema.optionalKey),
+  surface: SurfaceMaterialSchema.pipe(Schema.optionalKey),
+  style: ButtonStyleSchema.pipe(Schema.optionalKey)
+})
 
-export const ToolbarSchema: Schema.Codec<ToolbarView, ToolbarView> =
-  Schema.TaggedStruct("Toolbar", {
-    ...CommonFields,
-    children: Schema.Array(ViewSelf),
-    placement: ToolbarPlacementSchema.pipe(Schema.optionalKey),
-    surface: SurfaceMaterialSchema.pipe(Schema.optionalKey),
-    style: CardStyleSchema.pipe(Schema.optionalKey)
-  })
+export const ToolbarSchema: Schema.Codec<ToolbarView, ToolbarView> = Schema.TaggedStruct("Toolbar", {
+  ...CommonFields,
+  children: Schema.Array(ViewSelf),
+  placement: ToolbarPlacementSchema.pipe(Schema.optionalKey),
+  surface: SurfaceMaterialSchema.pipe(Schema.optionalKey),
+  style: CardStyleSchema.pipe(Schema.optionalKey)
+})
 
 export const EmptyMessageIconSchema: Schema.Codec<EmptyMessageIcon, EmptyMessageIcon> = Schema.Struct({
   name: IconNameSchema,
@@ -5128,9 +5109,7 @@ export const EmptyMessageSchema: Schema.Codec<EmptyMessageView, EmptyMessageView
 // Avatar (issue #80). The bounded initials keep the mark legible at every
 // lattice size, and the source filter makes an empty avatar unconstructible:
 // the typed fallback chain image -> initials -> icon must have a first link.
-const AvatarInitialsSchema = Schema.NonEmptyString.check(
-  Schema.isMaxLength(3, { title: "AvatarInitialsMaxLength" })
-)
+const AvatarInitialsSchema = Schema.NonEmptyString.check(Schema.isMaxLength(3, { title: "AvatarInitialsMaxLength" }))
 
 const AvatarSourceFilter = Schema.makeFilter<AvatarView>((view) =>
   view.image === undefined && view.initials === undefined && view.icon === undefined
@@ -5164,34 +5143,32 @@ const AvatarGroupMaxSchema = Schema.Number.check(
   Schema.isGreaterThan(0, { title: "AvatarGroupMaxPositive" })
 )
 
-export const AvatarGroupSchema: Schema.Codec<AvatarGroupView, AvatarGroupView> =
-  Schema.TaggedStruct("AvatarGroup", {
-    ...CommonFields,
-    avatars: KeyedAvatarArraySchema,
-    max: AvatarGroupMaxSchema.pipe(Schema.optionalKey),
-    size: ControlTokenSchema.pipe(Schema.optionalKey),
-    tone: ToneSchema.pipe(Schema.optionalKey),
-    variant: AvatarVariantSchema.pipe(Schema.optionalKey),
-    style: CardStyleSchema.pipe(Schema.optionalKey)
-  })
+export const AvatarGroupSchema: Schema.Codec<AvatarGroupView, AvatarGroupView> = Schema.TaggedStruct("AvatarGroup", {
+  ...CommonFields,
+  avatars: KeyedAvatarArraySchema,
+  max: AvatarGroupMaxSchema.pipe(Schema.optionalKey),
+  size: ControlTokenSchema.pipe(Schema.optionalKey),
+  tone: ToneSchema.pipe(Schema.optionalKey),
+  variant: AvatarVariantSchema.pipe(Schema.optionalKey),
+  style: CardStyleSchema.pipe(Schema.optionalKey)
+})
 
-export const CopyButtonSchema: Schema.Codec<CopyButtonView, CopyButtonView> =
-  Schema.TaggedStruct("CopyButton", {
-    ...CommonFields,
-    content: Schema.String,
-    label: Schema.NonEmptyString.pipe(Schema.optionalKey),
-    accessibilityLabel: Schema.NonEmptyString.pipe(Schema.optionalKey),
-    copiedLabel: Schema.NonEmptyString.pipe(Schema.optionalKey),
-    size: ControlTokenSchema.pipe(Schema.optionalKey),
-    variant: ButtonVariantSchema.pipe(Schema.optionalKey),
-    copied: Schema.Boolean.pipe(Schema.optionalKey),
-    onCopy: IntentRefSchema.pipe(Schema.optionalKey),
-    onCopiedReset: IntentRefSchema.pipe(Schema.optionalKey),
-    resetMillis: NonNegativeNumberSchema.pipe(Schema.optionalKey),
-    disabled: Schema.Boolean.pipe(Schema.optionalKey),
-    surface: SurfaceMaterialSchema.pipe(Schema.optionalKey),
-    style: ButtonStyleSchema.pipe(Schema.optionalKey)
-  })
+export const CopyButtonSchema: Schema.Codec<CopyButtonView, CopyButtonView> = Schema.TaggedStruct("CopyButton", {
+  ...CommonFields,
+  content: Schema.String,
+  label: Schema.NonEmptyString.pipe(Schema.optionalKey),
+  accessibilityLabel: Schema.NonEmptyString.pipe(Schema.optionalKey),
+  copiedLabel: Schema.NonEmptyString.pipe(Schema.optionalKey),
+  size: ControlTokenSchema.pipe(Schema.optionalKey),
+  variant: ButtonVariantSchema.pipe(Schema.optionalKey),
+  copied: Schema.Boolean.pipe(Schema.optionalKey),
+  onCopy: IntentRefSchema.pipe(Schema.optionalKey),
+  onCopiedReset: IntentRefSchema.pipe(Schema.optionalKey),
+  resetMillis: NonNegativeNumberSchema.pipe(Schema.optionalKey),
+  disabled: Schema.Boolean.pipe(Schema.optionalKey),
+  surface: SurfaceMaterialSchema.pipe(Schema.optionalKey),
+  style: ButtonStyleSchema.pipe(Schema.optionalKey)
+})
 
 export const SegmentedOptionSchema: Schema.Codec<SegmentedOption, SegmentedOption> = Schema.Struct({
   id: Schema.NonEmptyString,
@@ -5229,17 +5206,14 @@ export const SpinnerSchema: Schema.Codec<SpinnerView, SpinnerView> = Schema.Tagg
   style: CardStyleSchema.pipe(Schema.optionalKey)
 })
 
-export const LoadingDotsSchema: Schema.Codec<LoadingDotsView, LoadingDotsView> = Schema.TaggedStruct(
-  "LoadingDots",
-  {
-    ...CommonFields,
-    size: ControlTokenSchema.pipe(Schema.optionalKey),
-    tone: ToneSchema.pipe(Schema.optionalKey),
-    label: Schema.String.pipe(Schema.optionalKey),
-    reduceMotion: Schema.Boolean.pipe(Schema.optionalKey),
-    style: CardStyleSchema.pipe(Schema.optionalKey)
-  }
-)
+export const LoadingDotsSchema: Schema.Codec<LoadingDotsView, LoadingDotsView> = Schema.TaggedStruct("LoadingDots", {
+  ...CommonFields,
+  size: ControlTokenSchema.pipe(Schema.optionalKey),
+  tone: ToneSchema.pipe(Schema.optionalKey),
+  label: Schema.String.pipe(Schema.optionalKey),
+  reduceMotion: Schema.Boolean.pipe(Schema.optionalKey),
+  style: CardStyleSchema.pipe(Schema.optionalKey)
+})
 
 // An empty ShimmerText (no text, no width) is not constructible — mirrors
 // the AvatarSourceFilter discipline: the typed fallback needs a first link.
@@ -5249,18 +5223,15 @@ const ShimmerTextSourceFilter = Schema.makeFilter<ShimmerTextView>((view) =>
     : undefined
 )
 
-export const ShimmerTextSchema: Schema.Codec<ShimmerTextView, ShimmerTextView> = Schema.TaggedStruct(
-  "ShimmerText",
-  {
-    ...CommonFields,
-    text: Schema.String.pipe(Schema.optionalKey),
-    width: DimensionSchema.pipe(Schema.optionalKey),
-    typeScale: TypeScaleTokenSchema.pipe(Schema.optionalKey),
-    label: Schema.String.pipe(Schema.optionalKey),
-    reduceMotion: Schema.Boolean.pipe(Schema.optionalKey),
-    style: TextStyleSchema.pipe(Schema.optionalKey)
-  }
-).check(ShimmerTextSourceFilter)
+export const ShimmerTextSchema: Schema.Codec<ShimmerTextView, ShimmerTextView> = Schema.TaggedStruct("ShimmerText", {
+  ...CommonFields,
+  text: Schema.String.pipe(Schema.optionalKey),
+  width: DimensionSchema.pipe(Schema.optionalKey),
+  typeScale: TypeScaleTokenSchema.pipe(Schema.optionalKey),
+  label: Schema.String.pipe(Schema.optionalKey),
+  reduceMotion: Schema.Boolean.pipe(Schema.optionalKey),
+  style: TextStyleSchema.pipe(Schema.optionalKey)
+}).check(ShimmerTextSourceFilter)
 
 export const ViewSchema: Schema.Codec<View, View> = Schema.suspend(() =>
   Schema.Union([
@@ -5386,10 +5357,7 @@ export const List = (props: ListProps, items: ReadonlyArray<KeyedView>): ListVie
   })
 
 export type SectionListProps = Omit<WithoutTagAndVersion<SectionListView>, "sections">
-export const SectionList = (
-  props: SectionListProps,
-  sections: ReadonlyArray<SectionListSection>
-): SectionListView =>
+export const SectionList = (props: SectionListProps, sections: ReadonlyArray<SectionListSection>): SectionListView =>
   SectionListSchema.make({
     _tag: "SectionList",
     catalogVersion: CatalogVersion,
@@ -5586,12 +5554,13 @@ export interface OnDeviceModelHostProps {
   readonly prompt?: string
   readonly status?: "idle" | "loading" | "ready" | "error"
 }
-export const OnDeviceModelHostPropsSchema: Schema.Codec<OnDeviceModelHostProps, OnDeviceModelHostProps> =
-  Schema.Struct({
+export const OnDeviceModelHostPropsSchema: Schema.Codec<OnDeviceModelHostProps, OnDeviceModelHostProps> = Schema.Struct(
+  {
     modelId: Schema.String.pipe(Schema.optionalKey),
     prompt: Schema.String.pipe(Schema.optionalKey),
     status: Schema.Literals(["idle", "loading", "ready", "error"] as const).pipe(Schema.optionalKey)
-  }) as unknown as Schema.Codec<OnDeviceModelHostProps, OnDeviceModelHostProps>
+  }
+) as unknown as Schema.Codec<OnDeviceModelHostProps, OnDeviceModelHostProps>
 export const decodeOnDeviceModelHostProps = Schema.decodeUnknownSync(OnDeviceModelHostPropsSchema)
 
 export type OnDeviceModelEvent =
@@ -5677,8 +5646,6 @@ export const MediaVideo = (props: MediaVideoProps): HostView => {
     props: MediaVideoHostPropsSchema.make(hostProps) as unknown as JsonPayload
   })
 }
-
-
 
 export type IconProps = WithoutTagAndVersion<IconView>
 export const Icon = (props: IconProps): IconView =>
@@ -5829,9 +5796,7 @@ export const Section = (props: SectionProps, children: ReadonlyArray<View> = [])
   SectionSchema.make({ _tag: "Section", catalogVersion: CatalogVersion, ...props, children })
 
 export type HeroProps = Omit<WithoutTagAndVersion<HeroView>, "actions" | "media">
-export const Hero = (
-  props: HeroProps & { readonly actions?: ReadonlyArray<View>; readonly media?: View }
-): HeroView =>
+export const Hero = (props: HeroProps & { readonly actions?: ReadonlyArray<View>; readonly media?: View }): HeroView =>
   HeroSchema.make({
     _tag: "Hero",
     catalogVersion: CatalogVersion,
@@ -5844,9 +5809,7 @@ export const AnnouncementBadge = (props: AnnouncementBadgeProps): AnnouncementBa
   AnnouncementBadgeSchema.make({ _tag: "AnnouncementBadge", catalogVersion: CatalogVersion, ...props })
 
 export type CtaSectionProps = Omit<WithoutTagAndVersion<CtaSectionView>, "actions">
-export const CtaSection = (
-  props: CtaSectionProps & { readonly actions?: ReadonlyArray<View> }
-): CtaSectionView =>
+export const CtaSection = (props: CtaSectionProps & { readonly actions?: ReadonlyArray<View> }): CtaSectionView =>
   CtaSectionSchema.make({
     _tag: "CtaSection",
     catalogVersion: CatalogVersion,
@@ -5887,10 +5850,7 @@ export const Glow = (props: GlowProps, children: ReadonlyArray<View> = []): Glow
   GlowSchema.make({ _tag: "Glow", catalogVersion: CatalogVersion, ...props, children })
 
 export type MockupFrameProps = Omit<WithoutTagAndVersion<MockupFrameView>, "children">
-export const MockupFrame = (
-  props: MockupFrameProps,
-  children: ReadonlyArray<View> = []
-): MockupFrameView =>
+export const MockupFrame = (props: MockupFrameProps, children: ReadonlyArray<View> = []): MockupFrameView =>
   MockupFrameSchema.make({ _tag: "MockupFrame", catalogVersion: CatalogVersion, ...props, children })
 
 export type PagerProps = WithoutTagAndVersion<PagerView>
@@ -5909,31 +5869,19 @@ export const BackgroundGradient = (
   BackgroundGradientSchema.make({ _tag: "BackgroundGradient", catalogVersion: CatalogVersion, ...props, children })
 
 export type WallpaperProps = Omit<WithoutTagAndVersion<WallpaperView>, "children">
-export const Wallpaper = (
-  props: WallpaperProps,
-  children: ReadonlyArray<View> = []
-): WallpaperView =>
+export const Wallpaper = (props: WallpaperProps, children: ReadonlyArray<View> = []): WallpaperView =>
   WallpaperSchema.make({ _tag: "Wallpaper", catalogVersion: CatalogVersion, ...props, children })
 
 export type SpotlightProps = Omit<WithoutTagAndVersion<SpotlightView>, "children">
-export const Spotlight = (
-  props: SpotlightProps,
-  children: ReadonlyArray<View> = []
-): SpotlightView =>
+export const Spotlight = (props: SpotlightProps, children: ReadonlyArray<View> = []): SpotlightView =>
   SpotlightSchema.make({ _tag: "Spotlight", catalogVersion: CatalogVersion, ...props, children })
 
 export type FrameProps = Omit<WithoutTagAndVersion<FrameView>, "children">
-export const Frame = (
-  props: FrameProps,
-  children: ReadonlyArray<View> = []
-): FrameView =>
+export const Frame = (props: FrameProps, children: ReadonlyArray<View> = []): FrameView =>
   FrameSchema.make({ _tag: "Frame", catalogVersion: CatalogVersion, ...props, children })
 
 export type BlurredPopupProps = Omit<WithoutTagAndVersion<BlurredPopupView>, "children">
-export const BlurredPopup = (
-  props: BlurredPopupProps,
-  children: ReadonlyArray<View> = []
-): BlurredPopupView =>
+export const BlurredPopup = (props: BlurredPopupProps, children: ReadonlyArray<View> = []): BlurredPopupView =>
   BlurredPopupSchema.make({ _tag: "BlurredPopup", catalogVersion: CatalogVersion, ...props, children })
 
 export type IconButtonProps = WithoutTagAndVersion<IconButtonView>
@@ -5945,10 +5893,7 @@ export const CopyButton = (props: CopyButtonProps): CopyButtonView =>
   CopyButtonSchema.make({ _tag: "CopyButton", catalogVersion: CatalogVersion, ...props })
 
 export type ToolbarProps = Omit<WithoutTagAndVersion<ToolbarView>, "children">
-export const Toolbar = (
-  props: ToolbarProps,
-  children: ReadonlyArray<View> = []
-): ToolbarView =>
+export const Toolbar = (props: ToolbarProps, children: ReadonlyArray<View> = []): ToolbarView =>
   ToolbarSchema.make({ _tag: "Toolbar", catalogVersion: CatalogVersion, ...props, children })
 
 export type EmptyMessageProps = WithoutTagAndVersion<EmptyMessageView>
@@ -5978,9 +5923,6 @@ export const LoadingDots = (props: LoadingDotsProps): LoadingDotsView =>
 export type ShimmerTextProps = WithoutTagAndVersion<ShimmerTextView>
 export const ShimmerText = (props: ShimmerTextProps): ShimmerTextView =>
   ShimmerTextSchema.make({ _tag: "ShimmerText", catalogVersion: CatalogVersion, ...props })
-
-
-
 
 // Deterministic 2D layout for a graph figure: precomputed positions when given,
 // otherwise a bounded named layout (a stable circle for "force", a simple
@@ -6028,10 +5970,7 @@ export const encodeView = Schema.encodeSync(ViewSchema)
 export const decodeCompatibleView = Schema.decodeUnknownSync(CompatibleViewSchema)
 
 export const isBinding = (value: unknown): value is Binding =>
-  typeof value === "object" &&
-  value !== null &&
-  "_tag" in value &&
-  value._tag === "Binding"
+  typeof value === "object" && value !== null && "_tag" in value && value._tag === "Binding"
 
 const readStatePath = (state: unknown, path: ReadonlyArray<string>): JsonPayload => {
   let current: unknown = state
@@ -6247,10 +6186,7 @@ export const resolveView = (view: View, input: ViewResolution = {}): View => {
         ...(view.subhead === undefined
           ? {}
           : {
-              subhead:
-                input.state === undefined
-                  ? view.subhead
-                  : resolveBoundText(view.subhead, input.state)
+              subhead: input.state === undefined ? view.subhead : resolveBoundText(view.subhead, input.state)
             }),
         ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) }),
         actions: view.actions.map((child) => resolveView(child, input)),
@@ -6263,8 +6199,7 @@ export const resolveView = (view: View, input: ViewResolution = {}): View => {
         ...(view.body === undefined
           ? {}
           : {
-              body:
-                input.state === undefined ? view.body : resolveBoundText(view.body, input.state)
+              body: input.state === undefined ? view.body : resolveBoundText(view.body, input.state)
             }),
         ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) }),
         actions: view.actions.map((child) => resolveView(child, input))
@@ -6285,9 +6220,7 @@ export const resolveView = (view: View, input: ViewResolution = {}): View => {
         ...view,
         ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) }),
         brand: resolveView(view.brand, input),
-        ...(view.actions === undefined
-          ? {}
-          : { actions: view.actions.map((child) => resolveView(child, input)) })
+        ...(view.actions === undefined ? {} : { actions: view.actions.map((child) => resolveView(child, input)) })
       }
     case "Accordion":
       return {
@@ -6392,7 +6325,12 @@ export const resolveView = (view: View, input: ViewResolution = {}): View => {
         ...(view.style === undefined ? {} : { style: resolveStyle(view.style, resolution) }),
         ...(view.autocomplete === undefined
           ? {}
-          : { autocomplete: { ...view.autocomplete, combobox: resolveView(view.autocomplete.combobox, input) as ComboboxView } })
+          : {
+              autocomplete: {
+                ...view.autocomplete,
+                combobox: resolveView(view.autocomplete.combobox, input) as ComboboxView
+              }
+            })
       }
     case "EmptyMessage":
       return {
@@ -6467,9 +6405,7 @@ export const resolveBindings = <State>(view: View, state: State): View => {
       return {
         ...view,
         headline: resolveBoundText(view.headline, state),
-        ...(view.subhead === undefined
-          ? {}
-          : { subhead: resolveBoundText(view.subhead, state) }),
+        ...(view.subhead === undefined ? {} : { subhead: resolveBoundText(view.subhead, state) }),
         actions: view.actions.map((child) => resolveBindings(child, state)),
         ...(view.media === undefined ? {} : { media: resolveBindings(view.media, state) })
       }
@@ -6494,9 +6430,7 @@ export const resolveBindings = <State>(view: View, state: State): View => {
       return {
         ...view,
         brand: resolveBindings(view.brand, state),
-        ...(view.actions === undefined
-          ? {}
-          : { actions: view.actions.map((child) => resolveBindings(child, state)) })
+        ...(view.actions === undefined ? {} : { actions: view.actions.map((child) => resolveBindings(child, state)) })
       }
     case "Accordion":
       return {
@@ -6509,9 +6443,7 @@ export const resolveBindings = <State>(view: View, state: State): View => {
     case "PricingTable":
       return {
         ...view,
-        columns: view.columns.map(
-          (column) => resolveBindings(column, state) as PricingColumnView
-        )
+        columns: view.columns.map((column) => resolveBindings(column, state) as PricingColumnView)
       }
     case "StatsBand":
       return {
@@ -6601,7 +6533,10 @@ export const resolveBindings = <State>(view: View, state: State): View => {
         ? view
         : {
             ...view,
-            autocomplete: { ...view.autocomplete, combobox: resolveBindings(view.autocomplete.combobox, state) as ComboboxView }
+            autocomplete: {
+              ...view.autocomplete,
+              combobox: resolveBindings(view.autocomplete.combobox, state) as ComboboxView
+            }
           }
     case "List":
       return {
@@ -6641,9 +6576,7 @@ export const resolveBindings = <State>(view: View, state: State): View => {
         children: view.children.map((child) => resolveBindings(child, state))
       }
     case "EmptyMessage":
-      return view.action === undefined
-        ? view
-        : { ...view, action: resolveBindings(view.action, state) as ButtonView }
+      return view.action === undefined ? view : { ...view, action: resolveBindings(view.action, state) as ButtonView }
   }
 }
 
@@ -6742,9 +6675,7 @@ export const redactSecureView = (view: View): View => {
         control: redactSecureView(view.control)
       }
     case "EmptyMessage":
-      return view.action === undefined
-        ? view
-        : { ...view, action: redactSecureView(view.action) as ButtonView }
+      return view.action === undefined ? view : { ...view, action: redactSecureView(view.action) as ButtonView }
     case "Transcript":
       return {
         ...view,
@@ -6822,7 +6753,7 @@ export const makeViewProgram = <State>(
   render: (state: State) => View,
   options?: ViewProgramOptions<State>
 ): Effect.Effect<ViewProgram<State>> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const state = yield* SubscriptionRef.make(initialState)
     return makeViewProgramFromState(state, render, options)
   })
@@ -6875,7 +6806,7 @@ export interface RecordingClipboard extends Clipboard {
   readonly writes: Effect.Effect<ReadonlyArray<string>>
 }
 
-export const makeRecordingClipboard: Effect.Effect<RecordingClipboard> = Effect.gen(function*() {
+export const makeRecordingClipboard: Effect.Effect<RecordingClipboard> = Effect.gen(function* () {
   const writes = yield* Ref.make<ReadonlyArray<string>>([])
   return {
     writeText: (text: string) => Ref.update(writes, (current) => [...current, text]),
@@ -6928,81 +6859,79 @@ export const makeHeadlessRenderer = (
   options: HeadlessRendererOptions = {}
 ): RendererAdapter<HeadlessContainer | undefined, HeadlessSurface> => ({
   mount: (container, viewStream, report) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const parentScope = yield* Scope.Scope
       const surfaceScope = yield* Scope.fork(parentScope)
 
-      return yield* Scope.provide(surfaceScope)(Effect.gen(function*() {
-        const snapshots = yield* Ref.make<ReadonlyArray<View>>([])
-        const recorder = yield* makeRecordingClipboard
-        const clipboard: Clipboard = options.clipboard === undefined
-          ? recorder
-          : {
-            writeText: (text) =>
-              recorder.writeText(text).pipe(Effect.andThen(options.clipboard!.writeText(text)))
-          }
-        const viewport = yield* makeViewportService(
-          options.viewport ?? defaultViewportInput,
-          options.theme === undefined ? {} : { theme: options.theme }
-        )
-        const ready = yield* Deferred.make<void>()
-        const resolvedViewStream = viewStream.pipe(
-          Stream.zipLatestWith(viewport.stream, (view, currentViewport) =>
-            resolveView(view, {
-              viewport: currentViewport,
-              ...(options.platform === undefined ? {} : { platform: options.platform }),
-              ...(options.reducedMotion === undefined ? {} : { reducedMotion: options.reducedMotion })
-            })
+      return yield* Scope.provide(surfaceScope)(
+        Effect.gen(function* () {
+          const snapshots = yield* Ref.make<ReadonlyArray<View>>([])
+          const recorder = yield* makeRecordingClipboard
+          const clipboard: Clipboard =
+            options.clipboard === undefined
+              ? recorder
+              : {
+                  writeText: (text) => recorder.writeText(text).pipe(Effect.andThen(options.clipboard!.writeText(text)))
+                }
+          const viewport = yield* makeViewportService(
+            options.viewport ?? defaultViewportInput,
+            options.theme === undefined ? {} : { theme: options.theme }
           )
-        )
+          const ready = yield* Deferred.make<void>()
+          const resolvedViewStream = viewStream.pipe(
+            Stream.zipLatestWith(viewport.stream, (view, currentViewport) =>
+              resolveView(view, {
+                viewport: currentViewport,
+                ...(options.platform === undefined ? {} : { platform: options.platform }),
+                ...(options.reducedMotion === undefined ? {} : { reducedMotion: options.reducedMotion })
+              })
+            )
+          )
 
-        yield* Effect.addFinalizer(() =>
-          container?.onFinalize === undefined
-            ? Effect.succeed(undefined)
-            : container.onFinalize
-        )
+          yield* Effect.addFinalizer(() =>
+            container?.onFinalize === undefined ? Effect.succeed(undefined) : container.onFinalize
+          )
 
-        yield* resolvedViewStream.pipe(
-          Stream.runForEach((view) =>
-            Effect.gen(function*() {
-              yield* Ref.update(snapshots, (views) => [...views, redactSecureView(view)])
-              yield* Deferred.succeed(ready, undefined)
-            })
-          ),
-          Effect.forkScoped
-        )
-        yield* Deferred.await(ready)
+          yield* resolvedViewStream.pipe(
+            Stream.runForEach((view) =>
+              Effect.gen(function* () {
+                yield* Ref.update(snapshots, (views) => [...views, redactSecureView(view)])
+                yield* Deferred.succeed(ready, undefined)
+              })
+            ),
+            Effect.forkScoped
+          )
+          yield* Deferred.await(ready)
 
-        const current = Ref.get(snapshots).pipe(
-          Effect.map((views) => views[views.length - 1])
-        )
+          const current = Ref.get(snapshots).pipe(Effect.map((views) => views[views.length - 1]))
 
-        return {
-          unmount: Scope.close(surfaceScope, Exit.void),
-          snapshots: Ref.get(snapshots),
-          current,
-          currentViewport: viewport.current,
-          setViewport: viewport.set,
-          simulate: (ref: IntentRef, runtimeValue: JsonPayload = null) =>
-            report(ref, runtimeValue).pipe(Effect.andThen(Effect.yieldNow)),
-          simulateCopy: (key: string) =>
-            Effect.gen(function*() {
-              const view = yield* current
-              const target = view === undefined ? undefined : findViewByKey(view, key)
-              if (target === undefined || target._tag !== "CopyButton") {
-                return yield* Effect.die(
-                  new Error(`simulateCopy: no CopyButton with key "${key}" in the current view`)
-                )
-              }
-              if (target.disabled === true) return
-              yield* clipboard.writeText(target.content)
-              if (target.onCopy !== undefined) {
-                yield* report(target.onCopy, target.content).pipe(Effect.andThen(Effect.yieldNow))
-              }
-            }),
-          clipboardWrites: recorder.writes
-        }
-      }))
+          return {
+            unmount: Scope.close(surfaceScope, Exit.void),
+            snapshots: Ref.get(snapshots),
+            current,
+            currentViewport: viewport.current,
+            setViewport: viewport.set,
+            simulate: (ref: IntentRef, runtimeValue: JsonPayload = null) =>
+              report(ref, runtimeValue).pipe(Effect.andThen(Effect.yieldNow)),
+            simulateCopy: (key: string) =>
+              Effect.gen(function* () {
+                const view = yield* current
+                const target = view === undefined ? undefined : findViewByKey(view, key)
+                if (target === undefined || target._tag !== "CopyButton") {
+                  return yield* Effect.die(
+                    new Error(`simulateCopy: no CopyButton with key "${key}" in the current view`)
+                  )
+                }
+                if (target.disabled === true) return
+                yield* clipboard.writeText(target.content)
+                if (target.onCopy !== undefined) {
+                  yield* report(target.onCopy, target.content).pipe(Effect.andThen(Effect.yieldNow))
+                }
+              }),
+            clipboardWrites: recorder.writes
+          }
+        })
+      )
     })
 })
 
@@ -7092,7 +7021,7 @@ export const makeStreamRegion = <A, E, R>(
   source: Stream.Stream<RegionPatch<A>, E, R>,
   options: StreamRegionOptions<A> = {}
 ): Effect.Effect<StreamRegion<A>, never, R | Scope.Scope> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const frameMillis = options.frameMillis ?? 16
     const items = yield* SubscriptionRef.make<ReadonlyArray<KeyedItem<A>>>(options.initial ?? [])
     const recorded = yield* Ref.make<ReadonlyArray<RegionPatch<A>>>([])
@@ -7107,7 +7036,7 @@ export const makeStreamRegion = <A, E, R>(
       Stream.runForEach((batch) =>
         batch.length === 0
           ? Effect.void
-          : Effect.gen(function*() {
+          : Effect.gen(function* () {
               yield* SubscriptionRef.update(items, (current) => {
                 let next = current
                 for (const patch of batch) {
@@ -7184,8 +7113,7 @@ export interface KeymapConflict {
   readonly commandIds: ReadonlyArray<string>
 }
 
-export const normalizeChordKey = (key: string): string =>
-  key.length === 1 ? key.toLowerCase() : key
+export const normalizeChordKey = (key: string): string => (key.length === 1 ? key.toLowerCase() : key)
 
 export const chordEquals = (a: KeyChord, b: KeyChord): boolean =>
   normalizeChordKey(a.key) === normalizeChordKey(b.key) &&
@@ -7259,7 +7187,7 @@ export const makeKeymap = (
   commands: ReadonlyArray<CommandDefinition>,
   options: KeymapOptions = {}
 ): Effect.Effect<Keymap> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const platform = options.platform ?? "web"
     const scopeStackRef = yield* Ref.make<ReadonlyArray<string>>([options.initialScope ?? defaultFocusScope])
     const returnFocusStackRef = yield* Ref.make<ReadonlyArray<string | undefined>>([undefined])
@@ -7274,25 +7202,27 @@ export const makeKeymap = (
     ): Option.Option<CommandDefinition> => {
       for (let index = stack.length - 1; index >= 0; index -= 1) {
         const scope = stack[index]
-        const match = commands.find((command) =>
-          (command.scope ?? defaultFocusScope) === scope &&
-          command.binding !== undefined &&
-          chordEquals(command.binding, chord) &&
-          commandEnabled(command, context))
+        const match = commands.find(
+          (command) =>
+            (command.scope ?? defaultFocusScope) === scope &&
+            command.binding !== undefined &&
+            chordEquals(command.binding, chord) &&
+            commandEnabled(command, context)
+        )
         if (match !== undefined) return Option.some(match)
       }
       return Option.none()
     }
 
     const resolve = (chord: KeyChord): Effect.Effect<Option.Option<CommandDefinition>> =>
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const stack = yield* Ref.get(scopeStackRef)
         const context = yield* Ref.get(contextRef)
         return resolveIn(chord, stack, context)
       })
 
     const dispatchChord = (chord: KeyChord): Effect.Effect<Option.Option<string>, IntentError, IntentRegistry> =>
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const matched = yield* resolve(chord)
         if (Option.isNone(matched)) return Option.none()
         yield* dispatchIntent(resolveIntentRef(matched.value.intent))
@@ -7307,11 +7237,11 @@ export const makeKeymap = (
       activeScope: Ref.get(scopeStackRef).pipe(Effect.map((stack) => stack[stack.length - 1] ?? defaultFocusScope)),
       scopeStack: Ref.get(scopeStackRef),
       pushScope: (scope, returnFocus) =>
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           yield* Ref.update(scopeStackRef, (stack) => [...stack, scope])
           yield* Ref.update(returnFocusStackRef, (stack) => [...stack, returnFocus])
         }),
-      popScope: Effect.gen(function*() {
+      popScope: Effect.gen(function* () {
         const stack = yield* Ref.get(scopeStackRef)
         if (stack.length <= 1) return Option.none()
         yield* Ref.set(scopeStackRef, stack.slice(0, -1))
@@ -7333,10 +7263,8 @@ export const makeKeymap = (
 
 export const Keymap = Context.Service<Keymap>("@effect-native/core/Keymap")
 
-export const makeKeymapLayer = (
-  commands: ReadonlyArray<CommandDefinition>,
-  options?: KeymapOptions
-) => Layer.effect(Keymap, makeKeymap(commands, options))
+export const makeKeymapLayer = (commands: ReadonlyArray<CommandDefinition>, options?: KeymapOptions) =>
+  Layer.effect(Keymap, makeKeymap(commands, options))
 
 // Roving-tabindex helper (issue #41): the active item gets tabIndex 0, the rest
 // -1, so a group is a single tab stop with arrow-key traversal inside it.

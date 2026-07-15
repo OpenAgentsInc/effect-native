@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect } from "effect"
 import {
   ComponentValueBinding,
@@ -63,7 +63,7 @@ const collectingReport = () => {
 const elementChildren = (element: ReactElementLike): ReadonlyArray<ReactNodeLike> => {
   const value = element.props.children
   if (value === undefined || value === null) return []
-  return Array.isArray(value) ? value as ReadonlyArray<ReactNodeLike> : [value as ReactNodeLike]
+  return Array.isArray(value) ? (value as ReadonlyArray<ReactNodeLike>) : [value as ReactNodeLike]
 }
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0))
@@ -101,7 +101,7 @@ describe("render-rn CopyButton (#84, v35)", () => {
     const element = renderReactNativeView(
       CopyButton({
         key: "copy-cmd",
-        content: "bun run check",
+        content: "pnpm run check",
         onCopy: IntentRef("Copied", ComponentValueBinding())
       }),
       dependencies,
@@ -111,8 +111,8 @@ describe("render-rn CopyButton (#84, v35)", () => {
 
     ;(element.props.onPress as () => void)()
     await flush()
-    expect(await Effect.runPromise(recorder.writes)).toEqual(["bun run check"])
-    expect(intents).toEqual([{ name: "Copied", payload: "bun run check" }])
+    expect(await Effect.runPromise(recorder.writes)).toEqual(["pnpm run check"])
+    expect(intents).toEqual([{ name: "Copied", payload: "pnpm run check" }])
   })
 
   test("without an injected clipboard the press still fires onCopy with the content (declared subset)", async () => {

@@ -10,12 +10,12 @@
     "android": "expo start --android"
   },
   "dependencies": {
-    "expo": "latest",
-    "react": "latest",
-    "react-native": "latest"
+    "expo": "57.0.2",
+    "react": "catalog:",
+    "react-native": "0.86.0"
   },
   "devDependencies": {
-    "@types/react": "latest",
-    "typescript": "5.8.3"
+    "@types/react": "catalog:",
+    "typescript": "catalog:"
   }
 }

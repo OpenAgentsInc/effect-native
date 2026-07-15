@@ -1,12 +1,6 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Exit, Schema } from "effect"
-import {
-  Markdown,
-  MarkdownLinkHrefSchema,
-  decodeView,
-  encodeView,
-  type MarkdownInline
-} from "../src/index"
+import { Markdown, MarkdownLinkHrefSchema, decodeView, encodeView, type MarkdownInline } from "../src/index"
 
 // Markdown link href grammar (v28, issue #71 — demand from the OpenAgents
 // Forum routes, openagents#8635). The accepted grammar is closed:
@@ -21,8 +15,7 @@ const link = (href: string): MarkdownInline => ({
   children: [{ kind: "text", text: "label" }]
 })
 
-const markdownWith = (href: string) =>
-  Markdown({ key: "md", blocks: [{ kind: "paragraph", children: [link(href)] }] })
+const markdownWith = (href: string) => Markdown({ key: "md", blocks: [{ kind: "paragraph", children: [link(href)] }] })
 
 const accepts = (href: string) => {
   const exit = Schema.decodeUnknownExit(MarkdownLinkHrefSchema)(href)
@@ -95,19 +88,23 @@ describe("markdown link href grammar (#71, v28)", () => {
   test("nested links inside strong/emphasis are gated by the same grammar", () => {
     const view = Markdown({
       key: "md",
-      blocks: [{
-        kind: "paragraph",
-        children: [{ kind: "strong", children: [link("/forum/u/raynor")] }]
-      }]
+      blocks: [
+        {
+          kind: "paragraph",
+          children: [{ kind: "strong", children: [link("/forum/u/raynor")] }]
+        }
+      ]
     })
     expect(decodeView(encodeView(view))).toEqual(view)
     expect(() =>
       Markdown({
         key: "md",
-        blocks: [{
-          kind: "paragraph",
-          children: [{ kind: "emphasis", children: [link("javascript:alert(1)")] }]
-        }]
+        blocks: [
+          {
+            kind: "paragraph",
+            children: [{ kind: "emphasis", children: [link("javascript:alert(1)")] }]
+          }
+        ]
       })
     ).toThrow()
   })

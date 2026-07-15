@@ -1,9 +1,11 @@
-import { Schema } from "effect"
+import { readFile } from "node:fs/promises"
+import { createServer } from "node:http"
+import { fileURLToPath } from "node:url"
+import { resolve } from "node:path"
 import { DevtoolsEventSchema } from "@effect-native/core"
-import {
-  makeRecordingSink,
-  serializeRecording
-} from "./index"
+import { Schema } from "effect"
+import WebSocket, { WebSocketServer } from "ws"
+import { makeRecordingSink, serializeRecording } from "./index"
 
 export interface DevtoolsServerOptions {
   readonly port?: number
@@ -27,12 +29,13 @@ const html = `<!doctype html>
   </body>
 </html>`
 
-const panelFile = () => Bun.file(new URL("../public/panel.js", import.meta.url))
+const panelUrl = new URL("../public/panel.js", import.meta.url)
 
-export const startDevtoolsServer = (options: DevtoolsServerOptions = {}) => {
-  const port = options.port ?? Number(Bun.env.PORT ?? 4327)
+export const startDevtoolsServer = async (options: DevtoolsServerOptions = {}) => {
+  const requestedPort = options.port ?? Number(process.env.PORT ?? 4327)
   const recording = makeRecordingSink(null)
-  const clients = new Set<Bun.ServerWebSocket<unknown>>()
+  const clients = new Set<WebSocket>()
+  const websocketServer = new WebSocketServer({ noServer: true })
 
   const broadcast = () => {
     const message = JSON.stringify({
@@ -40,59 +43,75 @@ export const startDevtoolsServer = (options: DevtoolsServerOptions = {}) => {
       recording: JSON.parse(serializeRecording(recording.recording()))
     })
     for (const client of clients) {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(message)
-      }
+      if (client.readyState === WebSocket.OPEN) client.send(message)
     }
   }
 
-  const server = Bun.serve({
-    port,
-    fetch: (request, server) => {
-      const url = new URL(request.url)
-      if (url.pathname === "/session" && server.upgrade(request)) {
-        return undefined
+  websocketServer.on("connection", (socket) => {
+    clients.add(socket)
+    broadcast()
+    socket.on("close", () => clients.delete(socket))
+    socket.on("message", (rawMessage) => {
+      const payload = JSON.parse(String(rawMessage)) as {
+        readonly type?: string
+        readonly event?: unknown
       }
-      if (url.pathname === "/panel.js") {
-        return new Response(panelFile(), {
-          headers: { "content-type": "text/javascript; charset=utf-8" }
-        })
-      }
-      return new Response(html, {
-        headers: { "content-type": "text/html; charset=utf-8" }
-      })
-    },
-    websocket: {
-      open: (socket) => {
-        clients.add(socket)
+      if (payload.type === "devtools:event") {
+        recording.sink.emit(Schema.decodeUnknownSync(DevtoolsEventSchema)(payload.event))
         broadcast()
-      },
-      close: (socket) => {
-        clients.delete(socket)
-      },
-      message: (_socket, rawMessage) => {
-        const payload = JSON.parse(String(rawMessage)) as {
-          readonly type?: string
-          readonly event?: unknown
-        }
-        if (payload.type === "devtools:event") {
-          recording.sink.emit(Schema.decodeUnknownSync(DevtoolsEventSchema)(payload.event))
-          broadcast()
-        } else if (payload.type === "devtools:hello") {
-          broadcast()
-        }
+      } else if (payload.type === "devtools:hello") {
+        broadcast()
       }
-    }
+    })
   })
 
+  const server = createServer(async (request, response) => {
+    const url = new URL(request.url ?? "/", "http://127.0.0.1")
+    if (url.pathname === "/panel.js") {
+      response.writeHead(200, { "content-type": "text/javascript; charset=utf-8" })
+      response.end(await readFile(panelUrl))
+      return
+    }
+    response.writeHead(200, { "content-type": "text/html; charset=utf-8" })
+    response.end(html)
+  })
+
+  server.on("upgrade", (request, socket, head) => {
+    const url = new URL(request.url ?? "/", "http://127.0.0.1")
+    if (url.pathname !== "/session") {
+      socket.destroy()
+      return
+    }
+    websocketServer.handleUpgrade(request, socket, head, (websocket) => {
+      websocketServer.emit("connection", websocket, request)
+    })
+  })
+
+  await new Promise<void>((resolveListen, reject) => {
+    server.once("error", reject)
+    server.listen(requestedPort, "127.0.0.1", resolveListen)
+  })
+  const address = server.address()
+  if (address === null || typeof address === "string") {
+    throw new Error("devtools server did not bind a TCP port")
+  }
+
   return {
-    url: `http://localhost:${port}`,
+    url: `http://127.0.0.1:${address.port}`,
     recording: recording.recording,
-    stop: () => server.stop()
+    stop: () =>
+      new Promise<void>((resolveClose, reject) => {
+        for (const client of clients) client.close()
+        websocketServer.close()
+        server.closeAllConnections()
+        server.close((error) => (error === undefined ? resolveClose() : reject(error)))
+      })
   }
 }
 
-if (import.meta.main) {
-  const server = startDevtoolsServer()
+const isDirectEntry = process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+
+if (isDirectEntry) {
+  const server = await startDevtoolsServer()
   console.log(`Effect Native DevTools: ${server.url}`)
 }

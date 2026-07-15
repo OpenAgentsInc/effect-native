@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect, Exit, Schema, SubscriptionRef } from "effect"
 import {
   CatalogVersion,
@@ -108,17 +108,24 @@ describe("Spinner + LoadingDots + ShimmerText (#83) catalog contract", () => {
   })
 
   test("headless renderer records loading-indicator fixtures as serializable data", async () => {
-    const view = (state: number): View =>
-      Spinner({ key: "spinner", label: `Loading ${state}` })
+    const view = (state: number): View => Spinner({ key: "spinner", label: `Loading ${state}` })
     const report: IntentReporter = () => Effect.succeed(undefined)
-    const result = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const state = yield* SubscriptionRef.make(0)
-      const program = makeViewProgramFromState(state, view)
-      const surface = yield* makeHeadlessRenderer({ reducedMotion: true }).mount(undefined, program.viewStream, report)
-      const current = yield* surface.current
-      yield* surface.unmount
-      return current
-    })))
+    const result = await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const state = yield* SubscriptionRef.make(0)
+          const program = makeViewProgramFromState(state, view)
+          const surface = yield* makeHeadlessRenderer({ reducedMotion: true }).mount(
+            undefined,
+            program.viewStream,
+            report
+          )
+          const current = yield* surface.current
+          yield* surface.unmount
+          return current
+        })
+      )
+    )
     expect(result?._tag).toBe("Spinner")
     if (result?._tag === "Spinner") {
       expect(result.reduceMotion).toBe(true)

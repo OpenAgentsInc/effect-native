@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect, SubscriptionRef } from "effect"
 import {
   IntentRef,
@@ -20,16 +20,18 @@ describe("home page sample app", () => {
   })
 
   test("dispatching Incremented through a registry updates state, exactly as the button's onPress does", async () => {
-    await Effect.runPromise(Effect.gen(function*() {
-      const state = yield* SubscriptionRef.make({ count: 0 })
-      const handlers: IntentHandlers<readonly [typeof Incremented]> = {
-        Incremented: () => SubscriptionRef.update(state, (current) => ({ count: current.count + 1 }))
-      }
-      const registry = yield* makeIntentRegistry([Incremented] as const, handlers, { now: () => 0 })
+    await Effect.runPromise(
+      Effect.gen(function* () {
+        const state = yield* SubscriptionRef.make({ count: 0 })
+        const handlers: IntentHandlers<readonly [typeof Incremented]> = {
+          Incremented: () => SubscriptionRef.update(state, (current) => ({ count: current.count + 1 }))
+        }
+        const registry = yield* makeIntentRegistry([Incremented] as const, handlers, { now: () => 0 })
 
-      yield* registry.dispatch(resolveIntentRef(IntentRef("Incremented", StaticPayload({}))))
-      const next = yield* SubscriptionRef.get(state)
-      expect(next.count).toBe(1)
-    }))
+        yield* registry.dispatch(resolveIntentRef(IntentRef("Incremented", StaticPayload({}))))
+        const next = yield* SubscriptionRef.get(state)
+        expect(next.count).toBe(1)
+      })
+    )
   })
 })

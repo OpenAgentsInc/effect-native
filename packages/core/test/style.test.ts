@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Exit, Schema } from "effect"
 import fc from "fast-check"
 import {
@@ -26,13 +26,18 @@ import {
 const spacingToken = fc.constantFrom(...spacingTokens)
 const colorToken = fc.constantFrom<ColorToken>(...colorTokens)
 
-const flatStyle = fc.record({
-  marginTop: spacingToken,
-  padding: spacingToken,
-  color: colorToken,
-  backgroundColor: colorToken,
-  opacity: fc.double({ min: 0, max: 1, noNaN: true })
-}, { requiredKeys: [] }).map((style) => style as Style)
+const flatStyle = fc
+  .record(
+    {
+      marginTop: spacingToken,
+      padding: spacingToken,
+      color: colorToken,
+      backgroundColor: colorToken,
+      opacity: fc.double({ min: 0, max: 1, noNaN: true })
+    },
+    { requiredKeys: [] }
+  )
+  .map((style) => style as Style)
 
 const spacerOk: SpacerStyle = {
   width: "sm",
@@ -78,24 +83,27 @@ describe("typed style values", () => {
   test("variant resolution returns a flat style with no variant keys", () => {
     fc.assert(
       fc.property(flatStyle, colorToken, (base, color) => {
-        const resolved = resolveStyle({
-          ...base,
-          variants: {
-            platform: {
-              web: { opacity: 0.5 }
-            },
-            state: {
-              pressed: { color }
-            },
-            breakpoint: {
-              md: { marginTop: "4" }
+        const resolved = resolveStyle(
+          {
+            ...base,
+            variants: {
+              platform: {
+                web: { opacity: 0.5 }
+              },
+              state: {
+                pressed: { color }
+              },
+              breakpoint: {
+                md: { marginTop: "4" }
+              }
             }
+          },
+          {
+            platform: "web",
+            state: "pressed",
+            breakpoint: "md"
           }
-        }, {
-          platform: "web",
-          state: "pressed",
-          breakpoint: "md"
-        })
+        )
 
         expect("variants" in resolved).toBe(false)
         expect(resolved.opacity).toBe(0.5)
@@ -175,32 +183,35 @@ describe("typed style values", () => {
   })
 
   test("styles in a view tree survive JSON round-trip", () => {
-    const view = Stack({
-      direction: "column",
-      style: {
-        padding: "4",
-        backgroundColor: "surface",
-        variants: {
-          breakpoint: {
-            md: { padding: "8" }
-          }
-        }
-      }
-    }, [
-      Text({
-        content: "Styled",
-        variant: "body",
+    const view = Stack(
+      {
+        direction: "column",
         style: {
-          color: "textPrimary",
+          padding: "4",
+          backgroundColor: "surface",
           variants: {
-            state: {
-              pressed: { color: "accent" }
+            breakpoint: {
+              md: { padding: "8" }
             }
           }
         }
-      }),
-      Spacer({ size: "2", style: { marginTop: "1" } })
-    ])
+      },
+      [
+        Text({
+          content: "Styled",
+          variant: "body",
+          style: {
+            color: "textPrimary",
+            variants: {
+              state: {
+                pressed: { color: "accent" }
+              }
+            }
+          }
+        }),
+        Spacer({ size: "2", style: { marginTop: "1" } })
+      ]
+    )
 
     const encoded = encodeView(view)
     const parsed = JSON.parse(JSON.stringify(encoded))

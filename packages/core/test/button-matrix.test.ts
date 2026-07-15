@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Exit, Schema } from "effect"
 import {
   AvatarCatalogVersion,
@@ -74,22 +74,30 @@ describe("Button catalog v37 (#78, harmonization P1.5)", () => {
 
   test("the tone and variant vocabularies are closed", () => {
     const decode = Schema.decodeUnknownExit(ViewSchema)
-    expect(Exit.isFailure(decode({
-      _tag: "Button",
-      catalogVersion: CatalogVersion,
-      key: "bad-tone",
-      label: "Go",
-      tone: "gradient",
-      onPress: { name: "Go" }
-    }))).toBe(true)
-    expect(Exit.isFailure(decode({
-      _tag: "Button",
-      catalogVersion: CatalogVersion,
-      key: "bad-variant",
-      label: "Go",
-      variant: "gradient",
-      onPress: { name: "Go" }
-    }))).toBe(true)
+    expect(
+      Exit.isFailure(
+        decode({
+          _tag: "Button",
+          catalogVersion: CatalogVersion,
+          key: "bad-tone",
+          label: "Go",
+          tone: "gradient",
+          onPress: { name: "Go" }
+        })
+      )
+    ).toBe(true)
+    expect(
+      Exit.isFailure(
+        decode({
+          _tag: "Button",
+          catalogVersion: CatalogVersion,
+          key: "bad-variant",
+          label: "Go",
+          variant: "gradient",
+          onPress: { name: "Go" }
+        })
+      )
+    ).toBe(true)
   })
 })
 
@@ -116,12 +124,17 @@ describe("resolveButtonAppearance (#78)", () => {
   // the removed `--en-color-*` references it used to consume directly):
   // "primary" -> accent solid, "secondary" -> secondary solid,
   // "ghost" -> accent ghost (already a matrix token).
-  test("legacy `variant: \"primary\"` normalizes to tone accent, variant solid", () => {
-    const view = Button({ key: "legacy-primary", label: "Go", variant: "primary", onPress: IntentRef("Go", StaticPayload({})) })
+  test('legacy `variant: "primary"` normalizes to tone accent, variant solid', () => {
+    const view = Button({
+      key: "legacy-primary",
+      label: "Go",
+      variant: "primary",
+      onPress: IntentRef("Go", StaticPayload({}))
+    })
     expect(resolveButtonAppearance(view)).toEqual({ tone: "accent", variant: "solid", size: "md" })
   })
 
-  test("legacy `variant: \"secondary\"` normalizes to tone secondary, variant solid", () => {
+  test('legacy `variant: "secondary"` normalizes to tone secondary, variant solid', () => {
     const view = Button({
       key: "legacy-secondary",
       label: "Go",
@@ -131,8 +144,13 @@ describe("resolveButtonAppearance (#78)", () => {
     expect(resolveButtonAppearance(view)).toEqual({ tone: "secondary", variant: "solid", size: "md" })
   })
 
-  test("legacy `variant: \"ghost\"` normalizes to tone accent, variant ghost (unchanged token)", () => {
-    const view = Button({ key: "legacy-ghost", label: "Go", variant: "ghost", onPress: IntentRef("Go", StaticPayload({})) })
+  test('legacy `variant: "ghost"` normalizes to tone accent, variant ghost (unchanged token)', () => {
+    const view = Button({
+      key: "legacy-ghost",
+      label: "Go",
+      variant: "ghost",
+      onPress: IntentRef("Go", StaticPayload({}))
+    })
     expect(resolveButtonAppearance(view)).toEqual({ tone: "accent", variant: "ghost", size: "md" })
   })
 

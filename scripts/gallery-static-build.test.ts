@@ -1,81 +1,58 @@
-import { afterAll, describe, expect, test } from "bun:test"
+import { afterAll, describe, expect, test } from "vite-plus/test"
 import { existsSync } from "node:fs"
+import { spawnSync } from "node:child_process"
 import { resolve } from "node:path"
+import { isHtmlRequest, startStaticServer, type NodeStaticServer } from "./node-static-server"
 
-const root = resolve(import.meta.dir, "..")
+const root = resolve(import.meta.dirname, "..")
 const galleryRoot = resolve(root, "dist/gallery")
-const servers: Array<ReturnType<typeof Bun.serve>> = []
-
-const contentType = (path: string): string => path.endsWith(".js")
-  ? "text/javascript; charset=utf-8"
-  : "text/html; charset=utf-8"
-
-const isHtmlFallback = (request: Request, pathname: string): boolean =>
-  !pathname.split("/").at(-1)?.includes(".") &&
-  (request.headers.get("accept") ?? "").includes("text/html")
+const servers: Array<NodeStaticServer> = []
 
 const fallbackIndex = (base: string, pathname: string): string =>
   pathname === "/gallery" || pathname.startsWith("/gallery/")
     ? resolve(base, "./gallery/index.html")
     : resolve(base, "./index.html")
 
-const makeStaticServer = (base: string) => {
-  const server = Bun.serve({
-    port: 0,
-    fetch: async (request) => {
-      const url = new URL(request.url)
-      const pathname = url.pathname.endsWith("/") ? `${url.pathname}index.html` : url.pathname
-      let file = Bun.file(resolve(base, `.${pathname}`))
-      if (!(await file.exists())) {
-        if (!isHtmlFallback(request, pathname)) {
-          return new Response("Not found", { status: 404 })
-        }
-        file = Bun.file(fallbackIndex(base, pathname))
-      }
-      return new Response(file, {
-        headers: { "content-type": contentType(pathname) }
-      })
-    }
+const makeStaticServer = async (base: string) => {
+  const server = await startStaticServer({
+    root: base,
+    fallback: (pathname, request) =>
+      isHtmlRequest(request, pathname) ? { file: fallbackIndex(base, pathname) } : undefined
   })
   servers.push(server)
   return server
 }
 
-afterAll(() => {
-  for (const server of servers) {
-    server.stop(true)
-  }
-})
+afterAll(async () => Promise.all(servers.map((server) => server.stop())))
 
 describe("gallery static build", () => {
   test("emits relative-path-safe files that serve at root and subpath", async () => {
-    const build = Bun.spawnSync(["bun", "run", "gallery:build"], {
+    const build = spawnSync("pnpm", ["run", "gallery:build"], {
       cwd: root,
-      stdout: "pipe",
-      stderr: "pipe"
+      encoding: "utf8"
     })
 
-    expect(build.exitCode).toBe(0)
+    expect(build.status).toBe(0)
     expect(existsSync(resolve(galleryRoot, "index.html"))).toBe(true)
     expect(existsSync(resolve(galleryRoot, "app.js"))).toBe(true)
 
-    const rootServer = makeStaticServer(galleryRoot)
-    const subpathServer = makeStaticServer(resolve(root, "dist"))
-    const rootIndex = await fetch(`http://localhost:${rootServer.port}/`)
-    const rootApp = await fetch(`http://localhost:${rootServer.port}/app.js`)
-    const rootStory = await fetch(`http://localhost:${rootServer.port}/stories/button-primary`, {
+    const rootServer = await makeStaticServer(galleryRoot)
+    const subpathServer = await makeStaticServer(resolve(root, "dist"))
+    const rootIndex = await fetch(`${rootServer.url}/`)
+    const rootApp = await fetch(`${rootServer.url}/app.js`)
+    const rootStory = await fetch(`${rootServer.url}/stories/button-primary`, {
       headers: { accept: "text/html" }
     })
-    const rootMissingAsset = await fetch(`http://localhost:${rootServer.port}/stories/missing.js`)
-    const subpathIndex = await fetch(`http://localhost:${subpathServer.port}/gallery/`)
-    const subpathIndexNoSlash = await fetch(`http://localhost:${subpathServer.port}/gallery`, {
+    const rootMissingAsset = await fetch(`${rootServer.url}/stories/missing.js`)
+    const subpathIndex = await fetch(`${subpathServer.url}/gallery/`)
+    const subpathIndexNoSlash = await fetch(`${subpathServer.url}/gallery`, {
       headers: { accept: "text/html" }
     })
-    const subpathApp = await fetch(`http://localhost:${subpathServer.port}/gallery/app.js`)
-    const subpathStory = await fetch(`http://localhost:${subpathServer.port}/gallery/stories/button-primary`, {
+    const subpathApp = await fetch(`${subpathServer.url}/gallery/app.js`)
+    const subpathStory = await fetch(`${subpathServer.url}/gallery/stories/button-primary`, {
       headers: { accept: "text/html" }
     })
-    const subpathMissingAsset = await fetch(`http://localhost:${subpathServer.port}/gallery/stories/missing.js`)
+    const subpathMissingAsset = await fetch(`${subpathServer.url}/gallery/stories/missing.js`)
 
     expect(rootIndex.status).toBe(200)
     expect(rootApp.status).toBe(200)

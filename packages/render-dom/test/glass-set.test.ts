@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect, SubscriptionRef } from "effect"
 import { Window } from "happy-dom"
 import {
@@ -27,16 +27,20 @@ const createDom = () => {
 const noopReport: IntentReporter = () => Effect.succeed(undefined)
 
 const mountView = (view: View) =>
-  Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-    const { container, document } = createDom()
-    const state = yield* SubscriptionRef.make(0)
-    const program = makeViewProgramFromState(state, () => view)
-    const surface = yield* makeDomRenderer({ document }).mount(container, program.viewStream, noopReport)
-    const stylesheet = document.head.querySelector('[data-effect-native="dom"]')?.textContent ?? ""
-    const html = container.innerHTML
-    yield* surface.unmount
-    return { html, stylesheet, container }
-  })))
+  Effect.runPromise(
+    Effect.scoped(
+      Effect.gen(function* () {
+        const { container, document } = createDom()
+        const state = yield* SubscriptionRef.make(0)
+        const program = makeViewProgramFromState(state, () => view)
+        const surface = yield* makeDomRenderer({ document }).mount(container, program.viewStream, noopReport)
+        const stylesheet = document.head.querySelector('[data-effect-native="dom"]')?.textContent ?? ""
+        const html = container.innerHTML
+        yield* surface.unmount
+        return { html, stylesheet, container }
+      })
+    )
+  )
 
 // Glass set (GL-1, openagents#8647) on the DOM renderer.
 describe("render-dom glass set (GL-1)", () => {
@@ -61,9 +65,7 @@ describe("render-dom glass set (GL-1)", () => {
 
   test("Toolbar renders role=toolbar with placement data and children", async () => {
     const { html } = await mountView(
-      Toolbar({ key: "actions", surface: "glass" }, [
-        Text({ key: "hint", content: "Ready", variant: "caption" })
-      ])
+      Toolbar({ key: "actions", surface: "glass" }, [Text({ key: "hint", content: "Ready", variant: "caption" })])
     )
 
     expect(html).toContain('role="toolbar"')

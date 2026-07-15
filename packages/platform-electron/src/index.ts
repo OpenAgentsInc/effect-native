@@ -18,12 +18,7 @@
  * an owner step (see `docs/electron-host.md`).
  */
 import { Context, Effect, Exit, Layer, PubSub, Ref, Schema, Scope, Stream } from "effect"
-import {
-  type IntentReporter,
-  type MountedSurface,
-  type RendererAdapter,
-  type ViewProgram
-} from "@effect-native/core"
+import { type IntentReporter, type MountedSurface, type RendererAdapter, type ViewProgram } from "@effect-native/core"
 import { makeDomRenderer, type DomHostDriver, type DomMountedSurface } from "@effect-native/render-dom"
 import {
   AppMenu,
@@ -125,9 +120,7 @@ export interface ElectronSecurityAppLike {
 
 export interface ElectronPermissionSessionLike {
   readonly setPermissionRequestHandler: (
-    handler:
-      | ((webContents: unknown, permission: string, callback: (granted: boolean) => void) => void)
-      | null
+    handler: ((webContents: unknown, permission: string, callback: (granted: boolean) => void) => void) | null
   ) => void
 }
 
@@ -158,10 +151,7 @@ export interface ElectronBrowserWindowLike {
 
 export interface ElectronSingleInstanceAppLike {
   readonly requestSingleInstanceLock: () => boolean
-  readonly on: (
-    event: "second-instance",
-    listener: (event: unknown, argv: ReadonlyArray<string>) => void
-  ) => unknown
+  readonly on: (event: "second-instance", listener: (event: unknown, argv: ReadonlyArray<string>) => void) => unknown
 }
 
 export interface ElectronDeepLinkAppLike {
@@ -223,9 +213,7 @@ export interface HardenedWebPreferencesOptions {
 }
 
 /** Construct the canonical hardened `webPreferences` object. */
-export const hardenedWebPreferences = (
-  options: HardenedWebPreferencesOptions = {}
-): HardenedWebPreferences =>
+export const hardenedWebPreferences = (options: HardenedWebPreferencesOptions = {}): HardenedWebPreferences =>
   HardenedWebPreferencesSchema.make({
     contextIsolation: true,
     nodeIntegration: false,
@@ -274,13 +262,10 @@ export const RestrictiveCspSchema = Schema.String.check(
   )
 )
 
-export class InsecureCspError extends Schema.TaggedErrorClass<InsecureCspError>()(
-  "InsecureCspError",
-  {
-    csp: Schema.String,
-    message: Schema.String
-  }
-) {}
+export class InsecureCspError extends Schema.TaggedErrorClass<InsecureCspError>()("InsecureCspError", {
+  csp: Schema.String,
+  message: Schema.String
+}) {}
 
 /**
  * Wire a restrictive CSP onto every renderer response through the session's
@@ -362,9 +347,7 @@ const urlAllowed = (url: string, allowed: ReadonlyArray<string>): boolean => {
   if (origin === undefined && protocol === undefined) {
     return false
   }
-  return allowed.some((entry) =>
-    entry.endsWith(":") ? protocol === entry : origin !== undefined && origin === entry
-  )
+  return allowed.some((entry) => (entry.endsWith(":") ? protocol === entry : origin !== undefined && origin === entry))
 }
 
 /**
@@ -437,9 +420,7 @@ export const verifyPackagedFuses = (
 ): Effect.Effect<ElectronFusesExpectation, PackagedFusesMismatchError> =>
   Effect.suspend(() => {
     if (typeof actual !== "object" || actual === null || Array.isArray(actual)) {
-      return Effect.fail(
-        new PackagedFusesMismatchError({ mismatches: ["packaged fuse state is not an object"] })
-      )
+      return Effect.fail(new PackagedFusesMismatchError({ mismatches: ["packaged fuse state is not an object"] }))
     }
     const record = actual as Record<string, unknown>
     const mismatches: Array<string> = []
@@ -464,8 +445,8 @@ export const verifyPackagedFuses = (
  * so service-dependent codecs are rejected at the type level.
  */
 export interface ElectronChannelSchema extends Schema.Top {
-  readonly "DecodingServices": never
-  readonly "EncodingServices": never
+  readonly DecodingServices: never
+  readonly EncodingServices: never
 }
 
 export interface ElectronChannel<
@@ -521,13 +502,8 @@ export const ElectronIpcEnvelopeSchema = Schema.Union([
 ])
 
 /** Channel-typed envelope: `ok.value` must decode with the response schema. */
-export const makeElectronIpcEnvelopeSchema = <ResponseSchema extends ElectronChannelSchema>(
-  response: ResponseSchema
-) =>
-  Schema.Union([
-    Schema.Struct({ _tag: Schema.Literal("ok"), value: response }),
-    ElectronIpcRefusedEnvelopeSchema
-  ])
+export const makeElectronIpcEnvelopeSchema = <ResponseSchema extends ElectronChannelSchema>(response: ResponseSchema) =>
+  Schema.Union([Schema.Struct({ _tag: Schema.Literal("ok"), value: response }), ElectronIpcRefusedEnvelopeSchema])
 
 export const refusedEnvelope = (reason: ElectronIpcRefusalReason): ElectronIpcRefusedEnvelope =>
   ElectronIpcRefusedEnvelopeSchema.make({ _tag: "refused", reason })
@@ -579,10 +555,7 @@ export const registerElectronMainHandler = <
         ...args: ReadonlyArray<unknown>
       ): Promise<ElectronIpcEnvelope> => {
         const senderUrl = event.senderFrame?.url
-        if (
-          senderUrl === undefined ||
-          !urlAllowed(senderUrl, options.senderPolicy.allowedSenderOrigins)
-        ) {
+        if (senderUrl === undefined || !urlAllowed(senderUrl, options.senderPolicy.allowedSenderOrigins)) {
           return refusedEnvelope("invalid-sender")
         }
         const decoded = Schema.decodeUnknownExit(options.channel.request)(args[0])
@@ -645,9 +618,7 @@ export const makeElectronPreloadBridge = <Channels extends ElectronChannelMap>(o
         return refusedEnvelope("handler-error")
       }
       const envelope = Schema.decodeUnknownExit(ElectronIpcEnvelopeSchema)(raw)
-      return Exit.isFailure(envelope)
-        ? refusedEnvelope("malformed-response")
-        : (envelope.value as ElectronIpcEnvelope)
+      return Exit.isFailure(envelope) ? refusedEnvelope("malformed-response") : (envelope.value as ElectronIpcEnvelope)
     }
   }
   return Object.freeze(bridge) as ElectronPreloadBridge<Channels>
@@ -687,18 +658,14 @@ export const makeElectronRendererClient = <Channels extends ElectronChannelMap>(
   for (const [key, channel] of Object.entries(options.channels)) {
     const envelopeSchema = makeElectronIpcEnvelopeSchema(channel.response)
     client[key] = (request: unknown) =>
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const decodedRequest = Schema.decodeUnknownExit(channel.request)(request)
         if (Exit.isFailure(decodedRequest)) {
-          return yield* Effect.fail(
-            new ElectronIpcRefusedError({ channel: channel.name, reason: "malformed-request" })
-          )
+          return yield* Effect.fail(new ElectronIpcRefusedError({ channel: channel.name, reason: "malformed-request" }))
         }
         const method = options.api[key]
         if (typeof method !== "function") {
-          return yield* Effect.fail(
-            new ElectronIpcRefusedError({ channel: channel.name, reason: "handler-error" })
-          )
+          return yield* Effect.fail(new ElectronIpcRefusedError({ channel: channel.name, reason: "handler-error" }))
         }
         const raw = yield* Effect.tryPromise({
           try: () => Promise.resolve((method as (value: unknown) => unknown)(decodedRequest.value)),
@@ -735,12 +702,10 @@ export const ElectronAppLifecycle = Context.Service<ElectronAppLifecycle>(
   "@effect-native/platform-electron/ElectronAppLifecycle"
 )
 
-export const makeElectronAppLifecycleLayer = (
-  app: ElectronAppLifecycleLike
-): Layer.Layer<ElectronAppLifecycle> =>
+export const makeElectronAppLifecycleLayer = (app: ElectronAppLifecycleLike): Layer.Layer<ElectronAppLifecycle> =>
   Layer.effect(
     ElectronAppLifecycle,
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const events = yield* PubSub.unbounded<void>()
       app.on("before-quit", () => {
         Effect.runSync(PubSub.publish(events, undefined).pipe(Effect.asVoid))
@@ -761,7 +726,7 @@ export interface ElectronAppLifecycleTestHarness {
 }
 
 export const makeElectronAppLifecycleTestHarness = (): Effect.Effect<ElectronAppLifecycleTestHarness> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const events = yield* PubSub.unbounded<void>()
     const quits = yield* Ref.make(0)
     const lifecycle: ElectronAppLifecycle = {
@@ -797,29 +762,26 @@ export const SafeExternalOpener = Context.Service<SafeExternalOpener>(
   "@effect-native/platform-electron/SafeExternalOpener"
 )
 
-const makeSafeOpen = (
-  allowedProtocols: ReadonlyArray<string>,
-  openExternal: (url: string) => Effect.Effect<void>
-) =>
-(url: string): Effect.Effect<void, ExternalOpenRefusedError> => {
-  const protocol = protocolOf(url)
-  if (protocol === undefined) {
-    return Effect.fail(new ExternalOpenRefusedError({ url, reason: "invalid-url" }))
+const makeSafeOpen =
+  (allowedProtocols: ReadonlyArray<string>, openExternal: (url: string) => Effect.Effect<void>) =>
+  (url: string): Effect.Effect<void, ExternalOpenRefusedError> => {
+    const protocol = protocolOf(url)
+    if (protocol === undefined) {
+      return Effect.fail(new ExternalOpenRefusedError({ url, reason: "invalid-url" }))
+    }
+    if (!allowedProtocols.includes(protocol)) {
+      return Effect.fail(new ExternalOpenRefusedError({ url, reason: "protocol-not-allowlisted" }))
+    }
+    return openExternal(url)
   }
-  if (!allowedProtocols.includes(protocol)) {
-    return Effect.fail(new ExternalOpenRefusedError({ url, reason: "protocol-not-allowlisted" }))
-  }
-  return openExternal(url)
-}
 
 export const makeElectronSafeExternalOpenerLayer = (options: {
   readonly shell: ElectronShellLike
   readonly allowedProtocols?: ReadonlyArray<string>
 }): Layer.Layer<SafeExternalOpener> =>
   Layer.succeed(SafeExternalOpener, {
-    open: makeSafeOpen(
-      options.allowedProtocols ?? defaultElectronSecurityPolicy.allowedExternalProtocols,
-      (url) => Effect.promise(() => options.shell.openExternal(url))
+    open: makeSafeOpen(options.allowedProtocols ?? defaultElectronSecurityPolicy.allowedExternalProtocols, (url) =>
+      Effect.promise(() => options.shell.openExternal(url))
     )
   })
 
@@ -832,11 +794,10 @@ export interface SafeExternalOpenerTestHarness {
 export const makeSafeExternalOpenerTestHarness = (
   allowedProtocols: ReadonlyArray<string> = defaultElectronSecurityPolicy.allowedExternalProtocols
 ): Effect.Effect<SafeExternalOpenerTestHarness> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const openedRef = yield* Ref.make<ReadonlyArray<string>>([])
     const opener: SafeExternalOpener = {
-      open: makeSafeOpen(allowedProtocols, (url) =>
-        Ref.update(openedRef, (urls) => [...urls, url]))
+      open: makeSafeOpen(allowedProtocols, (url) => Ref.update(openedRef, (urls) => [...urls, url]))
     }
     return {
       opener,
@@ -849,9 +810,7 @@ export const makeSafeExternalOpenerTestHarness = (
 // Electron-backed layers over the desktop service contracts
 // ---------------------------------------------------------------------------
 
-export const makeElectronWindowLayer = (
-  window: ElectronBrowserWindowLike
-): Layer.Layer<DesktopWindow> =>
+export const makeElectronWindowLayer = (window: ElectronBrowserWindowLike): Layer.Layer<DesktopWindow> =>
   Layer.succeed(DesktopWindow, {
     setTitle: (title) => Effect.sync(() => window.setTitle(title)),
     setFullscreen: (fullscreen) => Effect.sync(() => window.setFullScreen(fullscreen)),
@@ -865,12 +824,10 @@ export const makeElectronWindowLayer = (
     }))
   })
 
-export const makeElectronSingleInstanceLayer = (
-  app: ElectronSingleInstanceAppLike
-): Layer.Layer<SingleInstance> =>
+export const makeElectronSingleInstanceLayer = (app: ElectronSingleInstanceAppLike): Layer.Layer<SingleInstance> =>
   Layer.effect(
     SingleInstance,
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const events = yield* PubSub.unbounded<SecondInstanceEvent>()
       app.on("second-instance", (_event, argv) => {
         Effect.runSync(PubSub.publish(events, { argv: [...argv] }).pipe(Effect.asVoid))
@@ -882,12 +839,10 @@ export const makeElectronSingleInstanceLayer = (
     })
   )
 
-export const makeElectronDeepLinkLayer = (
-  app: ElectronDeepLinkAppLike
-): Layer.Layer<DeepLink> =>
+export const makeElectronDeepLinkLayer = (app: ElectronDeepLinkAppLike): Layer.Layer<DeepLink> =>
   Layer.effect(
     DeepLink,
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const events = yield* PubSub.unbounded<DeepLinkEvent>()
       const publish = (url: string) => {
         Effect.runSync(PubSub.publish(events, { url }).pipe(Effect.asVoid))
@@ -921,25 +876,27 @@ export const makeElectronAppMenuLayer = (options: {
 }): Layer.Layer<AppMenu> =>
   Layer.effect(
     AppMenu,
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const current = yield* Ref.make<Menu>(MenuSchema.make({ items: [] }))
       const setMenu = (menu: Menu): Effect.Effect<void> =>
         Ref.set(current, MenuSchema.make(menu)).pipe(
-          Effect.andThen(Effect.sync(() => {
-            const template = menu.items.map((item): ElectronMenuItemTemplateLike => {
-              const intentName = item.intentName
-              const onMenuIntent = options.onMenuIntent
-              return {
-                id: item.id,
-                label: item.title,
-                enabled: item.enabled ?? true,
-                ...(intentName === undefined || onMenuIntent === undefined
-                  ? {}
-                  : { click: () => onMenuIntent(intentName) })
-              }
+          Effect.andThen(
+            Effect.sync(() => {
+              const template = menu.items.map((item): ElectronMenuItemTemplateLike => {
+                const intentName = item.intentName
+                const onMenuIntent = options.onMenuIntent
+                return {
+                  id: item.id,
+                  label: item.title,
+                  enabled: item.enabled ?? true,
+                  ...(intentName === undefined || onMenuIntent === undefined
+                    ? {}
+                    : { click: () => onMenuIntent(intentName) })
+                }
+              })
+              options.menu.setApplicationMenu(options.menu.buildFromTemplate(template))
             })
-            options.menu.setApplicationMenu(options.menu.buildFromTemplate(template))
-          }))
+          )
         )
       return {
         setMenu,
@@ -976,16 +933,14 @@ export interface ElectronMountedApp extends MountedSurface {
 export const runMainElectronRenderer = <State>(
   options: RunMainElectronRendererOptions<State>
 ): Effect.Effect<ElectronMountedApp, never, Scope.Scope> =>
-  Effect.gen(function*() {
-    const renderer = options.renderer ?? makeDomRenderer({
-      document: options.container.ownerDocument,
-      ...(options.hostDrivers === undefined ? {} : { hostDrivers: options.hostDrivers })
-    })
-    const surface = yield* renderer.mount(
-      options.container,
-      options.runtime.program.viewStream,
-      options.runtime.report
-    )
+  Effect.gen(function* () {
+    const renderer =
+      options.renderer ??
+      makeDomRenderer({
+        document: options.container.ownerDocument,
+        ...(options.hostDrivers === undefined ? {} : { hostDrivers: options.hostDrivers })
+      })
+    const surface = yield* renderer.mount(options.container, options.runtime.program.viewStream, options.runtime.report)
     return {
       surface,
       unmount: surface.unmount

@@ -1,23 +1,14 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Schema } from "effect"
-import {
-  DimensionThemeSchema,
-  defaultTheme,
-  dimensionTokens,
-  khalaTheme
-} from "../src/index"
+import { DimensionThemeSchema, defaultTheme, dimensionTokens, khalaTheme } from "../src/index"
 
 describe("bounded-layout dimension lattice", () => {
   test("both themes expose the complete monotonic lattice", () => {
     for (const theme of [defaultTheme, khalaTheme]) {
-      expect(Schema.decodeUnknownSync(DimensionThemeSchema)(theme.dimension)).toEqual(
-        theme.dimension
-      )
+      expect(Schema.decodeUnknownSync(DimensionThemeSchema)(theme.dimension)).toEqual(theme.dimension)
       expect(Object.keys(theme.dimension)).toEqual([...dimensionTokens])
 
-      const values = dimensionTokens
-        .filter(token => token !== "full")
-        .map(token => Number(theme.dimension[token]))
+      const values = dimensionTokens.filter((token) => token !== "full").map((token) => Number(theme.dimension[token]))
       for (let index = 1; index < values.length; index++) {
         expect(values[index]).toBeGreaterThan(values[index - 1]!)
       }

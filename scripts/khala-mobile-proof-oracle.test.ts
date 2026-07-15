@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect } from "effect"
 import { Window } from "happy-dom"
 import {
@@ -34,9 +34,7 @@ const createElement = (
   key: typeof props?.key === "string" ? props.key : null,
   props: {
     ...(props ?? {}),
-    ...(children.length === 0
-      ? {}
-      : { children: children.length === 1 ? children[0] : children })
+    ...(children.length === 0 ? {} : { children: children.length === 1 ? children[0] : children })
   }
 })
 
@@ -59,7 +57,7 @@ const normalizeEvents = (events: ReadonlyArray<{ readonly intent: { readonly nam
   events.map((event) => event.intent.name)
 
 const runScriptedSession = (report: IntentReporter) =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     yield* report(IntentRef("KhalaMobile.SelectStep", ComponentValueBinding()), "repo")
     yield* report(IntentRef("KhalaMobile.SelectStep", ComponentValueBinding()), "task")
     yield* report(IntentRef("KhalaMobile.CompleteOnboarding", StaticPayload({})), null)
@@ -67,20 +65,11 @@ const runScriptedSession = (report: IntentReporter) =>
     yield* report(IntentRef("KhalaMobile.OpenSettings", StaticPayload({})), null)
     yield* report(IntentRef("KhalaMobile.ToggleAutoApprove", ComponentValueBinding()), true)
     yield* report(IntentRef("KhalaMobile.BackToThreads", StaticPayload({})), null)
-    yield* report(
-      IntentRef("KhalaMobile.OpenQuotePopup", StaticPayload("Streaming transcript ready")),
-      null
-    )
+    yield* report(IntentRef("KhalaMobile.OpenQuotePopup", StaticPayload("Streaming transcript ready")), null)
     yield* report(IntentRef("KhalaMobile.DismissQuotePopup", StaticPayload({})), null)
     yield* report(IntentRef("KhalaMobile.OpenThread", StaticPayload("t-1")), null)
-    yield* report(
-      IntentRef("KhalaMobile.ComposerChanged", ComponentValueBinding()),
-      "Continue the fleet port."
-    )
-    yield* report(
-      IntentRef("KhalaMobile.ComposerSubmitted", ComponentValueBinding()),
-      "Continue the fleet port."
-    )
+    yield* report(IntentRef("KhalaMobile.ComposerChanged", ComponentValueBinding()), "Continue the fleet port.")
+    yield* report(IntentRef("KhalaMobile.ComposerSubmitted", ComponentValueBinding()), "Continue the fleet port.")
     yield* nextTask
     yield* Effect.yieldNow
   })
@@ -107,53 +96,59 @@ describe("Phase 4M Khala mobile proof oracle (#64)", () => {
   })
 
   test("headless, DOM, and RN (iOS + Android) replay the same mobile path", async () => {
-    const headless = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const runtime = yield* makeKhalaMobileRuntime
-      yield* makeHeadlessRenderer().mount(
-        undefined,
-        runtime.program.viewStream,
-        runtime.report
+    const headless = await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const runtime = yield* makeKhalaMobileRuntime
+          yield* makeHeadlessRenderer().mount(undefined, runtime.program.viewStream, runtime.report)
+          yield* runScriptedSession(runtime.report)
+          return {
+            state: yield* runtime.program.currentState,
+            events: normalizeEvents(yield* runtime.registry.events)
+          }
+        })
       )
-      yield* runScriptedSession(runtime.report)
-      return {
-        state: yield* runtime.program.currentState,
-        events: normalizeEvents(yield* runtime.registry.events)
-      }
-    })))
+    )
 
     const window = new Window()
     const document = window.document as unknown as Document
     const container = document.createElement("main")
     document.body.appendChild(container)
-    const dom = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const runtime = yield* makeKhalaMobileRuntime
-      const surface = yield* makeDomRenderer({ document }).mount(
-        container,
-        runtime.program.viewStream,
-        runtime.report
+    const dom = await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const runtime = yield* makeKhalaMobileRuntime
+          const surface = yield* makeDomRenderer({ document }).mount(
+            container,
+            runtime.program.viewStream,
+            runtime.report
+          )
+          yield* runScriptedSession(runtime.report)
+          return {
+            state: yield* runtime.program.currentState,
+            events: normalizeEvents(yield* runtime.registry.events),
+            structure: yield* surface.serialize
+          }
+        })
       )
-      yield* runScriptedSession(runtime.report)
-      return {
-        state: yield* runtime.program.currentState,
-        events: normalizeEvents(yield* runtime.registry.events),
-        structure: yield* surface.serialize
-      }
-    })))
+    )
 
     const runRn = (platform: "ios" | "android") =>
-      Effect.scoped(Effect.gen(function*() {
-        const runtime = yield* makeKhalaMobileRuntime
-        const surface = yield* makeReactNativeRenderer({
-          dependencies: rnDependencies,
-          platform
-        }).mount(undefined, runtime.program.viewStream, runtime.report)
-        yield* runScriptedSession(runtime.report)
-        return {
-          state: yield* runtime.program.currentState,
-          events: normalizeEvents(yield* runtime.registry.events),
-          structure: yield* surface.serialize
-        }
-      }))
+      Effect.scoped(
+        Effect.gen(function* () {
+          const runtime = yield* makeKhalaMobileRuntime
+          const surface = yield* makeReactNativeRenderer({
+            dependencies: rnDependencies,
+            platform
+          }).mount(undefined, runtime.program.viewStream, runtime.report)
+          yield* runScriptedSession(runtime.report)
+          return {
+            state: yield* runtime.program.currentState,
+            events: normalizeEvents(yield* runtime.registry.events),
+            structure: yield* surface.serialize
+          }
+        })
+      )
 
     const rnIos = await Effect.runPromise(runRn("ios"))
     const rnAndroid = await Effect.runPromise(runRn("android"))
@@ -180,9 +175,7 @@ describe("Phase 4M Khala mobile proof oracle (#64)", () => {
 
   test("runMainMobile boots the proof on iOS and Android host options", async () => {
     for (const platform of ["ios", "android"] as const) {
-      const result = await Effect.runPromise(Effect.scoped(
-        runKhalaMobileMain(rnDependencies, platform)
-      ))
+      const result = await Effect.runPromise(Effect.scoped(runKhalaMobileMain(rnDependencies, platform)))
       const element = await Effect.runPromise(result.app.surface.currentElement)
       expect(element).toBeDefined()
       const state = await Effect.runPromise(result.runtime.program.currentState)
@@ -211,7 +204,7 @@ describe("Phase 4M Khala mobile proof oracle (#64)", () => {
     )
     expect(JSON.parse(ios.data).platform).toBe("ios")
     expect(JSON.parse(android.data).platform).toBe("android")
-    expect(ios.data).toContain("\"tag\": \"Host\"")
+    expect(ios.data).toContain('"tag": "Host"')
     expect(ios.data).toContain("mic")
   })
 })

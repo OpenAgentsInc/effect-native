@@ -75,17 +75,15 @@ export interface KhalaSyncMemoryHub {
   readonly version: Effect.Effect<number>
 }
 
-export const makeKhalaSyncMemoryHub = (
-  scope: string
-): Effect.Effect<KhalaSyncMemoryHub> =>
-  Effect.gen(function*() {
+export const makeKhalaSyncMemoryHub = (scope: string): Effect.Effect<KhalaSyncMemoryHub> =>
+  Effect.gen(function* () {
     const log = yield* Ref.make<ReadonlyArray<KhalaSyncLogEntry>>([])
     const versionRef = yield* Ref.make(0)
     const events = yield* PubSub.unbounded<KhalaSyncLogEntry>()
     return {
       scope,
       append: (event) =>
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           const version = yield* Ref.updateAndGet(versionRef, (v) => v + 1)
           const entry: KhalaSyncLogEntry = {
             scope,
@@ -129,10 +127,7 @@ export const initialSharedChatClientState = (
   appliedVersions: []
 })
 
-export const applyLogEntry = (
-  state: SharedChatClientState,
-  entry: KhalaSyncLogEntry
-): SharedChatClientState => {
+export const applyLogEntry = (state: SharedChatClientState, entry: KhalaSyncLogEntry): SharedChatClientState => {
   if (state.appliedVersions.includes(entry.version)) return state
   if (state.turns.some((turn) => turn.id === entry.postImage.id)) {
     return {
@@ -153,86 +148,84 @@ export const ComposeSubmitted = defineIntent("KhalaShared.ComposeSubmitted", Sch
 export const sharedChatIntentDefinitions = [ComposeChanged, ComposeSubmitted] as const
 
 export const sharedTranscriptView = (state: SharedChatClientState): View =>
-  Stack({
-    key: `shared-chat-${state.client}`,
-    direction: "column",
-    gap: "2",
-    padding: "2"
-  }, [
-    Text({
-      key: "client-label",
-      content: `${state.client} · ${state.threadId}`,
-      variant: "label"
-    }),
-    Transcript({
-      key: "shared-transcript",
-      pinToEnd: true,
-      messages: state.turns.map((turn) => ({
-        key: turn.id,
-        role:
-          turn.role === "tool" || turn.role === "system"
-            ? "assistant"
-            : turn.role,
-        body: [
-          Markdown({
-            key: `${turn.id}-md`,
-            blocks: [
-              {
-                kind: "paragraph",
-                children: [
-                  {
-                    kind: "strong",
-                    children: [{ kind: "text", text: `${turn.author} (${turn.client}): ` }]
-                  },
-                  { kind: "text", text: turn.text }
-                ]
-              }
-            ]
-          }),
-          ...(turn.text.includes("tool:")
-            ? [
-                Card({ key: `${turn.id}-tool`, padding: "2", radius: "md" }, [
-                  Text({
-                    key: `${turn.id}-tool-label`,
-                    content: "tool card",
-                    variant: "caption"
-                  })
-                ])
+  Stack(
+    {
+      key: `shared-chat-${state.client}`,
+      direction: "column",
+      gap: "2",
+      padding: "2"
+    },
+    [
+      Text({
+        key: "client-label",
+        content: `${state.client} · ${state.threadId}`,
+        variant: "label"
+      }),
+      Transcript({
+        key: "shared-transcript",
+        pinToEnd: true,
+        messages: state.turns.map((turn) => ({
+          key: turn.id,
+          role: turn.role === "tool" || turn.role === "system" ? "assistant" : turn.role,
+          body: [
+            Markdown({
+              key: `${turn.id}-md`,
+              blocks: [
+                {
+                  kind: "paragraph",
+                  children: [
+                    {
+                      kind: "strong",
+                      children: [{ kind: "text", text: `${turn.author} (${turn.client}): ` }]
+                    },
+                    { kind: "text", text: turn.text }
+                  ]
+                }
               ]
-            : turn.text.includes("code:")
+            }),
+            ...(turn.text.includes("tool:")
               ? [
-                  CodeBlock({
-                    key: `${turn.id}-code`,
-                    language: "typescript",
-                    lines: [
-                      {
-                        tokens: [
-                          { kind: "keyword", text: "const" },
-                          { kind: "plain", text: " proof = " },
-                          { kind: "string", text: "\"live\"" }
-                        ]
-                      }
-                    ]
-                  })
+                  Card({ key: `${turn.id}-tool`, padding: "2", radius: "md" }, [
+                    Text({
+                      key: `${turn.id}-tool-label`,
+                      content: "tool card",
+                      variant: "caption"
+                    })
+                  ])
                 ]
-              : [])
-        ]
-      }))
-    }),
-    Composer({
-      key: "shared-composer",
-      mode: "normal",
-      placeholder: `Message from ${state.client}…`,
-      doc: [
-        { kind: "text", text: state.composerText },
-        ...(state.client === "mobile"
-          ? [{ kind: "mention" as const, id: "orrery", label: "@Orrery" }]
-          : [])
-      ],
-      onChange: IntentRef("KhalaShared.ComposeChanged", ComponentValueBinding()),
-      onSubmit: IntentRef("KhalaShared.ComposeSubmitted", ComponentValueBinding())
-    })
-  ])
+              : turn.text.includes("code:")
+                ? [
+                    CodeBlock({
+                      key: `${turn.id}-code`,
+                      language: "typescript",
+                      lines: [
+                        {
+                          tokens: [
+                            { kind: "keyword", text: "const" },
+                            { kind: "plain", text: " proof = " },
+                            { kind: "string", text: '"live"' }
+                          ]
+                        }
+                      ]
+                    })
+                  ]
+                : [])
+          ]
+        }))
+      }),
+      Composer({
+        key: "shared-composer",
+        mode: "normal",
+        placeholder: `Message from ${state.client}…`,
+        doc: [
+          { kind: "text", text: state.composerText },
+          ...(state.client === "mobile" ? [{ kind: "mention" as const, id: "orrery", label: "@Orrery" }] : [])
+        ],
+        onChange: IntentRef("KhalaShared.ComposeChanged", ComponentValueBinding()),
+        onSubmit: IntentRef("KhalaShared.ComposeSubmitted", ComponentValueBinding())
+      })
+    ]
+  )
 
 export interface SharedChatClientRuntime {
   readonly client: "desktop" | "mobile"
@@ -247,13 +240,13 @@ export const makeSharedChatClientRuntime = (
   client: "desktop" | "mobile",
   options?: { readonly now?: () => number }
 ): Effect.Effect<SharedChatClientRuntime, never, never> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const now = options?.now ?? (() => Date.now())
     const state = yield* SubscriptionRef.make(initialSharedChatClientState(client))
     const program = makeViewProgramFromState(state, sharedTranscriptView)
 
     const publishTurn = (text: string) =>
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const current = yield* SubscriptionRef.get(state)
         const trimmed = text.trim()
         if (trimmed.length === 0) return
@@ -280,10 +273,9 @@ export const makeSharedChatClientRuntime = (
           composerText: typeof value === "string" ? value : current.composerText
         })),
       "KhalaShared.ComposeSubmitted": (value) =>
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           const current = yield* SubscriptionRef.get(state)
-          const text =
-            typeof value === "string" && value.length > 0 ? value : current.composerText
+          const text = typeof value === "string" && value.length > 0 ? value : current.composerText
           yield* publishTurn(text)
         })
     }
@@ -291,8 +283,7 @@ export const makeSharedChatClientRuntime = (
     const registry = yield* makeIntentRegistry(sharedChatIntentDefinitions, handlers, {
       now: () => 0
     })
-    const report: IntentReporter = (ref, runtimeValue) =>
-      registry.dispatch(resolveIntentRef(ref, runtimeValue))
+    const report: IntentReporter = (ref, runtimeValue) => registry.dispatch(resolveIntentRef(ref, runtimeValue))
 
     return { client, state, program, report, registry }
   })
@@ -304,7 +295,7 @@ export const makeSharedChatClientRuntime = (
  * Fan-out is applied after each mutator (deterministic, no race on PubSub
  * subscribe timing) so CI is stable while still exercising the full apply path.
  */
-export const runCrossAppMessagingProof = Effect.gen(function*() {
+export const runCrossAppMessagingProof = Effect.gen(function* () {
   const hub = yield* makeKhalaSyncMemoryHub("scope.thread.cross-app-proof")
   const desktop = yield* makeSharedChatClientRuntime(hub, "desktop", {
     now: () => 1_700_000_001_000
@@ -313,7 +304,7 @@ export const runCrossAppMessagingProof = Effect.gen(function*() {
     now: () => 1_700_000_002_000
   })
 
-  const fanOut = Effect.gen(function*() {
+  const fanOut = Effect.gen(function* () {
     const log = yield* hub.entries
     for (const entry of log) {
       yield* SubscriptionRef.update(desktop.state, (s) => applyLogEntry(s, entry))

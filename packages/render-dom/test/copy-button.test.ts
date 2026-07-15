@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect, SubscriptionRef } from "effect"
 import { Window } from "happy-dom"
 import {
@@ -29,8 +29,7 @@ const createDom = () => {
 }
 
 const nextTask = Effect.promise<void>(() => new Promise((resolve) => setTimeout(resolve, 0)))
-const sleep = (millis: number) =>
-  Effect.promise<void>(() => new Promise((resolve) => setTimeout(resolve, millis)))
+const sleep = (millis: number) => Effect.promise<void>(() => new Promise((resolve) => setTimeout(resolve, millis)))
 
 const collectingReport = () => {
   const intents: Array<{ readonly name: string; readonly payload: unknown }> = []
@@ -51,26 +50,30 @@ const withMountedCopyButton = <A>(
   }) => Effect.Effect<A>,
   clipboard?: Clipboard
 ): Promise<A> =>
-  Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-    const { container, document } = createDom()
-    const { intents, report } = collectingReport()
-    const recorder = yield* makeRecordingClipboard
-    const state = yield* SubscriptionRef.make(0)
-    const program = makeViewProgramFromState(state, () => view)
-    const surface = yield* makeDomRenderer({ document, clipboard: clipboard ?? recorder }).mount(
-      container,
-      program.viewStream,
-      report
+  Effect.runPromise(
+    Effect.scoped(
+      Effect.gen(function* () {
+        const { container, document } = createDom()
+        const { intents, report } = collectingReport()
+        const recorder = yield* makeRecordingClipboard
+        const state = yield* SubscriptionRef.make(0)
+        const program = makeViewProgramFromState(state, () => view)
+        const surface = yield* makeDomRenderer({ document, clipboard: clipboard ?? recorder }).mount(
+          container,
+          program.viewStream,
+          report
+        )
+        const result = yield* body({
+          container,
+          button: () => container.querySelector('[data-en-tag="CopyButton"]') as HTMLButtonElement,
+          writes: recorder.writes,
+          intents
+        })
+        yield* surface.unmount
+        return result
+      })
     )
-    const result = yield* body({
-      container,
-      button: () => container.querySelector('[data-en-tag="CopyButton"]') as HTMLButtonElement,
-      writes: recorder.writes,
-      intents
-    })
-    yield* surface.unmount
-    return result
-  })))
+  )
 
 describe("render-dom CopyButton (#84, v35)", () => {
   test("renders an icon-only ghost control-lattice button by default", async () => {
@@ -97,16 +100,16 @@ describe("render-dom CopyButton (#84, v35)", () => {
     await withMountedCopyButton(
       CopyButton({
         key: "copy-cmd",
-        content: "bun run check",
+        content: "pnpm run check",
         onCopy: IntentRef("Copied", ComponentValueBinding())
       }),
       ({ button, writes, intents }) =>
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           button().click()
           yield* nextTask
           yield* Effect.yieldNow
-          expect(yield* writes).toEqual(["bun run check"])
-          expect(intents).toEqual([{ name: "Copied", payload: "bun run check" }])
+          expect(yield* writes).toEqual(["pnpm run check"])
+          expect(intents).toEqual([{ name: "Copied", payload: "pnpm run check" }])
         })
     )
   })
@@ -120,7 +123,7 @@ describe("render-dom CopyButton (#84, v35)", () => {
         resetMillis: 30
       }),
       ({ button }) =>
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           button().click()
           yield* nextTask
           expect(button().getAttribute("data-en-copied")).toBe("true")
@@ -148,7 +151,7 @@ describe("render-dom CopyButton (#84, v35)", () => {
         onCopiedReset: IntentRef("CopyReset", ComponentValueBinding())
       }),
       ({ button, intents }) =>
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           expect(button().getAttribute("data-en-copied")).toBe("true")
           expect(button().textContent).toContain("Copied")
           yield* sleep(50)
@@ -166,7 +169,7 @@ describe("render-dom CopyButton (#84, v35)", () => {
         onCopy: IntentRef("Copied", ComponentValueBinding())
       }),
       ({ button, writes, intents }) =>
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           button().click()
           yield* nextTask
           expect(yield* writes).toEqual([])
@@ -201,7 +204,7 @@ describe("render-dom CopyButton (#84, v35)", () => {
         onCopy: IntentRef("Copied", ComponentValueBinding())
       }),
       ({ button, intents }) =>
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           button().click()
           yield* nextTask
           yield* Effect.yieldNow

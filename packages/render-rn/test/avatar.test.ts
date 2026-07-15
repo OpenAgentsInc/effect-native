@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Avatar, AvatarGroup, type View } from "@effect-native/core"
 import {
   renderReactNativeView,
@@ -35,13 +35,9 @@ const dependencies: ReactNativeDependencies = {
   }
 }
 
-const keyed = <V extends View>(view: V): V & { readonly key: string } =>
-  view as V & { readonly key: string }
+const keyed = <V extends View>(view: V): V & { readonly key: string } => view as V & { readonly key: string }
 
-const find = (
-  node: ReactNodeLike,
-  predicate: (element: ReactElementLike) => boolean
-): ReactElementLike | undefined => {
+const find = (node: ReactNodeLike, predicate: (element: ReactElementLike) => boolean): ReactElementLike | undefined => {
   if (typeof node !== "object" || node === null || !("props" in node)) return undefined
   const element = node as ReactElementLike
   if (predicate(element)) return element
@@ -144,8 +140,10 @@ describe("Avatar + AvatarGroup (#80) React Native renderer", () => {
     )
     expect(element.props.testID).toBe("en-avatar-group")
 
-    const visible = findAll(element, (candidate) =>
-      typeof candidate.props.testID === "string" && candidate.props.testID.startsWith("en-avatar:"))
+    const visible = findAll(
+      element,
+      (candidate) => typeof candidate.props.testID === "string" && candidate.props.testID.startsWith("en-avatar:")
+    )
     expect(visible.length).toBe(2)
 
     // Group defaults flow into children; the cutout ring and overlap apply.

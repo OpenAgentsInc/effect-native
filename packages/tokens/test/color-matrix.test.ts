@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Exit, Schema } from "effect"
 import {
   ColorMatrixSchema,
@@ -20,10 +20,9 @@ describe("colorMatrix (tone × variant × state, issue #75)", () => {
           for (const state of toneStateTokens) {
             const cell = theme.colorMatrix[tone][variant][state]
             for (const role of ["background", "border", "text", "ring"] as const) {
-              expect(
-                cell[role],
-                `${tone}.${variant}.${state}.${role} must be a hex color`
-              ).toMatch(/^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/)
+              expect(cell[role], `${tone}.${variant}.${state}.${role} must be a hex color`).toMatch(
+                /^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/
+              )
             }
           }
         }
@@ -95,10 +94,9 @@ describe("colorMatrix (tone × variant × state, issue #75)", () => {
         for (const state of ["hover", "active", "selected"] as const) {
           const background = cells[state].background
           if (background !== cells.rest.background) {
-            expect(
-              background,
-              `${tone}.${variant}.${state}.background must be a translucent overlay`
-            ).toMatch(/^#[0-9a-f]{8}$/)
+            expect(background, `${tone}.${variant}.${state}.background must be a translucent overlay`).toMatch(
+              /^#[0-9a-f]{8}$/
+            )
           }
         }
       }

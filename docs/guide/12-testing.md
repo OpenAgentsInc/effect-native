@@ -12,7 +12,7 @@ Views are pure data; interactions are named intents through a real registry.
 ## Guide app tests
 
 ```sh
-bun test ./examples/guide-app
+pnpm exec vp test --run ./examples/guide-app
 ```
 
 `examples/guide-app/guide-app.test.ts` types a title, submits, asserts the note

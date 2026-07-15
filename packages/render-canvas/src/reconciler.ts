@@ -12,12 +12,12 @@ export type SceneOp =
   | { readonly _tag: "SetCamera"; readonly camera: Camera }
   | { readonly _tag: "SetBackground"; readonly color: string | undefined }
   | {
-    readonly _tag: "CreateNode"
-    readonly id: string
-    readonly parentId: string | null
-    readonly index: number
-    readonly node: SceneNodeLeaf
-  }
+      readonly _tag: "CreateNode"
+      readonly id: string
+      readonly parentId: string | null
+      readonly index: number
+      readonly node: SceneNodeLeaf
+    }
   | { readonly _tag: "UpdateNode"; readonly id: string; readonly node: SceneNodeLeaf }
   | { readonly _tag: "MoveNode"; readonly id: string; readonly parentId: string | null; readonly index: number }
   | { readonly _tag: "RemoveNode"; readonly id: string }
@@ -54,8 +54,7 @@ export const flattenScene = (scene: CanvasScene): ReadonlyMap<string, FlatEntry>
   return out
 }
 
-const isObject = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null
+const isObject = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null
 
 /** Structural equality over the bounded, JSON-shaped descriptor values. */
 export const deepEqual = (a: unknown, b: unknown): boolean => {
@@ -80,13 +79,10 @@ export const deepEqual = (a: unknown, b: unknown): boolean => {
   return false
 }
 
-const cameraChanged = (prev: Camera | undefined, next: Camera): boolean =>
-  prev === undefined || !deepEqual(prev, next)
+const cameraChanged = (prev: Camera | undefined, next: Camera): boolean => prev === undefined || !deepEqual(prev, next)
 
-const backgroundChanged = (
-  prev: CanvasScene | undefined,
-  next: CanvasScene
-): boolean => (prev === undefined ? next.background !== undefined : prev.background !== next.background)
+const backgroundChanged = (prev: CanvasScene | undefined, next: CanvasScene): boolean =>
+  prev === undefined ? next.background !== undefined : prev.background !== next.background
 
 /**
  * Diff a previous scene against the next scene, producing a minimal ordered op
@@ -111,9 +107,7 @@ export const diffScene = (prev: CanvasScene | undefined, next: CanvasScene): Rea
   for (const [id, entry] of prevMap) {
     if (!nextMap.has(id)) removals.push(entry)
   }
-  removals
-    .sort((a, b) => b.depth - a.depth)
-    .forEach((entry) => ops.push({ _tag: "RemoveNode", id: entry.id }))
+  removals.sort((a, b) => b.depth - a.depth).forEach((entry) => ops.push({ _tag: "RemoveNode", id: entry.id }))
 
   const creations: Array<FlatEntry> = []
   const moves: Array<SceneOp> = []
@@ -133,7 +127,7 @@ export const diffScene = (prev: CanvasScene | undefined, next: CanvasScene): Rea
   }
 
   creations
-    .sort((a, b) => (a.depth - b.depth) || (a.index - b.index))
+    .sort((a, b) => a.depth - b.depth || a.index - b.index)
     .forEach((entry) =>
       ops.push({
         _tag: "CreateNode",

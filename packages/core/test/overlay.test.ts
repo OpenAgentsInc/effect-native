@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect, Schema, SubscriptionRef } from "effect"
 import {
   Binding,
@@ -29,15 +29,24 @@ interface OverlayState {
   readonly actionCount: number
 }
 
-const OpenOverlay = defineIntent("OpenOverlay", Schema.Struct({
-  surface: Schema.String
-}))
-const DismissOverlay = defineIntent("DismissOverlay", Schema.Struct({
-  surface: Schema.String
-}))
-const OverlayAction = defineIntent("OverlayAction", Schema.Struct({
-  amount: Schema.Number
-}))
+const OpenOverlay = defineIntent(
+  "OpenOverlay",
+  Schema.Struct({
+    surface: Schema.String
+  })
+)
+const DismissOverlay = defineIntent(
+  "DismissOverlay",
+  Schema.Struct({
+    surface: Schema.String
+  })
+)
+const OverlayAction = defineIntent(
+  "OverlayAction",
+  Schema.Struct({
+    amount: Schema.Number
+  })
+)
 const definitions = [OpenOverlay, DismissOverlay, OverlayAction] as const
 
 const overlayView = (state: OverlayState): View =>
@@ -48,35 +57,39 @@ const overlayView = (state: OverlayState): View =>
       variant: "primary",
       onPress: IntentRef("OpenOverlay", StaticPayload({ surface: "modal" }))
     }),
-    Modal({
-      key: "confirm",
-      title: "Confirm",
-      open: Binding(["modalOpen"]),
-      dismissable: true,
-      size: "md",
-      onDismiss: IntentRef("DismissOverlay", StaticPayload({ surface: "modal" }))
-    }, [
-      Button({
-        key: "confirm-action",
-        label: `Action ${state.actionCount}`,
-        variant: "secondary",
-        onPress: IntentRef("OverlayAction", StaticPayload({ amount: 1 }))
-      })
-    ]),
-    Sheet({
-      key: "details",
-      open: Binding(["sheetOpen"]),
-      dismissable: true,
-      edge: "bottom",
-      detents: ["sm", "md"],
-      onDismiss: IntentRef("DismissOverlay", StaticPayload({ surface: "sheet" }))
-    }, [
-      Text({ key: "sheet-copy", content: "Details", variant: "body" })
-    ])
+    Modal(
+      {
+        key: "confirm",
+        title: "Confirm",
+        open: Binding(["modalOpen"]),
+        dismissable: true,
+        size: "md",
+        onDismiss: IntentRef("DismissOverlay", StaticPayload({ surface: "modal" }))
+      },
+      [
+        Button({
+          key: "confirm-action",
+          label: `Action ${state.actionCount}`,
+          variant: "secondary",
+          onPress: IntentRef("OverlayAction", StaticPayload({ amount: 1 }))
+        })
+      ]
+    ),
+    Sheet(
+      {
+        key: "details",
+        open: Binding(["sheetOpen"]),
+        dismissable: true,
+        edge: "bottom",
+        detents: ["sm", "md"],
+        onDismiss: IntentRef("DismissOverlay", StaticPayload({ surface: "sheet" }))
+      },
+      [Text({ key: "sheet-copy", content: "Details", variant: "body" })]
+    )
   ])
 
 const makeRuntime = () =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const state = yield* SubscriptionRef.make<OverlayState>({
       modalOpen: false,
       sheetOpen: false,
@@ -103,8 +116,7 @@ const makeRuntime = () =>
         }))
     }
     const registry = yield* makeIntentRegistry(definitions, handlers, { now: () => 0 })
-    const report: IntentReporter = (ref, runtimeValue) =>
-      registry.dispatch(resolveIntentRef(ref, runtimeValue))
+    const report: IntentReporter = (ref, runtimeValue) => registry.dispatch(resolveIntentRef(ref, runtimeValue))
     return { state, program, registry, report }
   })
 
@@ -120,7 +132,7 @@ const modalOpen = (view: View): boolean => {
 }
 
 const runReplay = (events: ReadonlyArray<Intent<string, JsonPayload>>) =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const runtime = yield* makeRuntime()
     for (const event of events) {
       yield* runtime.registry.dispatch(event)
@@ -130,28 +142,32 @@ const runReplay = (events: ReadonlyArray<Intent<string, JsonPayload>>) =>
 
 describe("overlay presence as data", () => {
   test("headless snapshots and event replay reproduce open, interact, dismiss", async () => {
-    const result = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const runtime = yield* makeRuntime()
-      const surface = yield* makeHeadlessRenderer().mount(undefined, runtime.program.viewStream, runtime.report)
-      const simulate = (ref: IntentRef) =>
-        Effect.provideService(surface.simulate(ref), IntentRegistry, runtime.registry)
+    const result = await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const runtime = yield* makeRuntime()
+          const surface = yield* makeHeadlessRenderer().mount(undefined, runtime.program.viewStream, runtime.report)
+          const simulate = (ref: IntentRef) =>
+            Effect.provideService(surface.simulate(ref), IntentRegistry, runtime.registry)
 
-      const initial = yield* surface.current
-      yield* simulate(IntentRef("OpenOverlay", StaticPayload({ surface: "modal" })))
-      const opened = yield* surface.current
-      yield* simulate(IntentRef("OverlayAction", StaticPayload({ amount: 1 })))
-      yield* simulate(IntentRef("DismissOverlay", StaticPayload({ surface: "modal" })))
-      const closed = yield* surface.current
-      const events = yield* runtime.registry.events
+          const initial = yield* surface.current
+          yield* simulate(IntentRef("OpenOverlay", StaticPayload({ surface: "modal" })))
+          const opened = yield* surface.current
+          yield* simulate(IntentRef("OverlayAction", StaticPayload({ amount: 1 })))
+          yield* simulate(IntentRef("DismissOverlay", StaticPayload({ surface: "modal" })))
+          const closed = yield* surface.current
+          const events = yield* runtime.registry.events
 
-      return {
-        initial,
-        opened,
-        closed,
-        state: yield* runtime.program.currentState,
-        events
-      }
-    })))
+          return {
+            initial,
+            opened,
+            closed,
+            state: yield* runtime.program.currentState,
+            events
+          }
+        })
+      )
+    )
 
     if (result.initial === undefined || result.opened === undefined || result.closed === undefined) {
       throw new Error("expected snapshots")
@@ -168,18 +184,13 @@ describe("overlay presence as data", () => {
 
     const replayed = await Effect.runPromise(runReplay(result.events.map((event) => event.intent)))
     expect(replayed).toEqual(result.state)
-    expect(result.events.map((event) => event.intent.name)).toEqual([
-      "OpenOverlay",
-      "OverlayAction",
-      "DismissOverlay"
-    ])
+    expect(result.events.map((event) => event.intent.name)).toEqual(["OpenOverlay", "OverlayAction", "DismissOverlay"])
   })
 
   test("plain serializable events can drive the same overlay transition", async () => {
-    const replayed = await Effect.runPromise(runReplay([
-      makeIntent("OpenOverlay", { surface: "sheet" }),
-      makeIntent("DismissOverlay", { surface: "sheet" })
-    ]))
+    const replayed = await Effect.runPromise(
+      runReplay([makeIntent("OpenOverlay", { surface: "sheet" }), makeIntent("DismissOverlay", { surface: "sheet" })])
+    )
 
     expect(replayed).toEqual({
       modalOpen: false,

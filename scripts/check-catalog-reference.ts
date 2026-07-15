@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import { CatalogVersion, componentTags } from "../packages/core/src/index.ts"
 
-const repoRoot = join(import.meta.dir, "..")
+const repoRoot = join(import.meta.dirname, "..")
 const referencePath = join(repoRoot, "docs", "guide", "07-catalog-reference.md")
 const markdown = readFileSync(referencePath, "utf8")
 
@@ -29,21 +29,15 @@ const versionOk =
 let failed = false
 if (!versionOk) {
   failed = true
-  console.error(
-    `Catalog reference does not mention current CatalogVersion ${CatalogVersion}`
-  )
+  console.error(`Catalog reference does not mention current CatalogVersion ${CatalogVersion}`)
 }
 if (missing.length > 0) {
   failed = true
-  console.error(
-    `Catalog reference missing ${missing.length} component tag(s):\n  ${missing.join(", ")}`
-  )
+  console.error(`Catalog reference missing ${missing.length} component tag(s):\n  ${missing.join(", ")}`)
 }
 
 if (failed) {
   process.exitCode = 1
 } else {
-  console.log(
-    `Catalog reference OK: ${componentTags.length} tags present; version ${CatalogVersion}`
-  )
+  console.log(`Catalog reference OK: ${componentTags.length} tags present; version ${CatalogVersion}`)
 }

@@ -44,8 +44,7 @@ export interface SiteContentSources {
 }
 
 /** Strips the file's leading `/** ... *\/` doc comment, leaving only real code. */
-export const extractCodeSample = (source: string): string =>
-  source.replace(/^\/\*\*[\s\S]*?\*\/\n+/, "").trim()
+export const extractCodeSample = (source: string): string => source.replace(/^\/\*\*[\s\S]*?\*\/\n+/, "").trim()
 
 const stripMarkdownInline = (text: string): string =>
   text
@@ -101,7 +100,10 @@ export const extractParagraphs = (sectionBody: string): ReadonlyArray<string> =>
 
 /** Parses the first markdown table found in a section body into role rows. */
 export const parseRoleTable = (sectionBody: string): ReadonlyArray<SiteRoleRow> => {
-  const lines = sectionBody.split("\n").map((line) => line.trim()).filter((line) => line.startsWith("|"))
+  const lines = sectionBody
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("|"))
   const rows: Array<SiteRoleRow> = []
   for (const line of lines) {
     const cells = line
@@ -125,7 +127,9 @@ export const parseRoleTable = (sectionBody: string): ReadonlyArray<SiteRoleRow> 
 
 const taglineFrom = (readme: string): string => {
   const match = readme.match(/^\*\*(.+?)\*\*\s*$/m)
-  return match?.[1] !== undefined ? stripMarkdownInline(match[1]) : "A framework for building native applications using Effect."
+  return match?.[1] !== undefined
+    ? stripMarkdownInline(match[1])
+    : "A framework for building native applications using Effect."
 }
 
 const phaseStatusFrom = (label: string): PhaseStatus => {
@@ -158,9 +162,10 @@ export const parsePhases = (roadmap: string): ReadonlyArray<SitePhase> => {
 
 export const parseSiteContent = (sources: SiteContentSources): SiteContent => {
   const packageJson: unknown = JSON.parse(sources.packageJson)
-  const version = typeof (packageJson as { version?: unknown }).version === "string"
-    ? (packageJson as { version: string }).version
-    : "0.0.0"
+  const version =
+    typeof (packageJson as { version?: unknown }).version === "string"
+      ? (packageJson as { version: string }).version
+      : "0.0.0"
 
   const whySection = extractSection(sources.readme, "Why")
   const aiSection = extractSection(sources.readme, "Why this matters for AI-authored software")

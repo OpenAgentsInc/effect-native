@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect, Fiber, Layer, Schema, Stream, SubscriptionRef } from "effect"
 import { Window } from "happy-dom"
 import {
@@ -127,78 +127,80 @@ describe("Electron renderer conformance", () => {
       }
     }
 
-    const result = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const window = new Window()
-      const document = window.document as unknown as Document
-      const container = document.createElement("main")
-      document.body.appendChild(container)
+    const result = await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const window = new Window()
+          const document = window.document as unknown as Document
+          const container = document.createElement("main")
+          document.body.appendChild(container)
 
-      // Main-process side: a scoped resource + a typed, sender-validated
-      // channel handler whose lifetime is bound to this Scope.
-      const mainHits = yield* Effect.acquireRelease(
-        Effect.sync(() => ({ count: 0 })),
-        () =>
-          Effect.sync(() => {
-            mainResourceReleased = true
+          // Main-process side: a scoped resource + a typed, sender-validated
+          // channel handler whose lifetime is bound to this Scope.
+          const mainHits = yield* Effect.acquireRelease(
+            Effect.sync(() => ({ count: 0 })),
+            () =>
+              Effect.sync(() => {
+                mainResourceReleased = true
+              })
+          )
+          yield* registerElectronMainHandler({
+            ipcMain: pair.ipcMain,
+            channel: PingChannel,
+            handler: ({ amount }) =>
+              Effect.sync(() => {
+                mainHits.count += amount
+                return { total: mainHits.count + 41 }
+              }),
+            senderPolicy: { allowedSenderOrigins: [rendererOrigin] }
           })
+
+          // Preload side: the frozen minimal bridge (the only exposed object).
+          const bridge = makeElectronPreloadBridge({ ipcRenderer: pair.ipcRenderer, channels })
+
+          // Renderer side: typed client + Effect Native program.
+          const client = makeElectronRendererClient({ api: bridge, channels })
+          const state = yield* SubscriptionRef.make<TestState>({ count: 0 })
+          const program = makeViewProgramFromState(state, testView)
+          const handlers: IntentHandlers<typeof definitions> = {
+            "ElectronTest.Pinged": () =>
+              Effect.gen(function* () {
+                const response = yield* client.ping({ amount: 1 })
+                yield* SubscriptionRef.update(state, () => ({ count: response.total }))
+              })
+          }
+          const registry = yield* makeIntentRegistry(definitions, handlers)
+          const report: IntentReporter = (ref, runtimeValue) =>
+            registry.dispatch(resolveIntentRef(ref, runtimeValue)).pipe(Effect.catch(() => Effect.void))
+
+          const app = yield* runMainElectronRenderer({
+            container,
+            runtime: { program, report },
+            hostDrivers: [editorDriver]
+          })
+
+          const before = container.textContent ?? ""
+          const editorMounted = container.querySelector('[data-editor="true"]') !== null
+
+          const button = container.querySelector('[data-en-key="electron-ping"]')
+          button?.dispatchEvent(new window.MouseEvent("click", { bubbles: true }) as unknown as Event)
+          // The intent path awaits a real async IPC promise; give it a task turn.
+          yield* Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 0)))
+          yield* Effect.yieldNow
+
+          const after = yield* SubscriptionRef.get(state)
+          yield* app.unmount
+
+          return {
+            before,
+            after,
+            editorMounted,
+            htmlAfterUnmount: container.innerHTML,
+            handlersWhileMounted: pair.handlers.size
+          }
+        })
       )
-      yield* registerElectronMainHandler({
-        ipcMain: pair.ipcMain,
-        channel: PingChannel,
-        handler: ({ amount }) =>
-          Effect.sync(() => {
-            mainHits.count += amount
-            return { total: mainHits.count + 41 }
-          }),
-        senderPolicy: { allowedSenderOrigins: [rendererOrigin] }
-      })
-
-      // Preload side: the frozen minimal bridge (the only exposed object).
-      const bridge = makeElectronPreloadBridge({ ipcRenderer: pair.ipcRenderer, channels })
-
-      // Renderer side: typed client + Effect Native program.
-      const client = makeElectronRendererClient({ api: bridge, channels })
-      const state = yield* SubscriptionRef.make<TestState>({ count: 0 })
-      const program = makeViewProgramFromState(state, testView)
-      const handlers: IntentHandlers<typeof definitions> = {
-        "ElectronTest.Pinged": () =>
-          Effect.gen(function*() {
-            const response = yield* client.ping({ amount: 1 })
-            yield* SubscriptionRef.update(state, () => ({ count: response.total }))
-          })
-      }
-      const registry = yield* makeIntentRegistry(definitions, handlers)
-      const report: IntentReporter = (ref, runtimeValue) =>
-        registry.dispatch(resolveIntentRef(ref, runtimeValue)).pipe(
-          Effect.catch(() => Effect.void)
-        )
-
-      const app = yield* runMainElectronRenderer({
-        container,
-        runtime: { program, report },
-        hostDrivers: [editorDriver]
-      })
-
-      const before = container.textContent ?? ""
-      const editorMounted = container.querySelector('[data-editor="true"]') !== null
-
-      const button = container.querySelector('[data-en-key="electron-ping"]')
-      button?.dispatchEvent(new window.MouseEvent("click", { bubbles: true }) as unknown as Event)
-      // The intent path awaits a real async IPC promise; give it a task turn.
-      yield* Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 0)))
-      yield* Effect.yieldNow
-
-      const after = yield* SubscriptionRef.get(state)
-      yield* app.unmount
-
-      return {
-        before,
-        after,
-        editorMounted,
-        htmlAfterUnmount: container.innerHTML,
-        handlersWhileMounted: pair.handlers.size
-      }
-    })))
+    )
 
     expect(result.before).toContain("Electron count 0")
     expect(result.editorMounted).toBe(true)
@@ -286,11 +288,14 @@ describe("Electron-backed service layers", () => {
     const emitOpenUrl = (url: string) => {
       let prevented = false
       for (const listener of listenersFor("open-url")) {
-        ;(listener as (event: ElectronPreventableEventLike, url: string) => void)({
-          preventDefault: () => {
-            prevented = true
-          }
-        }, url)
+        ;(listener as (event: ElectronPreventableEventLike, url: string) => void)(
+          {
+            preventDefault: () => {
+              prevented = true
+            }
+          },
+          url
+        )
       }
       return prevented
     }
@@ -305,65 +310,65 @@ describe("Electron-backed service layers", () => {
       }
     }
 
-    const result = await Effect.runPromise(Effect.scoped(Effect.provide(
-      Effect.gen(function*() {
-        const desktopWindow = yield* DesktopWindow
-        const singleInstance = yield* SingleInstance
-        const deepLink = yield* DeepLink
-        const appMenu = yield* AppMenu
-        const lifecycle = yield* ElectronAppLifecycle
+    const result = await Effect.runPromise(
+      Effect.scoped(
+        Effect.provide(
+          Effect.gen(function* () {
+            const desktopWindow = yield* DesktopWindow
+            const singleInstance = yield* SingleInstance
+            const deepLink = yield* DeepLink
+            const appMenu = yield* AppMenu
+            const lifecycle = yield* ElectronAppLifecycle
 
-        yield* lifecycle.whenReady
+            yield* lifecycle.whenReady
 
-        const deepLinkFiber = yield* deepLink.events.pipe(
-          Stream.take(2),
-          Stream.runCollect,
-          Effect.forkScoped
+            const deepLinkFiber = yield* deepLink.events.pipe(Stream.take(2), Stream.runCollect, Effect.forkScoped)
+            const secondInstanceFiber = yield* singleInstance.secondInstanceEvents.pipe(
+              Stream.take(1),
+              Stream.runCollect,
+              Effect.forkScoped
+            )
+            const beforeQuitFiber = yield* lifecycle.beforeQuitEvents.pipe(
+              Stream.take(1),
+              Stream.runCollect,
+              Effect.forkScoped
+            )
+            yield* Effect.yieldNow
+
+            yield* desktopWindow.setTitle("OpenAgents Desktop")
+            yield* desktopWindow.focus
+            yield* desktopWindow.setFullscreen(true)
+
+            const acquired = yield* singleInstance.acquire
+
+            const openUrlPrevented = emitOpenUrl("openagents://thread/thread-electron")
+            emitSecondInstance(["/usr/bin/app", "--flag", "openagents://thread/from-argv"])
+            emitBeforeQuit()
+
+            yield* appMenu.setMenu({
+              items: [
+                { id: "palette.open", title: "Open Palette", intentName: "Shell.PaletteOpened", enabled: true },
+                { id: "app.about", title: "About" }
+              ]
+            })
+            applicationMenu?.[0]?.click?.()
+
+            yield* lifecycle.quit
+
+            return {
+              window: yield* desktopWindow.current,
+              acquired,
+              openUrlPrevented,
+              deepLinks: Array.from(yield* Fiber.join(deepLinkFiber)),
+              secondInstances: Array.from(yield* Fiber.join(secondInstanceFiber)),
+              beforeQuits: Array.from(yield* Fiber.join(beforeQuitFiber)).length,
+              menu: yield* appMenu.current
+            }
+          }),
+          layer
         )
-        const secondInstanceFiber = yield* singleInstance.secondInstanceEvents.pipe(
-          Stream.take(1),
-          Stream.runCollect,
-          Effect.forkScoped
-        )
-        const beforeQuitFiber = yield* lifecycle.beforeQuitEvents.pipe(
-          Stream.take(1),
-          Stream.runCollect,
-          Effect.forkScoped
-        )
-        yield* Effect.yieldNow
-
-        yield* desktopWindow.setTitle("OpenAgents Desktop")
-        yield* desktopWindow.focus
-        yield* desktopWindow.setFullscreen(true)
-
-        const acquired = yield* singleInstance.acquire
-
-        const openUrlPrevented = emitOpenUrl("openagents://thread/thread-electron")
-        emitSecondInstance(["/usr/bin/app", "--flag", "openagents://thread/from-argv"])
-        emitBeforeQuit()
-
-        yield* appMenu.setMenu({
-          items: [
-            { id: "palette.open", title: "Open Palette", intentName: "Shell.PaletteOpened", enabled: true },
-            { id: "app.about", title: "About" }
-          ]
-        })
-        applicationMenu?.[0]?.click?.()
-
-        yield* lifecycle.quit
-
-        return {
-          window: yield* desktopWindow.current,
-          acquired,
-          openUrlPrevented,
-          deepLinks: Array.from(yield* Fiber.join(deepLinkFiber)),
-          secondInstances: Array.from(yield* Fiber.join(secondInstanceFiber)),
-          beforeQuits: Array.from(yield* Fiber.join(beforeQuitFiber)).length,
-          menu: yield* appMenu.current
-        }
-      }),
-      layer
-    )))
+      )
+    )
 
     expect(result.window).toEqual({
       title: "OpenAgents Desktop",
@@ -378,9 +383,7 @@ describe("Electron-backed service layers", () => {
       { url: "openagents://thread/thread-electron" },
       { url: "openagents://thread/from-argv" }
     ])
-    expect(result.secondInstances).toEqual([
-      { argv: ["/usr/bin/app", "--flag", "openagents://thread/from-argv"] }
-    ])
+    expect(result.secondInstances).toEqual([{ argv: ["/usr/bin/app", "--flag", "openagents://thread/from-argv"] }])
     expect(result.beforeQuits).toBe(1)
     expect(quitCalls).toBe(1)
     expect(result.menu.items).toHaveLength(2)

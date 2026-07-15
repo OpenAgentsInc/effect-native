@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect } from "effect"
 import { Markdown } from "@effect-native/core"
 import {
@@ -58,15 +58,17 @@ describe("markdown link href (#71) React Native renderer", () => {
     const rendered = renderReactNativeView(
       Markdown({
         key: "md",
-        blocks: [{
-          kind: "paragraph",
-          children: [
-            { kind: "link", href: "/forum/u/someone", children: [{ kind: "text", text: "profile" }] },
-            { kind: "link", href: "/forum/t/thread-1#post-2", children: [{ kind: "text", text: "permalink" }] },
-            { kind: "link", href: "#top", children: [{ kind: "text", text: "back to top" }] },
-            { kind: "link", href: "https://example.com/pr", children: [{ kind: "text", text: "external" }] }
-          ]
-        }]
+        blocks: [
+          {
+            kind: "paragraph",
+            children: [
+              { kind: "link", href: "/forum/u/someone", children: [{ kind: "text", text: "profile" }] },
+              { kind: "link", href: "/forum/t/thread-1#post-2", children: [{ kind: "text", text: "permalink" }] },
+              { kind: "link", href: "#top", children: [{ kind: "text", text: "back to top" }] },
+              { kind: "link", href: "https://example.com/pr", children: [{ kind: "text", text: "external" }] }
+            ]
+          }
+        ]
       }),
       dependencies,
       () => Effect.void
@@ -87,9 +89,12 @@ describe("markdown link href (#71) React Native renderer", () => {
     expect(() =>
       Markdown({
         key: "md",
-        blocks: [{ kind: "paragraph", children: [
-          { kind: "link", href: "data:text/html,x", children: [{ kind: "text", text: "x" }] }
-        ] }]
+        blocks: [
+          {
+            kind: "paragraph",
+            children: [{ kind: "link", href: "data:text/html,x", children: [{ kind: "text", text: "x" }] }]
+          }
+        ]
       })
     ).toThrow()
   })

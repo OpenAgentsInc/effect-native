@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import {
   GraphFigure,
   IntentRef,
@@ -32,7 +32,20 @@ describe("GraphFigure + Timeline (#37)", () => {
       key: "timeline",
       selectedId: "ev1",
       onEventSelect: IntentRef("Event"),
-      events: [{ id: "ev1", key: "timeline-event-ev1", label: "Pairing opened", accessibilityLabel: "Pairing opened at noon", time: "12:00", status: "active", variant: "agent", icon: "Play", onSelect: IntentRef("OpenAgent"), refs: ["orrery", "arbiter"] }]
+      events: [
+        {
+          id: "ev1",
+          key: "timeline-event-ev1",
+          label: "Pairing opened",
+          accessibilityLabel: "Pairing opened at noon",
+          time: "12:00",
+          status: "active",
+          variant: "agent",
+          icon: "Play",
+          onSelect: IntentRef("OpenAgent"),
+          refs: ["orrery", "arbiter"]
+        }
+      ]
     })
     expect(decodeView(encodeView(graph))).toEqual(graph)
     expect(decodeView(encodeView(timeline))).toEqual(timeline)
@@ -42,9 +55,7 @@ describe("GraphFigure + Timeline (#37)", () => {
     expect(graphStatuses).toEqual(["idle", "active", "success", "failed", "pending"])
     expect(graphLayouts).toEqual(["precomputed", "force", "tree"])
     expect(Object.keys(graphStatusColorToken).sort()).toEqual(["active", "failed", "idle", "pending", "success"])
-    expect(() =>
-      GraphFigure({ key: "x", nodes: [], edges: [], camera: { x: 0, y: 0, zoom: 0 } })
-    ).toThrow()
+    expect(() => GraphFigure({ key: "x", nodes: [], edges: [], camera: { x: 0, y: 0, zoom: 0 } })).toThrow()
   })
 
   test("layoutGraphNodes honors precomputed positions and is deterministic for named layouts", () => {
@@ -59,7 +70,10 @@ describe("GraphFigure + Timeline (#37)", () => {
     const forceLaid = GraphFigure({
       key: "f",
       layout: "force",
-      nodes: [{ id: "a", label: "A" }, { id: "b", label: "B" }],
+      nodes: [
+        { id: "a", label: "A" },
+        { id: "b", label: "B" }
+      ],
       edges: []
     })
     // A stable circle: deterministic across calls (snapshot-safe).

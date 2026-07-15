@@ -1,6 +1,6 @@
 /**
  * The testkit's own visual-baseline bless flow, run against its own fixture
- * screen. Demonstrates the app-author flow end to end: `bun run
+ * screen. Demonstrates the app-author flow end to end: `pnpm run
  * baselines:bless` (re)writes the committed baseline files under
  * `test/fixtures/baselines/`; `test/visual-baselines.test.ts` then fails if
  * a future change to the fixture view drifts from what is committed here,
@@ -14,7 +14,7 @@ import { resolveBindings, type ViewportInput } from "@effect-native/core"
 import { blessBaseline, domVisualCapture, makeFileBaselineStore, type VisualTarget } from "../src/visual"
 import { counterView } from "../test/fixtures/counter-runtime"
 
-const baselineDir = `${import.meta.dir}/../test/fixtures/baselines`
+const baselineDir = `${import.meta.dirname}/../test/fixtures/baselines`
 
 const viewports: ReadonlyArray<{ readonly name: string; readonly input: ViewportInput }> = [
   { name: "phone", input: { width: 390, height: 844 } },
@@ -23,7 +23,7 @@ const viewports: ReadonlyArray<{ readonly name: string; readonly input: Viewport
 
 const fixtureState = { count: 2, name: "Ada", navigations: [] }
 
-const run = Effect.gen(function*() {
+const run = Effect.gen(function* () {
   const store = makeFileBaselineStore(baselineDir)
   for (const viewport of viewports) {
     const target: VisualTarget = {

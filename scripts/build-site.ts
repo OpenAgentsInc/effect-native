@@ -27,7 +27,6 @@ import { Window } from "happy-dom"
 import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
-import { $ } from "bun"
 import { galleryThemes } from "@effect-native/gallery"
 import { makeDomRenderer } from "@effect-native/render-dom"
 import {
@@ -41,6 +40,7 @@ import {
   type SiteContent
 } from "@effect-native/site"
 import { writeGeneratedSiteContentJson } from "../packages/site/src/content-loader.node"
+import { buildBrowserEntry } from "./build-browser-entry"
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const outDir = resolve(root, "dist/site")
@@ -63,7 +63,8 @@ const routeMeta = (route: string, content: SiteContent): RouteMeta => {
   if (route === docsIndexPath) {
     return {
       title: "Docs -- Effect Native",
-      description: "Short explainer pages for Effect Native: your first app, thinking in Effect Native, styling, and why typed UI matters."
+      description:
+        "Short explainer pages for Effect Native: your first app, thinking in Effect Native, styling, and why typed UI matters."
     }
   }
   if (route === roadmapPath) {
@@ -87,77 +88,70 @@ const outputPathFor = (route: string): string => {
   return resolve(outDir, trimmed, "index.html")
 }
 
-const renderRouteHtml = (
-  route: string,
-  content: SiteContent,
-  meta: RouteMeta
-): Effect.Effect<string> =>
-  Effect.scoped(Effect.gen(function*() {
-    const window = new Window({ url: `${siteOrigin}${route}` })
-    const document = window.document as unknown as Document
+const renderRouteHtml = (route: string, content: SiteContent, meta: RouteMeta): Effect.Effect<string> =>
+  Effect.scoped(
+    Effect.gen(function* () {
+      const window = new Window({ url: `${siteOrigin}${route}` })
+      const document = window.document as unknown as Document
 
-    document.documentElement?.setAttribute("lang", "en")
-    const head = document.head
+      document.documentElement?.setAttribute("lang", "en")
+      const head = document.head
 
-    const charset = document.createElement("meta")
-    charset.setAttribute("charset", "utf-8")
-    head.insertBefore(charset, head.firstChild)
+      const charset = document.createElement("meta")
+      charset.setAttribute("charset", "utf-8")
+      head.insertBefore(charset, head.firstChild)
 
-    const viewport = document.createElement("meta")
-    viewport.setAttribute("name", "viewport")
-    viewport.setAttribute("content", "width=device-width, initial-scale=1")
-    head.appendChild(viewport)
+      const viewport = document.createElement("meta")
+      viewport.setAttribute("name", "viewport")
+      viewport.setAttribute("content", "width=device-width, initial-scale=1")
+      head.appendChild(viewport)
 
-    const titleEl = document.createElement("title")
-    titleEl.textContent = meta.title
-    head.appendChild(titleEl)
+      const titleEl = document.createElement("title")
+      titleEl.textContent = meta.title
+      head.appendChild(titleEl)
 
-    const addMeta = (attrs: Record<string, string>) => {
-      const el = document.createElement("meta")
-      for (const [key, value] of Object.entries(attrs)) {
-        el.setAttribute(key, value)
+      const addMeta = (attrs: Record<string, string>) => {
+        const el = document.createElement("meta")
+        for (const [key, value] of Object.entries(attrs)) {
+          el.setAttribute(key, value)
+        }
+        head.appendChild(el)
       }
-      head.appendChild(el)
-    }
-    addMeta({ name: "description", content: meta.description })
-    addMeta({ property: "og:title", content: meta.title })
-    addMeta({ property: "og:description", content: meta.description })
-    addMeta({ property: "og:type", content: "website" })
-    addMeta({ property: "og:url", content: `${siteOrigin}${route}` })
+      addMeta({ name: "description", content: meta.description })
+      addMeta({ property: "og:title", content: meta.title })
+      addMeta({ property: "og:description", content: meta.description })
+      addMeta({ property: "og:type", content: "website" })
+      addMeta({ property: "og:url", content: `${siteOrigin}${route}` })
 
-    const favicon = document.createElement("link")
-    favicon.setAttribute("rel", "icon")
-    favicon.setAttribute("href", "/favicon.svg")
-    favicon.setAttribute("type", "image/svg+xml")
-    head.appendChild(favicon)
+      const favicon = document.createElement("link")
+      favicon.setAttribute("rel", "icon")
+      favicon.setAttribute("href", "/favicon.svg")
+      favicon.setAttribute("type", "image/svg+xml")
+      head.appendChild(favicon)
 
-    const style = document.createElement("style")
-    style.textContent = "html,body,#app{margin:0;min-height:100%;height:100%;color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;}a{text-decoration:none;}"
-    head.appendChild(style)
+      const style = document.createElement("style")
+      style.textContent =
+        'html,body,#app{margin:0;min-height:100%;height:100%;color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;}a{text-decoration:none;}'
+      head.appendChild(style)
 
-    const appRoot = document.createElement("main")
-    appRoot.id = "app"
-    document.body.appendChild(appRoot)
+      const appRoot = document.createElement("main")
+      appRoot.id = "app"
+      document.body.appendChild(appRoot)
 
-    const runtime = yield* makeSiteRuntime({ initialRoute: route, content })
-    yield* makeDomRenderer({ document, theme: siteTheme }).mount(
-      appRoot,
-      runtime.program.viewStream,
-      runtime.report
-    )
+      const runtime = yield* makeSiteRuntime({ initialRoute: route, content })
+      yield* makeDomRenderer({ document, theme: siteTheme }).mount(appRoot, runtime.program.viewStream, runtime.report)
 
-    const script = document.createElement("script")
-    script.setAttribute("type", "module")
-    script.setAttribute("src", "/app.js")
-    document.body.appendChild(script)
+      const script = document.createElement("script")
+      script.setAttribute("type", "module")
+      script.setAttribute("src", "/app.js")
+      document.body.appendChild(script)
 
-    return `<!doctype html>\n${document.documentElement?.outerHTML ?? ""}\n`
-  }))
+      return `<!doctype html>\n${document.documentElement?.outerHTML ?? ""}\n`
+    })
+  )
 
 const writeSitemap = (routes: ReadonlyArray<string>): void => {
-  const urls = [...routes, componentsPath]
-    .map((route) => `  <url><loc>${siteOrigin}${route}</loc></url>`)
-    .join("\n")
+  const urls = [...routes, componentsPath].map((route) => `  <url><loc>${siteOrigin}${route}</loc></url>`).join("\n")
   const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`
   writeFileSync(resolve(outDir, "sitemap.xml"), xml)
 }
@@ -170,15 +164,13 @@ const favicon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 </svg>
 `
 
-const main = Effect.gen(function*() {
+const main = Effect.gen(function* () {
   rmSync(outDir, { recursive: true, force: true })
   mkdirSync(outDir, { recursive: true })
 
   const content = writeGeneratedSiteContentJson(root)
 
-  yield* Effect.promise(() =>
-    $`bun build ${resolve(root, "examples/site/main.ts")} --outfile ${resolve(outDir, "app.js")} --format esm`
-  )
+  yield* Effect.promise(() => buildBrowserEntry("examples/site/main.ts", "dist/site/app.js"))
 
   for (const route of siteRoutePaths) {
     const meta = routeMeta(route, content)
@@ -198,7 +190,11 @@ const main = Effect.gen(function*() {
   writeFileSync(resolve(outDir, "favicon.svg"), favicon)
   writeSitemap(siteRoutePaths)
 
-  yield* Effect.promise(() => $`bun run gallery:build`.cwd(root))
+  yield* Effect.promise(() =>
+    import("node:child_process").then(({ execFileSync }) => {
+      execFileSync("pnpm", ["run", "gallery:build"], { cwd: root, stdio: "inherit" })
+    })
+  )
   const galleryDist = resolve(root, "dist/gallery")
   if (existsSync(galleryDist)) {
     const componentsDir = resolve(outDir, "components")

@@ -87,18 +87,7 @@ export const breakpointTokens = ["sm", "md", "lg", "xl"] as const
  * these values in the closed lattice prevents applications from growing
  * per-call-site numeric dimension allowlists.
  */
-export const dimensionTokens = [
-  "4xs",
-  "3xs",
-  "2xs",
-  "xs",
-  "sm",
-  "md",
-  "lg",
-  "xl",
-  "2xl",
-  "full"
-] as const
+export const dimensionTokens = ["4xs", "3xs", "2xs", "xs", "sm", "md", "lg", "xl", "2xl", "full"] as const
 /**
  * The shared control size lattice: one metric system for every control.
  * `2xs`/`xs` serve dense application chrome (toolbars, inline chips, status
@@ -183,9 +172,7 @@ export const OpaqueColorValueSchema = Schema.String.check(
  * opacity percentage; the byte is `round(percent × 255 / 100)` pinned as a
  * literal so derived overlay colors stay byte-exact.
  */
-export const AlphaChannelValueSchema = Schema.String.check(
-  Schema.isPattern(/^[0-9a-f]{2}$/, { title: "AlphaHexByte" })
-)
+export const AlphaChannelValueSchema = Schema.String.check(Schema.isPattern(/^[0-9a-f]{2}$/, { title: "AlphaHexByte" }))
 
 export const blueRampSteps = [
   "25",
@@ -222,33 +209,12 @@ export const grayRampSteps = [
   "1000"
 ] as const
 export const statusRampSteps = ["300", "400", "500", "600"] as const
-export const alphaRampSteps = [
-  "4",
-  "5",
-  "8",
-  "10",
-  "13",
-  "16",
-  "20",
-  "24",
-  "30",
-  "40",
-  "60",
-  "86"
-] as const
+export const alphaRampSteps = ["4", "5", "8", "10", "13", "16", "20", "24", "30", "40", "60", "86"] as const
 
-export const BlueRampSchema = Schema.Struct(
-  tokenRecordFields(blueRampSteps, OpaqueColorValueSchema)
-)
-export const GrayRampSchema = Schema.Struct(
-  tokenRecordFields(grayRampSteps, OpaqueColorValueSchema)
-)
-export const StatusRampSchema = Schema.Struct(
-  tokenRecordFields(statusRampSteps, OpaqueColorValueSchema)
-)
-export const AlphaRampSchema = Schema.Struct(
-  tokenRecordFields(alphaRampSteps, AlphaChannelValueSchema)
-)
+export const BlueRampSchema = Schema.Struct(tokenRecordFields(blueRampSteps, OpaqueColorValueSchema))
+export const GrayRampSchema = Schema.Struct(tokenRecordFields(grayRampSteps, OpaqueColorValueSchema))
+export const StatusRampSchema = Schema.Struct(tokenRecordFields(statusRampSteps, OpaqueColorValueSchema))
+export const AlphaRampSchema = Schema.Struct(tokenRecordFields(alphaRampSteps, AlphaChannelValueSchema))
 
 /**
  * The full tier-1 primitive palette: one brand ramp (Protoss blue), one cool
@@ -386,14 +352,7 @@ export const khalaPalette = PaletteSchema.make({
 // hue, never new hues. Components (Button, Badge, Alert, Chip, SelectControl)
 // consume the matrix in a later catalog bump; this tier is theme data only.
 
-export const toneTokens = [
-  "accent",
-  "secondary",
-  "danger",
-  "success",
-  "warning",
-  "info"
-] as const
+export const toneTokens = ["accent", "secondary", "danger", "success", "warning", "info"] as const
 export const toneVariantTokens = ["solid", "soft", "outline", "ghost"] as const
 export const toneStateTokens = ["rest", "hover", "active", "selected", "disabled"] as const
 
@@ -415,15 +374,9 @@ export const ToneCellSchema = Schema.Struct({
   text: ColorValueSchema,
   ring: ColorValueSchema
 })
-export const ToneStateMapSchema = Schema.Struct(
-  tokenRecordFields(toneStateTokens, ToneCellSchema)
-)
-export const ToneVariantMapSchema = Schema.Struct(
-  tokenRecordFields(toneVariantTokens, ToneStateMapSchema)
-)
-export const ColorMatrixSchema = Schema.Struct(
-  tokenRecordFields(toneTokens, ToneVariantMapSchema)
-)
+export const ToneStateMapSchema = Schema.Struct(tokenRecordFields(toneStateTokens, ToneCellSchema))
+export const ToneVariantMapSchema = Schema.Struct(tokenRecordFields(toneVariantTokens, ToneStateMapSchema))
+export const ColorMatrixSchema = Schema.Struct(tokenRecordFields(toneTokens, ToneVariantMapSchema))
 
 export type ToneCell = Schema.Schema.Type<typeof ToneCellSchema>
 export type ToneStateMap = Schema.Schema.Type<typeof ToneStateMapSchema>
@@ -590,26 +543,16 @@ const toneCells = (spec: ToneSpec): ToneVariantMap => ({
   }
 })
 
-export const SpacingThemeSchema = Schema.Struct(
-  tokenRecordFields(spacingTokens, NonNegativeNumberSchema)
-)
-export const ColorThemeSchema = Schema.Struct(
-  tokenRecordFields(colorTokens, ColorValueSchema)
-)
-export const RadiusThemeSchema = Schema.Struct(
-  tokenRecordFields(radiusTokens, NonNegativeNumberSchema)
-)
+export const SpacingThemeSchema = Schema.Struct(tokenRecordFields(spacingTokens, NonNegativeNumberSchema))
+export const ColorThemeSchema = Schema.Struct(tokenRecordFields(colorTokens, ColorValueSchema))
+export const RadiusThemeSchema = Schema.Struct(tokenRecordFields(radiusTokens, NonNegativeNumberSchema))
 export const TypeScaleValueSchema = Schema.Struct({
   fontSize: PositiveNumberSchema,
   lineHeight: PositiveNumberSchema,
   fontWeight: FontWeightValueSchema
 })
-export const TypeScaleThemeSchema = Schema.Struct(
-  tokenRecordFields(typeScaleTokens, TypeScaleValueSchema)
-)
-export const BreakpointThemeSchema = Schema.Struct(
-  tokenRecordFields(breakpointTokens, NonNegativeNumberSchema)
-)
+export const TypeScaleThemeSchema = Schema.Struct(tokenRecordFields(typeScaleTokens, TypeScaleValueSchema))
+export const BreakpointThemeSchema = Schema.Struct(tokenRecordFields(breakpointTokens, NonNegativeNumberSchema))
 export const DimensionThemeSchema = Schema.Struct(
   tokenRecordFields(dimensionTokens, Schema.Union([NonNegativeNumberSchema, Schema.Literal("100%")]))
 )
@@ -658,9 +601,7 @@ export const ControlSizeValueSchema = Schema.Struct({
   fontSize: PositiveNumberSchema,
   icon: PositiveNumberSchema
 })
-export const ControlThemeSchema = Schema.Struct(
-  tokenRecordFields(controlTokens, ControlSizeValueSchema)
-)
+export const ControlThemeSchema = Schema.Struct(tokenRecordFields(controlTokens, ControlSizeValueSchema))
 
 export const ThemeSchema = Schema.Struct({
   spacing: SpacingThemeSchema,

@@ -67,103 +67,121 @@ export const siteRoutePaths: ReadonlyArray<string> = [
 ]
 
 const navLink = (label: string, path: string, active: boolean): View =>
-  Link({
-    key: `nav-${path}`,
-    destination: { kind: "path", path },
-    style: {
-      color: active ? "accent" : "textPrimary",
-      padding: "2",
-      borderRadius: "sm"
-    }
-  }, [
-    Text({ key: `nav-${path}-label`, content: label, variant: "label", weight: active ? "bold" : "regular" })
-  ])
+  Link(
+    {
+      key: `nav-${path}`,
+      destination: { kind: "path", path },
+      style: {
+        color: active ? "accent" : "textPrimary",
+        padding: "2",
+        borderRadius: "sm"
+      }
+    },
+    [Text({ key: `nav-${path}-label`, content: label, variant: "label", weight: active ? "bold" : "regular" })]
+  )
 
 const externalLink = (label: string, href: string): View =>
-  Link({
-    key: `nav-external-${href}`,
-    destination: { kind: "url", href, target: "blank" },
-    style: { color: "textMuted", padding: "2" }
-  }, [
-    Text({ key: `nav-external-${href}-label`, content: label, variant: "label" })
-  ])
+  Link(
+    {
+      key: `nav-external-${href}`,
+      destination: { kind: "url", href, target: "blank" },
+      style: { color: "textMuted", padding: "2" }
+    },
+    [Text({ key: `nav-external-${href}-label`, content: label, variant: "label" })]
+  )
 
 const nav = (route: string): View =>
-  Stack({
-    key: "site-nav",
-    direction: { base: "column", md: "row" },
-    align: "center",
-    justify: "between",
-    gap: "2",
-    padding: "4",
-    style: { borderColor: "border", borderWidth: 1 }
-  }, [
-    Link({
-      key: "nav-home",
-      destination: { kind: "path", path: homePath },
-      style: { color: "textPrimary" }
-    }, [
-      Text({ key: "nav-home-label", content: "Effect Native", variant: "title", weight: "bold" })
-    ]),
-    Stack({ key: "nav-links", direction: { base: "column", md: "row" }, align: "center", gap: "1" }, [
-      navLink("Docs", docsIndexPath, route.startsWith(docsIndexPath)),
-      navLink("Components", componentsPath, route.startsWith(componentsPath)),
-      navLink("Roadmap", roadmapPath, route.startsWith(roadmapPath)),
-      externalLink("GitHub", repoUrl)
-    ])
-  ])
+  Stack(
+    {
+      key: "site-nav",
+      direction: { base: "column", md: "row" },
+      align: "center",
+      justify: "between",
+      gap: "2",
+      padding: "4",
+      style: { borderColor: "border", borderWidth: 1 }
+    },
+    [
+      Link(
+        {
+          key: "nav-home",
+          destination: { kind: "path", path: homePath },
+          style: { color: "textPrimary" }
+        },
+        [Text({ key: "nav-home-label", content: "Effect Native", variant: "title", weight: "bold" })]
+      ),
+      Stack({ key: "nav-links", direction: { base: "column", md: "row" }, align: "center", gap: "1" }, [
+        navLink("Docs", docsIndexPath, route.startsWith(docsIndexPath)),
+        navLink("Components", componentsPath, route.startsWith(componentsPath)),
+        navLink("Roadmap", roadmapPath, route.startsWith(roadmapPath)),
+        externalLink("GitHub", repoUrl)
+      ])
+    ]
+  )
 
 const footer = (): View =>
-  Stack({
-    key: "site-footer",
-    direction: { base: "column", md: "row" },
-    justify: "between",
-    gap: "2",
-    padding: "4",
-    style: { borderColor: "border", borderWidth: 1, marginTop: "8" }
-  }, [
-    Text({ key: "footer-license", content: "MIT licensed. Early, pre-alpha, under active development.", variant: "caption", color: "textMuted" }),
-    externalLink("Source on GitHub", repoUrl)
-  ])
+  Stack(
+    {
+      key: "site-footer",
+      direction: { base: "column", md: "row" },
+      justify: "between",
+      gap: "2",
+      padding: "4",
+      style: { borderColor: "border", borderWidth: 1, marginTop: "8" }
+    },
+    [
+      Text({
+        key: "footer-license",
+        content: "MIT licensed. Early, pre-alpha, under active development.",
+        variant: "caption",
+        color: "textMuted"
+      }),
+      externalLink("Source on GitHub", repoUrl)
+    ]
+  )
 
 export const pageShell = (route: string, body: ReadonlyArray<View>): View =>
   Stack({ key: "site-shell", direction: "column", gap: "0", style: { minHeight: "full" } }, [
     nav(route),
-    Stack({
-      key: "site-main",
-      direction: "column",
-      gap: "6",
-      padding: { base: "4", md: "8" },
-      style: { maxWidth: 960, width: "full" }
-    }, body),
+    Stack(
+      {
+        key: "site-main",
+        direction: "column",
+        gap: "6",
+        padding: { base: "4", md: "8" },
+        style: { maxWidth: 960, width: "full" }
+      },
+      body
+    ),
     footer()
   ])
 
 const sectionTitle = (key: string, content: string): View =>
   Text({ key, content, variant: "title", weight: "semibold", color: "textPrimary" })
 
-const paragraph = (key: string, content: string): View =>
-  Text({ key, content, variant: "body", color: "textMuted" })
+const paragraph = (key: string, content: string): View => Text({ key, content, variant: "body", color: "textMuted" })
 
 // LinkStyle (== ButtonStyle) accepts box properties (padding/border/radius);
 // TextStyle does not. So the button-like look lives on the Link wrapper's
 // own style, and the inner Text only carries text-appropriate props.
 const heroButtons = (): View =>
   Stack({ key: "hero-actions", direction: { base: "column", md: "row" }, gap: "2" }, [
-    Link({
-      key: "hero-docs-link",
-      destination: { kind: "path", path: docsIndexPath },
-      style: { padding: "3", borderColor: "border", borderWidth: 1, borderRadius: "md" }
-    }, [
-      buttonLikeText("Read the docs", "primary")
-    ]),
-    Link({
-      key: "hero-components-link",
-      destination: { kind: "path", path: componentsPath },
-      style: { padding: "3", borderColor: "border", borderWidth: 1, borderRadius: "md" }
-    }, [
-      buttonLikeText("Browse components", "secondary")
-    ]),
+    Link(
+      {
+        key: "hero-docs-link",
+        destination: { kind: "path", path: docsIndexPath },
+        style: { padding: "3", borderColor: "border", borderWidth: 1, borderRadius: "md" }
+      },
+      [buttonLikeText("Read the docs", "primary")]
+    ),
+    Link(
+      {
+        key: "hero-components-link",
+        destination: { kind: "path", path: componentsPath },
+        style: { padding: "3", borderColor: "border", borderWidth: 1, borderRadius: "md" }
+      },
+      [buttonLikeText("Browse components", "secondary")]
+    ),
     externalLink("View on GitHub", repoUrl)
   ])
 
@@ -186,14 +204,44 @@ const roleTable = (content: SiteContent): View =>
   Card({ key: "role-table-card", padding: "4", radius: "md", style: { borderColor: "border", borderWidth: 1 } }, [
     Stack({ key: "role-table-header", direction: "row", gap: "2" }, [
       Text({ key: "role-table-header-role", content: "Role", variant: "label", weight: "bold", style: { flex: 1 } }),
-      Text({ key: "role-table-header-rn", content: "React Native", variant: "label", weight: "bold", style: { flex: 1 } }),
-      Text({ key: "role-table-header-en", content: "Effect Native", variant: "label", weight: "bold", style: { flex: 1 } })
+      Text({
+        key: "role-table-header-rn",
+        content: "React Native",
+        variant: "label",
+        weight: "bold",
+        style: { flex: 1 }
+      }),
+      Text({
+        key: "role-table-header-en",
+        content: "Effect Native",
+        variant: "label",
+        weight: "bold",
+        style: { flex: 1 }
+      })
     ]),
     ...content.roleRows.map((row, index) =>
       Stack({ key: `role-row-${index}`, direction: { base: "column", md: "row" }, gap: "1", padding: "2" }, [
-        Text({ key: `role-row-${index}-role`, content: row.role, variant: "body", weight: "medium", style: { flex: 1 } }),
-        Text({ key: `role-row-${index}-rn`, content: row.reactNative, variant: "caption", color: "textMuted", style: { flex: 1 } }),
-        Text({ key: `role-row-${index}-en`, content: row.effectNative, variant: "caption", color: "accent", style: { flex: 1 } })
+        Text({
+          key: `role-row-${index}-role`,
+          content: row.role,
+          variant: "body",
+          weight: "medium",
+          style: { flex: 1 }
+        }),
+        Text({
+          key: `role-row-${index}-rn`,
+          content: row.reactNative,
+          variant: "caption",
+          color: "textMuted",
+          style: { flex: 1 }
+        }),
+        Text({
+          key: `role-row-${index}-en`,
+          content: row.effectNative,
+          variant: "caption",
+          color: "accent",
+          style: { flex: 1 }
+        })
       ])
     )
   ])
@@ -216,15 +264,24 @@ const architectureLayers: ReadonlyArray<{ readonly title: string; readonly body:
 const architectureDiagram = (): View =>
   Stack({ key: "architecture-stack", direction: "column", gap: "2" }, [
     ...architectureLayers.map((layer, index) =>
-      Card({
-        key: `architecture-layer-${index}`,
-        padding: "3",
-        radius: "md",
-        style: { borderColor: "border", borderWidth: 1 }
-      }, [
-        Text({ key: `architecture-layer-${index}-title`, content: layer.title, variant: "label", weight: "bold", color: "textPrimary" }),
-        Text({ key: `architecture-layer-${index}-body`, content: layer.body, variant: "caption", color: "textMuted" })
-      ])
+      Card(
+        {
+          key: `architecture-layer-${index}`,
+          padding: "3",
+          radius: "md",
+          style: { borderColor: "border", borderWidth: 1 }
+        },
+        [
+          Text({
+            key: `architecture-layer-${index}-title`,
+            content: layer.title,
+            variant: "label",
+            weight: "bold",
+            color: "textPrimary"
+          }),
+          Text({ key: `architecture-layer-${index}-body`, content: layer.body, variant: "caption", color: "textMuted" })
+        ]
+      )
     )
   ])
 
@@ -238,18 +295,26 @@ const codeSampleLines = (source: string): ReadonlyArray<string> =>
 const codeSampleBlock = (content: SiteContent): View => codeSampleFromSource("sample", content.codeSample)
 
 const codeSampleFromSource = (id: string, source: string): View =>
-  Card({ key: `code-sample-card-${id}`, padding: "4", radius: "md", style: { backgroundColor: "surface", borderColor: "border", borderWidth: 1 } }, [
-    Stack({ key: `code-sample-lines-${id}`, direction: "column", gap: "0" }, [
-      ...codeSampleLines(source).map((line, index) =>
-        Text({
-          key: `code-sample-line-${id}-${index}`,
-          content: line.length > 0 ? line : " ",
-          variant: "caption",
-          color: "textPrimary"
-        })
-      )
-    ])
-  ])
+  Card(
+    {
+      key: `code-sample-card-${id}`,
+      padding: "4",
+      radius: "md",
+      style: { backgroundColor: "surface", borderColor: "border", borderWidth: 1 }
+    },
+    [
+      Stack({ key: `code-sample-lines-${id}`, direction: "column", gap: "0" }, [
+        ...codeSampleLines(source).map((line, index) =>
+          Text({
+            key: `code-sample-line-${id}-${index}`,
+            content: line.length > 0 ? line : " ",
+            variant: "caption",
+            color: "textPrimary"
+          })
+        )
+      ])
+    ]
+  )
 
 export const renderHome = (content: SiteContent, route: string): View =>
   pageShell(route, [
@@ -301,16 +366,20 @@ export const renderDocsIndex = (content: SiteContent, route: string): View =>
     ]),
     Stack({ key: "docs-list", direction: "column", gap: "3" }, [
       ...docPages.map((page) =>
-        Card({ key: `docs-card-${page.id}`, padding: "3", radius: "md", style: { borderColor: "border", borderWidth: 1 } }, [
-          Link({
-            key: `docs-link-${page.id}`,
-            destination: { kind: "path", path: page.path },
-            style: { color: "accent" }
-          }, [
-            Text({ key: `docs-link-${page.id}-title`, content: page.title, variant: "title", weight: "semibold" })
-          ]),
-          Text({ key: `docs-summary-${page.id}`, content: page.summary, variant: "body", color: "textMuted" })
-        ])
+        Card(
+          { key: `docs-card-${page.id}`, padding: "3", radius: "md", style: { borderColor: "border", borderWidth: 1 } },
+          [
+            Link(
+              {
+                key: `docs-link-${page.id}`,
+                destination: { kind: "path", path: page.path },
+                style: { color: "accent" }
+              },
+              [Text({ key: `docs-link-${page.id}-title`, content: page.title, variant: "title", weight: "semibold" })]
+            ),
+            Text({ key: `docs-summary-${page.id}`, content: page.summary, variant: "body", color: "textMuted" })
+          ]
+        )
       ),
       Card({ key: "docs-card-version", padding: "3", radius: "md", style: { borderColor: "border", borderWidth: 1 } }, [
         Text({
@@ -332,9 +401,15 @@ export const renderDocsIndex = (content: SiteContent, route: string): View =>
 const docPageBody: Record<string, (content: SiteContent) => ReadonlyArray<View>> = {
   "first-app": (content) => [
     paragraph("first-app-1", "Clone the repository, install with Bun, and run the checks:"),
-    codeSampleFromSource("install", "bun install\nbun run check"),
-    paragraph("first-app-2", "A view is data: a serializable, validated tree built from a closed catalog of typed components."),
-    paragraph("first-app-3", "Define state, a render function from state to a view, and mount it with a renderer. Here is a complete, working example:"),
+    codeSampleFromSource("install", "pnpm install\npnpm run check"),
+    paragraph(
+      "first-app-2",
+      "A view is data: a serializable, validated tree built from a closed catalog of typed components."
+    ),
+    paragraph(
+      "first-app-3",
+      "Define state, a render function from state to a view, and mount it with a renderer. Here is a complete, working example:"
+    ),
     codeSampleBlock(content),
     paragraph(
       "first-app-4",
@@ -416,23 +491,26 @@ export const renderRoadmap = (content: SiteContent, route: string): View =>
     ]),
     Stack({ key: "roadmap-phases", direction: "column", gap: "2" }, [
       ...content.phases.map((phase, index) =>
-        Stack({
-          key: `roadmap-phase-${index}`,
-          direction: "row",
-          align: "center",
-          justify: "between",
-          gap: "2",
-          padding: "3",
-          style: { borderColor: "border", borderWidth: 1, borderRadius: "sm" }
-        }, [
-          Text({ key: `roadmap-phase-${index}-title`, content: phase.title, variant: "body", weight: "medium" }),
-          Text({
-            key: `roadmap-phase-${index}-status`,
-            content: phaseStatusLabel[phase.status],
-            variant: "label",
-            color: phaseStatusColor[phase.status]
-          })
-        ])
+        Stack(
+          {
+            key: `roadmap-phase-${index}`,
+            direction: "row",
+            align: "center",
+            justify: "between",
+            gap: "2",
+            padding: "3",
+            style: { borderColor: "border", borderWidth: 1, borderRadius: "sm" }
+          },
+          [
+            Text({ key: `roadmap-phase-${index}-title`, content: phase.title, variant: "body", weight: "medium" }),
+            Text({
+              key: `roadmap-phase-${index}-status`,
+              content: phaseStatusLabel[phase.status],
+              variant: "label",
+              color: phaseStatusColor[phase.status]
+            })
+          ]
+        )
       )
     ]),
     externalLink("Full roadmap and open issues on GitHub", `${repoUrl}/blob/main/ROADMAP.md`)

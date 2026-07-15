@@ -1,8 +1,8 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
 
-const sharedModule = join(import.meta.dir, "..", "examples/signup-activity/index.ts")
+const sharedModule = join(import.meta.dirname, "..", "examples/signup-activity/index.ts")
 const source = readFileSync(sharedModule, "utf8")
 
 describe("proof example dependency boundary", () => {

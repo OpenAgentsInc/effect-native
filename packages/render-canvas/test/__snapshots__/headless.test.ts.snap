@@ -1,6 +1,6 @@
-// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`headless canvas backend renders a typed graph scene and records the reconciled tree (snapshot) 1`] = `
+exports[`headless canvas backend > renders a typed graph scene and records the reconciled tree (snapshot) 1`] = `
 {
   "background": "#0a0e14",
   "camera": {

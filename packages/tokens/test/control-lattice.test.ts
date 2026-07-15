@@ -1,12 +1,6 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Exit, Schema } from "effect"
-import {
-  ControlThemeSchema,
-  MotionThemeSchema,
-  controlTokens,
-  defaultTheme,
-  khalaTheme
-} from "../src/index"
+import { ControlThemeSchema, MotionThemeSchema, controlTokens, defaultTheme, khalaTheme } from "../src/index"
 
 describe("control lattice sub-tokens + named motion tokens (issue #76)", () => {
   test("both themes carry a complete, schema-valid control lattice", () => {

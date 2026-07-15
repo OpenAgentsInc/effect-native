@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import {
   basicMaterial,
   box,
@@ -37,8 +37,24 @@ describe("scene catalog", () => {
           position: [3, 0, 0]
         })
       ]),
-      line({ key: "e1", points: [[0, 0, 0], [3, 0, 0]], color: "#89b4fa", width: 2 }),
-      points({ key: "cloud", positions: [[0, 1, 0], [1, 1, 0]], size: 0.2, color: "#ffffff" }),
+      line({
+        key: "e1",
+        points: [
+          [0, 0, 0],
+          [3, 0, 0]
+        ],
+        color: "#89b4fa",
+        width: 2
+      }),
+      points({
+        key: "cloud",
+        positions: [
+          [0, 1, 0],
+          [1, 1, 0]
+        ],
+        size: 0.2,
+        color: "#ffffff"
+      }),
       label({ key: "l1", text: "node 1", color: "#ffffff", fontSize: 14, position: [0, 1.5, 0] })
     ])
 
@@ -71,9 +87,7 @@ describe("scene catalog", () => {
     const decoded = decodeScene(encoded)
     expect(decoded).toEqual(graph)
     expect(CanvasSceneSchema.make(graph)).toBeDefined()
-    expect(() =>
-      decodeScene({ ...encoded, children: [{ _tag: "Nope", key: "x" }] })
-    ).toThrow()
+    expect(() => decodeScene({ ...encoded, children: [{ _tag: "Nope", key: "x" }] })).toThrow()
   })
 
   test("toLeaf strips group children but keeps other nodes intact", () => {

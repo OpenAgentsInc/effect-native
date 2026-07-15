@@ -11,15 +11,15 @@ deploy automation for effectnative.org are out of scope here** and tracked
 downstream (issue `#8571` in the `openagents` repo); this repo's job ends at a
 correct, complete `dist/site/` static artifact.
 
-| Desktop, home | Desktop, components (`/components/`) |
-|---|---|
+| Desktop, home                               | Desktop, components (`/components/`)                    |
+| ------------------------------------------- | ------------------------------------------------------- |
 | ![Desktop home](./assets/site-web-home.png) | ![Desktop components](./assets/site-web-components.png) |
 
-| Phone, home | Phone, components (`/components/`) |
-|---|---|
+| Phone, home                                  | Phone, components (`/components/`)                       |
+| -------------------------------------------- | -------------------------------------------------------- |
 | ![Phone home](./assets/site-mobile-home.png) | ![Phone components](./assets/site-mobile-components.png) |
 
-Captured with `bun run site` (the dev server) and Playwright at 1280x900
+Captured with `pnpm run site` (the dev server) and Playwright at 1280x900
 (desktop) and 390x844 (phone) against `/` and `/components/`.
 
 ## Structure
@@ -65,7 +65,7 @@ scripts/
                               from the real repo files (gitignored -- always
                               regenerated, never hand-edited or committed)
   build-site.ts               the static build: see "Prerender pipeline" below
-  site-static-build.test.ts   runs `bun run site:build` and asserts on the
+  site-static-build.test.ts   runs `pnpm run site:build` and asserts on the
                                 real output (curl-style fetches, version
                                 threading, the gallery being reachable)
 
@@ -86,11 +86,11 @@ GAPS.md                       one new gap entry from this work: no
    hatch.
 2. Add the route to `siteRoutePaths` (and `renderRoute`'s dispatch) so the
    client router and the prerender loop both pick it up automatically.
-3. `bun run site` to preview locally; `bun run site:build` to confirm the
+3. `pnpm run site` to preview locally; `pnpm run site:build` to confirm the
    static output.
 4. Add or extend a `packages/site/test/pages.test.ts` case: every route in
    `siteRoutePaths` is asserted to `decodeView` successfully against the real
-   catalog `ViewSchema`, so a malformed page fails `bun run check` immediately
+   catalog `ViewSchema`, so a malformed page fails `pnpm run check` immediately
    rather than shipping broken markup.
 
 ## The prerender pipeline
@@ -117,7 +117,8 @@ here is exactly what that function would do internally.
    writes `packages/site/src/content.generated.json` -- the browser bundle's
    only way to see this content, since `content-loader.node.ts` itself is
    never bundled (see `test/dependency-boundary.test.ts`).
-2. Bundles `examples/site/main.ts` to `dist/site/app.js` with `bun build`.
+2. Bundles `examples/site/main.ts` to `dist/site/app.js` with the Vite Plus
+   browser build pipeline.
 3. For every path in `siteRoutePaths`, creates a fresh `happy-dom` `Window`,
    sets `<title>`, `<meta name="description">`, Open Graph tags, and a
    favicon link, mounts the real `ViewProgram` for that route with
@@ -127,7 +128,7 @@ here is exactly what that function would do internally.
 4. Renders and writes `dist/site/404.html` the same way, using an unknown
    route so `renderRoute` falls through to `renderNotFound`.
 5. Writes `dist/site/favicon.svg` and `dist/site/sitemap.xml`.
-6. Rebuilds the component gallery (`bun run gallery:build`, from issue `#18`)
+6. Rebuilds the component gallery (`pnpm run gallery:build`, from issue `#18`)
    and copies `dist/gallery/` into `dist/site/components/` -- see "Embedding
    the gallery" below.
 
@@ -139,7 +140,7 @@ deployment.
 ## Embedding the gallery
 
 **Decision:** `/components/` serves the gallery's own static build
-(`dist/gallery/`, produced by `#18`'s `bun run gallery:build`) as a separate
+(`dist/gallery/`, produced by `#18`'s `pnpm run gallery:build`) as a separate
 bundle, copied wholesale into `dist/site/components/`, rather than iframing it
 or re-implementing gallery routing inside the site's own SPA state. The
 gallery already ships a subpath-safe static build specifically so it can be
@@ -172,7 +173,7 @@ dark palette.
   `content-loader.node.ts`). They cannot drift from those files without the
   extraction itself changing. `packages/site/test/content.test.ts` includes a
   fixture test that bumps a fixture package/README version and asserts the
-  parsed -- and separately, the *rendered roadmap view* -- output changes.
+  parsed -- and separately, the _rendered roadmap view_ -- output changes.
 - The home-page code sample is the literal source of `sample-app.ts`, a real
   file that is typechecked and exercised by `test/sample-app.test.ts`.
 - The "your first app" and "styling" doc pages are original short overviews
@@ -189,12 +190,12 @@ dark palette.
 ## Build / local dev
 
 ```sh
-bun run site           # dev server at http://localhost:4176 (SPA, live app.js)
-bun run site:build     # static output at dist/site/
-bun run site:content   # regenerate packages/site/src/content.generated.json only
+pnpm run site           # dev server at http://localhost:4176 (SPA, live app.js)
+pnpm run site:build     # static output at dist/site/
+pnpm run site:content   # regenerate packages/site/src/content.generated.json only
 ```
 
-`bun run site:build` also rebuilds the gallery and copies it in, so a single
+`pnpm run site:build` also rebuilds the gallery and copies it in, so a single
 command produces the complete artifact. Serve `dist/site/` from any static
 host with this fallback contract (reference implementation:
 `scripts/site-static-build.test.ts`'s `makeStaticServer`):

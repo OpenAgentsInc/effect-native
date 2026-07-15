@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect, Schema, SubscriptionRef } from "effect"
 import {
   ComponentValueBinding,
@@ -27,10 +27,7 @@ interface ShellState {
 }
 
 const SelectPane = defineIntent("SelectPane", Schema.String)
-const ResizePane = defineIntent(
-  "ResizePane",
-  Schema.Struct({ paneId: Schema.String, size: Schema.Number })
-)
+const ResizePane = defineIntent("ResizePane", Schema.Struct({ paneId: Schema.String, size: Schema.Number }))
 const definitions = [SelectPane, ResizePane] as const
 
 const shellView = (state: ShellState): View =>
@@ -91,7 +88,28 @@ describe("app shell (#27)", () => {
     const view = NavRail({
       key: "mixed-sidebar",
       role: "tree",
-      sections: [{ id: "actions", layout: "row", items: [{ id: "settings", label: "Settings", icon: "Menu", meta: "⌘,", badge: "1", accessibilityLabel: "Open settings", selected: true, depth: 1, expanded: false, positionInSet: 1, setSize: 1, onSelect: IntentRef("OpenSettings") }] }]
+      sections: [
+        {
+          id: "actions",
+          layout: "row",
+          items: [
+            {
+              id: "settings",
+              label: "Settings",
+              icon: "Menu",
+              meta: "⌘,",
+              badge: "1",
+              accessibilityLabel: "Open settings",
+              selected: true,
+              depth: 1,
+              expanded: false,
+              positionInSet: 1,
+              setSize: 1,
+              onSelect: IntentRef("OpenSettings")
+            }
+          ]
+        }
+      ]
     })
     expect(decodeView(encodeView(view))).toEqual(view)
   })
@@ -102,33 +120,38 @@ describe("app shell (#27)", () => {
   })
 
   test("headless records nav selection and divider resize through typed intents", async () => {
-    const result = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const state = yield* SubscriptionRef.make<ShellState>({ activePaneId: "chat", sidebarSize: 240 })
-      const program = makeViewProgramFromState(state, shellView)
-      const handlers: IntentHandlers<typeof definitions> = {
-        SelectPane: (paneId) => SubscriptionRef.update(state, (current) => ({ ...current, activePaneId: paneId })),
-        ResizePane: (payload) =>
-          SubscriptionRef.update(state, (current) =>
-            payload.paneId === "rail" ? { ...current, sidebarSize: payload.size } : current)
-      }
-      const registry = yield* makeIntentRegistry(definitions, handlers, { now: () => 0 })
-      const report: IntentReporter = (ref, runtimeValue) => registry.dispatch(resolveIntentRef(ref, runtimeValue))
-      const surface = yield* makeHeadlessRenderer().mount(undefined, program.viewStream, report)
-      const simulate = (ref: IntentRef, value: unknown) =>
-        Effect.provideService(surface.simulate(ref, value as never), IntentRegistry, registry)
+    const result = await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const state = yield* SubscriptionRef.make<ShellState>({ activePaneId: "chat", sidebarSize: 240 })
+          const program = makeViewProgramFromState(state, shellView)
+          const handlers: IntentHandlers<typeof definitions> = {
+            SelectPane: (paneId) => SubscriptionRef.update(state, (current) => ({ ...current, activePaneId: paneId })),
+            ResizePane: (payload) =>
+              SubscriptionRef.update(state, (current) =>
+                payload.paneId === "rail" ? { ...current, sidebarSize: payload.size } : current
+              )
+          }
+          const registry = yield* makeIntentRegistry(definitions, handlers, { now: () => 0 })
+          const report: IntentReporter = (ref, runtimeValue) => registry.dispatch(resolveIntentRef(ref, runtimeValue))
+          const surface = yield* makeHeadlessRenderer().mount(undefined, program.viewStream, report)
+          const simulate = (ref: IntentRef, value: unknown) =>
+            Effect.provideService(surface.simulate(ref, value as never), IntentRegistry, registry)
 
-      const initial = yield* surface.current
-      yield* simulate(IntentRef("SelectPane", ComponentValueBinding()), "editor")
-      const switched = yield* surface.current
-      yield* simulate(IntentRef("ResizePane", ComponentValueBinding()), { paneId: "rail", size: 300 })
+          const initial = yield* surface.current
+          yield* simulate(IntentRef("SelectPane", ComponentValueBinding()), "editor")
+          const switched = yield* surface.current
+          yield* simulate(IntentRef("ResizePane", ComponentValueBinding()), { paneId: "rail", size: 300 })
 
-      return {
-        initial: initial === undefined ? undefined : activePane(initial),
-        switched: switched === undefined ? undefined : activePane(switched),
-        state: yield* program.currentState,
-        events: (yield* registry.events).map((event) => event.intent.name)
-      }
-    })))
+          return {
+            initial: initial === undefined ? undefined : activePane(initial),
+            switched: switched === undefined ? undefined : activePane(switched),
+            state: yield* program.currentState,
+            events: (yield* registry.events).map((event) => event.intent.name)
+          }
+        })
+      )
+    )
 
     expect(result.initial).toBe("chat")
     expect(result.switched).toBe("editor")

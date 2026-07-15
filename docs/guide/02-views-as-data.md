@@ -119,7 +119,7 @@ it wires a field to a form; see `packages/core/src/index.ts` and
 
 `List` requires every item to carry an explicit `key` — the schema rejects a
 list with an unkeyed item at decode time. Because the `Stack`/`Text`/…
-constructors return a type where `key` is *optional* (it's valid to omit a
+constructors return a type where `key` is _optional_ (it's valid to omit a
 key on a view that isn't going into a keyed collection), TypeScript needs a
 small cast to say "yes, I did give this one a key" when you build a list —
 the same helper the shipped proof example uses:
@@ -216,31 +216,28 @@ export const notesView = (state: NotesState): View =>
       fit: "cover",
       style: { borderRadius: "lg" }
     }),
-    Card(
-      { key: "composer", padding: "4", radius: "lg", style: { borderColor: "border", borderWidth: 1 } },
-      [
-        Stack({ key: "composer-stack", direction: "column", gap: "2" }, [
-          Text({ key: "title", content: "Notes", variant: "heading" }),
-          TextField({
-            key: "draft",
-            value: state.draft,
-            placeholder: "Write a note",
-            onChange: IntentRef("DraftChanged", ComponentValueBinding()),
-            onSubmit: IntentRef("AddNote")
-          }),
-          Stack({ key: "actions", direction: "row", align: "center", gap: "2" }, [
-            Button({ key: "add", label: "Add note", variant: "primary", onPress: IntentRef("AddNote") }),
-            Spacer({ key: "push", flex: true }),
-            Text({
-              key: "count",
-              content: `${state.notes.length} notes`,
-              variant: "caption",
-              color: "textMuted"
-            })
-          ])
+    Card({ key: "composer", padding: "4", radius: "lg", style: { borderColor: "border", borderWidth: 1 } }, [
+      Stack({ key: "composer-stack", direction: "column", gap: "2" }, [
+        Text({ key: "title", content: "Notes", variant: "heading" }),
+        TextField({
+          key: "draft",
+          value: state.draft,
+          placeholder: "Write a note",
+          onChange: IntentRef("DraftChanged", ComponentValueBinding()),
+          onSubmit: IntentRef("AddNote")
+        }),
+        Stack({ key: "actions", direction: "row", align: "center", gap: "2" }, [
+          Button({ key: "add", label: "Add note", variant: "primary", onPress: IntentRef("AddNote") }),
+          Spacer({ key: "push", flex: true }),
+          Text({
+            key: "count",
+            content: `${state.notes.length} notes`,
+            variant: "caption",
+            color: "textMuted"
+          })
         ])
-      ]
-    ),
+      ])
+    ]),
     List(
       { key: "notes" },
       state.notes.map((note) =>

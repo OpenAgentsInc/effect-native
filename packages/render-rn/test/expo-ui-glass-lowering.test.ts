@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect } from "effect"
 import {
   Button,
@@ -137,10 +137,14 @@ describe("render-rn @expo/ui glass lowering (GL-1)", () => {
     expect(hostElement).toBeDefined()
     const button = findByType(element, fakeExpoUi.Button)
     const mods = (button?.props.modifiers ?? []) as ReadonlyArray<Record<string, unknown>>
-    expect(mods.some((mod) =>
-      mod.$type === "glassEffect" && mod.shape === "circle" &&
-      (mod.glass as Record<string, unknown>).interactive === true
-    )).toBe(true)
+    expect(
+      mods.some(
+        (mod) =>
+          mod.$type === "glassEffect" &&
+          mod.shape === "circle" &&
+          (mod.glass as Record<string, unknown>).interactive === true
+      )
+    ).toBe(true)
 
     const image = findByType(element, fakeExpoUi.Image)
     expect(image?.props.systemName).toBe("line.3.horizontal")
@@ -180,8 +184,9 @@ describe("render-rn @expo/ui glass lowering (GL-1)", () => {
     expect((element.props.style as Record<string, unknown>).backgroundColor).toBeUndefined()
     const button = findByType(element, fakeExpoUi.Button)
     expect(modifierTypes(button)).toContain("glassEffect")
-    const glass = ((button?.props.modifiers as ReadonlyArray<Record<string, unknown>>) ?? [])
-      .find((mod) => mod.$type === "glassEffect")
+    const glass = ((button?.props.modifiers as ReadonlyArray<Record<string, unknown>>) ?? []).find(
+      (mod) => mod.$type === "glassEffect"
+    )
     expect(glass?.shape).toBe("capsule")
     const label = findByType(element, fakeExpoUi.Text)
     expect(label?.props.children).toBe("OpenAgents")
@@ -194,30 +199,27 @@ describe("render-rn @expo/ui glass lowering (GL-1)", () => {
       return Effect.void
     }
     const element = renderReactNativeView(
-      Toolbar(
-        { key: "composer", surface: "glass" },
-        [
-          IconButton({
-            key: "plus",
-            icon: "Plus",
-            accessibilityLabel: "New chat",
-            onPress: IntentRef("NewChatPressed", StaticPayload({}))
-          }),
-          Button({
-            key: "ask",
-            label: "Ask anything",
-            variant: "ghost",
-            onPress: IntentRef("ComposerPressed", StaticPayload({}))
-          }),
-          Spacer({ key: "gap", size: "2" }),
-          IconButton({
-            key: "mic",
-            icon: "Mic",
-            accessibilityLabel: "Voice input",
-            onPress: IntentRef("MicPressed", StaticPayload({}))
-          })
-        ]
-      ),
+      Toolbar({ key: "composer", surface: "glass" }, [
+        IconButton({
+          key: "plus",
+          icon: "Plus",
+          accessibilityLabel: "New chat",
+          onPress: IntentRef("NewChatPressed", StaticPayload({}))
+        }),
+        Button({
+          key: "ask",
+          label: "Ask anything",
+          variant: "ghost",
+          onPress: IntentRef("ComposerPressed", StaticPayload({}))
+        }),
+        Spacer({ key: "gap", size: "2" }),
+        IconButton({
+          key: "mic",
+          icon: "Mic",
+          accessibilityLabel: "Voice input",
+          onPress: IntentRef("MicPressed", StaticPayload({}))
+        })
+      ]),
       dependencies,
       recordingReport as never,
       { theme: khalaTheme, expoUi: fakeExpoUi }
@@ -229,7 +231,9 @@ describe("render-rn @expo/ui glass lowering (GL-1)", () => {
     expect(modifierTypes(stack)).toContain("glassEffect")
 
     // Children lowered to SwiftUI controls with SF Symbols…
-    const children = (Array.isArray(stack?.props.children) ? stack.props.children : []) as ReadonlyArray<ReactElementLike>
+    const children = (
+      Array.isArray(stack?.props.children) ? stack.props.children : []
+    ) as ReadonlyArray<ReactElementLike>
     expect(children.map((child) => child.type)).toEqual([
       fakeExpoUi.Button,
       fakeExpoUi.Button,
@@ -250,18 +254,15 @@ describe("render-rn @expo/ui glass lowering (GL-1)", () => {
 
   test("glass Stack (column) with lowerable children lowers to a VStack glass panel", () => {
     const element = renderReactNativeView(
-      Stack(
-        { key: "sheet", direction: "column", gap: "2", style: { surface: "glass", borderRadius: "lg" } },
-        [
-          Text({ key: "title", content: "Buy Minerals", variant: "label" }),
-          Button({
-            key: "pack",
-            label: "100 Minerals — $0.99",
-            variant: "secondary",
-            onPress: IntentRef("MineralPackSelected", StaticPayload({ id: "pack-100" }))
-          })
-        ]
-      ),
+      Stack({ key: "sheet", direction: "column", gap: "2", style: { surface: "glass", borderRadius: "lg" } }, [
+        Text({ key: "title", content: "Buy Minerals", variant: "label" }),
+        Button({
+          key: "pack",
+          label: "100 Minerals — $0.99",
+          variant: "secondary",
+          onPress: IntentRef("MineralPackSelected", StaticPayload({ id: "pack-100" }))
+        })
+      ]),
       dependencies,
       report as never,
       { theme: khalaTheme, expoUi: fakeExpoUi }
@@ -269,25 +270,23 @@ describe("render-rn @expo/ui glass lowering (GL-1)", () => {
 
     const stack = findByType(element, fakeExpoUi.VStack)
     expect(stack).toBeDefined()
-    const glass = ((stack?.props.modifiers as ReadonlyArray<Record<string, unknown>>) ?? [])
-      .find((mod) => mod.$type === "glassEffect")
+    const glass = ((stack?.props.modifiers as ReadonlyArray<Record<string, unknown>>) ?? []).find(
+      (mod) => mod.$type === "glassEffect"
+    )
     expect(glass?.shape).toBe("roundedRectangle")
   })
 
   test("a glass container with a NON-lowerable child falls back to the honest RN path as a whole", () => {
     const element = renderReactNativeView(
-      Toolbar(
-        { key: "composer", surface: "glass" },
-        [
-          TextField({
-            key: "input",
-            value: "",
-            label: "Message",
-            placeholder: "Message",
-            onChange: IntentRef("DraftChanged", StaticPayload({}))
-          })
-        ]
-      ),
+      Toolbar({ key: "composer", surface: "glass" }, [
+        TextField({
+          key: "input",
+          value: "",
+          label: "Message",
+          placeholder: "Message",
+          onChange: IntentRef("DraftChanged", StaticPayload({}))
+        })
+      ]),
       dependencies,
       report as never,
       { theme: khalaTheme, expoUi: fakeExpoUi }

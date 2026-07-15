@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Exit, Schema } from "effect"
 import {
   CodeEditor,
@@ -25,7 +25,14 @@ describe("CodeEditor host contract (#33)", () => {
     })
     expect(view._tag).toBe("Host")
     expect(view.kind).toBe("code-editor")
-    expect(view.props).toEqual({ value: "const x = 1\n", language: "typescript", readOnly: false, wordWrap: true, minimap: false, fontScale: "body" })
+    expect(view.props).toEqual({
+      value: "const x = 1\n",
+      language: "typescript",
+      readOnly: false,
+      wordWrap: true,
+      minimap: false,
+      fontScale: "body"
+    })
     expect(decodeView(encodeView(view))).toEqual(view)
   })
 

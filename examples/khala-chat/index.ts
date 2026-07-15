@@ -38,8 +38,7 @@ import { khalaTheme } from "@effect-native/tokens"
 // this proof reflects the same token values every other consumer picks up.
 export const khalaDesktopTheme: Theme = khalaTheme
 
-const keyed = <V extends View>(view: V): V & { readonly key: string } =>
-  view as V & { readonly key: string }
+const keyed = <V extends View>(view: V): V & { readonly key: string } => view as V & { readonly key: string }
 
 export const KhalaChatNavItemSchema = Schema.Struct({
   id: Schema.NonEmptyString,
@@ -56,20 +55,10 @@ export const KhalaChatThreadSchema = Schema.Struct({
 })
 export type KhalaChatThread = Schema.Schema.Type<typeof KhalaChatThreadSchema>
 
-export const KhalaChatMessageRoleSchema = Schema.Literals([
-  "user",
-  "assistant",
-  "tool",
-  "system"
-] as const)
+export const KhalaChatMessageRoleSchema = Schema.Literals(["user", "assistant", "tool", "system"] as const)
 export type KhalaChatMessageRole = Schema.Schema.Type<typeof KhalaChatMessageRoleSchema>
 
-export const KhalaChatMessageStatusSchema = Schema.Literals([
-  "complete",
-  "thinking",
-  "streaming",
-  "failed"
-] as const)
+export const KhalaChatMessageStatusSchema = Schema.Literals(["complete", "thinking", "streaming", "failed"] as const)
 export type KhalaChatMessageStatus = Schema.Schema.Type<typeof KhalaChatMessageStatusSchema>
 
 export const ProseSegmentSchema = Schema.TaggedStruct("ProseSegment", {
@@ -248,10 +237,7 @@ export const initialKhalaChatState: KhalaChatState = KhalaChatStateSchema.make({
     mode: "normal",
     dragActive: false,
     slashQuery: "",
-    history: [
-      "show me the fleet status",
-      "summarize the current diff"
-    ]
+    history: ["show me the fleet status", "summarize the current diff"]
   },
   palette: {
     open: false,
@@ -279,10 +265,7 @@ export const PaletteOpened = defineIntent("KhalaChat.PaletteOpened", Schema.Stru
 export const PaletteClosed = defineIntent("KhalaChat.PaletteClosed", Schema.Struct({}))
 export const PaletteQueryChanged = defineIntent("KhalaChat.PaletteQueryChanged", Schema.String)
 export const PaletteSelected = defineIntent("KhalaChat.PaletteSelected", Schema.NonEmptyString)
-export const TranscriptJumpedToEnd = defineIntent(
-  "KhalaChat.TranscriptJumpedToEnd",
-  Schema.Struct({})
-)
+export const TranscriptJumpedToEnd = defineIntent("KhalaChat.TranscriptJumpedToEnd", Schema.Struct({}))
 
 export const khalaChatIntentDefinitions = [
   SelectView,
@@ -299,117 +282,131 @@ export const khalaChatIntentDefinitions = [
 ] as const
 
 const navRail = (state: KhalaChatState): View =>
-  Stack({
-    key: "nav-rail",
-    direction: "column",
-    gap: "2",
-    padding: "3",
-    style: {
-      width: 84,
-      backgroundColor: "surface",
-      borderColor: "border",
-      borderWidth: 1
-    }
-  }, [
-    Text({
-      key: "nav-brand",
-      content: "Khala",
-      variant: "label",
-      color: "accent",
-      weight: "semibold"
-    }),
-    ...state.navItems.map((item) =>
-      Button({
-        key: `nav-${item.id}`,
-        label: `${item.hotkey} ${item.label}`,
-        variant: state.activeView === item.id ? "secondary" : "ghost",
-        onPress: IntentRef("KhalaChat.SelectView", StaticPayload(item.id)),
-        style: {
-          borderRadius: "md",
-          padding: "2",
-          backgroundColor: state.activeView === item.id ? "background" : "surface",
-          borderColor: state.activeView === item.id ? "accent" : "border",
-          borderWidth: 1,
-          color: state.activeView === item.id ? "accent" : "textMuted"
-        }
-      })
-    )
-  ])
-
-const threadSidebar = (state: KhalaChatState): View =>
-  Stack({
-    key: "thread-sidebar",
-    direction: "column",
-    gap: "3",
-    padding: "3",
-    style: {
-      width: 320,
-      backgroundColor: "surface",
-      borderColor: "border",
-      borderWidth: 1
-    }
-  }, [
-    Stack({ key: "thread-head", direction: "row", align: "center", gap: "2" }, [
-      Text({
-        key: "thread-title",
-        content: "Threads",
-        variant: "title",
-        color: "textPrimary"
-      }),
-      Spacer({ key: "thread-head-spacer", flex: true }),
-      Button({
-        key: "new-thread",
-        label: "New",
-        variant: "secondary",
-        onPress: IntentRef("KhalaChat.PaletteSelected", StaticPayload("session.new_chat")),
-        style: { borderRadius: "md", padding: "2" }
-      })
-    ]),
-    List({
-      key: "thread-list"
-    }, state.threads.map((thread) =>
-      keyed(Button({
-        key: `thread-${thread.id}`,
-        label: `${thread.title}\n${thread.subtitle}`,
-        variant: state.activeThreadId === thread.id ? "secondary" : "ghost",
-        onPress: IntentRef("KhalaChat.SelectThread", StaticPayload(thread.id)),
-        style: {
-          borderRadius: "md",
-          padding: "3",
-          backgroundColor: state.activeThreadId === thread.id ? "background" : "surface",
-          borderColor: state.activeThreadId === thread.id ? "accent" : "border",
-          borderWidth: 1,
-          textAlign: "left",
-          color: state.activeThreadId === thread.id ? "textPrimary" : "textMuted"
-        }
-      }))
-    )),
-    Card({
-      key: "token-meter",
+  Stack(
+    {
+      key: "nav-rail",
+      direction: "column",
+      gap: "2",
       padding: "3",
-      radius: "md",
       style: {
-        backgroundColor: "background",
+        width: 84,
+        backgroundColor: "surface",
         borderColor: "border",
         borderWidth: 1
       }
-    }, [
-      Stack({ key: "token-meter-stack", direction: "column", gap: "1" }, [
-        Text({
-          key: "token-meter-label",
-          content: "Thread tokens",
-          variant: "caption",
-          color: "textMuted"
-        }),
-        Text({
-          key: "token-meter-value",
-          content: "8.3B served - live ledger window",
-          variant: "label",
-          color: "accent"
+    },
+    [
+      Text({
+        key: "nav-brand",
+        content: "Khala",
+        variant: "label",
+        color: "accent",
+        weight: "semibold"
+      }),
+      ...state.navItems.map((item) =>
+        Button({
+          key: `nav-${item.id}`,
+          label: `${item.hotkey} ${item.label}`,
+          variant: state.activeView === item.id ? "secondary" : "ghost",
+          onPress: IntentRef("KhalaChat.SelectView", StaticPayload(item.id)),
+          style: {
+            borderRadius: "md",
+            padding: "2",
+            backgroundColor: state.activeView === item.id ? "background" : "surface",
+            borderColor: state.activeView === item.id ? "accent" : "border",
+            borderWidth: 1,
+            color: state.activeView === item.id ? "accent" : "textMuted"
+          }
         })
-      ])
-    ])
-  ])
+      )
+    ]
+  )
+
+const threadSidebar = (state: KhalaChatState): View =>
+  Stack(
+    {
+      key: "thread-sidebar",
+      direction: "column",
+      gap: "3",
+      padding: "3",
+      style: {
+        width: 320,
+        backgroundColor: "surface",
+        borderColor: "border",
+        borderWidth: 1
+      }
+    },
+    [
+      Stack({ key: "thread-head", direction: "row", align: "center", gap: "2" }, [
+        Text({
+          key: "thread-title",
+          content: "Threads",
+          variant: "title",
+          color: "textPrimary"
+        }),
+        Spacer({ key: "thread-head-spacer", flex: true }),
+        Button({
+          key: "new-thread",
+          label: "New",
+          variant: "secondary",
+          onPress: IntentRef("KhalaChat.PaletteSelected", StaticPayload("session.new_chat")),
+          style: { borderRadius: "md", padding: "2" }
+        })
+      ]),
+      List(
+        {
+          key: "thread-list"
+        },
+        state.threads.map((thread) =>
+          keyed(
+            Button({
+              key: `thread-${thread.id}`,
+              label: `${thread.title}\n${thread.subtitle}`,
+              variant: state.activeThreadId === thread.id ? "secondary" : "ghost",
+              onPress: IntentRef("KhalaChat.SelectThread", StaticPayload(thread.id)),
+              style: {
+                borderRadius: "md",
+                padding: "3",
+                backgroundColor: state.activeThreadId === thread.id ? "background" : "surface",
+                borderColor: state.activeThreadId === thread.id ? "accent" : "border",
+                borderWidth: 1,
+                textAlign: "left",
+                color: state.activeThreadId === thread.id ? "textPrimary" : "textMuted"
+              }
+            })
+          )
+        )
+      ),
+      Card(
+        {
+          key: "token-meter",
+          padding: "3",
+          radius: "md",
+          style: {
+            backgroundColor: "background",
+            borderColor: "border",
+            borderWidth: 1
+          }
+        },
+        [
+          Stack({ key: "token-meter-stack", direction: "column", gap: "1" }, [
+            Text({
+              key: "token-meter-label",
+              content: "Thread tokens",
+              variant: "caption",
+              color: "textMuted"
+            }),
+            Text({
+              key: "token-meter-value",
+              content: "8.3B served - live ledger window",
+              variant: "label",
+              color: "accent"
+            })
+          ])
+        ]
+      )
+    ]
+  )
 
 const proseSegment = (message: KhalaChatMessage, segment: KhalaChatMessageSegment, index: number): View =>
   Text({
@@ -422,108 +419,118 @@ const proseSegment = (message: KhalaChatMessage, segment: KhalaChatMessageSegmen
 const codeSegment = (message: KhalaChatMessage, segment: KhalaChatMessageSegment, index: number): View =>
   segment._tag !== "CodeBlockSegment"
     ? proseSegment(message, segment, index)
-    : Card({
-        key: `${message.id}-code-${index}`,
-        padding: "3",
-        radius: "md",
-        style: {
-          backgroundColor: "background",
-          borderColor: "border",
-          borderWidth: 1
-        }
-      }, [
-        Stack({ key: `${message.id}-code-${index}-stack`, direction: "column", gap: "1" }, [
-          Text({
-            key: `${message.id}-code-${index}-label`,
-            content: `${segment.filename ?? "code"} - ${segment.language}`,
-            variant: "caption",
-            color: "accent"
-          }),
-          ...segment.lines.map((line, lineIndex) =>
+    : Card(
+        {
+          key: `${message.id}-code-${index}`,
+          padding: "3",
+          radius: "md",
+          style: {
+            backgroundColor: "background",
+            borderColor: "border",
+            borderWidth: 1
+          }
+        },
+        [
+          Stack({ key: `${message.id}-code-${index}-stack`, direction: "column", gap: "1" }, [
             Text({
-              key: `${message.id}-code-${index}-${lineIndex}`,
-              content: line,
+              key: `${message.id}-code-${index}-label`,
+              content: `${segment.filename ?? "code"} - ${segment.language}`,
               variant: "caption",
-              color: "textPrimary",
-              style: { marginTop: lineIndex === 0 ? "1" : "0" }
-            })
-          )
-        ])
-      ])
+              color: "accent"
+            }),
+            ...segment.lines.map((line, lineIndex) =>
+              Text({
+                key: `${message.id}-code-${index}-${lineIndex}`,
+                content: line,
+                variant: "caption",
+                color: "textPrimary",
+                style: { marginTop: lineIndex === 0 ? "1" : "0" }
+              })
+            )
+          ])
+        ]
+      )
 
 const diffSegment = (message: KhalaChatMessage, segment: KhalaChatMessageSegment, index: number): View =>
   segment._tag !== "DiffSegment"
     ? proseSegment(message, segment, index)
-    : Card({
-        key: `${message.id}-diff-${index}`,
-        padding: "3",
-        radius: "md",
-        style: {
-          backgroundColor: "background",
-          borderColor: "border",
-          borderWidth: 1
-        }
-      }, [
-        Stack({ key: `${message.id}-diff-${index}-stack`, direction: "column", gap: "1" }, [
-          Text({
-            key: `${message.id}-diff-${index}-label`,
-            content: `diff - ${segment.filename}`,
-            variant: "caption",
-            color: "accent"
-          }),
-          ...segment.rows.map((row, rowIndex) =>
+    : Card(
+        {
+          key: `${message.id}-diff-${index}`,
+          padding: "3",
+          radius: "md",
+          style: {
+            backgroundColor: "background",
+            borderColor: "border",
+            borderWidth: 1
+          }
+        },
+        [
+          Stack({ key: `${message.id}-diff-${index}-stack`, direction: "column", gap: "1" }, [
             Text({
-              key: `${message.id}-diff-${index}-${rowIndex}`,
-              content: row.kind === "add"
-                ? `+ ${row.text}`
-                : row.kind === "remove"
-                  ? `- ${row.text}`
-                  : row.kind === "hunk"
-                    ? row.text
-                    : `  ${row.text}`,
+              key: `${message.id}-diff-${index}-label`,
+              content: `diff - ${segment.filename}`,
               variant: "caption",
-              color: row.kind === "add" ? "accent" : row.kind === "remove" ? "danger" : "textMuted",
-              style: { marginTop: rowIndex === 0 ? "1" : "0" }
-            })
-          )
-        ])
-      ])
+              color: "accent"
+            }),
+            ...segment.rows.map((row, rowIndex) =>
+              Text({
+                key: `${message.id}-diff-${index}-${rowIndex}`,
+                content:
+                  row.kind === "add"
+                    ? `+ ${row.text}`
+                    : row.kind === "remove"
+                      ? `- ${row.text}`
+                      : row.kind === "hunk"
+                        ? row.text
+                        : `  ${row.text}`,
+                variant: "caption",
+                color: row.kind === "add" ? "accent" : row.kind === "remove" ? "danger" : "textMuted",
+                style: { marginTop: rowIndex === 0 ? "1" : "0" }
+              })
+            )
+          ])
+        ]
+      )
 
 const toolCallSegment = (message: KhalaChatMessage, segment: KhalaChatMessageSegment, index: number): View =>
   segment._tag !== "ToolCallSegment"
     ? proseSegment(message, segment, index)
-    : Card({
-        key: `${message.id}-tool-${index}`,
-        padding: "3",
-        radius: "md",
-        style: {
-          backgroundColor: "surface",
-          borderColor: "accent",
-          borderWidth: 1
-        }
-      }, [
-        Stack({ key: `${message.id}-tool-${index}-stack`, direction: "column", gap: "1" }, [
-          Text({
-            key: `${message.id}-tool-${index}-title`,
-            content: segment.title,
-            variant: "label",
-            color: "accent"
-          }),
-          Text({
-            key: `${message.id}-tool-${index}-status`,
-            content: segment.status,
-            variant: "caption",
-            color: "textMuted"
-          }),
-          Text({
-            key: `${message.id}-tool-${index}-summary`,
-            content: segment.summary,
-            variant: "body",
-            color: "textPrimary",
-            style: { marginTop: "1" }
-          })
-        ])
-      ])
+    : Card(
+        {
+          key: `${message.id}-tool-${index}`,
+          padding: "3",
+          radius: "md",
+          style: {
+            backgroundColor: "surface",
+            borderColor: "accent",
+            borderWidth: 1
+          }
+        },
+        [
+          Stack({ key: `${message.id}-tool-${index}-stack`, direction: "column", gap: "1" }, [
+            Text({
+              key: `${message.id}-tool-${index}-title`,
+              content: segment.title,
+              variant: "label",
+              color: "accent"
+            }),
+            Text({
+              key: `${message.id}-tool-${index}-status`,
+              content: segment.status,
+              variant: "caption",
+              color: "textMuted"
+            }),
+            Text({
+              key: `${message.id}-tool-${index}-summary`,
+              content: segment.summary,
+              variant: "body",
+              color: "textPrimary",
+              style: { marginTop: "1" }
+            })
+          ])
+        ]
+      )
 
 const segmentView = (message: KhalaChatMessage, segment: KhalaChatMessageSegment, index: number): View => {
   switch (segment._tag) {
@@ -539,159 +546,176 @@ const segmentView = (message: KhalaChatMessage, segment: KhalaChatMessageSegment
 }
 
 const messageCard = (message: KhalaChatMessage): View =>
-  Card({
-    key: message.id,
-    padding: "4",
-    radius: "lg",
-    style: {
-      backgroundColor: message.role === "user" ? "surface" : "background",
-      borderColor: message.status === "failed" ? "danger" : message.status === "streaming" ? "accent" : "border",
-      borderWidth: 1
-    }
-  }, [
-    Stack({ key: `${message.id}-head`, direction: "row", align: "center", gap: "2" }, [
-      Text({
-        key: `${message.id}-author`,
-        content: `${message.author} - ${message.role}`,
-        variant: "label",
-        color: message.role === "assistant" ? "accent" : "textPrimary"
-      }),
-      Spacer({ key: `${message.id}-head-spacer`, flex: true }),
-      Text({
-        key: `${message.id}-status`,
-        content: message.status,
-        variant: "caption",
-        color: message.status === "failed" ? "danger" : message.status === "complete" ? "textMuted" : "accent"
-      })
-    ]),
-    Stack({
-      key: `${message.id}-segments`,
-      direction: "column",
-      gap: "3",
-      style: { marginTop: "3" }
-    }, message.segments.map((segment, index) => segmentView(message, segment, index)))
-  ])
+  Card(
+    {
+      key: message.id,
+      padding: "4",
+      radius: "lg",
+      style: {
+        backgroundColor: message.role === "user" ? "surface" : "background",
+        borderColor: message.status === "failed" ? "danger" : message.status === "streaming" ? "accent" : "border",
+        borderWidth: 1
+      }
+    },
+    [
+      Stack({ key: `${message.id}-head`, direction: "row", align: "center", gap: "2" }, [
+        Text({
+          key: `${message.id}-author`,
+          content: `${message.author} - ${message.role}`,
+          variant: "label",
+          color: message.role === "assistant" ? "accent" : "textPrimary"
+        }),
+        Spacer({ key: `${message.id}-head-spacer`, flex: true }),
+        Text({
+          key: `${message.id}-status`,
+          content: message.status,
+          variant: "caption",
+          color: message.status === "failed" ? "danger" : message.status === "complete" ? "textMuted" : "accent"
+        })
+      ]),
+      Stack(
+        {
+          key: `${message.id}-segments`,
+          direction: "column",
+          gap: "3",
+          style: { marginTop: "3" }
+        },
+        message.segments.map((segment, index) => segmentView(message, segment, index))
+      )
+    ]
+  )
 
 const transcript = (state: KhalaChatState): View =>
-  Stack({
-    key: "transcript-region",
-    direction: "column",
-    gap: "3",
-    padding: "4",
-    style: {
-      flex: 1,
-      minHeight: 320,
-      backgroundColor: "background"
-    }
-  }, [
-    Stack({ key: "transcript-head", direction: "row", align: "center", gap: "2" }, [
-      Text({
-        key: "transcript-title",
-        content: "Streaming transcript",
-        variant: "title",
-        color: "textPrimary"
-      }),
-      Spacer({ key: "transcript-head-spacer", flex: true }),
-      Text({
-        key: "stream-count",
-        content: `${state.streamPatchCount} recorded patches`,
-        variant: "caption",
-        color: "textMuted"
-      }),
-      Button({
-        key: "jump-latest",
-        label: state.transcriptPinnedToEnd ? "Pinned" : "Jump",
-        variant: "secondary",
-        onPress: IntentRef("KhalaChat.TranscriptJumpedToEnd", StaticPayload({})),
-        style: { borderRadius: "md", padding: "2" }
-      })
-    ]),
-    List({
-      key: "transcript-list",
-      virtualize: true,
-      estimatedItemSize: 96,
+  Stack(
+    {
+      key: "transcript-region",
+      direction: "column",
+      gap: "3",
+      padding: "4",
       style: {
         flex: 1,
-        padding: "1",
-        borderColor: "border",
-        borderWidth: 1,
-        borderRadius: "lg",
-        backgroundColor: "surface"
+        minHeight: 320,
+        backgroundColor: "background"
       }
-    }, state.messages.map((message) => keyed(messageCard(message))))
-  ])
+    },
+    [
+      Stack({ key: "transcript-head", direction: "row", align: "center", gap: "2" }, [
+        Text({
+          key: "transcript-title",
+          content: "Streaming transcript",
+          variant: "title",
+          color: "textPrimary"
+        }),
+        Spacer({ key: "transcript-head-spacer", flex: true }),
+        Text({
+          key: "stream-count",
+          content: `${state.streamPatchCount} recorded patches`,
+          variant: "caption",
+          color: "textMuted"
+        }),
+        Button({
+          key: "jump-latest",
+          label: state.transcriptPinnedToEnd ? "Pinned" : "Jump",
+          variant: "secondary",
+          onPress: IntentRef("KhalaChat.TranscriptJumpedToEnd", StaticPayload({})),
+          style: { borderRadius: "md", padding: "2" }
+        })
+      ]),
+      List(
+        {
+          key: "transcript-list",
+          virtualize: true,
+          estimatedItemSize: 96,
+          style: {
+            flex: 1,
+            padding: "1",
+            borderColor: "border",
+            borderWidth: 1,
+            borderRadius: "lg",
+            backgroundColor: "surface"
+          }
+        },
+        state.messages.map((message) => keyed(messageCard(message)))
+      )
+    ]
+  )
 
 const composer = (state: KhalaChatState): View =>
-  Card({
-    key: "composer-shell",
-    padding: "3",
-    radius: "lg",
-    style: {
-      backgroundColor: "surface",
-      borderColor: state.composer.dragActive ? "accent" : "border",
-      borderWidth: 1
-    }
-  }, [
-    Stack({ key: "composer-head", direction: "row", align: "center", gap: "2" }, [
-      Text({
-        key: "composer-mode",
-        content: `Composer - ${state.composer.mode}`,
-        variant: "label",
-        color: "accent"
-      }),
-      Spacer({ key: "composer-head-spacer", flex: true }),
-      Button({
-        key: "palette-open",
-        label: "Cmd+K",
-        variant: "ghost",
-        onPress: IntentRef("KhalaChat.PaletteOpened", StaticPayload({})),
-        style: { borderRadius: "md", padding: "2" }
-      })
-    ]),
-    TextField({
-      key: "composer-field",
-      value: state.composer.value,
-      label: "Message",
-      placeholder: "Ask Khala or type / for commands",
-      multiline: true,
-      onChange: IntentRef("KhalaChat.ComposerChanged", ComponentValueBinding()),
-      onSubmit: IntentRef("KhalaChat.ComposerSubmitted", ComponentValueBinding()),
+  Card(
+    {
+      key: "composer-shell",
+      padding: "3",
+      radius: "lg",
       style: {
-        marginTop: "3",
-        minHeight: 96,
-        borderColor: "border",
-        borderWidth: 1,
-        borderRadius: "md",
-        padding: "3",
-        backgroundColor: "background",
-        color: "textPrimary"
+        backgroundColor: "surface",
+        borderColor: state.composer.dragActive ? "accent" : "border",
+        borderWidth: 1
       }
-    }),
-    Stack({ key: "composer-actions", direction: "row", align: "center", gap: "2", style: { marginTop: "3" } }, [
-      Text({
-        key: "composer-hint",
-        content: state.composer.value.startsWith("/") ? `slash query: ${state.composer.value.slice(1)}` : "Enter submits. Shift+Enter inserts a newline.",
-        variant: "caption",
-        color: "textMuted"
+    },
+    [
+      Stack({ key: "composer-head", direction: "row", align: "center", gap: "2" }, [
+        Text({
+          key: "composer-mode",
+          content: `Composer - ${state.composer.mode}`,
+          variant: "label",
+          color: "accent"
+        }),
+        Spacer({ key: "composer-head-spacer", flex: true }),
+        Button({
+          key: "palette-open",
+          label: "Cmd+K",
+          variant: "ghost",
+          onPress: IntentRef("KhalaChat.PaletteOpened", StaticPayload({})),
+          style: { borderRadius: "md", padding: "2" }
+        })
+      ]),
+      TextField({
+        key: "composer-field",
+        value: state.composer.value,
+        label: "Message",
+        placeholder: "Ask Khala or type / for commands",
+        multiline: true,
+        onChange: IntentRef("KhalaChat.ComposerChanged", ComponentValueBinding()),
+        onSubmit: IntentRef("KhalaChat.ComposerSubmitted", ComponentValueBinding()),
+        style: {
+          marginTop: "3",
+          minHeight: 96,
+          borderColor: "border",
+          borderWidth: 1,
+          borderRadius: "md",
+          padding: "3",
+          backgroundColor: "background",
+          color: "textPrimary"
+        }
       }),
-      Spacer({ key: "composer-actions-spacer", flex: true }),
-      Button({
-        key: "attach",
-        label: "Attach",
-        variant: "ghost",
-        onPress: IntentRef("KhalaChat.ComposerDrop", StaticPayload({ items: ["local-reference.txt"] })),
-        style: { borderRadius: "md", padding: "2" }
-      }),
-      Button({
-        key: "composer-submit",
-        label: "Send",
-        variant: "primary",
-        onPress: IntentRef("KhalaChat.ComposerSubmitted", StaticPayload(state.composer.value)),
-        disabled: state.composer.value.trim().length === 0,
-        style: { borderRadius: "md", padding: "2", backgroundColor: "accent", color: "background" }
-      })
-    ])
-  ])
+      Stack({ key: "composer-actions", direction: "row", align: "center", gap: "2", style: { marginTop: "3" } }, [
+        Text({
+          key: "composer-hint",
+          content: state.composer.value.startsWith("/")
+            ? `slash query: ${state.composer.value.slice(1)}`
+            : "Enter submits. Shift+Enter inserts a newline.",
+          variant: "caption",
+          color: "textMuted"
+        }),
+        Spacer({ key: "composer-actions-spacer", flex: true }),
+        Button({
+          key: "attach",
+          label: "Attach",
+          variant: "ghost",
+          onPress: IntentRef("KhalaChat.ComposerDrop", StaticPayload({ items: ["local-reference.txt"] })),
+          style: { borderRadius: "md", padding: "2" }
+        }),
+        Button({
+          key: "composer-submit",
+          label: "Send",
+          variant: "primary",
+          onPress: IntentRef("KhalaChat.ComposerSubmitted", StaticPayload(state.composer.value)),
+          disabled: state.composer.value.trim().length === 0,
+          style: { borderRadius: "md", padding: "2", backgroundColor: "accent", color: "background" }
+        })
+      ])
+    ]
+  )
 
 const filteredCommands = (state: KhalaChatState): ReadonlyArray<KhalaChatCommand> => {
   const query = state.palette.query.trim().toLowerCase()
@@ -704,110 +728,121 @@ const filteredCommands = (state: KhalaChatState): ReadonlyArray<KhalaChatCommand
 }
 
 const commandPalette = (state: KhalaChatState): View =>
-  Modal({
-    key: "command-palette",
-    title: "Command palette",
-    open: state.palette.open,
-    dismissable: true,
-    size: "lg",
-    onDismiss: IntentRef("KhalaChat.PaletteClosed", StaticPayload({}))
-  }, [
-    Stack({ key: "palette-stack", direction: "column", gap: "3" }, [
-      TextField({
-        key: "palette-query",
-        value: state.palette.query,
-        label: "Search commands",
-        placeholder: "Run command",
-        onChange: IntentRef("KhalaChat.PaletteQueryChanged", ComponentValueBinding()),
-        style: {
-          borderColor: "border",
-          borderWidth: 1,
-          borderRadius: "md",
-          padding: "3",
-          backgroundColor: "surface"
-        }
-      }),
-    List({
-      key: "palette-results"
-    }, filteredCommands(state).map((command) =>
-        keyed(Button({
-          key: `command-${command.id}`,
-          label: `${command.group}: ${command.title}\n${command.subtitle} - ${command.keybindingLabel}`,
-          variant: state.palette.highlightedId === command.id ? "secondary" : "ghost",
-          onPress: IntentRef("KhalaChat.PaletteSelected", StaticPayload(command.id)),
+  Modal(
+    {
+      key: "command-palette",
+      title: "Command palette",
+      open: state.palette.open,
+      dismissable: true,
+      size: "lg",
+      onDismiss: IntentRef("KhalaChat.PaletteClosed", StaticPayload({}))
+    },
+    [
+      Stack({ key: "palette-stack", direction: "column", gap: "3" }, [
+        TextField({
+          key: "palette-query",
+          value: state.palette.query,
+          label: "Search commands",
+          placeholder: "Run command",
+          onChange: IntentRef("KhalaChat.PaletteQueryChanged", ComponentValueBinding()),
           style: {
+            borderColor: "border",
+            borderWidth: 1,
             borderRadius: "md",
             padding: "3",
-            textAlign: "left",
-            borderColor: state.palette.highlightedId === command.id ? "accent" : "border",
-            borderWidth: 1
+            backgroundColor: "surface"
           }
-        }))
-      ))
-    ])
-  ])
+        }),
+        List(
+          {
+            key: "palette-results"
+          },
+          filteredCommands(state).map((command) =>
+            keyed(
+              Button({
+                key: `command-${command.id}`,
+                label: `${command.group}: ${command.title}\n${command.subtitle} - ${command.keybindingLabel}`,
+                variant: state.palette.highlightedId === command.id ? "secondary" : "ghost",
+                onPress: IntentRef("KhalaChat.PaletteSelected", StaticPayload(command.id)),
+                style: {
+                  borderRadius: "md",
+                  padding: "3",
+                  textAlign: "left",
+                  borderColor: state.palette.highlightedId === command.id ? "accent" : "border",
+                  borderWidth: 1
+                }
+              })
+            )
+          )
+        )
+      ])
+    ]
+  )
 
 const fleetCockpit = (state: KhalaChatState): View =>
-  Stack({
-    key: "fleet-cockpit",
-    direction: "column",
-    gap: "3",
-    padding: "3",
-    style: { flex: 1, backgroundColor: "background" }
-  }, [
-    Text({ key: "fleet-title", content: "Fleet cockpit", variant: "title", color: "textPrimary" }),
-    Stack({ key: "fleet-chips", direction: "row", gap: "2" }, [
-      Button({
-        key: "fleet-run",
-        label: "Run pairing",
-        variant: "primary",
-        onPress: IntentRef("KhalaChat.SelectView", StaticPayload("fleet"))
+  Stack(
+    {
+      key: "fleet-cockpit",
+      direction: "column",
+      gap: "3",
+      padding: "3",
+      style: { flex: 1, backgroundColor: "background" }
+    },
+    [
+      Text({ key: "fleet-title", content: "Fleet cockpit", variant: "title", color: "textPrimary" }),
+      Stack({ key: "fleet-chips", direction: "row", gap: "2" }, [
+        Button({
+          key: "fleet-run",
+          label: "Run pairing",
+          variant: "primary",
+          onPress: IntentRef("KhalaChat.SelectView", StaticPayload("fleet"))
+        }),
+        Button({
+          key: "fleet-back-chat",
+          label: "Back to chat",
+          variant: "secondary",
+          onPress: IntentRef("KhalaChat.SelectView", StaticPayload("chat"))
+        })
+      ]),
+      GraphFigure({
+        key: "fleet-graph",
+        layout: "precomputed",
+        width: 420,
+        height: 240,
+        camera: { x: 0, y: 0, zoom: 1 },
+        onNodeSelect: IntentRef("KhalaChat.SelectThread", StaticPayload("thread-fleet-qa")),
+        nodes: [
+          { id: "orrery", label: "Orrery", kind: "worker", status: "active", x: -80, y: 0 },
+          { id: "whitefang", label: "Whitefang", kind: "validator", status: "success", x: 80, y: -40 },
+          { id: "arbiter", label: "Arbiter", kind: "arbiter", status: "idle", x: 0, y: 40 }
+        ],
+        edges: [
+          { id: "e1", from: "orrery", to: "arbiter", kind: "flow", status: "active" },
+          { id: "e2", from: "arbiter", to: "whitefang", kind: "pairing", status: "success" }
+        ]
       }),
-      Button({
-        key: "fleet-back-chat",
-        label: "Back to chat",
-        variant: "secondary",
-        onPress: IntentRef("KhalaChat.SelectView", StaticPayload("chat"))
+      Timeline({
+        key: "fleet-timeline",
+        onEventSelect: IntentRef("KhalaChat.SelectThread", StaticPayload("thread-fleet-qa")),
+        events: [
+          {
+            id: "ev1",
+            label: "Pairing opened",
+            time: "12:00",
+            status: "active",
+            refs: ["orrery", "whitefang"]
+          },
+          {
+            id: "ev2",
+            label: "Validated",
+            detail: "Whitefang accepted",
+            time: "12:03",
+            status: "success"
+          }
+        ]
       })
-    ]),
-    GraphFigure({
-      key: "fleet-graph",
-      layout: "precomputed",
-      width: 420,
-      height: 240,
-      camera: { x: 0, y: 0, zoom: 1 },
-      onNodeSelect: IntentRef("KhalaChat.SelectThread", StaticPayload("thread-fleet-qa")),
-      nodes: [
-        { id: "orrery", label: "Orrery", kind: "worker", status: "active", x: -80, y: 0 },
-        { id: "whitefang", label: "Whitefang", kind: "validator", status: "success", x: 80, y: -40 },
-        { id: "arbiter", label: "Arbiter", kind: "arbiter", status: "idle", x: 0, y: 40 }
-      ],
-      edges: [
-        { id: "e1", from: "orrery", to: "arbiter", kind: "flow", status: "active" },
-        { id: "e2", from: "arbiter", to: "whitefang", kind: "pairing", status: "success" }
-      ]
-    }),
-    Timeline({
-      key: "fleet-timeline",
-      onEventSelect: IntentRef("KhalaChat.SelectThread", StaticPayload("thread-fleet-qa")),
-      events: [
-        {
-          id: "ev1",
-          label: "Pairing opened",
-          time: "12:00",
-          status: "active",
-          refs: ["orrery", "whitefang"]
-        },
-        {
-          id: "ev2",
-          label: "Validated",
-          detail: "Whitefang accepted",
-          time: "12:03",
-          status: "success"
-        }
-      ]
-    })
-  ])
+    ]
+  )
 
 const settingsStrip = (_state: KhalaChatState): View =>
   Stack({ key: "settings-strip", direction: "column", gap: "2", padding: "2" }, [
@@ -826,35 +861,37 @@ const settingsStrip = (_state: KhalaChatState): View =>
   ])
 
 export const khalaChatView = (state: KhalaChatState): View =>
-  Stack({
-    key: "khala-chat-proof",
-    direction: "row",
-    style: {
-      backgroundColor: "background",
-      minHeight: "full",
-      width: "full",
-      height: "full"
-    }
-  }, [
-    navRail(state),
-    threadSidebar(state),
-    state.activeView === "fleet"
-      ? fleetCockpit(state)
-      : Stack({
-          key: "main-chat-pane",
-          direction: "column",
-          gap: "3",
-          style: {
-            flex: 1,
-            backgroundColor: "background"
-          }
-        }, [
-          transcript(state),
-          composer(state),
-          settingsStrip(state)
-        ]),
-    commandPalette(state)
-  ])
+  Stack(
+    {
+      key: "khala-chat-proof",
+      direction: "row",
+      style: {
+        backgroundColor: "background",
+        minHeight: "full",
+        width: "full",
+        height: "full"
+      }
+    },
+    [
+      navRail(state),
+      threadSidebar(state),
+      state.activeView === "fleet"
+        ? fleetCockpit(state)
+        : Stack(
+            {
+              key: "main-chat-pane",
+              direction: "column",
+              gap: "3",
+              style: {
+                flex: 1,
+                backgroundColor: "background"
+              }
+            },
+            [transcript(state), composer(state), settingsStrip(state)]
+          ),
+      commandPalette(state)
+    ]
+  )
 
 export const AppendMessagePatchSchema = Schema.TaggedStruct("AppendMessagePatch", {
   message: KhalaChatMessageSchema
@@ -942,10 +979,7 @@ export const recordedKhalaTurnPatches: ReadonlyArray<KhalaChatStreamPatch> = [
 
 export const recordedKhalaTurnStream = Stream.fromIterable(recordedKhalaTurnPatches)
 
-export const applyKhalaChatPatch = (
-  state: KhalaChatState,
-  patch: KhalaChatStreamPatch
-): KhalaChatState => {
+export const applyKhalaChatPatch = (state: KhalaChatState, patch: KhalaChatStreamPatch): KhalaChatState => {
   switch (patch._tag) {
     case "AppendMessagePatch":
       return {
@@ -958,9 +992,7 @@ export const applyKhalaChatPatch = (
       return {
         ...state,
         messages: state.messages.map((message) =>
-          message.id === patch.messageId
-            ? { ...message, segments: [...message.segments, patch.segment] }
-            : message
+          message.id === patch.messageId ? { ...message, segments: [...message.segments, patch.segment] } : message
         ),
         streamPatchCount: state.streamPatchCount + 1,
         transcriptPinnedToEnd: true
@@ -969,9 +1001,7 @@ export const applyKhalaChatPatch = (
       return {
         ...state,
         messages: state.messages.map((message) =>
-          message.id === patch.messageId
-            ? { ...message, status: patch.status }
-            : message
+          message.id === patch.messageId ? { ...message, status: patch.status } : message
         ),
         streamPatchCount: state.streamPatchCount + 1,
         transcriptPinnedToEnd: true
@@ -1078,7 +1108,7 @@ export const makeKhalaChatRuntime = (
   initialState: KhalaChatState = initialKhalaChatState,
   options: KhalaChatRuntimeOptions = {}
 ): Effect.Effect<KhalaChatRuntime> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const state = yield* SubscriptionRef.make(initialState)
     const program = makeViewProgramFromState(state, khalaChatView, {
       ...(options.devtoolsSink === undefined ? {} : { devtoolsSink: options.devtoolsSink }),
@@ -1169,8 +1199,7 @@ export const makeKhalaChatRuntime = (
       now: options.now ?? (() => 0),
       ...(options.devtoolsSink === undefined ? {} : { devtoolsSink: options.devtoolsSink })
     })
-    const report: IntentReporter = (ref, runtimeValue) =>
-      registry.dispatch(resolveIntentRef(ref, runtimeValue))
+    const report: IntentReporter = (ref, runtimeValue) => registry.dispatch(resolveIntentRef(ref, runtimeValue))
 
     return {
       state,
@@ -1180,9 +1209,7 @@ export const makeKhalaChatRuntime = (
     }
   })
 
-export const replayRecordedKhalaTurn = (
-  runtime: KhalaChatRuntime
-): Effect.Effect<void> =>
+export const replayRecordedKhalaTurn = (runtime: KhalaChatRuntime): Effect.Effect<void> =>
   recordedKhalaTurnStream.pipe(
     Stream.runForEach((patch) =>
       SubscriptionRef.update(runtime.state, (current) => applyKhalaChatPatch(current, patch))

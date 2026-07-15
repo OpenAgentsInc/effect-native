@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Exit, Schema } from "effect"
 import {
   Button,
@@ -59,36 +59,52 @@ describe("EmptyMessage catalog v32 (issue #82, harmonization P2.9)", () => {
     expect([...emptyMessageIconSizes]).toEqual(["sm", "md"])
 
     const decode = Schema.decodeUnknownExit(ViewSchema)
-    expect(Exit.isFailure(decode({
-      _tag: "EmptyMessage",
-      catalogVersion: CatalogVersion,
-      icon: { name: "Circle", tone: "success" },
-      title: "No sessions yet"
-    }))).toBe(true)
-    expect(Exit.isFailure(decode({
-      _tag: "EmptyMessage",
-      catalogVersion: CatalogVersion,
-      icon: { name: "Circle", size: "lg" },
-      title: "No sessions yet"
-    }))).toBe(true)
+    expect(
+      Exit.isFailure(
+        decode({
+          _tag: "EmptyMessage",
+          catalogVersion: CatalogVersion,
+          icon: { name: "Circle", tone: "success" },
+          title: "No sessions yet"
+        })
+      )
+    ).toBe(true)
+    expect(
+      Exit.isFailure(
+        decode({
+          _tag: "EmptyMessage",
+          catalogVersion: CatalogVersion,
+          icon: { name: "Circle", size: "lg" },
+          title: "No sessions yet"
+        })
+      )
+    ).toBe(true)
     // The icon name set stays closed too.
-    expect(Exit.isFailure(decode({
-      _tag: "EmptyMessage",
-      catalogVersion: CatalogVersion,
-      icon: { name: "Ghost" },
-      title: "No sessions yet"
-    }))).toBe(true)
+    expect(
+      Exit.isFailure(
+        decode({
+          _tag: "EmptyMessage",
+          catalogVersion: CatalogVersion,
+          icon: { name: "Ghost" },
+          title: "No sessions yet"
+        })
+      )
+    ).toBe(true)
   })
 
   test("the action slot only accepts a Button view", () => {
     const decode = Schema.decodeUnknownExit(ViewSchema)
     const text = Text({ key: "not-a-button", content: "Nope", variant: "body" })
-    expect(Exit.isFailure(decode({
-      _tag: "EmptyMessage",
-      catalogVersion: CatalogVersion,
-      title: "No sessions yet",
-      action: encodeView(text)
-    }))).toBe(true)
+    expect(
+      Exit.isFailure(
+        decode({
+          _tag: "EmptyMessage",
+          catalogVersion: CatalogVersion,
+          title: "No sessions yet",
+          action: encodeView(text)
+        })
+      )
+    ).toBe(true)
   })
 
   test("binding resolution and secure redaction recurse into the action slot", () => {

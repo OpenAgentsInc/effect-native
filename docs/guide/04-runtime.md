@@ -24,7 +24,7 @@ report an interaction back in.
 - `report(ref, runtimeValue?)` — dispatches an `IntentRef` through whichever
   `IntentRegistry` is available in the current Effect context.
 
-That last one — `report` needing an `IntentRegistry` *in context* — is a
+That last one — `report` needing an `IntentRegistry` _in context_ — is a
 detail worth being explicit about rather than working around silently. The
 pattern this guide uses (the same one `examples/signup-activity` uses) is to
 build your own `report` function directly from a registry you already hold,
@@ -78,31 +78,28 @@ export const notesView = (state: NotesState): View =>
       fit: "cover",
       style: { borderRadius: "lg" }
     }),
-    Card(
-      { key: "composer", padding: "4", radius: "lg", style: { borderColor: "border", borderWidth: 1 } },
-      [
-        Stack({ key: "composer-stack", direction: "column", gap: "2" }, [
-          Text({ key: "title", content: "Notes", variant: "heading" }),
-          TextField({
-            key: "draft",
-            value: state.draft,
-            placeholder: "Write a note",
-            onChange: IntentRef("DraftChanged", ComponentValueBinding()),
-            onSubmit: IntentRef("AddNote")
-          }),
-          Stack({ key: "actions", direction: "row", align: "center", gap: "2" }, [
-            Button({ key: "add", label: "Add note", variant: "primary", onPress: IntentRef("AddNote") }),
-            Spacer({ key: "push", flex: true }),
-            Text({
-              key: "count",
-              content: `${state.notes.length} notes`,
-              variant: "caption",
-              color: "textMuted"
-            })
-          ])
+    Card({ key: "composer", padding: "4", radius: "lg", style: { borderColor: "border", borderWidth: 1 } }, [
+      Stack({ key: "composer-stack", direction: "column", gap: "2" }, [
+        Text({ key: "title", content: "Notes", variant: "heading" }),
+        TextField({
+          key: "draft",
+          value: state.draft,
+          placeholder: "Write a note",
+          onChange: IntentRef("DraftChanged", ComponentValueBinding()),
+          onSubmit: IntentRef("AddNote")
+        }),
+        Stack({ key: "actions", direction: "row", align: "center", gap: "2" }, [
+          Button({ key: "add", label: "Add note", variant: "primary", onPress: IntentRef("AddNote") }),
+          Spacer({ key: "push", flex: true }),
+          Text({
+            key: "count",
+            content: `${state.notes.length} notes`,
+            variant: "caption",
+            color: "textMuted"
+          })
         ])
-      ]
-    ),
+      ])
+    ]),
     List(
       { key: "notes" },
       state.notes.map((note) =>
@@ -158,10 +155,8 @@ export const makeNotesRuntime = (): Effect.Effect<NotesRuntime> =>
 // with the same cast, for the same reason.
 const drive = Effect.gen(function* () {
   const runtime = yield* makeNotesRuntime()
-  yield* (runtime.report(
-    IntentRef("DraftChanged", StaticPayload("Ship the guide"))
-  ) as Effect.Effect<void, IntentError>)
-  yield* (runtime.report(IntentRef("AddNote")) as Effect.Effect<void, IntentError>)
+  yield* runtime.report(IntentRef("DraftChanged", StaticPayload("Ship the guide"))) as Effect.Effect<void, IntentError>
+  yield* runtime.report(IntentRef("AddNote")) as Effect.Effect<void, IntentError>
   return yield* SubscriptionRef.get(runtime.state)
 })
 
@@ -183,8 +178,8 @@ renderer's entire contract, from the app's point of view, is:
 
 - subscribe to `viewStream` and paint whatever `View` arrives,
 - call `report(ref, runtimeValue)` whenever a user interacts with a mounted
-  control, using the `IntentRef` and runtime value *that view already told
-  it about* (a button's `onPress`, a field's `onChange`, with the field's
+  control, using the `IntentRef` and runtime value _that view already told
+  it about_ (a button's `onPress`, a field's `onChange`, with the field's
   live value as `runtimeValue`).
 
 That's the entire renderer/runtime boundary. It doesn't grow per component —

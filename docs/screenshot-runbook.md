@@ -13,8 +13,8 @@ impossible and call that out in the proof comment.
 Run the oracle before taking screenshots:
 
 ```sh
-bun install
-bun run check
+pnpm install
+pnpm run check
 ```
 
 The key test is `scripts/proof-oracle.test.ts`. It replays the scripted proof
@@ -27,7 +27,7 @@ visual evidence from the hosts; the oracle is the behavioral receipt.
 1. Start the web host from the repository root:
 
    ```sh
-   bun run example:web
+   pnpm run example:web
    ```
 
 2. In another terminal, drive Chromium and capture the page.
@@ -106,16 +106,16 @@ visual evidence from the hosts; the oracle is the behavioral receipt.
 
    ```sh
    cd examples/mobile
-   bun install
+   pnpm install
    ```
 
-   Do not commit `examples/mobile/node_modules`, `.expo`, or `bun.lock` unless
+   Do not commit `examples/mobile/node_modules` or `.expo` unless
    the package-management policy changes.
 
 2. Start the standard Expo iOS flow:
 
    ```sh
-   bun run ios
+   pnpm run ios
    ```
 
    Accept Expo's alternate port prompt if `8081` is already occupied. The Metro
@@ -137,7 +137,6 @@ visual evidence from the hosts; the oracle is the behavioral receipt.
 
    ```sh
    rm -rf examples/mobile/.expo examples/mobile/node_modules
-   rm -f examples/mobile/bun.lock
    ```
 
 ## Deprecated SVG Backup
@@ -155,8 +154,8 @@ are available.
 ## Checklist Before Pushing
 
 ```sh
-bun run check
-bun build ./examples/web/main.ts --outfile ./examples/web/public/app.js --format esm
+pnpm run check
+pnpm run example:web:build
 rm -f ./examples/web/public/app.js
 git status --short
 ```

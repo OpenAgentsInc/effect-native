@@ -10,20 +10,20 @@ internals, not the public authoring model.
 
 The current mapping is:
 
-| View | React Native |
-|---|---|
-| `Stack` | `View` with Yoga flexbox style |
-| `Text` | `Text` |
-| `Button` | `Pressable` with a `Text` child |
-| `Link` | accessible `Pressable` reporting `Navigate` |
-| `Image` | `Image` |
-| `TextField` | controlled `TextInput` |
-| `List` | `FlatList` |
-| `SectionList` | native `SectionList` |
-| `Card` | `View` |
-| `Spacer` | accessibility-hidden `View` |
-| `Modal` | host `Modal` |
-| `Sheet` | absolute overlay with `View` / `Pressable` primitives |
+| View          | React Native                                          |
+| ------------- | ----------------------------------------------------- |
+| `Stack`       | `View` with Yoga flexbox style                        |
+| `Text`        | `Text`                                                |
+| `Button`      | `Pressable` with a `Text` child                       |
+| `Link`        | accessible `Pressable` reporting `Navigate`           |
+| `Image`       | `Image`                                               |
+| `TextField`   | controlled `TextInput`                                |
+| `List`        | `FlatList`                                            |
+| `SectionList` | native `SectionList`                                  |
+| `Card`        | `View`                                                |
+| `Spacer`      | accessibility-hidden `View`                           |
+| `Modal`       | host `Modal`                                          |
+| `Sheet`       | absolute overlay with `View` / `Pressable` primitives |
 
 Styles are lowered from typed Effect Native style objects to React Native
 style objects. Spacing, radii, dimensions, colors, and type scale values are
@@ -48,57 +48,55 @@ import {
 } from "@effect-native/core"
 import { EffectNativeSurface } from "@effect-native/render-rn"
 
-const Pressed = defineIntent("Pressed", Schema.Struct({
-  amount: Schema.Number
-}))
+const Pressed = defineIntent(
+  "Pressed",
+  Schema.Struct({
+    amount: Schema.Number
+  })
+)
 const ChangedName = defineIntent("ChangedName", Schema.String)
 
-const app = Effect.runSync(Effect.gen(function*() {
-  const state = yield* SubscriptionRef.make({
-    count: 0,
-    name: ""
-  })
-  const program = makeViewProgramFromState(state, (current) =>
-    Stack({ direction: "column", gap: "3", padding: "4" }, [
-      Text({ content: Binding(["count"]), variant: "heading" }),
-      Button({
-        label: `Increment from ${current.count}`,
-        variant: "primary",
-        onPress: IntentRef("Pressed", StaticPayload({ amount: 1 }))
-      }),
-      TextField({
-        value: current.name,
-        label: "Name",
-        onChange: IntentRef("ChangedName", ComponentValueBinding())
-      })
-    ])
-  )
-  const registry = yield* makeIntentRegistry([Pressed, ChangedName] as const, {
-    Pressed: (payload) =>
-      SubscriptionRef.update(state, (value) => ({
-        ...value,
-        count: value.count + payload.amount
-      })),
-    ChangedName: (name) =>
-      SubscriptionRef.update(state, (value) => ({
-        ...value,
-        name
-      }))
-  })
-  const report: IntentReporter = (ref, runtimeValue) =>
-    registry.dispatch(resolveIntentRef(ref, runtimeValue))
+const app = Effect.runSync(
+  Effect.gen(function* () {
+    const state = yield* SubscriptionRef.make({
+      count: 0,
+      name: ""
+    })
+    const program = makeViewProgramFromState(state, (current) =>
+      Stack({ direction: "column", gap: "3", padding: "4" }, [
+        Text({ content: Binding(["count"]), variant: "heading" }),
+        Button({
+          label: `Increment from ${current.count}`,
+          variant: "primary",
+          onPress: IntentRef("Pressed", StaticPayload({ amount: 1 }))
+        }),
+        TextField({
+          value: current.name,
+          label: "Name",
+          onChange: IntentRef("ChangedName", ComponentValueBinding())
+        })
+      ])
+    )
+    const registry = yield* makeIntentRegistry([Pressed, ChangedName] as const, {
+      Pressed: (payload) =>
+        SubscriptionRef.update(state, (value) => ({
+          ...value,
+          count: value.count + payload.amount
+        })),
+      ChangedName: (name) =>
+        SubscriptionRef.update(state, (value) => ({
+          ...value,
+          name
+        }))
+    })
+    const report: IntentReporter = (ref, runtimeValue) => registry.dispatch(resolveIntentRef(ref, runtimeValue))
 
-  return { program, report }
-}))
+    return { program, report }
+  })
+)
 
 export default function App() {
-  return (
-    <EffectNativeSurface
-      viewStream={app.program.viewStream}
-      report={app.report}
-      platform="ios"
-    />
-  )
+  return <EffectNativeSurface viewStream={app.program.viewStream} report={app.report} platform="ios" />
 }
 ```
 

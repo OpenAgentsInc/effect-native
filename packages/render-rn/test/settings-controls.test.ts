@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect } from "effect"
 import {
   Checkbox,
@@ -66,22 +66,42 @@ const wait = () => new Promise((resolve) => setTimeout(resolve, 0))
 describe("settings controls (#38) React Native renderer", () => {
   test("toggle, checkbox, radio, select, number, slider, field row", async () => {
     const changes: Record<string, unknown> = {}
-    const report: IntentReporter = (ref, value) => Effect.sync(() => { changes[ref.name] = value })
+    const report: IntentReporter = (ref, value) =>
+      Effect.sync(() => {
+        changes[ref.name] = value
+      })
 
-    const toggle = renderReactNativeView(Toggle({ key: "t", value: true, label: "Auto", onChange: { name: "Auto" } }) as View, dependencies, report)
+    const toggle = renderReactNativeView(
+      Toggle({ key: "t", value: true, label: "Auto", onChange: { name: "Auto" } }) as View,
+      dependencies,
+      report
+    )
     expect(toggle.props.accessibilityRole).toBe("switch")
     ;(toggle.props.onPress as (() => void) | undefined)?.()
     await wait()
     expect(changes.Auto).toBe(false)
 
-    const checkbox = renderReactNativeView(Checkbox({ key: "c", checked: false, label: "Stream", onChange: { name: "Stream" } }) as View, dependencies, report)
+    const checkbox = renderReactNativeView(
+      Checkbox({ key: "c", checked: false, label: "Stream", onChange: { name: "Stream" } }) as View,
+      dependencies,
+      report
+    )
     expect(checkbox.props.accessibilityRole).toBe("checkbox")
     ;(checkbox.props.onPress as (() => void) | undefined)?.()
     await wait()
     expect(changes.Stream).toBe(true)
 
     const radio = renderReactNativeView(
-      RadioGroup({ key: "r", name: "mode", value: "review", onChange: { name: "Mode" }, options: [{ value: "review", label: "Review" }, { value: "auto", label: "Auto" }] }) as View,
+      RadioGroup({
+        key: "r",
+        name: "mode",
+        value: "review",
+        onChange: { name: "Mode" },
+        options: [
+          { value: "review", label: "Review" },
+          { value: "auto", label: "Auto" }
+        ]
+      }) as View,
       dependencies,
       report
     )
@@ -91,7 +111,16 @@ describe("settings controls (#38) React Native renderer", () => {
     expect(changes.Mode).toBe("auto")
 
     const select = renderReactNativeView(
-      Select({ key: "s", value: "claude", label: "Model", onChange: { name: "Model" }, options: [{ value: "claude", label: "Claude" }, { value: "codex", label: "Codex" }] }) as View,
+      Select({
+        key: "s",
+        value: "claude",
+        label: "Model",
+        onChange: { name: "Model" },
+        options: [
+          { value: "claude", label: "Claude" },
+          { value: "codex", label: "Codex" }
+        ]
+      }) as View,
       dependencies,
       report
     )
@@ -100,19 +129,32 @@ describe("settings controls (#38) React Native renderer", () => {
     await wait()
     expect(changes.Model).toBe("codex")
 
-    const number = renderReactNativeView(NumberField({ key: "n", value: 8, min: 1, max: 32, onChange: { name: "Workers" } }) as View, dependencies, report)
+    const number = renderReactNativeView(
+      NumberField({ key: "n", value: 8, min: 1, max: 32, onChange: { name: "Workers" } }) as View,
+      dependencies,
+      report
+    )
     expect(number.props.value).toBe("8")
     expect(number.props.keyboardType).toBe("numeric")
     ;(number.props.onChangeText as ((v: string) => void) | undefined)?.("16")
     await wait()
     expect(changes.Workers).toBe(16)
 
-    const slider = renderReactNativeView(Slider({ key: "sl", value: 40, min: 0, max: 100 }) as View, dependencies, report)
+    const slider = renderReactNativeView(
+      Slider({ key: "sl", value: 40, min: 0, max: 100 }) as View,
+      dependencies,
+      report
+    )
     expect(slider.props.accessibilityRole).toBe("adjustable")
     expect(slider.props.accessibilityValue).toEqual({ min: 0, max: 100, now: 40 })
 
     const row = renderReactNativeView(
-      FieldRow({ key: "row", label: "Max workers", error: "1–32", control: NumberField({ key: "row-n", value: 8 }) }) as View,
+      FieldRow({
+        key: "row",
+        label: "Max workers",
+        error: "1–32",
+        control: NumberField({ key: "row-n", value: 8 })
+      }) as View,
       dependencies,
       report
     )

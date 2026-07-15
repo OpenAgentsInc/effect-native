@@ -79,7 +79,7 @@ const descendantIds = (stored: ReadonlyArray<StoredNode>, rootId: string): Reado
 }
 
 export const makeHeadlessCanvasBackend = (): Effect.Effect<HeadlessCanvasBackend, never, Scope.Scope> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const cameraRef = yield* Ref.make<Camera | undefined>(undefined)
     const backgroundRef = yield* Ref.make<string | undefined>(undefined)
     const nodesRef = yield* Ref.make<ReadonlyArray<StoredNode>>([])
@@ -93,17 +93,17 @@ export const makeHeadlessCanvasBackend = (): Effect.Effect<HeadlessCanvasBackend
 
     const backend: CanvasBackend = {
       setCamera: (camera) =>
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           yield* Ref.set(cameraRef, camera)
           yield* record({ _tag: "SetCamera", camera })
         }),
       setBackground: (color) =>
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           yield* Ref.set(backgroundRef, color)
           yield* record({ _tag: "SetBackground", color })
         }),
       createNode: ({ id, index, node, parentId }) =>
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           yield* Ref.update(nodesRef, (nodes) => [
             ...nodes.filter((entry) => entry.id !== id),
             { id, parentId, index, node }
@@ -111,19 +111,19 @@ export const makeHeadlessCanvasBackend = (): Effect.Effect<HeadlessCanvasBackend
           yield* record({ _tag: "CreateNode", id, parentId, index, node })
         }),
       updateNode: ({ id, node }) =>
-        Effect.gen(function*() {
-          yield* Ref.update(nodesRef, (nodes) =>
-            nodes.map((entry) => (entry.id === id ? { ...entry, node } : entry)))
+        Effect.gen(function* () {
+          yield* Ref.update(nodesRef, (nodes) => nodes.map((entry) => (entry.id === id ? { ...entry, node } : entry)))
           yield* record({ _tag: "UpdateNode", id, node })
         }),
       moveNode: ({ id, index, parentId }) =>
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           yield* Ref.update(nodesRef, (nodes) =>
-            nodes.map((entry) => (entry.id === id ? { ...entry, parentId, index } : entry)))
+            nodes.map((entry) => (entry.id === id ? { ...entry, parentId, index } : entry))
+          )
           yield* record({ _tag: "MoveNode", id, parentId, index })
         }),
       removeNode: (id) =>
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           yield* Ref.update(nodesRef, (nodes) => {
             const doomed = descendantIds(nodes, id)
             return nodes.filter((entry) => !doomed.has(entry.id))
@@ -138,7 +138,7 @@ export const makeHeadlessCanvasBackend = (): Effect.Effect<HeadlessCanvasBackend
       ops: Ref.get(opsRef),
       frameTicks: Ref.get(ticksRef),
       isDisposed: Ref.get(disposedRef),
-      snapshot: Effect.gen(function*() {
+      snapshot: Effect.gen(function* () {
         const stored = yield* Ref.get(nodesRef)
         return {
           camera: yield* Ref.get(cameraRef),

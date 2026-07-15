@@ -100,7 +100,7 @@ The leverage that falls out of "views are data, interactions are values":
   renderer (#16 complete; see [`docs/testing.md`](./docs/testing.md))
 - **Documentation**: a guide good enough for someone outside the project to
   build an app (#17 complete; see [`docs/guide/README.md`](./docs/guide/README.md)
-  + `examples/guide-app`, doc-snippet runner, catalog-reference conformance)
+  - `examples/guide-app`, doc-snippet runner, catalog-reference conformance)
 - **Component gallery**: every catalog component browsable in every
   supported renderer — open it on the web, open it on a phone — with
   stories as serializable data, prop knobs generated from the schemas, and
@@ -129,15 +129,15 @@ renderers, and platform host. See the short
 
 ### Pillars
 
-| Pillar | Package / surface | Status |
-|---|---|---|
-| Desktop adapter | `@effect-native/platform-desktop` (`runMainDesktop`, typed bridge) | shipped #21 |
-| Canvas renderer | `@effect-native/render-canvas` (scene schema, reconciler, Scope/`Stream` frames, headless + live Three.js backend) | shipped #22 |
-| Foreign host | catalog `Host` + closed host-kind registry | shipped #23 — [contract](./docs/foreign-host.md) |
-| Interaction expansion | typed key/focus/pointer/paste/drag-drop intents | shipped #24 |
-| Theme | single Protoss-blue dark token set | shipped #25 |
-| Streaming | runtime stream region (append/patch) | shipped #26 |
-| Keymap / focus | `makeKeymap` + focus-scope stack | shipped #41 |
+| Pillar                | Package / surface                                                                                                  | Status                                           |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------ |
+| Desktop adapter       | `@effect-native/platform-desktop` (`runMainDesktop`, typed bridge)                                                 | shipped #21                                      |
+| Canvas renderer       | `@effect-native/render-canvas` (scene schema, reconciler, Scope/`Stream` frames, headless + live Three.js backend) | shipped #22                                      |
+| Foreign host          | catalog `Host` + closed host-kind registry                                                                         | shipped #23 — [contract](./docs/foreign-host.md) |
+| Interaction expansion | typed key/focus/pointer/paste/drag-drop intents                                                                    | shipped #24                                      |
+| Theme                 | single Protoss-blue dark token set                                                                                 | shipped #25                                      |
+| Streaming             | runtime stream region (append/patch)                                                                               | shipped #26                                      |
+| Keymap / focus        | `makeKeymap` + focus-scope stack                                                                                   | shipped #41                                      |
 
 ### Catalog growth (demand-driven)
 
@@ -190,15 +190,15 @@ hosts/services.
 
 ### Pillars
 
-| Pillar | Surface | Issue |
-|---|---|---|
-| RN renderer parity program | close the declared-subset / unsupported matrix | #53 shipped |
-| Mobile host adapter | `@effect-native/platform-mobile` (`runMainMobile`, push/notifications/deep-links, safe-area/keyboard runtime) | #54 shipped |
-| Navigation adapter | typed navigation intents over native stack/drawer/tabs + deep links | #55 shipped |
-| Gesture / interaction expansion | swipe/pull-to-refresh/long-press + safe-area/keyboard | #56 shipped |
-| List virtualization parity | FlatList/SectionList/Transcript at production scale | #57 shipped |
-| RN foreign-`Host` drivers | voice/STT + on-device model host kinds | #58 shipped |
-| RN pixel visual-baseline capture | iOS + Android baselines (promotes the waiting GAPS row) | #59 shipped |
+| Pillar                           | Surface                                                                                                       | Issue       |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------- | ----------- |
+| RN renderer parity program       | close the declared-subset / unsupported matrix                                                                | #53 shipped |
+| Mobile host adapter              | `@effect-native/platform-mobile` (`runMainMobile`, push/notifications/deep-links, safe-area/keyboard runtime) | #54 shipped |
+| Navigation adapter               | typed navigation intents over native stack/drawer/tabs + deep links                                           | #55 shipped |
+| Gesture / interaction expansion  | swipe/pull-to-refresh/long-press + safe-area/keyboard                                                         | #56 shipped |
+| List virtualization parity       | FlatList/SectionList/Transcript at production scale                                                           | #57 shipped |
+| RN foreign-`Host` drivers        | voice/STT + on-device model host kinds                                                                        | #58 shipped |
+| RN pixel visual-baseline capture | iOS + Android baselines (promotes the waiting GAPS row)                                                       | #59 shipped |
 
 ### Catalog growth (demand-driven)
 

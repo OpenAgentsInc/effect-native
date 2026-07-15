@@ -16,11 +16,5 @@ const surface =
       : Effect.runSync(makeSignupActivityRuntime(undefined, devtoolsOptions))
 
 export default function App() {
-  return (
-    <EffectNativeSurface
-      viewStream={surface.program.viewStream}
-      report={surface.report}
-      platform="ios"
-    />
-  )
+  return <EffectNativeSurface viewStream={surface.program.viewStream} report={surface.report} platform="ios" />
 }

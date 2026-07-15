@@ -57,31 +57,28 @@ export const notesView = (state: NotesState): View =>
       fit: "cover",
       style: { borderRadius: "lg" }
     }),
-    Card(
-      { key: "composer", padding: "4", radius: "lg", style: { borderColor: "border", borderWidth: 1 } },
-      [
-        Stack({ key: "composer-stack", direction: "column", gap: "2" }, [
-          Text({ key: "title", content: "Notes", variant: "heading" }),
-          TextField({
-            key: "draft",
-            value: state.draft,
-            placeholder: "Write a note",
-            onChange: IntentRef("DraftChanged", ComponentValueBinding()),
-            onSubmit: IntentRef("AddNote")
-          }),
-          Stack({ key: "actions", direction: "row", align: "center", gap: "2" }, [
-            Button({ key: "add", label: "Add note", variant: "primary", onPress: IntentRef("AddNote") }),
-            Spacer({ key: "push", flex: true }),
-            Text({
-              key: "count",
-              content: `${state.notes.length} notes`,
-              variant: "caption",
-              color: "textMuted"
-            })
-          ])
+    Card({ key: "composer", padding: "4", radius: "lg", style: { borderColor: "border", borderWidth: 1 } }, [
+      Stack({ key: "composer-stack", direction: "column", gap: "2" }, [
+        Text({ key: "title", content: "Notes", variant: "heading" }),
+        TextField({
+          key: "draft",
+          value: state.draft,
+          placeholder: "Write a note",
+          onChange: IntentRef("DraftChanged", ComponentValueBinding()),
+          onSubmit: IntentRef("AddNote")
+        }),
+        Stack({ key: "actions", direction: "row", align: "center", gap: "2" }, [
+          Button({ key: "add", label: "Add note", variant: "primary", onPress: IntentRef("AddNote") }),
+          Spacer({ key: "push", flex: true }),
+          Text({
+            key: "count",
+            content: `${state.notes.length} notes`,
+            variant: "caption",
+            color: "textMuted"
+          })
         ])
-      ]
-    ),
+      ])
+    ]),
     List(
       { key: "notes" },
       state.notes.map((note) =>
@@ -180,47 +177,24 @@ Paired with a minimal HTML shell:
 </html>
 ```
 
-and a tiny static file server for local development — this repository's
-examples all use the same one-file Bun server:
+For local development, use Vite Plus as the browser build and server authority:
 
-```ts filename="web/server.ts"
-const port = Number(Bun.env.PORT ?? 4173)
-const publicRoot = new URL("./public/", import.meta.url)
+```ts filename="vite.config.ts"
+import { defineConfig } from "vite"
 
-const contentType = (path: string): string => {
-  if (path.endsWith(".js")) {
-    return "text/javascript; charset=utf-8"
-  }
-  if (path.endsWith(".css")) {
-    return "text/css; charset=utf-8"
-  }
-  return "text/html; charset=utf-8"
-}
-
-Bun.serve({
-  port,
-  fetch: (request) => {
-    const url = new URL(request.url)
-    const pathname = url.pathname === "/" ? "/index.html" : url.pathname
-    const file = Bun.file(new URL(`.${pathname}`, publicRoot))
-
-    return new Response(file, {
-      headers: {
-        "content-type": contentType(pathname)
-      }
-    })
+export default defineConfig({
+  root: "web",
+  build: {
+    outDir: "public",
+    emptyOutDir: false
   }
 })
-
-console.log(`Notes web example: http://localhost:${port}`)
 ```
 
-Build and run it the same way `bun run example:web` does for the shipped
-proof app:
+Run it with the same toolchain used by the shipped proof app:
 
 ```sh
-bun build ./web/main.ts --outfile ./web/public/app.js --format esm
-bun ./web/server.ts
+pnpm exec vite
 ```
 
 Open the printed URL and you have a running web app: type in the field,
@@ -238,7 +212,7 @@ cross-renderer behavioral oracle that replays the same interaction script
 against the headless, DOM, and React Native renderers and asserts they
 agree — read [`../proof.md`](../proof.md) and its source,
 [`examples/signup-activity/index.ts`](../../examples/signup-activity/index.ts).
-That's the app `bun run example:web` actually serves in this repository.
+That's the app `pnpm run example:web` actually serves in this repository.
 
 Next: [the React Native renderer](./06-react-native-renderer.md), which
 mounts this exact same `notes/runtime.ts` — no changes — on iOS and Android.

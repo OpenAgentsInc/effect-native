@@ -7,10 +7,6 @@
     "declaration": true,
     "declarationMap": true
   },
-  "references": [
-    { "path": "../core" },
-    { "path": "../render-dom" },
-    { "path": "../platform-desktop" }
-  ],
+  "references": [{ "path": "../core" }, { "path": "../render-dom" }, { "path": "../platform-desktop" }],
   "include": ["src/**/*.ts", "test/**/*.ts"]
 }

@@ -28,9 +28,7 @@ export interface DesktopBridge {
   readonly events: Stream.Stream<DesktopBridgeEvent>
 }
 
-export const DesktopBridge = Context.Service<DesktopBridge>(
-  "@effect-native/platform-desktop/DesktopBridge"
-)
+export const DesktopBridge = Context.Service<DesktopBridge>("@effect-native/platform-desktop/DesktopBridge")
 
 export const MenuItemSchema = Schema.Struct({
   id: Schema.NonEmptyString,
@@ -68,9 +66,7 @@ export interface DesktopWindow {
   readonly current: Effect.Effect<WindowState>
 }
 
-export const DesktopWindow = Context.Service<DesktopWindow>(
-  "@effect-native/platform-desktop/DesktopWindow"
-)
+export const DesktopWindow = Context.Service<DesktopWindow>("@effect-native/platform-desktop/DesktopWindow")
 
 export const DeepLinkEventSchema = Schema.Struct({
   url: Schema.NonEmptyString
@@ -93,9 +89,7 @@ export interface SingleInstance {
   readonly secondInstanceEvents: Stream.Stream<SecondInstanceEvent>
 }
 
-export const SingleInstance = Context.Service<SingleInstance>(
-  "@effect-native/platform-desktop/SingleInstance"
-)
+export const SingleInstance = Context.Service<SingleInstance>("@effect-native/platform-desktop/SingleInstance")
 
 export interface DesktopRuntime<State> {
   readonly program: ViewProgram<State>
@@ -115,15 +109,13 @@ export interface DesktopMountedApp extends MountedSurface {
 export const runMainDesktop = <State>(
   options: RunMainDesktopOptions<State>
 ): Effect.Effect<DesktopMountedApp, never, Scope.Scope> =>
-  Effect.gen(function*() {
-    const renderer = options.renderer ?? makeDomRenderer({
-      document: options.container.ownerDocument
-    })
-    const surface = yield* renderer.mount(
-      options.container,
-      options.runtime.program.viewStream,
-      options.runtime.report
-    )
+  Effect.gen(function* () {
+    const renderer =
+      options.renderer ??
+      makeDomRenderer({
+        document: options.container.ownerDocument
+      })
+    const surface = yield* renderer.mount(options.container, options.runtime.program.viewStream, options.runtime.report)
     return {
       surface,
       unmount: surface.unmount
@@ -137,14 +129,11 @@ export interface DesktopBridgeTestHarness {
 }
 
 export const makeDesktopBridgeTestHarness = (): Effect.Effect<DesktopBridgeTestHarness> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const calls = yield* Ref.make<ReadonlyArray<DesktopBridgeRequest>>([])
     const events = yield* PubSub.unbounded<DesktopBridgeEvent>()
     const bridge: DesktopBridge = {
-      call: (request) =>
-        Ref.update(calls, (items) => [...items, request]).pipe(
-          Effect.as(request.payload)
-        ),
+      call: (request) => Ref.update(calls, (items) => [...items, request]).pipe(Effect.as(request.payload)),
       events: Stream.fromPubSub(events)
     }
     return {
@@ -154,13 +143,10 @@ export const makeDesktopBridgeTestHarness = (): Effect.Effect<DesktopBridgeTestH
     }
   })
 
-export const makeDesktopBridgeTestLayer = (
-  harness: DesktopBridgeTestHarness
-) => Layer.succeed(DesktopBridge, harness.bridge)
+export const makeDesktopBridgeTestLayer = (harness: DesktopBridgeTestHarness) =>
+  Layer.succeed(DesktopBridge, harness.bridge)
 
-export const makeAppMenuTestLayer = (
-  initial: Menu = MenuSchema.make({ items: [] })
-) =>
+export const makeAppMenuTestLayer = (initial: Menu = MenuSchema.make({ items: [] })) =>
   Layer.effect(
     AppMenu,
     Ref.make<Menu>(initial).pipe(
@@ -179,7 +165,7 @@ export interface AppMenuTestHarness {
 export const makeAppMenuTestHarness = (
   initial: Menu = MenuSchema.make({ items: [] })
 ): Effect.Effect<AppMenuTestHarness> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const menuRef = yield* Ref.make<Menu>(initial)
     const menu: AppMenu = {
       setMenu: (next: Menu) => Ref.set(menuRef, MenuSchema.make(next)),
@@ -205,8 +191,7 @@ export const makeDesktopWindowTestLayer = (
     Ref.make<WindowState>(initial).pipe(
       Effect.map((windowRef) => ({
         setTitle: (title: string) => Ref.update(windowRef, (state) => ({ ...state, title })),
-        setFullscreen: (fullscreen: boolean) =>
-          Ref.update(windowRef, (state) => ({ ...state, fullscreen })),
+        setFullscreen: (fullscreen: boolean) => Ref.update(windowRef, (state) => ({ ...state, fullscreen })),
         focus: Ref.update(windowRef, (state) => ({ ...state, focused: true })),
         current: Ref.get(windowRef)
       }))
@@ -227,12 +212,11 @@ export const makeDesktopWindowTestHarness = (
     height: 800
   })
 ): Effect.Effect<DesktopWindowTestHarness> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const windowRef = yield* Ref.make<WindowState>(initial)
     const desktopWindow: DesktopWindow = {
       setTitle: (title: string) => Ref.update(windowRef, (state) => ({ ...state, title })),
-      setFullscreen: (fullscreen: boolean) =>
-        Ref.update(windowRef, (state) => ({ ...state, fullscreen })),
+      setFullscreen: (fullscreen: boolean) => Ref.update(windowRef, (state) => ({ ...state, fullscreen })),
       focus: Ref.update(windowRef, (state) => ({ ...state, focused: true })),
       current: Ref.get(windowRef)
     }
@@ -249,7 +233,7 @@ export interface DeepLinkTestHarness {
 }
 
 export const makeDeepLinkTestHarness = (): Effect.Effect<DeepLinkTestHarness> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const events = yield* PubSub.unbounded<DeepLinkEvent>()
     const deepLink: DeepLink = { events: Stream.fromPubSub(events) }
     return {
@@ -265,10 +249,8 @@ export interface SingleInstanceTestHarness {
   readonly emitSecondInstance: (event: SecondInstanceEvent) => Effect.Effect<void>
 }
 
-export const makeSingleInstanceTestHarness = (
-  acquired = true
-): Effect.Effect<SingleInstanceTestHarness> =>
-  Effect.gen(function*() {
+export const makeSingleInstanceTestHarness = (acquired = true): Effect.Effect<SingleInstanceTestHarness> =>
+  Effect.gen(function* () {
     const events = yield* PubSub.unbounded<SecondInstanceEvent>()
     const singleInstance: SingleInstance = {
       acquire: Effect.succeed(acquired),

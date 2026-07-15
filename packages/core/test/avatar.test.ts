@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect, Exit, Schema } from "effect"
 import {
   Avatar,
@@ -21,8 +21,7 @@ import {
 } from "../src/index"
 import { SubscriptionRef } from "effect"
 
-const keyed = <V extends View>(view: V): V & { readonly key: string } =>
-  view as V & { readonly key: string }
+const keyed = <V extends View>(view: V): V & { readonly key: string } => view as V & { readonly key: string }
 
 // Issue #80 (v34): Avatar + AvatarGroup — typed identity marks with the
 // image -> initials -> icon fallback chain, control-lattice sizes, the closed
@@ -132,11 +131,13 @@ describe("Avatar + AvatarGroup (#80) catalog contract", () => {
     const group = AvatarGroup({
       key: "team",
       avatars: [
-        keyed(Avatar({
-          key: "a",
-          initials: "OR",
-          style: { variants: { state: { pressed: { opacity: 0.8 } } }, opacity: 1 }
-        }))
+        keyed(
+          Avatar({
+            key: "a",
+            initials: "OR",
+            style: { variants: { state: { pressed: { opacity: 0.8 } } }, opacity: 1 }
+          })
+        )
       ]
     })
     const resolved = resolveView(group)
@@ -159,14 +160,18 @@ describe("Avatar + AvatarGroup (#80) catalog contract", () => {
         ]
       })
     const report: IntentReporter = () => Effect.succeed(undefined)
-    const result = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const state = yield* SubscriptionRef.make(0)
-      const program = makeViewProgramFromState(state, view)
-      const surface = yield* makeHeadlessRenderer().mount(undefined, program.viewStream, report)
-      const current = yield* surface.current
-      yield* surface.unmount
-      return current
-    })))
+    const result = await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const state = yield* SubscriptionRef.make(0)
+          const program = makeViewProgramFromState(state, view)
+          const surface = yield* makeHeadlessRenderer().mount(undefined, program.viewStream, report)
+          const current = yield* surface.current
+          yield* surface.unmount
+          return current
+        })
+      )
+    )
     expect(result?._tag).toBe("AvatarGroup")
     if (result?._tag === "AvatarGroup") {
       expect(result.avatars.map((avatar: AvatarView) => avatar.key)).toEqual(["a", "b", "c"])

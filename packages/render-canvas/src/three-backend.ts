@@ -25,7 +25,6 @@ import {
  * The package depends on `three` — not on experimental product wrappers.
  */
 
-
 /** Serializable scene-node descriptor for the Three.js backend. */
 export interface ThreeSceneDescriptor {
   readonly id: string
@@ -65,7 +64,11 @@ export interface LiveThreeSceneGraphOptions {
 }
 
 const stripMeta = (leaf: SceneNodeLeaf): Record<string, unknown> => {
-  const { _tag: _drop, key: _key, ...rest } = leaf as Record<string, unknown> & {
+  const {
+    _tag: _drop,
+    key: _key,
+    ...rest
+  } = leaf as Record<string, unknown> & {
     _tag: string
     key: string
   }
@@ -126,10 +129,8 @@ const descendantIds = (stored: ReadonlyArray<StoredNode>, rootId: string): Reado
  * Build a {@link CanvasBackend} that reconciles our typed scene ops into a
  * descriptor tree and pushes it to the injected graph port on each frame. Camera/background changes are forwarded immediately.
  */
-export const makeThreeCanvasBackend = (
-  graph: ThreeSceneGraph
-): Effect.Effect<CanvasBackend, never, Scope.Scope> =>
-  Effect.gen(function*() {
+export const makeThreeCanvasBackend = (graph: ThreeSceneGraph): Effect.Effect<CanvasBackend, never, Scope.Scope> =>
+  Effect.gen(function* () {
     const nodesRef = yield* Ref.make<ReadonlyArray<StoredNode>>([])
     const dirtyRef = yield* Ref.make(false)
 
@@ -139,7 +140,7 @@ export const makeThreeCanvasBackend = (
       setCamera: (camera) => graph.setCamera(camera),
       setBackground: (color) => graph.setBackground(color),
       createNode: ({ id, index, node, parentId }) =>
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           yield* Ref.update(nodesRef, (nodes) => [
             ...nodes.filter((entry) => entry.id !== id),
             { id, parentId, index, node }
@@ -147,19 +148,19 @@ export const makeThreeCanvasBackend = (
           yield* markDirty
         }),
       updateNode: ({ id, node }) =>
-        Effect.gen(function*() {
-          yield* Ref.update(nodesRef, (nodes) =>
-            nodes.map((entry) => (entry.id === id ? { ...entry, node } : entry)))
+        Effect.gen(function* () {
+          yield* Ref.update(nodesRef, (nodes) => nodes.map((entry) => (entry.id === id ? { ...entry, node } : entry)))
           yield* markDirty
         }),
       moveNode: ({ id, index, parentId }) =>
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           yield* Ref.update(nodesRef, (nodes) =>
-            nodes.map((entry) => (entry.id === id ? { ...entry, parentId, index } : entry)))
+            nodes.map((entry) => (entry.id === id ? { ...entry, parentId, index } : entry))
+          )
           yield* markDirty
         }),
       removeNode: (id) =>
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           yield* Ref.update(nodesRef, (nodes) => {
             const doomed = descendantIds(nodes, id)
             return nodes.filter((entry) => !doomed.has(entry.id))
@@ -167,7 +168,7 @@ export const makeThreeCanvasBackend = (
           yield* markDirty
         }),
       renderFrame: (tick) =>
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           const dirty = yield* Ref.get(dirtyRef)
           if (dirty) {
             const stored = yield* Ref.get(nodesRef)
@@ -246,21 +247,27 @@ const makeGroupFactory = (): SceneNodeFactory => ({
   create: (descriptor) => {
     const object = new Three.Group()
     object.name = descriptor.id
-    applyTransform(object, descriptor.props as {
-      position?: Vec3
-      rotation?: Vec3
-      scale?: Vec3
-      visible?: boolean
-    })
+    applyTransform(
+      object,
+      descriptor.props as {
+        position?: Vec3
+        rotation?: Vec3
+        scale?: Vec3
+        visible?: boolean
+      }
+    )
     return { object, childRoot: object }
   },
   update: (runtime, descriptor) => {
-    applyTransform(runtime.object, descriptor.props as {
-      position?: Vec3
-      rotation?: Vec3
-      scale?: Vec3
-      visible?: boolean
-    })
+    applyTransform(
+      runtime.object,
+      descriptor.props as {
+        position?: Vec3
+        rotation?: Vec3
+        scale?: Vec3
+        visible?: boolean
+      }
+    )
   }
 })
 
@@ -317,9 +324,7 @@ const makeLineFactory = (): SceneNodeFactory => ({
       position?: Vec3
       visible?: boolean
     }
-    const geometry = new Three.BufferGeometry().setFromPoints(
-      props.points.map((p) => new Three.Vector3(...p))
-    )
+    const geometry = new Three.BufferGeometry().setFromPoints(props.points.map((p) => new Three.Vector3(...p)))
     const material = new Three.LineBasicMaterial({
       color: props.color,
       opacity: props.opacity ?? 1,
@@ -361,9 +366,7 @@ const makePointsFactory = (): SceneNodeFactory => ({
       opacity?: number
       visible?: boolean
     }
-    const geometry = new Three.BufferGeometry().setFromPoints(
-      props.positions.map((p) => new Three.Vector3(...p))
-    )
+    const geometry = new Three.BufferGeometry().setFromPoints(props.positions.map((p) => new Three.Vector3(...p)))
     const material = new Three.PointsMaterial({
       color: props.color,
       size: props.size,
@@ -402,7 +405,7 @@ const makeLabelTexture = (text: string, color: string, fontSize: number): Three.
   const canvas =
     typeof globalThis.document !== "undefined"
       ? globalThis.document.createElement("canvas")
-      : // Node / bun tests without DOM: 1×1 placeholder still yields a texture.
+      : // Node tests without DOM: 1×1 placeholder still yields a texture.
         ({
           width: 1,
           height: 1,
@@ -498,9 +501,7 @@ const applyCameraToThree = (threeCamera: Three.Camera, camera: Camera): void => 
   }
 }
 
-const tryCreateWebGlRenderer = (
-  options: LiveThreeSceneGraphOptions | undefined
-): Three.WebGLRenderer | undefined => {
+const tryCreateWebGlRenderer = (options: LiveThreeSceneGraphOptions | undefined): Three.WebGLRenderer | undefined => {
   try {
     const canvas = options?.canvas
     const renderer = new Three.WebGLRenderer({
@@ -532,7 +533,7 @@ const tryCreateWebGlRenderer = (
 export const makeLiveThreeSceneGraph = (
   options?: LiveThreeSceneGraphOptions
 ): Effect.Effect<ThreeSceneGraph, never, Scope.Scope> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const root = new Three.Group()
     root.name = "effect-native-canvas-root"
     const scene = new Three.Scene()
@@ -577,29 +578,11 @@ export const makeLiveThreeSceneGraph = (
         }),
       setCamera: (camera) =>
         Effect.sync(() => {
-          if (
-            camera._tag === "Perspective" &&
-            !(cameraHolder.current instanceof Three.PerspectiveCamera)
-          ) {
-            cameraHolder.current = new Three.PerspectiveCamera(
-              camera.fov,
-              1,
-              camera.near,
-              camera.far
-            )
-          } else if (
-            camera._tag === "Orthographic" &&
-            !(cameraHolder.current instanceof Three.OrthographicCamera)
-          ) {
+          if (camera._tag === "Perspective" && !(cameraHolder.current instanceof Three.PerspectiveCamera)) {
+            cameraHolder.current = new Three.PerspectiveCamera(camera.fov, 1, camera.near, camera.far)
+          } else if (camera._tag === "Orthographic" && !(cameraHolder.current instanceof Three.OrthographicCamera)) {
             const f = camera.frustum
-            cameraHolder.current = new Three.OrthographicCamera(
-              -f,
-              f,
-              f,
-              -f,
-              camera.near,
-              camera.far
-            )
+            cameraHolder.current = new Three.OrthographicCamera(-f, f, f, -f, camera.near, camera.far)
           }
           applyCameraToThree(cameraHolder.current, camera)
         }),
@@ -623,7 +606,7 @@ export const makeLiveThreeSceneGraph = (
 export const makeLiveThreeCanvasBackend = (
   options?: LiveThreeSceneGraphOptions
 ): Effect.Effect<CanvasBackend, never, Scope.Scope> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const graph = yield* makeLiveThreeSceneGraph(options)
     return yield* makeThreeCanvasBackend(graph)
   })

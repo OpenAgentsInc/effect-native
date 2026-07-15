@@ -100,8 +100,9 @@ const collectMatches = (view: View, selector: Selector, out: Array<View>): void 
   const kindOk = selector.kind === undefined || view._tag === selector.kind
   const keyOk = selector.key === undefined || view.key === selector.key
   const text = selector.text
-  const textOk = text === undefined
-    || (() => {
+  const textOk =
+    text === undefined ||
+    (() => {
       const value = nodeText(view)
       if (value === undefined) return false
       return typeof text === "string" ? value === text : text.test(value)
@@ -118,47 +119,29 @@ const collectMatches = (view: View, selector: Selector, out: Array<View>): void 
 // Typed errors — a miss is an error value, never undefined
 // ---------------------------------------------------------------------------
 
-export class NoScreenError extends Schema.TaggedErrorClass<NoScreenError>()(
-  "NoScreenError",
-  {}
-) {}
+export class NoScreenError extends Schema.TaggedErrorClass<NoScreenError>()("NoScreenError", {}) {}
 
-export class ElementNotFoundError extends Schema.TaggedErrorClass<ElementNotFoundError>()(
-  "ElementNotFoundError",
-  {
-    selector: Schema.String
-  }
-) {}
+export class ElementNotFoundError extends Schema.TaggedErrorClass<ElementNotFoundError>()("ElementNotFoundError", {
+  selector: Schema.String
+}) {}
 
-export class AmbiguousElementError extends Schema.TaggedErrorClass<AmbiguousElementError>()(
-  "AmbiguousElementError",
-  {
-    selector: Schema.String,
-    matched: Schema.Number
-  }
-) {}
+export class AmbiguousElementError extends Schema.TaggedErrorClass<AmbiguousElementError>()("AmbiguousElementError", {
+  selector: Schema.String,
+  matched: Schema.Number
+}) {}
 
-export class MissingIntentError extends Schema.TaggedErrorClass<MissingIntentError>()(
-  "MissingIntentError",
-  {
-    target: Schema.String,
-    intent: Schema.String
-  }
-) {}
+export class MissingIntentError extends Schema.TaggedErrorClass<MissingIntentError>()("MissingIntentError", {
+  target: Schema.String,
+  intent: Schema.String
+}) {}
 
-export class DisabledElementError extends Schema.TaggedErrorClass<DisabledElementError>()(
-  "DisabledElementError",
-  {
-    target: Schema.String
-  }
-) {}
+export class DisabledElementError extends Schema.TaggedErrorClass<DisabledElementError>()("DisabledElementError", {
+  target: Schema.String
+}) {}
 
-export class NotDismissableError extends Schema.TaggedErrorClass<NotDismissableError>()(
-  "NotDismissableError",
-  {
-    target: Schema.String
-  }
-) {}
+export class NotDismissableError extends Schema.TaggedErrorClass<NotDismissableError>()("NotDismissableError", {
+  target: Schema.String
+}) {}
 
 export type FindError = NoScreenError | ElementNotFoundError | AmbiguousElementError
 export type InteractionError = FindError | MissingIntentError | DisabledElementError | NotDismissableError | IntentError
@@ -244,12 +227,14 @@ export interface TestApp<State> {
 const isViewNode = (target: object): target is View => "_tag" in target
 
 const describeTarget = (target: Selector | View): string =>
-  isViewNode(target) ? `${target._tag}${target.key === undefined ? "" : ` key=${target.key}`}` : describeSelector(target)
+  isViewNode(target)
+    ? `${target._tag}${target.key === undefined ? "" : ` key=${target.key}`}`
+    : describeSelector(target)
 
 export const make = <State, const Definitions extends ReadonlyArray<IntentDefinition> = readonly []>(
   config: TestAppConfig<State, Definitions>
 ): Effect.Effect<TestApp<State>, never, Scope.Scope> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const stateRef = yield* SubscriptionRef.make(config.initialState)
     const program = makeViewProgramFromState(stateRef, config.render)
 
@@ -276,28 +261,34 @@ export const make = <State, const Definitions extends ReadonlyArray<IntentDefini
     const findAll = <Tag extends ComponentTag = ComponentTag>(
       selector: Selector<Tag>
     ): Effect.Effect<ReadonlyArray<ViewFor<Tag>>, NoScreenError> =>
-      screen.pipe(Effect.map((view) => {
-        const matches: Array<View> = []
-        collectMatches(view, selector, matches)
-        return matches as unknown as ReadonlyArray<ViewFor<Tag>>
-      }))
+      screen.pipe(
+        Effect.map((view) => {
+          const matches: Array<View> = []
+          collectMatches(view, selector, matches)
+          return matches as unknown as ReadonlyArray<ViewFor<Tag>>
+        })
+      )
 
     const find = <Tag extends ComponentTag = ComponentTag>(
       selector: Selector<Tag>
     ): Effect.Effect<ViewFor<Tag>, FindError> =>
-      findAll(selector).pipe(Effect.flatMap((matches): Effect.Effect<ViewFor<Tag>, FindError> => {
-        const first = matches[0]
-        if (first === undefined) {
-          return Effect.fail(new ElementNotFoundError({ selector: describeSelector(selector) }))
-        }
-        if (matches.length > 1) {
-          return Effect.fail(new AmbiguousElementError({
-            selector: describeSelector(selector),
-            matched: matches.length
-          }))
-        }
-        return Effect.succeed(first)
-      }))
+      findAll(selector).pipe(
+        Effect.flatMap((matches): Effect.Effect<ViewFor<Tag>, FindError> => {
+          const first = matches[0]
+          if (first === undefined) {
+            return Effect.fail(new ElementNotFoundError({ selector: describeSelector(selector) }))
+          }
+          if (matches.length > 1) {
+            return Effect.fail(
+              new AmbiguousElementError({
+                selector: describeSelector(selector),
+                matched: matches.length
+              })
+            )
+          }
+          return Effect.succeed(first)
+        })
+      )
 
     const resolveTarget = <Tag extends ComponentTag>(
       target: Selector<Tag> | ViewFor<Tag>,
@@ -309,43 +300,52 @@ export const make = <State, const Definitions extends ReadonlyArray<IntentDefini
       provided(surface.simulate(ref, runtimeValue))
 
     const press = (target: Selector<"Button"> | ButtonView): Effect.Effect<void, InteractionError> =>
-      resolveTarget(target, "Button").pipe(Effect.flatMap((button): Effect.Effect<void, InteractionError> =>
-        button.disabled === true
-          ? Effect.fail(new DisabledElementError({ target: describeTarget(button) }))
-          : simulate(button.onPress)
-      ))
+      resolveTarget(target, "Button").pipe(
+        Effect.flatMap(
+          (button): Effect.Effect<void, InteractionError> =>
+            button.disabled === true
+              ? Effect.fail(new DisabledElementError({ target: describeTarget(button) }))
+              : simulate(button.onPress)
+        )
+      )
 
     // Mirrors the renderer adapters: a form-bound field always reports
     // FormFieldChanged; only unbound fields use their own onChange.
-    const type = (
-      target: Selector<"TextField"> | TextFieldView,
-      text: string
-    ): Effect.Effect<void, InteractionError> =>
-      resolveTarget(target, "TextField").pipe(Effect.flatMap((field): Effect.Effect<void, InteractionError> => {
-        const onChange = field.field === undefined
-          ? field.onChange
-          : IntentRef("FormFieldChanged", FormFieldValueBinding(field.field))
-        return onChange === undefined
-          ? Effect.fail(new MissingIntentError({ target: describeTarget(field), intent: "onChange" }))
-          : simulate(onChange, text)
-      }))
+    const type = (target: Selector<"TextField"> | TextFieldView, text: string): Effect.Effect<void, InteractionError> =>
+      resolveTarget(target, "TextField").pipe(
+        Effect.flatMap((field): Effect.Effect<void, InteractionError> => {
+          const onChange =
+            field.field === undefined
+              ? field.onChange
+              : IntentRef("FormFieldChanged", FormFieldValueBinding(field.field))
+          return onChange === undefined
+            ? Effect.fail(new MissingIntentError({ target: describeTarget(field), intent: "onChange" }))
+            : simulate(onChange, text)
+        })
+      )
 
     const blur = (target: Selector<"TextField"> | TextFieldView): Effect.Effect<void, InteractionError> =>
-      resolveTarget(target, "TextField").pipe(Effect.flatMap((field): Effect.Effect<void, InteractionError> =>
-        field.field === undefined
-          ? Effect.fail(new MissingIntentError({ target: describeTarget(field), intent: "onBlur" }))
-          : simulate(IntentRef("FormFieldBlurred", StaticPayload(field.field)))
-      ))
+      resolveTarget(target, "TextField").pipe(
+        Effect.flatMap(
+          (field): Effect.Effect<void, InteractionError> =>
+            field.field === undefined
+              ? Effect.fail(new MissingIntentError({ target: describeTarget(field), intent: "onBlur" }))
+              : simulate(IntentRef("FormFieldBlurred", StaticPayload(field.field)))
+        )
+      )
 
     const submit = (
       target: Selector<"TextField"> | TextFieldView,
       value?: JsonPayload
     ): Effect.Effect<void, InteractionError> =>
-      resolveTarget(target, "TextField").pipe(Effect.flatMap((field): Effect.Effect<void, InteractionError> =>
-        field.onSubmit === undefined
-          ? Effect.fail(new MissingIntentError({ target: describeTarget(field), intent: "onSubmit" }))
-          : simulate(field.onSubmit, value === undefined ? field.value : value)
-      ))
+      resolveTarget(target, "TextField").pipe(
+        Effect.flatMap(
+          (field): Effect.Effect<void, InteractionError> =>
+            field.onSubmit === undefined
+              ? Effect.fail(new MissingIntentError({ target: describeTarget(field), intent: "onSubmit" }))
+              : simulate(field.onSubmit, value === undefined ? field.value : value)
+        )
+      )
 
     const follow = (target: Selector<"Link"> | LinkView): Effect.Effect<void, InteractionError> =>
       resolveTarget(target, "Link").pipe(Effect.flatMap((link) => simulate(makeNavigateIntent(link.destination))))
@@ -353,7 +353,7 @@ export const make = <State, const Definitions extends ReadonlyArray<IntentDefini
     const dismiss = (
       target: Selector<"Modal"> | Selector<"Sheet"> | ModalView | SheetView
     ): Effect.Effect<void, InteractionError> =>
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         let overlay: ModalView | SheetView
         if (isViewNode(target)) {
           overlay = target
@@ -369,10 +369,12 @@ export const make = <State, const Definitions extends ReadonlyArray<IntentDefini
             return yield* Effect.fail(new ElementNotFoundError({ selector: describeSelector(filter) }))
           }
           if (matches.length > 1) {
-            return yield* Effect.fail(new AmbiguousElementError({
-              selector: describeSelector(filter),
-              matched: matches.length
-            }))
+            return yield* Effect.fail(
+              new AmbiguousElementError({
+                selector: describeSelector(filter),
+                matched: matches.length
+              })
+            )
           }
           overlay = first
         }
@@ -409,13 +411,7 @@ export const TestApp = { make } as const
 // Snapshot format (stable, versioned, human-readable) -- see ./snapshot
 // ---------------------------------------------------------------------------
 
-export {
-  makeSnapshot,
-  stableStringify,
-  stringifySnapshot,
-  SnapshotFormatVersion,
-  type Snapshot
-} from "./snapshot"
+export { makeSnapshot, stableStringify, stringifySnapshot, SnapshotFormatVersion, type Snapshot } from "./snapshot"
 
 // ---------------------------------------------------------------------------
 // Recording-based regression tests -- see ./replay. Builds on

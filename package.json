@@ -8,25 +8,34 @@
     "type": "git",
     "url": "https://github.com/OpenAgentsInc/effect-native.git"
   },
-  "workspaces": [
-    "packages/*"
-  ],
   "scripts": {
-    "typecheck": "tsc -b",
-    "test": "bun test ./packages/*/test ./scripts ./examples/guide-app",
-    "check:doc-snippets": "bun run scripts/check-doc-snippets.ts",
-    "check:catalog-reference": "bun run scripts/check-catalog-reference.ts",
-    "check": "bun run typecheck && bun run test && bun run check:doc-snippets && bun run check:catalog-reference",
-    "example:web": "bun build ./examples/web/main.ts --outfile ./examples/web/public/app.js --format esm && bun ./examples/web/server.ts",
-    "example:guide": "bun build ./examples/guide-app/web.ts --outfile ./examples/guide-app/public/app.js --format esm && bun ./examples/guide-app/server.ts",
-    "gallery": "bun build ./examples/gallery/main.ts --outfile ./examples/gallery/public/app.js --format esm && bun ./examples/gallery/server.ts",
-    "gallery:build": "bun ./scripts/build-gallery.ts",
-    "example:desktop-khala-chat": "bun build ./examples/desktop-khala-chat/main.ts --outfile ./examples/desktop-khala-chat/public/app.js --format esm && bun ./examples/desktop-khala-chat/server.ts",
-    "devtools": "bun build ./packages/devtools/src/panel-main.ts --outfile ./packages/devtools/public/panel.js --format esm && bun ./packages/devtools/src/server.ts",
-    "site:content": "bun ./scripts/generate-site-content.ts",
-    "site": "bun run site:content && bun build ./examples/site/main.ts --outfile ./examples/site/public/app.js --format esm && bun ./examples/site/server.ts",
-    "site:build": "bun ./scripts/build-site.ts",
-    "baselines:bless": "bun packages/testkit/scripts/bless-baselines.ts"
+    "typecheck": "vp run check-types",
+    "test": "vp run test-suite",
+    "check:doc-snippets": "vp run doc-snippets",
+    "check:catalog-reference": "vp run catalog-reference",
+    "check:zero-bun": "node scripts/zero-bun-guard.mjs",
+    "check": "pnpm run typecheck && pnpm run test && pnpm run check:doc-snippets && pnpm run check:catalog-reference",
+    "examples:build": "pnpm run example:web:build && pnpm run example:guide:build && pnpm run gallery:dev-build && pnpm run example:desktop-khala-chat:build && pnpm run devtools:build && pnpm run site:dev-build",
+    "example:web:build": "vp run example-web-build",
+    "example:web": "pnpm run example:web:build && node --import tsx examples/web/server.ts",
+    "example:guide:build": "vp run example-guide-build",
+    "example:guide": "pnpm run example:guide:build && node --import tsx examples/guide-app/server.ts",
+    "gallery:dev-build": "vp run gallery-dev-build",
+    "gallery": "pnpm run gallery:dev-build && node --import tsx examples/gallery/server.ts",
+    "gallery:build": "vp run gallery-static",
+    "example:desktop-khala-chat:build": "vp run example-desktop-build",
+    "example:desktop-khala-chat": "pnpm run example:desktop-khala-chat:build && node --import tsx examples/desktop-khala-chat/server.ts",
+    "devtools:build": "vp run devtools-panel-build",
+    "devtools": "pnpm run devtools:build && node --import tsx packages/devtools/src/server.ts",
+    "site:content": "node --import tsx scripts/generate-site-content.ts",
+    "site:dev-build": "vp run site-dev-build",
+    "site": "pnpm run site:content && pnpm run site:dev-build && node --import tsx examples/site/server.ts",
+    "site:build": "vp run site-static",
+    "baselines:bless": "node --import tsx packages/testkit/scripts/bless-baselines.ts",
+    "fmt": "vp fmt",
+    "fmt:check": "vp fmt --check",
+    "lint": "vp lint",
+    "ci": "pnpm run check:zero-bun && pnpm run fmt:check && pnpm run lint && pnpm run check && pnpm run examples:build && pnpm run gallery:build && pnpm run site:build"
   },
   "dependencies": {
     "@effect-native/core": "workspace:*",
@@ -41,16 +50,25 @@
     "@effect-native/site": "workspace:*",
     "@effect-native/testkit": "workspace:*",
     "@effect-native/tokens": "workspace:*",
-    "effect": "4.0.0-beta.94"
+    "effect": "catalog:"
   },
   "devDependencies": {
-    "@types/react": "^19.2.0",
-    "@types/react-dom": "^19.2.0",
-    "@types/bun": "latest",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@types/ws": "catalog:",
     "fast-check": "4.8.0",
-    "happy-dom": "^20.10.6",
-    "react": "19.2.7",
-    "react-dom": "19.2.7",
-    "typescript": "5.8.3"
-  }
+    "happy-dom": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "tsx": "4.20.6",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:",
+    "ws": "catalog:"
+  },
+  "engines": {
+    "node": "^24.13.1"
+  },
+  "packageManager": "pnpm@11.10.0"
 }

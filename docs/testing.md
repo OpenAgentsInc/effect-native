@@ -1,8 +1,8 @@
 # Testing an Effect Native App
 
 `@effect-native/testkit` is the app-author-facing test harness. It rides on
-`bun test` (this repository has no CI wiring and no opinion about yours); it
-is not a test framework. It exists because two design decisions upstream pay
+Vite Plus Test and is not itself a test framework. It exists because two
+design decisions upstream pay
 off directly in test quality:
 
 - **Views are data.** A screen is a typed, serializable tree — there is
@@ -25,7 +25,7 @@ The simplest test needs no harness at all — a view is a pure function from
 state to data:
 
 ```ts
-import { expect, test } from "bun:test"
+import { expect, test } from "vite-plus/test"
 import { Text } from "@effect-native/core"
 import { counterView } from "./counter"
 
@@ -71,11 +71,15 @@ const counterApp = TestApp.make({
   })
 })
 
-const result = await Effect.runPromise(Effect.scoped(Effect.gen(function* () {
-  const app = yield* counterApp
-  yield* app.press({ key: "increment" })
-  return yield* app.state
-})))
+const result = await Effect.runPromise(
+  Effect.scoped(
+    Effect.gen(function* () {
+      const app = yield* counterApp
+      yield* app.press({ key: "increment" })
+      return yield* app.state
+    })
+  )
+)
 // { count: 1 }
 ```
 
@@ -83,14 +87,14 @@ const result = await Effect.runPromise(Effect.scoped(Effect.gen(function* () {
 
 Selectors are typed values — `{ kind, key, text }` — never CSS/XPath strings.
 `app.find(selector)` returns exactly one match, kind-narrowed to the selected
-tag; zero or more than one match is a *typed* error
+tag; zero or more than one match is a _typed_ error
 (`ElementNotFoundError` / `AmbiguousElementError`), never `undefined` and
 never a thrown string:
 
 ```ts
-yield* app.find({ kind: "Text", key: "count" })   // -> TextView, narrowed
-yield* app.find({ text: /^Increment/ })            // matches by rendered text
-yield* app.findAll({ kind: "Button" })             // every match, never fails
+yield * app.find({ kind: "Text", key: "count" }) // -> TextView, narrowed
+yield * app.find({ text: /^Increment/ }) // matches by rendered text
+yield * app.findAll({ kind: "Button" }) // every match, never fails
 ```
 
 ### Driving real interactions
@@ -101,12 +105,12 @@ field-binding default (`FormFieldChanged`) that fires when a `TextField`
 declares `field` without its own `onChange`:
 
 ```ts
-yield* app.press({ key: "submit" })                 // Button.onPress, or Link -> Navigate
-yield* app.type({ key: "email" }, "ada@example.com") // TextField.onChange / field-binding default
-yield* app.blur({ key: "email" })                    // FormFieldBlurred, for field-bound fields
-yield* app.submit({ key: "email" })                  // TextField.onSubmit (the Enter key)
-yield* app.follow({ key: "learn-more" })             // Link -> Navigate(destination)
-yield* app.dismiss({ kind: "Modal" })                // onDismiss, refuses non-dismissable overlays
+yield * app.press({ key: "submit" }) // Button.onPress, or Link -> Navigate
+yield * app.type({ key: "email" }, "ada@example.com") // TextField.onChange / field-binding default
+yield * app.blur({ key: "email" }) // FormFieldBlurred, for field-bound fields
+yield * app.submit({ key: "email" }) // TextField.onSubmit (the Enter key)
+yield * app.follow({ key: "learn-more" }) // Link -> Navigate(destination)
+yield * app.dismiss({ kind: "Modal" }) // onDismiss, refuses non-dismissable overlays
 ```
 
 `app.screen` / `app.screens` / `app.state` / `app.intentEvents` read the
@@ -128,7 +132,7 @@ envelope (`SnapshotFormatVersion`), so a fixture drift and a snapshot-format
 change are never confused with each other.
 
 ```ts
-import { expect, test } from "bun:test"
+import { expect, test } from "vite-plus/test"
 import { stringifySnapshot } from "@effect-native/testkit"
 
 test("counter screen at count=1", async () => {
@@ -157,10 +161,16 @@ import { makeMyAppRuntime } from "../src/runtime" // { program, registry }
 const recording = Schema.decodeUnknownSync(RecordingSchema)(recordingJson)
 
 test("the captured session still ends the same way", async () => {
-  await Effect.runPromise(expectReplay(recording, () => makeMyAppRuntime(), {
-    finalState: { /* ... */ },
-    finalScreen: myAppView({ /* ... */ })
-  }))
+  await Effect.runPromise(
+    expectReplay(recording, () => makeMyAppRuntime(), {
+      finalState: {
+        /* ... */
+      },
+      finalScreen: myAppView({
+        /* ... */
+      })
+    })
+  )
 })
 ```
 
@@ -203,7 +213,11 @@ Both plug into the same renderer-agnostic compare/bless flow:
 
 ```ts
 import {
-  baselineKey, blessBaseline, compareBaseline, domVisualCapture, makeFileBaselineStore
+  baselineKey,
+  blessBaseline,
+  compareBaseline,
+  domVisualCapture,
+  makeFileBaselineStore
 } from "@effect-native/testkit/visual"
 
 const store = makeFileBaselineStore("test/fixtures/baselines")
@@ -224,7 +238,7 @@ under `packages/testkit/test/fixtures/baselines/`, checked by
 `packages/testkit/test/visual-baselines.test.ts`. Re-bless them with:
 
 ```sh
-bun run baselines:bless
+pnpm run baselines:bless
 ```
 
 ### What this does not do

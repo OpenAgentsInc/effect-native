@@ -18,11 +18,7 @@ import {
   type View
 } from "@effect-native/core"
 import { makeDomRenderer, type DomMountedSurface } from "@effect-native/render-dom"
-import {
-  stateAtTimelineStep,
-  viewAtTimelineStep,
-  type Recording
-} from "./index"
+import { stateAtTimelineStep, viewAtTimelineStep, type Recording } from "./index"
 
 const StepPrevious = defineIntent("DevtoolsStepPrevious", Schema.Struct({}))
 const StepNext = defineIntent("DevtoolsStepNext", Schema.Struct({}))
@@ -90,30 +86,36 @@ const viewLines = (view: View | undefined, depth = 0): ReadonlyArray<string> => 
 const timelineItems = (state: DevtoolsPanelState): ReadonlyArray<KeyedView> =>
   state.recording.timeline.length === 0
     ? [
-        keyed(Text({
-          key: "empty-timeline",
-          content: "No events yet.",
-          variant: "body",
-          color: "textMuted"
-        }))
+        keyed(
+          Text({
+            key: "empty-timeline",
+            content: "No events yet.",
+            variant: "body",
+            color: "textMuted"
+          })
+        )
       ]
     : state.recording.timeline.map((event, index) =>
-        keyed(Text({
-          key: `event-${index}`,
-          content: `${index === state.step ? ">" : " "} ${eventLabel(event, index)}`,
-          variant: "caption",
-          color: index === state.step ? "accent" : "textPrimary"
-        }))
+        keyed(
+          Text({
+            key: `event-${index}`,
+            content: `${index === state.step ? ">" : " "} ${eventLabel(event, index)}`,
+            variant: "caption",
+            color: index === state.step ? "accent" : "textPrimary"
+          })
+        )
       )
 
 const textLines = (prefix: string, lines: ReadonlyArray<string>): ReadonlyArray<KeyedView> =>
   lines.map((line, index) =>
-    keyed(Text({
-      key: `${prefix}-${index}`,
-      content: line,
-      variant: "caption",
-      color: "textPrimary"
-    }))
+    keyed(
+      Text({
+        key: `${prefix}-${index}`,
+        content: line,
+        variant: "caption",
+        color: "textPrimary"
+      })
+    )
   )
 
 export const devtoolsPanelView = (state: DevtoolsPanelState): View => {
@@ -122,80 +124,83 @@ export const devtoolsPanelView = (state: DevtoolsPanelState): View => {
   const selectedView = viewAtTimelineStep(state.recording, state.step)
   const selectedState = stateAtTimelineStep(state.recording, state.step)
 
-  return Stack({
-    key: "devtools",
-    direction: "column",
-    gap: "3",
-    padding: "3",
-    style: {
-      backgroundColor: "surface",
-      maxWidth: "xl"
-    }
-  }, [
-    Stack({ key: "toolbar", direction: "row", gap: "2", align: "center" }, [
-      Text({
-        key: "title",
-        content: "Effect Native DevTools",
-        variant: "title",
-        color: "textPrimary"
-      }),
-      Text({
-        key: "badge",
-        content: viewingHistory ? "Viewing history" : "Live",
-        variant: "caption",
-        color: viewingHistory ? "danger" : "accent"
-      })
-    ]),
-    Stack({ key: "controls", direction: "row", gap: "2" }, [
-      Button({
-        key: "previous",
-        label: "Previous",
-        variant: "secondary",
-        disabled: state.step === 0,
-        onPress: IntentRef("DevtoolsStepPrevious", StaticPayload({}))
-      }),
-      Button({
-        key: "next",
-        label: "Next",
-        variant: "secondary",
-        disabled: state.step >= liveStep,
-        onPress: IntentRef("DevtoolsStepNext", StaticPayload({}))
-      }),
-      Button({
-        key: "live",
-        label: "Live",
-        variant: "ghost",
-        disabled: !viewingHistory,
-        onPress: IntentRef("DevtoolsJumpToLive", StaticPayload({}))
-      })
-    ]),
-    Stack({ key: "columns", direction: "row", gap: "3", align: "stretch" }, [
-      Card({ key: "timeline-card", padding: "3", radius: "md", style: { backgroundColor: "background" } }, [
-        Text({ key: "timeline-title", content: "Timeline", variant: "label", color: "textPrimary" }),
-        List({ key: "timeline-list" }, timelineItems(state))
-      ]),
-      Card({ key: "tree-card", padding: "3", radius: "md", style: { backgroundColor: "background" } }, [
-        Text({ key: "tree-title", content: "View tree", variant: "label", color: "textPrimary" }),
-        List({ key: "tree-list" }, textLines("tree-line", viewLines(selectedView)))
-      ]),
-      Card({ key: "state-card", padding: "3", radius: "md", style: { backgroundColor: "background" } }, [
-        Text({ key: "state-title", content: "State", variant: "label", color: "textPrimary" }),
+  return Stack(
+    {
+      key: "devtools",
+      direction: "column",
+      gap: "3",
+      padding: "3",
+      style: {
+        backgroundColor: "surface",
+        maxWidth: "xl"
+      }
+    },
+    [
+      Stack({ key: "toolbar", direction: "row", gap: "2", align: "center" }, [
         Text({
-          key: "state-json",
-          content: JSON.stringify(selectedState, null, 2),
-          variant: "caption",
+          key: "title",
+          content: "Effect Native DevTools",
+          variant: "title",
           color: "textPrimary"
+        }),
+        Text({
+          key: "badge",
+          content: viewingHistory ? "Viewing history" : "Live",
+          variant: "caption",
+          color: viewingHistory ? "danger" : "accent"
         })
+      ]),
+      Stack({ key: "controls", direction: "row", gap: "2" }, [
+        Button({
+          key: "previous",
+          label: "Previous",
+          variant: "secondary",
+          disabled: state.step === 0,
+          onPress: IntentRef("DevtoolsStepPrevious", StaticPayload({}))
+        }),
+        Button({
+          key: "next",
+          label: "Next",
+          variant: "secondary",
+          disabled: state.step >= liveStep,
+          onPress: IntentRef("DevtoolsStepNext", StaticPayload({}))
+        }),
+        Button({
+          key: "live",
+          label: "Live",
+          variant: "ghost",
+          disabled: !viewingHistory,
+          onPress: IntentRef("DevtoolsJumpToLive", StaticPayload({}))
+        })
+      ]),
+      Stack({ key: "columns", direction: "row", gap: "3", align: "stretch" }, [
+        Card({ key: "timeline-card", padding: "3", radius: "md", style: { backgroundColor: "background" } }, [
+          Text({ key: "timeline-title", content: "Timeline", variant: "label", color: "textPrimary" }),
+          List({ key: "timeline-list" }, timelineItems(state))
+        ]),
+        Card({ key: "tree-card", padding: "3", radius: "md", style: { backgroundColor: "background" } }, [
+          Text({ key: "tree-title", content: "View tree", variant: "label", color: "textPrimary" }),
+          List({ key: "tree-list" }, textLines("tree-line", viewLines(selectedView)))
+        ]),
+        Card({ key: "state-card", padding: "3", radius: "md", style: { backgroundColor: "background" } }, [
+          Text({ key: "state-title", content: "State", variant: "label", color: "textPrimary" }),
+          Text({
+            key: "state-json",
+            content: JSON.stringify(selectedState, null, 2),
+            variant: "caption",
+            color: "textPrimary"
+          })
+        ])
       ])
-    ])
-  ])
+    ]
+  )
 }
 
 export const mountDevtoolsPanel = (
   container: Element,
   initialRecording: Recording
 ): Effect.Effect<DevtoolsPanel, never, Scope.Scope> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const state = yield* SubscriptionRef.make<DevtoolsPanelState>({
       recording: initialRecording,
       step: clampStep(initialRecording, initialRecording.timeline.length - 1)
@@ -219,8 +224,7 @@ export const mountDevtoolsPanel = (
         }))
     }
     const registry = yield* makeIntentRegistry(panelIntents, handlers)
-    const report: IntentReporter = (ref, runtimeValue) =>
-      registry.dispatch(resolveIntentRef(ref, runtimeValue))
+    const report: IntentReporter = (ref, runtimeValue) => registry.dispatch(resolveIntentRef(ref, runtimeValue))
     const surface = yield* makeDomRenderer().mount(container, program.viewStream, report)
 
     return {
@@ -229,9 +233,10 @@ export const mountDevtoolsPanel = (
       updateRecording: (recording) =>
         SubscriptionRef.update(state, (current) => ({
           recording,
-          step: current.step >= current.recording.timeline.length - 1
-            ? clampStep(recording, recording.timeline.length - 1)
-            : clampStep(recording, current.step)
+          step:
+            current.step >= current.recording.timeline.length - 1
+              ? clampStep(recording, recording.timeline.length - 1)
+              : clampStep(recording, current.step)
         })),
       unmount: surface.unmount
     }

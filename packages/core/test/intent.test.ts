@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Cause, Effect, Exit, Option, Ref, Schema } from "effect"
 import fc from "fast-check"
 import {
@@ -21,22 +21,28 @@ import {
 } from "../src/index"
 
 const nonEmptyString = fc.string({ minLength: 1, maxLength: 32 })
-const canonicalJsonValue = fc.jsonValue().map((value) =>
-  JSON.parse(JSON.stringify(value)) as JsonPayload
+const canonicalJsonValue = fc.jsonValue().map((value) => JSON.parse(JSON.stringify(value)) as JsonPayload)
+
+const intentArbitrary = fc
+  .record({
+    name: nonEmptyString,
+    payload: canonicalJsonValue
+  })
+  .map(({ name, payload }) => makeIntent(name, payload))
+
+const CounterIncremented = defineIntent(
+  "CounterIncremented",
+  Schema.Struct({
+    amount: Schema.Number
+  })
 )
 
-const intentArbitrary = fc.record({
-  name: nonEmptyString,
-  payload: canonicalJsonValue
-}).map(({ name, payload }) => makeIntent(name, payload))
-
-const CounterIncremented = defineIntent("CounterIncremented", Schema.Struct({
-  amount: Schema.Number
-}))
-
-const CounterReset = defineIntent("CounterReset", Schema.Struct({
-  value: Schema.Number
-}))
+const CounterReset = defineIntent(
+  "CounterReset",
+  Schema.Struct({
+    value: Schema.Number
+  })
+)
 
 const counterDefinitions = [CounterIncremented, CounterReset] as const
 
@@ -56,21 +62,17 @@ const failureTag = (exit: Exit.Exit<unknown, IntentError>) => {
 }
 
 const runCounterSequence = (intents: ReadonlyArray<Intent<string, JsonPayload>>) =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const counter = yield* Ref.make(0)
     let tick = 0
     const handlers: IntentHandlers<typeof counterDefinitions> = {
       CounterIncremented: (payload) => Ref.update(counter, (value) => value + payload.amount),
       CounterReset: (payload) => Ref.set(counter, payload.value)
     }
-    const layer = makeIntentRegistryLayer(
-      counterDefinitions,
-      handlers,
-      { now: () => ++tick }
-    )
+    const layer = makeIntentRegistryLayer(counterDefinitions, handlers, { now: () => ++tick })
 
     return yield* Effect.provide(
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         for (const intent of intents) {
           yield* dispatchIntent(intent)
         }
@@ -118,16 +120,15 @@ describe("typed intent algebra", () => {
   })
 
   test("dispatch runs a typed handler and records the event", async () => {
-    const result = await Effect.runPromise(runCounterSequence([
-      makeIntent("CounterIncremented", { amount: 2 }),
-      makeIntent("CounterIncremented", { amount: 3 })
-    ]))
+    const result = await Effect.runPromise(
+      runCounterSequence([
+        makeIntent("CounterIncremented", { amount: 2 }),
+        makeIntent("CounterIncremented", { amount: 3 })
+      ])
+    )
 
     expect(result.value).toBe(5)
-    expect(result.events.map((event) => event.intent.name)).toEqual([
-      "CounterIncremented",
-      "CounterIncremented"
-    ])
+    expect(result.events.map((event) => event.intent.name)).toEqual(["CounterIncremented", "CounterIncremented"])
     expect(result.events.map((event) => event.timestamp)).toEqual([1, 2])
     expect(result.events.every((event) => Exit.isSuccess(event.result))).toBe(true)
   })
@@ -138,17 +139,19 @@ describe("typed intent algebra", () => {
       CounterReset: () => Effect.succeed(undefined)
     })
 
-    const { unknownExit, badPayloadExit, events } = await Effect.runPromise(Effect.provide(
-      Effect.gen(function*() {
-        const unknownExit = yield* Effect.exit(dispatchIntent(makeIntent("DoesNotExist", null)))
-        const badPayloadExit = yield* Effect.exit(
-          dispatchIntent(makeIntent("CounterIncremented", { amount: "not-a-number" }))
-        )
-        const events = yield* getIntentEvents
-        return { unknownExit, badPayloadExit, events }
-      }),
-      layer
-    ))
+    const { unknownExit, badPayloadExit, events } = await Effect.runPromise(
+      Effect.provide(
+        Effect.gen(function* () {
+          const unknownExit = yield* Effect.exit(dispatchIntent(makeIntent("DoesNotExist", null)))
+          const badPayloadExit = yield* Effect.exit(
+            dispatchIntent(makeIntent("CounterIncremented", { amount: "not-a-number" }))
+          )
+          const events = yield* getIntentEvents
+          return { unknownExit, badPayloadExit, events }
+        }),
+        layer
+      )
+    )
 
     expect(failureTag(unknownExit)).toBe("UnknownIntentError")
     expect(failureTag(badPayloadExit)).toBe("IntentPayloadDecodeError")
@@ -162,14 +165,16 @@ describe("typed intent algebra", () => {
       CounterReset: () => Effect.succeed(undefined)
     })
 
-    const { exit, events } = await Effect.runPromise(Effect.provide(
-      Effect.gen(function*() {
-        const exit = yield* Effect.exit(dispatchIntent(makeIntent("CounterIncremented", { amount: 1 })))
-        const events = yield* getIntentEvents
-        return { exit, events }
-      }),
-      layer
-    ))
+    const { exit, events } = await Effect.runPromise(
+      Effect.provide(
+        Effect.gen(function* () {
+          const exit = yield* Effect.exit(dispatchIntent(makeIntent("CounterIncremented", { amount: 1 })))
+          const events = yield* getIntentEvents
+          return { exit, events }
+        }),
+        layer
+      )
+    )
     expect(failureTag(exit)).toBe("IntentHandlerError")
 
     expect(events).toHaveLength(1)
@@ -177,21 +182,19 @@ describe("typed intent algebra", () => {
   })
 
   test("event logs can be replayed against a fresh registry", async () => {
-    const first = await Effect.runPromise(runCounterSequence([
-      makeIntent("CounterIncremented", { amount: 4 }),
-      makeIntent("CounterIncremented", { amount: 6 }),
-      makeIntent("CounterReset", { value: 3 }),
-      makeIntent("CounterIncremented", { amount: 2 })
-    ]))
+    const first = await Effect.runPromise(
+      runCounterSequence([
+        makeIntent("CounterIncremented", { amount: 4 }),
+        makeIntent("CounterIncremented", { amount: 6 }),
+        makeIntent("CounterReset", { value: 3 }),
+        makeIntent("CounterIncremented", { amount: 2 })
+      ])
+    )
 
-    const replayed = await Effect.runPromise(runCounterSequence(
-      first.events.map((event) => event.intent)
-    ))
+    const replayed = await Effect.runPromise(runCounterSequence(first.events.map((event) => event.intent)))
 
     expect(first.value).toBe(5)
     expect(replayed.value).toBe(first.value)
-    expect(replayed.events.map((event) => event.intent)).toEqual(
-      first.events.map((event) => event.intent)
-    )
+    expect(replayed.events.map((event) => event.intent)).toEqual(first.events.map((event) => event.intent))
   })
 })

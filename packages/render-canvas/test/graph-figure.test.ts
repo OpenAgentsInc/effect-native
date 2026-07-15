@@ -1,12 +1,7 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect } from "effect"
 import { GraphFigure, IntentRef } from "@effect-native/core"
-import {
-  drainCanvasFrames,
-  framesFromScenes,
-  graphFigureToScene,
-  makeHeadlessCanvasBackend
-} from "../src/index"
+import { drainCanvasFrames, framesFromScenes, graphFigureToScene, makeHeadlessCanvasBackend } from "../src/index"
 
 const figure = GraphFigure({
   key: "fleet",
@@ -42,16 +37,22 @@ describe("GraphFigure canvas adapter (#37)", () => {
     const activeNode = scene.children.find((node) => node.key === "node-orrery")
     // active status resolves to the theme "info" hex through the token map
     expect(activeNode?._tag).toBe("Mesh")
-    expect(activeNode?._tag === "Mesh" && activeNode.material._tag === "Basic" && activeNode.material.color).toBe("#0ea5e9")
+    expect(activeNode?._tag === "Mesh" && activeNode.material._tag === "Basic" && activeNode.material.color).toBe(
+      "#0ea5e9"
+    )
   })
 
   test("the scene renders + reconciles through the headless canvas backend and disposes", async () => {
-    const result = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const headless = yield* makeHeadlessCanvasBackend()
-      yield* drainCanvasFrames(headless.backend, framesFromScenes([graphFigureToScene(figure)]))
-      const snapshot = yield* headless.snapshot
-      return { snapshot, disposedDuringScope: yield* headless.isDisposed }
-    })))
+    const result = await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const headless = yield* makeHeadlessCanvasBackend()
+          yield* drainCanvasFrames(headless.backend, framesFromScenes([graphFigureToScene(figure)]))
+          const snapshot = yield* headless.snapshot
+          return { snapshot, disposedDuringScope: yield* headless.isDisposed }
+        })
+      )
+    )
 
     expect(result.disposedDuringScope).toBe(false)
     expect(result.snapshot.frames).toBe(1)

@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect, Layer, Schema } from "effect"
 import {
   ThemeSchema,
@@ -23,7 +23,13 @@ const srgbToLinear = (channel: number): number => {
 
 const relativeLuminance = (hex: string): number => {
   const value = hex.replace("#", "")
-  const expanded = value.length === 3 ? value.split("").map((char) => char + char).join("") : value
+  const expanded =
+    value.length === 3
+      ? value
+          .split("")
+          .map((char) => char + char)
+          .join("")
+      : value
   const int = Number.parseInt(expanded, 16)
   const r = (int >> 16) & 255
   const g = (int >> 8) & 255

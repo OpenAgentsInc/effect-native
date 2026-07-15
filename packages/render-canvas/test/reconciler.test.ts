@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import {
   basicMaterial,
   box,
@@ -21,9 +21,7 @@ const tags = (ops: ReadonlyArray<SceneOp>) => ops.map((op) => op._tag)
 
 describe("reconciler diff", () => {
   test("mounts a fresh scene: camera, background, then parent-before-child creates", () => {
-    const next = scene({ camera: cam, background: "#000000" }, [
-      group({ key: "g" }, [meshNode("m1", "#fff")])
-    ])
+    const next = scene({ camera: cam, background: "#000000" }, [group({ key: "g" }, [meshNode("m1", "#fff")])])
     const ops = diffScene(undefined, next)
     expect(tags(ops)).toEqual(["SetCamera", "SetBackground", "CreateNode", "CreateNode"])
     const creates = ops.filter((op) => op._tag === "CreateNode")
@@ -57,14 +55,8 @@ describe("reconciler diff", () => {
   })
 
   test("reparented/reordered node yields MoveNode", () => {
-    const a = scene({ camera: cam }, [
-      meshNode("m1", "#fff"),
-      meshNode("m2", "#fff")
-    ])
-    const b = scene({ camera: cam }, [
-      meshNode("m2", "#fff"),
-      meshNode("m1", "#fff")
-    ])
+    const a = scene({ camera: cam }, [meshNode("m1", "#fff"), meshNode("m2", "#fff")])
+    const b = scene({ camera: cam }, [meshNode("m2", "#fff"), meshNode("m1", "#fff")])
     const ops = diffScene(a, b)
     expect(tags(ops).every((t) => t === "MoveNode")).toBe(true)
     expect(ops).toHaveLength(2)

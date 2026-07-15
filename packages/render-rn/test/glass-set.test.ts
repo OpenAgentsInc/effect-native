@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Button, IconButton, IntentRef, StaticPayload, Text, Toolbar } from "@effect-native/core"
 import { khalaTheme } from "@effect-native/tokens"
 import {
@@ -130,18 +130,15 @@ describe("render-rn glass set (GL-1)", () => {
 
   test("Toolbar renders a row with children, pill radius, and glass background", () => {
     const element = renderReactNativeView(
-      Toolbar(
-        { key: "actions", placement: "bottom-floating", surface: "glass" },
-        [
-          IconButton({
-            key: "reload",
-            icon: "Reload",
-            accessibilityLabel: "Reload",
-            onPress: IntentRef("Reload", StaticPayload({}))
-          }),
-          Text({ key: "hint", content: "Ready", variant: "caption" })
-        ]
-      ),
+      Toolbar({ key: "actions", placement: "bottom-floating", surface: "glass" }, [
+        IconButton({
+          key: "reload",
+          icon: "Reload",
+          accessibilityLabel: "Reload",
+          onPress: IntentRef("Reload", StaticPayload({}))
+        }),
+        Text({ key: "hint", content: "Ready", variant: "caption" })
+      ]),
       dependencies,
       report as never,
       { theme: khalaTheme, platform: "ios" }

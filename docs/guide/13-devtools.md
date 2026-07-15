@@ -5,13 +5,13 @@ Full DevTools docs: [`../devtools.md`](../devtools.md) (#15).
 ## Local panel
 
 ```sh
-bun run devtools
+pnpm run devtools
 ```
 
 ## Attach the guide app
 
 ```sh
-bun run example:guide
+pnpm run example:guide
 # open with ?devtools=ws://127.0.0.1:<port> as documented in docs/devtools.md
 ```
 

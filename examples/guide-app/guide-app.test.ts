@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect } from "effect"
 import { TestApp } from "@effect-native/testkit"
 import {
@@ -9,12 +9,7 @@ import {
   noteFormSpec,
   type GuideAppState
 } from "./index"
-import {
-  blurFormField,
-  makeFormState,
-  setFormFieldValue,
-  submitForm
-} from "@effect-native/core"
+import { blurFormField, makeFormState, setFormFieldValue, submitForm } from "@effect-native/core"
 
 describe("examples/guide-app", () => {
   test("runtime boots", async () => {
@@ -26,25 +21,17 @@ describe("examples/guide-app", () => {
   test("TestApp: type a title, submit, see the note, open delete modal", async () => {
     await Effect.runPromise(
       Effect.scoped(
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           const app = yield* TestApp.make({
             initialState: initialGuideAppState as GuideAppState,
             render: guideAppView,
             intents: (program) => ({
               definitions: guideAppIntents,
               handlers: {
-                FormFieldChanged: (payload: {
-                  readonly field: string
-                  readonly value: unknown
-                }) =>
+                FormFieldChanged: (payload: { readonly field: string; readonly value: unknown }) =>
                   program.updateState((current) => ({
                     ...current,
-                    form: setFormFieldValue(
-                      noteFormSpec,
-                      current.form,
-                      payload.field,
-                      payload.value as never
-                    ),
+                    form: setFormFieldValue(noteFormSpec, current.form, payload.field, payload.value as never),
                     message: "Editing…"
                   })),
                 FormFieldBlurred: (payload: { readonly field: string }) =>
@@ -66,10 +53,7 @@ describe("examples/guide-app", () => {
                     return {
                       ...current,
                       form: makeFormState(noteFormSpec),
-                      notes: [
-                        ...current.notes,
-                        { id: `note-${current.notes.length + 1}`, title }
-                      ],
+                      notes: [...current.notes, { id: `note-${current.notes.length + 1}`, title }],
                       message: `Added “${title}”.`
                     }
                   }),
@@ -86,9 +70,7 @@ describe("examples/guide-app", () => {
                 ConfirmDelete: () =>
                   program.updateState((current) => ({
                     ...current,
-                    notes: current.notes.filter(
-                      (note) => note.id !== current.confirmDeleteId
-                    ),
+                    notes: current.notes.filter((note) => note.id !== current.confirmDeleteId),
                     confirmDeleteId: null
                   })),
                 GoAbout: () =>

@@ -1,12 +1,7 @@
 import { Effect, Exit, Scope, Stream, SubscriptionRef } from "effect"
 import { IntentRef, StaticPayload, resolveIntentRef } from "@effect-native/core"
 import { makeDomRenderer } from "@effect-native/render-dom"
-import {
-  galleryThemes,
-  galleryViewports,
-  makeGalleryRuntime,
-  type GalleryState
-} from "@effect-native/gallery"
+import { galleryThemes, galleryViewports, makeGalleryRuntime, type GalleryState } from "@effect-native/gallery"
 
 const storyIdFromLocation = (location: Location): string | undefined => {
   const url = new URL(location.href)
@@ -38,7 +33,7 @@ const themeFor = (state: GalleryState) =>
 const viewportFor = (state: GalleryState) =>
   galleryViewports.find((viewport) => viewport.id === state.activeViewportId)?.viewport ?? galleryViewports[2].viewport
 
-const boot = Effect.gen(function*() {
+const boot = Effect.gen(function* () {
   const root = document.getElementById("app")
   if (root === null) {
     throw new Error("Missing #app root")
@@ -47,16 +42,12 @@ const boot = Effect.gen(function*() {
   const runtime = yield* makeGalleryRuntime()
   const linkedStory = storyIdFromLocation(globalThis.location)
   if (linkedStory !== undefined) {
-    yield* runtime.registry.dispatch(resolveIntentRef(
-      IntentRef("Gallery.StorySelected", StaticPayload(linkedStory))
-    ))
+    yield* runtime.registry.dispatch(resolveIntentRef(IntentRef("Gallery.StorySelected", StaticPayload(linkedStory))))
     yield* Effect.yieldNow
   }
   const linkedPage = pageIdFromLocation(globalThis.location)
   if (linkedPage !== undefined) {
-    yield* runtime.registry.dispatch(resolveIntentRef(
-      IntentRef("Gallery.PageSelected", StaticPayload(linkedPage))
-    ))
+    yield* runtime.registry.dispatch(resolveIntentRef(IntentRef("Gallery.PageSelected", StaticPayload(linkedPage))))
     yield* Effect.yieldNow
   }
   const initialState = yield* runtime.program.currentState
@@ -72,9 +63,7 @@ const boot = Effect.gen(function*() {
   yield* Scope.provide(scope)(
     SubscriptionRef.changes(runtime.state).pipe(
       Stream.runForEach((state) =>
-        mounted.setTheme(themeFor(state)).pipe(
-          Effect.andThen(mounted.setViewport(viewportFor(state)))
-        )
+        mounted.setTheme(themeFor(state)).pipe(Effect.andThen(mounted.setViewport(viewportFor(state))))
       ),
       Effect.forkScoped
     )

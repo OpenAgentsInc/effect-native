@@ -1,6 +1,13 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect } from "effect"
-import { IntentRef, Markdown, Transcript, type IntentReporter, type TranscriptMessage, type View } from "@effect-native/core"
+import {
+  IntentRef,
+  Markdown,
+  Transcript,
+  type IntentReporter,
+  type TranscriptMessage,
+  type View
+} from "@effect-native/core"
 import {
   renderReactNativeView,
   type ReactElementLike,
@@ -81,10 +88,7 @@ describe("transcript / markdown (#35) React Native renderer", () => {
         key: "transcript",
         pinToEnd: true,
         onPinnedChange: IntentRef("Pinned"),
-        messages: [
-          message("m1", "user", "Fix the failing test"),
-          message("m2", "assistant", "On it", "streaming")
-        ]
+        messages: [message("m1", "user", "Fix the failing test"), message("m2", "assistant", "On it", "streaming")]
       }) as View,
       dependencies,
       noop
@@ -92,10 +96,7 @@ describe("transcript / markdown (#35) React Native renderer", () => {
     expect(transcript.props.testID).toBe("en-transcript")
     expect(transcript.props.accessibilityLiveRegion).toBe("polite")
     expect(transcript.type).toBe("FlatList")
-    expect((transcript.props.data as ReadonlyArray<{ key: string }>).map((m) => m.key)).toEqual([
-      "m1",
-      "m2"
-    ])
+    expect((transcript.props.data as ReadonlyArray<{ key: string }>).map((m) => m.key)).toEqual(["m1", "m2"])
     const renderItem = transcript.props.renderItem as
       | ((input: { item: TranscriptMessage }) => ReactElementLike)
       | undefined

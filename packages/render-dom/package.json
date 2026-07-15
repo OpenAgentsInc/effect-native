@@ -17,7 +17,7 @@
   },
   "scripts": {
     "typecheck": "tsc -b",
-    "test": "bun test"
+    "test": "vp test --run"
   },
   "dependencies": {
     "@effect-native/core": "workspace:*",

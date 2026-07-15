@@ -1,11 +1,6 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Exit, Schema } from "effect"
-import {
-  MediaVideo,
-  MediaVideoEventSchema,
-  decodeMediaVideoHostProps,
-  hostKinds
-} from "../src/index"
+import { MediaVideo, MediaVideoEventSchema, decodeMediaVideoHostProps, hostKinds } from "../src/index"
 
 describe("media-video host kind (#67)", () => {
   test("hostKinds includes media-video", () => {

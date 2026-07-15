@@ -242,12 +242,7 @@ export interface LabelNode {
 export type SceneNode = GroupNode | MeshNode | LineNode | PointsNode | LabelNode
 
 /** A scene node with any child nodes stripped — the unit the backend creates. */
-export type SceneNodeLeaf =
-  | Omit<GroupNode, "children">
-  | MeshNode
-  | LineNode
-  | PointsNode
-  | LabelNode
+export type SceneNodeLeaf = Omit<GroupNode, "children"> | MeshNode | LineNode | PointsNode | LabelNode
 
 const CommonNodeFields = {
   key: NodeKeySchema,
@@ -259,12 +254,8 @@ const CommonNodeFields = {
 
 const SceneNodeSelf = Schema.suspend((): Schema.Codec<SceneNode, SceneNode> => SceneNodeSchema)
 
-const PointArraySchema = Schema.Array(Vec3Schema).check(
-  Schema.isMinLength(2, { title: "LineNeedsTwoPoints" })
-)
-const PositionArraySchema = Schema.Array(Vec3Schema).check(
-  Schema.isMinLength(1, { title: "PointsNeedsOnePosition" })
-)
+const PointArraySchema = Schema.Array(Vec3Schema).check(Schema.isMinLength(2, { title: "LineNeedsTwoPoints" }))
+const PositionArraySchema = Schema.Array(Vec3Schema).check(Schema.isMinLength(1, { title: "PointsNeedsOnePosition" }))
 
 export const GroupNodeSchema: Schema.Codec<GroupNode, GroupNode> = Schema.TaggedStruct("Group", {
   ...CommonNodeFields,
@@ -303,13 +294,7 @@ export const LabelNodeSchema: Schema.Codec<LabelNode, LabelNode> = Schema.Tagged
 })
 
 export const SceneNodeSchema: Schema.Codec<SceneNode, SceneNode> = Schema.suspend(() =>
-  Schema.Union([
-    GroupNodeSchema,
-    MeshNodeSchema,
-    LineNodeSchema,
-    PointsNodeSchema,
-    LabelNodeSchema
-  ])
+  Schema.Union([GroupNodeSchema, MeshNodeSchema, LineNodeSchema, PointsNodeSchema, LabelNodeSchema])
 )
 
 export interface CanvasScene {
@@ -342,8 +327,7 @@ export const perspectiveCamera = (props: Omit<PerspectiveCamera, "_tag">): Persp
 export const orthographicCamera = (props: Omit<OrthographicCamera, "_tag">): OrthographicCamera =>
   OrthographicCameraSchema.make({ _tag: "Orthographic", ...props })
 
-export const box = (props: Omit<BoxGeometry, "_tag">): BoxGeometry =>
-  BoxGeometrySchema.make({ _tag: "Box", ...props })
+export const box = (props: Omit<BoxGeometry, "_tag">): BoxGeometry => BoxGeometrySchema.make({ _tag: "Box", ...props })
 export const sphere = (props: Omit<SphereGeometry, "_tag">): SphereGeometry =>
   SphereGeometrySchema.make({ _tag: "Sphere", ...props })
 export const plane = (props: Omit<PlaneGeometry, "_tag">): PlaneGeometry =>
@@ -358,14 +342,11 @@ export const group = (
   props: Omit<GroupNode, "_tag" | "children">,
   children: ReadonlyArray<SceneNode> = []
 ): GroupNode => GroupNodeSchema.make({ _tag: "Group", ...props, children })
-export const mesh = (props: Omit<MeshNode, "_tag">): MeshNode =>
-  MeshNodeSchema.make({ _tag: "Mesh", ...props })
-export const line = (props: Omit<LineNode, "_tag">): LineNode =>
-  LineNodeSchema.make({ _tag: "Line", ...props })
+export const mesh = (props: Omit<MeshNode, "_tag">): MeshNode => MeshNodeSchema.make({ _tag: "Mesh", ...props })
+export const line = (props: Omit<LineNode, "_tag">): LineNode => LineNodeSchema.make({ _tag: "Line", ...props })
 export const points = (props: Omit<PointsNode, "_tag">): PointsNode =>
   PointsNodeSchema.make({ _tag: "Points", ...props })
-export const label = (props: Omit<LabelNode, "_tag">): LabelNode =>
-  LabelNodeSchema.make({ _tag: "Label", ...props })
+export const label = (props: Omit<LabelNode, "_tag">): LabelNode => LabelNodeSchema.make({ _tag: "Label", ...props })
 
 export const scene = (
   props: Omit<CanvasScene, "_tag" | "catalogVersion" | "children">,
@@ -387,5 +368,4 @@ export const toLeaf = (node: SceneNode): SceneNodeLeaf => {
   return node
 }
 
-export const childrenOf = (node: SceneNode): ReadonlyArray<SceneNode> =>
-  node._tag === "Group" ? node.children : []
+export const childrenOf = (node: SceneNode): ReadonlyArray<SceneNode> => (node._tag === "Group" ? node.children : [])

@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Exit, Schema } from "effect"
 import {
   IntentRef,
@@ -24,7 +24,14 @@ describe("Terminal host contract (#34)", () => {
     })
     expect(view._tag).toBe("Host")
     expect(view.kind).toBe("terminal")
-    expect(view.props).toEqual({ output: "$ ls\nREADME.md\n", cols: 100, rows: 30, autoFit: true, scrollbackLines: 1000, fontScale: "body" })
+    expect(view.props).toEqual({
+      output: "$ ls\nREADME.md\n",
+      cols: 100,
+      rows: 30,
+      autoFit: true,
+      scrollbackLines: 1000,
+      fontScale: "body"
+    })
     expect(decodeView(encodeView(view))).toEqual(view)
   })
 

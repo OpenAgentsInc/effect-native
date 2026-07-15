@@ -1,12 +1,6 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Exit, Schema } from "effect"
-import {
-  ThemeSchema,
-  colorTokens,
-  defaultTheme,
-  defineTheme,
-  spacingTokens
-} from "../src/index"
+import { ThemeSchema, colorTokens, defaultTheme, defineTheme, spacingTokens } from "../src/index"
 
 describe("@effect-native/tokens theme model", () => {
   test("default theme validates and includes the expected token roles", () => {

@@ -3,7 +3,7 @@ import { makeWebSocketDevtoolsSink } from "@effect-native/devtools"
 import { makeDomRenderer } from "@effect-native/render-dom"
 import { makeGuideAppRuntime } from "./index"
 
-const boot = Effect.gen(function*() {
+const boot = Effect.gen(function* () {
   const root = document.getElementById("app")
   if (root === null) {
     throw new Error("Missing #app root")
@@ -15,9 +15,7 @@ const boot = Effect.gen(function*() {
     devtoolsUrl === null ? {} : { devtoolsSink: makeWebSocketDevtoolsSink(devtoolsUrl) }
   )
   const scope = yield* Scope.make()
-  yield* Scope.provide(scope)(
-    makeDomRenderer().mount(root, runtime.program.viewStream, runtime.report)
-  )
+  yield* Scope.provide(scope)(makeDomRenderer().mount(root, runtime.program.viewStream, runtime.report))
 
   globalThis.addEventListener("beforeunload", () => {
     void Effect.runPromise(Scope.close(scope, Exit.void))

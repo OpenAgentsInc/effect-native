@@ -12,6 +12,7 @@
   "dependencies": {
     "@effect-native/core": "workspace:*",
     "@effect-native/render-dom": "workspace:*",
-    "effect": "4.0.0-beta.94"
+    "effect": "catalog:",
+    "ws": "catalog:"
   }
 }

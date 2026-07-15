@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect } from "effect"
 import { makeDomRenderer, viewStructure as domViewStructure } from "@effect-native/render-dom"
 import {
@@ -25,9 +25,7 @@ const createElement = (
   key: typeof props?.key === "string" ? props.key : null,
   props: {
     ...(props ?? {}),
-    ...(children.length === 0
-      ? {}
-      : { children: children.length === 1 ? children[0] : children })
+    ...(children.length === 0 ? {} : { children: children.length === 1 ? children[0] : children })
   }
 })
 
@@ -73,30 +71,42 @@ describe("cross-app Khala Sync messaging proof (#64 exit test)", () => {
     const container = document.createElement("main")
     document.body.appendChild(container)
 
-    const domStructure = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const surface = yield* makeDomRenderer({ document }).mount(
-        container,
-        Stream.make(result.desktopView),
-        () => Effect.void
+    const domStructure = await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const surface = yield* makeDomRenderer({ document }).mount(
+            container,
+            Stream.make(result.desktopView),
+            () => Effect.void
+          )
+          return yield* surface.serialize
+        })
       )
-      return yield* surface.serialize
-    })))
+    )
 
-    const rnIos = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const surface = yield* makeReactNativeRenderer({
-        dependencies: rnDependencies,
-        platform: "ios"
-      }).mount(undefined, Stream.make(result.mobileView), () => Effect.void)
-      return yield* surface.serialize
-    })))
+    const rnIos = await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const surface = yield* makeReactNativeRenderer({
+            dependencies: rnDependencies,
+            platform: "ios"
+          }).mount(undefined, Stream.make(result.mobileView), () => Effect.void)
+          return yield* surface.serialize
+        })
+      )
+    )
 
-    const rnAndroid = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const surface = yield* makeReactNativeRenderer({
-        dependencies: rnDependencies,
-        platform: "android"
-      }).mount(undefined, Stream.make(result.mobileView), () => Effect.void)
-      return yield* surface.serialize
-    })))
+    const rnAndroid = await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const surface = yield* makeReactNativeRenderer({
+            dependencies: rnDependencies,
+            platform: "android"
+          }).mount(undefined, Stream.make(result.mobileView), () => Effect.void)
+          return yield* surface.serialize
+        })
+      )
+    )
 
     expect(JSON.stringify(domStructure)).toContain("shared-chat-desktop")
     expect(JSON.stringify(domStructure)).toContain("Transcript")

@@ -1,6 +1,17 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect } from "effect"
-import { Badge, Chip, Divider, IntentRef, Meter, StatTile, Table, Text, type IntentReporter, type View } from "@effect-native/core"
+import {
+  Badge,
+  Chip,
+  Divider,
+  IntentRef,
+  Meter,
+  StatTile,
+  Table,
+  Text,
+  type IntentReporter,
+  type View
+} from "@effect-native/core"
 import {
   renderReactNativeView,
   type ReactElementLike,
@@ -67,16 +78,32 @@ describe("data display (#39) React Native renderer", () => {
   })
 
   test("chip, badge, divider, stat tile, and a selectable table render", () => {
-    const chip = renderReactNativeView(Chip({ key: "c", label: "Slots", value: "3/8", tone: "info" }) as View, dependencies, noopReport)
+    const chip = renderReactNativeView(
+      Chip({ key: "c", label: "Slots", value: "3/8", tone: "info" }) as View,
+      dependencies,
+      noopReport
+    )
     expect(find(chip, (e) => e.props.children === "3/8")).not.toBeUndefined()
 
-    const badge = renderReactNativeView(Badge({ key: "b", label: "Live", tone: "success" }) as View, dependencies, noopReport)
+    const badge = renderReactNativeView(
+      Badge({ key: "b", label: "Live", tone: "success" }) as View,
+      dependencies,
+      noopReport
+    )
     expect(badge.props.testID).toBe("en-badge:success")
 
-    const divider = renderReactNativeView(Divider({ key: "d", orientation: "vertical" }) as View, dependencies, noopReport)
+    const divider = renderReactNativeView(
+      Divider({ key: "d", orientation: "vertical" }) as View,
+      dependencies,
+      noopReport
+    )
     expect((divider.props.style as { width: number }).width).toBe(1)
 
-    const tile = renderReactNativeView(StatTile({ key: "t", label: "Workers", value: "12" }) as View, dependencies, noopReport)
+    const tile = renderReactNativeView(
+      StatTile({ key: "t", label: "Workers", value: "12" }) as View,
+      dependencies,
+      noopReport
+    )
     expect(find(tile, (e) => e.props.children === "12")).not.toBeUndefined()
 
     const table = renderReactNativeView(

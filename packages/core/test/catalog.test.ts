@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Exit, Schema } from "effect"
 import fc from "fast-check"
 import {
@@ -54,100 +54,123 @@ const radiusToken = fc.constantFrom<RadiusToken>(...radiusTokens)
 const typeScaleToken = fc.constantFrom<TypeScaleToken>(...typeScaleTokens)
 const dimensionToken = fc.constantFrom<Extract<Dimension, string>>(...dimensionTokens)
 
-const intentRef = fc.record({
-  name: nonEmptyString,
-  payload: fc.option(
-    fc.oneof(
-      fc.jsonValue().map((value): IntentPayloadTemplate => StaticPayload(value as JsonPayload)),
-      nonEmptyString.map((path): IntentPayloadTemplate => ComponentValueBinding(path))
-    ),
-    { nil: undefined }
+const intentRef = fc
+  .record({
+    name: nonEmptyString,
+    payload: fc.option(
+      fc.oneof(
+        fc.jsonValue().map((value): IntentPayloadTemplate => StaticPayload(value as JsonPayload)),
+        nonEmptyString.map((path): IntentPayloadTemplate => ComponentValueBinding(path))
+      ),
+      { nil: undefined }
+    )
+  })
+  .map(
+    ({ name, payload }): IntentRef =>
+      payload === undefined ? { name } : { name, payload: payload as Exclude<IntentRef["payload"], undefined> }
   )
-}).map(({ name, payload }): IntentRef => (
-  payload === undefined ? { name } : { name, payload: payload as Exclude<IntentRef["payload"], undefined> }
-))
 
-const dimension: fc.Arbitrary<Dimension> = fc.oneof(
-  dimensionToken,
-  fc.integer({ min: 0, max: 1200 })
-)
+const dimension: fc.Arbitrary<Dimension> = fc.oneof(dimensionToken, fc.integer({ min: 0, max: 1200 }))
 
 const leafView = (): fc.Arbitrary<View> =>
   fc.oneof(
-    fc.record({
-      key,
-      content: fc.string({ maxLength: 80 }),
-      variant: typeScaleToken,
-      color: colorToken,
-      weight: fc.constantFrom<TextWeight>("regular", "medium", "semibold", "bold")
-    }).map(Text),
-    fc.record({
-      key,
-      label: fc.string({ minLength: 1, maxLength: 40 }),
-      variant: fc.constantFrom<ButtonVariant>("primary", "secondary", "ghost"),
-      disabled: fc.boolean(),
-      onPress: intentRef
-    }).map(Button),
-    fc.record({
-      key,
-      sourceId: fc.integer({ min: 1, max: 100000 }),
-      alt: fc.string({ minLength: 1, maxLength: 80 }),
-      width: dimension,
-      height: dimension,
-      fit: fc.constantFrom<ImageFit>("contain", "cover", "fill")
-    }).map(({ sourceId, ...props }) => Image({
-      ...props,
-      source: `https://example.com/assets/${sourceId}.png`
-    })),
-    fc.oneof(
-      fc.record({
+    fc
+      .record({
         key,
-        value: fc.string({ maxLength: 80 }),
-        placeholder: fc.string({ maxLength: 40 }),
-        label: fc.string({ maxLength: 40 }),
-        secure: fc.constant(true),
-        onChange: intentRef,
-        onSubmit: intentRef
-      }).map(TextField),
-      fc.record({
-        key,
-        value: fc.string({ maxLength: 80 }),
-        placeholder: fc.string({ maxLength: 40 }),
-        label: fc.string({ maxLength: 40 }),
-        secure: fc.constant(false),
-        multiline: fc.boolean(),
-        onChange: intentRef,
-        onSubmit: intentRef
-      }).map(TextField)
-    ),
-    fc.oneof(
-      fc.record({
-        key,
-        size: spacingToken,
-        flex: fc.constant(false)
-      }).map(Spacer),
-      fc.record({
-        key,
-        flex: fc.constant(true)
-      }).map(Spacer)
-    ),
-    fc.record({
-      key,
-      destinationId: fc.integer({ min: 1, max: 100000 }),
-      label: fc.string({ minLength: 1, maxLength: 40 })
-    }).map(({ destinationId, label, ...props }) => Link({
-      ...props,
-      destination: {
-        kind: "url",
-        href: `https://example.com/${destinationId}`
-      }
-    }, [
-      Text({
-        key: `${props.key}-label`,
-        content: label,
-        variant: "body"
+        content: fc.string({ maxLength: 80 }),
+        variant: typeScaleToken,
+        color: colorToken,
+        weight: fc.constantFrom<TextWeight>("regular", "medium", "semibold", "bold")
       })
-    ]))
+      .map(Text),
+    fc
+      .record({
+        key,
+        label: fc.string({ minLength: 1, maxLength: 40 }),
+        variant: fc.constantFrom<ButtonVariant>("primary", "secondary", "ghost"),
+        disabled: fc.boolean(),
+        onPress: intentRef
+      })
+      .map(Button),
+    fc
+      .record({
+        key,
+        sourceId: fc.integer({ min: 1, max: 100000 }),
+        alt: fc.string({ minLength: 1, maxLength: 80 }),
+        width: dimension,
+        height: dimension,
+        fit: fc.constantFrom<ImageFit>("contain", "cover", "fill")
+      })
+      .map(({ sourceId, ...props }) =>
+        Image({
+          ...props,
+          source: `https://example.com/assets/${sourceId}.png`
+        })
+      ),
+    fc.oneof(
+      fc
+        .record({
+          key,
+          value: fc.string({ maxLength: 80 }),
+          placeholder: fc.string({ maxLength: 40 }),
+          label: fc.string({ maxLength: 40 }),
+          secure: fc.constant(true),
+          onChange: intentRef,
+          onSubmit: intentRef
+        })
+        .map(TextField),
+      fc
+        .record({
+          key,
+          value: fc.string({ maxLength: 80 }),
+          placeholder: fc.string({ maxLength: 40 }),
+          label: fc.string({ maxLength: 40 }),
+          secure: fc.constant(false),
+          multiline: fc.boolean(),
+          onChange: intentRef,
+          onSubmit: intentRef
+        })
+        .map(TextField)
+    ),
+    fc.oneof(
+      fc
+        .record({
+          key,
+          size: spacingToken,
+          flex: fc.constant(false)
+        })
+        .map(Spacer),
+      fc
+        .record({
+          key,
+          flex: fc.constant(true)
+        })
+        .map(Spacer)
+    ),
+    fc
+      .record({
+        key,
+        destinationId: fc.integer({ min: 1, max: 100000 }),
+        label: fc.string({ minLength: 1, maxLength: 40 })
+      })
+      .map(({ destinationId, label, ...props }) =>
+        Link(
+          {
+            ...props,
+            destination: {
+              kind: "url",
+              href: `https://example.com/${destinationId}`
+            }
+          },
+          [
+            Text({
+              key: `${props.key}-label`,
+              content: label,
+              variant: "body"
+            })
+          ]
+        )
+      )
   )
 
 const view = (depth: number): fc.Arbitrary<View> => {
@@ -157,36 +180,46 @@ const view = (depth: number): fc.Arbitrary<View> => {
 
   return fc.oneof(
     leafView(),
-    fc.record({
-      key,
-      direction: fc.constantFrom<StackDirection>("row", "column"),
-      gap: spacingToken,
-      align: fc.constantFrom<StackAlign>("start", "center", "end", "stretch"),
-      justify: fc.constantFrom<StackJustify>("start", "center", "end", "between", "around"),
-      padding: spacingToken,
-      children: fc.array(view(depth - 1), { maxLength: 3 })
-    }).map(({ children, ...props }) => Stack(props, children)),
-    fc.record({
-      key,
-      padding: spacingToken,
-      radius: radiusToken,
-      children: fc.array(view(depth - 1), { maxLength: 3 })
-    }).map(({ children, ...props }) => Card(props, children)),
-    fc.record({
-      key,
-      items: fc.array(view(depth - 1), { maxLength: 3 })
-    }).map(({ items, ...props }) => List(props, items as ReadonlyArray<KeyedView>)),
-    fc.record({
-      key,
-      sectionKey: key,
-      items: fc.array(view(depth - 1), { maxLength: 3 })
-    }).map(({ sectionKey, items, ...props }) =>
-      SectionList(props, [{
-        key: sectionKey,
-        header: Text({ key: `${sectionKey}-header`, content: "Section", variant: "label" }),
-        items: items as ReadonlyArray<KeyedView>
-      }])
-    )
+    fc
+      .record({
+        key,
+        direction: fc.constantFrom<StackDirection>("row", "column"),
+        gap: spacingToken,
+        align: fc.constantFrom<StackAlign>("start", "center", "end", "stretch"),
+        justify: fc.constantFrom<StackJustify>("start", "center", "end", "between", "around"),
+        padding: spacingToken,
+        children: fc.array(view(depth - 1), { maxLength: 3 })
+      })
+      .map(({ children, ...props }) => Stack(props, children)),
+    fc
+      .record({
+        key,
+        padding: spacingToken,
+        radius: radiusToken,
+        children: fc.array(view(depth - 1), { maxLength: 3 })
+      })
+      .map(({ children, ...props }) => Card(props, children)),
+    fc
+      .record({
+        key,
+        items: fc.array(view(depth - 1), { maxLength: 3 })
+      })
+      .map(({ items, ...props }) => List(props, items as ReadonlyArray<KeyedView>)),
+    fc
+      .record({
+        key,
+        sectionKey: key,
+        items: fc.array(view(depth - 1), { maxLength: 3 })
+      })
+      .map(({ sectionKey, items, ...props }) =>
+        SectionList(props, [
+          {
+            key: sectionKey,
+            header: Text({ key: `${sectionKey}-header`, content: "Section", variant: "label" }),
+            items: items as ReadonlyArray<KeyedView>
+          }
+        ])
+      )
   )
 }
 
@@ -213,17 +246,25 @@ describe("Effect Native catalog", () => {
   test("malformed trees fail schema decode with typed schema errors", () => {
     const decode = Schema.decodeUnknownExit(ViewSchema)
 
-    expect(Exit.isFailure(decode({
-      _tag: "Custom",
-      catalogVersion: CatalogVersion
-    }))).toBe(true)
+    expect(
+      Exit.isFailure(
+        decode({
+          _tag: "Custom",
+          catalogVersion: CatalogVersion
+        })
+      )
+    ).toBe(true)
 
-    expect(Exit.isFailure(decode({
-      _tag: "Stack",
-      catalogVersion: CatalogVersion,
-      direction: "diagonal",
-      children: []
-    }))).toBe(true)
+    expect(
+      Exit.isFailure(
+        decode({
+          _tag: "Stack",
+          catalogVersion: CatalogVersion,
+          direction: "diagonal",
+          children: []
+        })
+      )
+    ).toBe(true)
   })
 
   test("intent refs keep payload data serializable", () => {
@@ -272,30 +313,32 @@ describe("Effect Native catalog", () => {
 
   test("virtualized collections and sections stay serializable and bounded", () => {
     const more = { name: "ReachedEnd", payload: StaticPayload({ source: "feed" }) }
-    const list = List({
-      key: "feed",
-      virtualize: true,
-      estimatedItemSize: 48,
-      endReachedThreshold: 0.25,
-      onEndReached: more
-    }, [
-      keyed(Text({ key: "first", content: "First", variant: "body" }))
-    ])
-    const sections = SectionList({
-      key: "settings",
-      virtualize: true,
-      estimatedItemSize: "sm",
-      stickyHeaders: true,
-      onEndReached: more
-    }, [
+    const list = List(
       {
-        key: "account",
-        header: Text({ key: "account-header", content: "Account", variant: "label" }),
-        items: [
-          keyed(Text({ key: "email", content: "Email", variant: "body" }))
-        ]
-      }
-    ])
+        key: "feed",
+        virtualize: true,
+        estimatedItemSize: 48,
+        endReachedThreshold: 0.25,
+        onEndReached: more
+      },
+      [keyed(Text({ key: "first", content: "First", variant: "body" }))]
+    )
+    const sections = SectionList(
+      {
+        key: "settings",
+        virtualize: true,
+        estimatedItemSize: "sm",
+        stickyHeaders: true,
+        onEndReached: more
+      },
+      [
+        {
+          key: "account",
+          header: Text({ key: "account-header", content: "Account", variant: "label" }),
+          items: [keyed(Text({ key: "email", content: "Email", variant: "body" }))]
+        }
+      ]
+    )
 
     expect(decodeView(encodeView(list))).toEqual(list)
     expect(decodeView(encodeView(sections))).toEqual(sections)
@@ -344,26 +387,28 @@ describe("Effect Native catalog", () => {
   })
 
   test("overlay components round-trip and reject stacks beyond the v0 bound", () => {
-    const modal = Modal({
-      key: "confirm",
-      title: "Confirm",
-      open: true,
-      dismissable: true,
-      size: "md",
-      onDismiss: { name: "Dismissed" }
-    }, [
-      Text({ key: "copy", content: "Ready?", variant: "body" })
-    ])
-    const sheet = Sheet({
-      key: "details",
-      open: false,
-      dismissable: true,
-      edge: "bottom",
-      detents: ["sm", "md"],
-      onDismiss: { name: "Dismissed" }
-    }, [
-      Text({ key: "details-copy", content: "Details", variant: "body" })
-    ])
+    const modal = Modal(
+      {
+        key: "confirm",
+        title: "Confirm",
+        open: true,
+        dismissable: true,
+        size: "md",
+        onDismiss: { name: "Dismissed" }
+      },
+      [Text({ key: "copy", content: "Ready?", variant: "body" })]
+    )
+    const sheet = Sheet(
+      {
+        key: "details",
+        open: false,
+        dismissable: true,
+        edge: "bottom",
+        detents: ["sm", "md"],
+        onDismiss: { name: "Dismissed" }
+      },
+      [Text({ key: "details-copy", content: "Details", variant: "body" })]
+    )
 
     expect(decodeView(encodeView(modal))).toEqual(modal)
     expect(decodeView(encodeView(sheet))).toEqual(sheet)

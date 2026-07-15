@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect, Schema, Stream, SubscriptionRef } from "effect"
 import {
   Binding,
@@ -51,9 +51,12 @@ interface NameState {
   readonly name: string
 }
 
-const Pressed = defineIntent("Pressed", Schema.Struct({
-  amount: Schema.Number
-}))
+const Pressed = defineIntent(
+  "Pressed",
+  Schema.Struct({
+    amount: Schema.Number
+  })
+)
 const Changed = defineIntent("Changed", Schema.String)
 const counterDefinitions = [Pressed] as const
 const textFieldDefinitions = [Changed] as const
@@ -81,9 +84,7 @@ const createElement = (
   key: typeof props?.key === "string" ? props.key : null,
   props: {
     ...(props ?? {}),
-    ...(children.length === 0
-      ? {}
-      : { children: children.length === 1 ? children[0] : children })
+    ...(children.length === 0 ? {} : { children: children.length === 1 ? children[0] : children })
   }
 })
 
@@ -129,7 +130,7 @@ const children = (node: ReactElementLike): ReadonlyArray<ReactNodeLike> => {
   if (value === undefined || value === null) {
     return []
   }
-  return Array.isArray(value) ? value as ReadonlyArray<ReactNodeLike> : [value as ReactNodeLike]
+  return Array.isArray(value) ? (value as ReadonlyArray<ReactNodeLike>) : [value as ReactNodeLike]
 }
 
 const findByNativeId = (node: ReactNodeLike, nativeID: string): ReactElementLike | undefined => {
@@ -172,138 +173,153 @@ describe("React Native renderer", () => {
   test("counter fixture renders through the RN host shim, reports press intents, and updates", async () => {
     const renders: Array<ReactNodeLike | undefined> = []
 
-    await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const state = yield* SubscriptionRef.make<CounterState>({ count: 0 })
-      const program = makeViewProgramFromState(state, counterView)
-      const handlers: IntentHandlers<typeof counterDefinitions> = {
-        Pressed: (payload) =>
-          SubscriptionRef.update(state, (current) => ({
-            count: current.count + payload.amount
-          }))
-      }
-      const registry = yield* makeIntentRegistry(counterDefinitions, handlers, { now: () => 0 })
-      const report: IntentReporter = (ref, runtimeValue) =>
-        registry.dispatch(resolveIntentRef(ref, runtimeValue))
+    await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const state = yield* SubscriptionRef.make<CounterState>({ count: 0 })
+          const program = makeViewProgramFromState(state, counterView)
+          const handlers: IntentHandlers<typeof counterDefinitions> = {
+            Pressed: (payload) =>
+              SubscriptionRef.update(state, (current) => ({
+                count: current.count + payload.amount
+              }))
+          }
+          const registry = yield* makeIntentRegistry(counterDefinitions, handlers, { now: () => 0 })
+          const report: IntentReporter = (ref, runtimeValue) => registry.dispatch(resolveIntentRef(ref, runtimeValue))
 
-      const renderer = makeReactNativeRenderer({ dependencies })
-      const surface = yield* renderer.mount({ render: (element) => renders.push(element) }, program.viewStream, report)
-      const button = findByNativeId(yield* surface.currentElement, nativeId("Button", "increment"))
+          const renderer = makeReactNativeRenderer({ dependencies })
+          const surface = yield* renderer.mount(
+            { render: (element) => renders.push(element) },
+            program.viewStream,
+            report
+          )
+          const button = findByNativeId(yield* surface.currentElement, nativeId("Button", "increment"))
 
-      expect(reactNativeStructure(yield* surface.currentElement)).toEqual({
-        tag: "Stack",
-        key: "root",
-        children: [
-          { tag: "Text", key: "count", text: "0" },
-          { tag: "Button", key: "increment", text: "Increment from 0" }
-        ]
-      })
+          expect(reactNativeStructure(yield* surface.currentElement)).toEqual({
+            tag: "Stack",
+            key: "root",
+            children: [
+              { tag: "Text", key: "count", text: "0" },
+              { tag: "Button", key: "increment", text: "Increment from 0" }
+            ]
+          })
 
-      const onPress = button?.props.onPress
-      if (typeof onPress !== "function") {
-        throw new Error("expected Pressable onPress")
-      }
-      onPress()
-      yield* nextTask
-      yield* Effect.yieldNow
+          const onPress = button?.props.onPress
+          if (typeof onPress !== "function") {
+            throw new Error("expected Pressable onPress")
+          }
+          onPress()
+          yield* nextTask
+          yield* Effect.yieldNow
 
-      expect(reactNativeStructure(yield* surface.currentElement)).toEqual({
-        tag: "Stack",
-        key: "root",
-        children: [
-          { tag: "Text", key: "count", text: "1" },
-          { tag: "Button", key: "increment", text: "Increment from 1" }
-        ]
-      })
-      expect(renders).toHaveLength(2)
-      yield* surface.unmount
-      expect(renders[renders.length - 1]).toBeUndefined()
-    })))
+          expect(reactNativeStructure(yield* surface.currentElement)).toEqual({
+            tag: "Stack",
+            key: "root",
+            children: [
+              { tag: "Text", key: "count", text: "1" },
+              { tag: "Button", key: "increment", text: "Increment from 1" }
+            ]
+          })
+          expect(renders).toHaveLength(2)
+          yield* surface.unmount
+          expect(renders[renders.length - 1]).toBeUndefined()
+        })
+      )
+    )
   })
 
   test("TextField reports changes and stays controlled by runtime state", async () => {
-    await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const state = yield* SubscriptionRef.make<NameState>({ name: "" })
-      const program = makeViewProgramFromState(state, (current) =>
-        TextField({
-          key: "name",
-          value: current.name,
-          label: "Name",
-          placeholder: "Name",
-          onChange: IntentRef("Changed", ComponentValueBinding())
-        }))
-      const handlers: IntentHandlers<typeof textFieldDefinitions> = {
-        Changed: (value) => SubscriptionRef.update(state, () => ({ name: value }))
-      }
-      const registry = yield* makeIntentRegistry(textFieldDefinitions, handlers)
-      const report: IntentReporter = (ref, runtimeValue) =>
-        registry.dispatch(resolveIntentRef(ref, runtimeValue))
-      const surface = yield* makeReactNativeRenderer({ dependencies }).mount(undefined, program.viewStream, report)
+    await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const state = yield* SubscriptionRef.make<NameState>({ name: "" })
+          const program = makeViewProgramFromState(state, (current) =>
+            TextField({
+              key: "name",
+              value: current.name,
+              label: "Name",
+              placeholder: "Name",
+              onChange: IntentRef("Changed", ComponentValueBinding())
+            })
+          )
+          const handlers: IntentHandlers<typeof textFieldDefinitions> = {
+            Changed: (value) => SubscriptionRef.update(state, () => ({ name: value }))
+          }
+          const registry = yield* makeIntentRegistry(textFieldDefinitions, handlers)
+          const report: IntentReporter = (ref, runtimeValue) => registry.dispatch(resolveIntentRef(ref, runtimeValue))
+          const surface = yield* makeReactNativeRenderer({ dependencies }).mount(undefined, program.viewStream, report)
 
-      const input = findByNativeId(yield* surface.currentElement, nativeId("TextField", "name"))
-      expect(input?.props.value).toBe("")
+          const input = findByNativeId(yield* surface.currentElement, nativeId("TextField", "name"))
+          expect(input?.props.value).toBe("")
 
-      const onChangeText = input?.props.onChangeText
-      if (typeof onChangeText !== "function") {
-        throw new Error("expected TextInput onChangeText")
-      }
-      onChangeText("Ada")
-      yield* nextTask
-      yield* Effect.yieldNow
+          const onChangeText = input?.props.onChangeText
+          if (typeof onChangeText !== "function") {
+            throw new Error("expected TextInput onChangeText")
+          }
+          onChangeText("Ada")
+          yield* nextTask
+          yield* Effect.yieldNow
 
-      expect(yield* program.currentState).toEqual({ name: "Ada" })
-      expect(findByNativeId(yield* surface.currentElement, nativeId("TextField", "name"))?.props.value).toBe("Ada")
+          expect(yield* program.currentState).toEqual({ name: "Ada" })
+          expect(findByNativeId(yield* surface.currentElement, nativeId("TextField", "name"))?.props.value).toBe("Ada")
 
-      yield* program.setState({ name: "Grace" })
-      yield* Effect.yieldNow
+          yield* program.setState({ name: "Grace" })
+          yield* Effect.yieldNow
 
-      expect(findByNativeId(yield* surface.currentElement, nativeId("TextField", "name"))?.props.value).toBe("Grace")
-    })))
+          expect(findByNativeId(yield* surface.currentElement, nativeId("TextField", "name"))?.props.value).toBe(
+            "Grace"
+          )
+        })
+      )
+    )
   })
 
   test("field-bound TextField reports form field changes, blur, and autoFocus", async () => {
-    await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const handlers: IntentHandlers<typeof formIntentDefinitions> = {
-        FormFieldChanged: () => Effect.succeed(undefined),
-        FormFieldBlurred: () => Effect.succeed(undefined),
-        FormSubmitRequested: () => Effect.succeed(undefined)
-      }
-      const registry = yield* makeIntentRegistry(formIntentDefinitions, handlers, { now: () => 0 })
-      const report: IntentReporter = (ref, runtimeValue) =>
-        registry.dispatch(resolveIntentRef(ref, runtimeValue))
-      const surface = yield* makeReactNativeRenderer({ dependencies }).mount(
-        undefined,
-        Stream.make(TextField({
-          key: "email",
-          value: "",
-          label: "Email",
-          field: FieldBinding("signup", "email"),
-          focused: true
-        })),
-        report
+    await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const handlers: IntentHandlers<typeof formIntentDefinitions> = {
+            FormFieldChanged: () => Effect.succeed(undefined),
+            FormFieldBlurred: () => Effect.succeed(undefined),
+            FormSubmitRequested: () => Effect.succeed(undefined)
+          }
+          const registry = yield* makeIntentRegistry(formIntentDefinitions, handlers, { now: () => 0 })
+          const report: IntentReporter = (ref, runtimeValue) => registry.dispatch(resolveIntentRef(ref, runtimeValue))
+          const surface = yield* makeReactNativeRenderer({ dependencies }).mount(
+            undefined,
+            Stream.make(
+              TextField({
+                key: "email",
+                value: "",
+                label: "Email",
+                field: FieldBinding("signup", "email"),
+                focused: true
+              })
+            ),
+            report
+          )
+
+          const input = findByNativeId(yield* surface.currentElement, nativeId("TextField", "email"))
+          expect(input?.props.autoFocus).toBe(true)
+          const onChangeText = input?.props.onChangeText
+          const onBlur = input?.props.onBlur
+          if (typeof onChangeText !== "function" || typeof onBlur !== "function") {
+            throw new Error("expected TextInput form handlers")
+          }
+
+          onChangeText("ada@example.com")
+          onBlur()
+          yield* nextTask
+
+          const events = yield* registry.events
+          expect(events.map((event) => event.intent.name)).toEqual(["FormFieldChanged", "FormFieldBlurred"])
+          expect(events.map((event) => event.intent.payload)).toEqual([
+            { form: "signup", field: "email", value: "ada@example.com" },
+            { form: "signup", field: "email" }
+          ])
+        })
       )
-
-      const input = findByNativeId(yield* surface.currentElement, nativeId("TextField", "email"))
-      expect(input?.props.autoFocus).toBe(true)
-      const onChangeText = input?.props.onChangeText
-      const onBlur = input?.props.onBlur
-      if (typeof onChangeText !== "function" || typeof onBlur !== "function") {
-        throw new Error("expected TextInput form handlers")
-      }
-
-      onChangeText("ada@example.com")
-      onBlur()
-      yield* nextTask
-
-      const events = yield* registry.events
-      expect(events.map((event) => event.intent.name)).toEqual([
-        "FormFieldChanged",
-        "FormFieldBlurred"
-      ])
-      expect(events.map((event) => event.intent.payload)).toEqual([
-        { form: "signup", field: "email", value: "ada@example.com" },
-        { form: "signup", field: "email" }
-      ])
-    })))
+    )
   })
 
   test("Link renders as an accessible Pressable and reports typed navigation intents", async () => {
@@ -311,47 +327,52 @@ describe("React Native renderer", () => {
       kind: "path",
       path: "/docs"
     } as const satisfies NavigationDestination
-    const view = Link({
-      key: "docs",
-      destination,
-      style: { marginTop: "2", opacity: 0.9 }
-    }, [
-      Text({ key: "docs-label", content: "Docs", variant: "body" })
-    ])
+    const view = Link(
+      {
+        key: "docs",
+        destination,
+        style: { marginTop: "2", opacity: 0.9 }
+      },
+      [Text({ key: "docs-label", content: "Docs", variant: "body" })]
+    )
     const recorded: Array<NavigationDestination> = []
 
-    await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const registry = yield* makeIntentRegistry(
-        navigationIntentDefinitions,
-        makeNavigationIntentHandlers({
-          navigate: (next) => Effect.sync(() => {
-            recorded.push(next)
+    await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const registry = yield* makeIntentRegistry(
+            navigationIntentDefinitions,
+            makeNavigationIntentHandlers({
+              navigate: (next) =>
+                Effect.sync(() => {
+                  recorded.push(next)
+                })
+            })
+          )
+          const report: IntentReporter = (ref, runtimeValue) => registry.dispatch(resolveIntentRef(ref, runtimeValue))
+          const surface = yield* makeReactNativeRenderer({ dependencies }).mount(undefined, Stream.make(view), report)
+          const current = yield* surface.currentElement
+          const link = findByNativeId(current, nativeId("Link", "docs"))
+
+          expect(link?.type).toBe(host.Pressable)
+          expect(link?.props.accessibilityRole).toBe("link")
+          expect(reactNativeStructure(current)).toEqual({
+            tag: "Link",
+            key: "docs",
+            children: [{ tag: "Text", key: "docs-label", text: "Docs" }]
           })
+
+          const onPress = link?.props.onPress
+          if (typeof onPress !== "function") {
+            throw new Error("expected Link Pressable onPress")
+          }
+          onPress()
+          yield* nextTask
+
+          expect(recorded).toEqual([destination])
         })
       )
-      const report: IntentReporter = (ref, runtimeValue) =>
-        registry.dispatch(resolveIntentRef(ref, runtimeValue))
-      const surface = yield* makeReactNativeRenderer({ dependencies }).mount(undefined, Stream.make(view), report)
-      const current = yield* surface.currentElement
-      const link = findByNativeId(current, nativeId("Link", "docs"))
-
-      expect(link?.type).toBe(host.Pressable)
-      expect(link?.props.accessibilityRole).toBe("link")
-      expect(reactNativeStructure(current)).toEqual({
-        tag: "Link",
-        key: "docs",
-        children: [{ tag: "Text", key: "docs-label", text: "Docs" }]
-      })
-
-      const onPress = link?.props.onPress
-      if (typeof onPress !== "function") {
-        throw new Error("expected Link Pressable onPress")
-      }
-      onPress()
-      yield* nextTask
-
-      expect(recorded).toEqual([destination])
-    })))
+    )
   })
 
   test("Modal renders through the RN host component and reports request-close dismissals", () => {
@@ -360,16 +381,21 @@ describe("React Native renderer", () => {
       Effect.sync(() => {
         reports.push(resolveIntentRef(ref, runtimeValue))
       })
-    const element = renderReactNativeView(Modal({
-      key: "confirm",
-      title: "Confirm",
-      open: true,
-      dismissable: true,
-      size: "md",
-      onDismiss: IntentRef("Dismissed", StaticPayload({ surface: "modal" }))
-    }, [
-      Text({ key: "copy", content: "Confirm?", variant: "body" })
-    ]), dependencies, report)
+    const element = renderReactNativeView(
+      Modal(
+        {
+          key: "confirm",
+          title: "Confirm",
+          open: true,
+          dismissable: true,
+          size: "md",
+          onDismiss: IntentRef("Dismissed", StaticPayload({ surface: "modal" }))
+        },
+        [Text({ key: "copy", content: "Confirm?", variant: "body" })]
+      ),
+      dependencies,
+      report
+    )
 
     expect(element.type).toBe(host.Modal)
     expect(element.props.visible).toBe(true)
@@ -381,9 +407,7 @@ describe("React Native renderer", () => {
     }
     onRequestClose()
 
-    expect(reports).toEqual([
-      { name: "Dismissed", payload: { surface: "modal" } }
-    ])
+    expect(reports).toEqual([{ name: "Dismissed", payload: { surface: "modal" } }])
   })
 
   test("Sheet maps detents to panel size and reports backdrop dismissals", () => {
@@ -392,16 +416,21 @@ describe("React Native renderer", () => {
       Effect.sync(() => {
         reports.push(resolveIntentRef(ref, runtimeValue))
       })
-    const element = renderReactNativeView(Sheet({
-      key: "details",
-      open: true,
-      dismissable: true,
-      edge: "bottom",
-      detents: ["sm", "md"],
-      onDismiss: IntentRef("Dismissed", StaticPayload({ surface: "sheet" }))
-    }, [
-      Text({ key: "copy", content: "Details", variant: "body" })
-    ]), dependencies, report)
+    const element = renderReactNativeView(
+      Sheet(
+        {
+          key: "details",
+          open: true,
+          dismissable: true,
+          edge: "bottom",
+          detents: ["sm", "md"],
+          onDismiss: IntentRef("Dismissed", StaticPayload({ surface: "sheet" }))
+        },
+        [Text({ key: "copy", content: "Details", variant: "body" })]
+      ),
+      dependencies,
+      report
+    )
     const [backdrop, panel] = children(element)
 
     expect(element.props.style).toMatchObject({ display: "flex" })
@@ -419,19 +448,21 @@ describe("React Native renderer", () => {
     }
     onPress()
 
-    expect(reports).toEqual([
-      { name: "Dismissed", payload: { surface: "sheet" } }
-    ])
+    expect(reports).toEqual([{ name: "Dismissed", payload: { surface: "sheet" } }])
 
     reports.length = 0
-    const locked = renderReactNativeView(Sheet({
-      key: "locked",
-      open: true,
-      dismissable: false,
-      edge: "side",
-      detents: ["md"],
-      onDismiss: IntentRef("Dismissed", StaticPayload({ surface: "sheet" }))
-    }), dependencies, report)
+    const locked = renderReactNativeView(
+      Sheet({
+        key: "locked",
+        open: true,
+        dismissable: false,
+        edge: "side",
+        detents: ["md"],
+        onDismiss: IntentRef("Dismissed", StaticPayload({ surface: "sheet" }))
+      }),
+      dependencies,
+      report
+    )
     const [lockedBackdrop, lockedPanel] = children(locked)
     if (!isElement(lockedBackdrop) || !isElement(lockedPanel)) {
       throw new Error("expected locked sheet nodes")
@@ -457,72 +488,81 @@ describe("React Native renderer", () => {
         Dimensions: viewport.dimensions
       }
     }
-    const view = Stack({
-      key: "responsive",
-      direction: { base: "column", md: "row" },
-      gap: { base: "1", md: "3" },
-      padding: { base: "1", md: "4" }
-    }, [
-      Image({
-        key: "hero",
-        source: "https://example.com/hero.png",
-        alt: "Hero",
-        width: { base: "sm", md: "lg" },
-        height: { base: 80, md: 160 }
-      })
-    ])
+    const view = Stack(
+      {
+        key: "responsive",
+        direction: { base: "column", md: "row" },
+        gap: { base: "1", md: "3" },
+        padding: { base: "1", md: "4" }
+      },
+      [
+        Image({
+          key: "hero",
+          source: "https://example.com/hero.png",
+          alt: "Hero",
+          width: { base: "sm", md: "lg" },
+          height: { base: 80, md: 160 }
+        })
+      ]
+    )
 
-    await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const surface = yield* makeReactNativeRenderer({ dependencies: responsiveDependencies }).mount(
-        undefined,
-        Stream.make(view),
-        noopReport
+    await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const surface = yield* makeReactNativeRenderer({ dependencies: responsiveDependencies }).mount(
+            undefined,
+            Stream.make(view),
+            noopReport
+          )
+          const initialElement = yield* surface.currentElement
+          const initialStack = findByNativeId(initialElement, nativeId("Stack", "responsive"))
+          const initialImage = findByNativeId(initialElement, nativeId("Image", "hero"))
+
+          expect((yield* surface.currentViewport).breakpoint).toBe("sm")
+          expect(initialStack?.props.style).toMatchObject({
+            flexDirection: "column",
+            gap: 4,
+            padding: 4
+          })
+          expect(initialImage?.props.style).toMatchObject({
+            width: 240,
+            height: 80
+          })
+
+          viewport.set({ width: 900, height: 800 })
+          yield* nextTask
+          yield* Effect.yieldNow
+
+          const updatedElement = yield* surface.currentElement
+          const updatedStack = findByNativeId(updatedElement, nativeId("Stack", "responsive"))
+          const updatedImage = findByNativeId(updatedElement, nativeId("Image", "hero"))
+
+          expect((yield* surface.currentViewport).breakpoint).toBe("md")
+          expect(updatedStack?.props.style).toMatchObject({
+            flexDirection: "row",
+            gap: 12,
+            padding: 16
+          })
+          expect(updatedImage?.props.style).toMatchObject({
+            width: 480,
+            height: 160
+          })
+        })
       )
-      const initialElement = yield* surface.currentElement
-      const initialStack = findByNativeId(initialElement, nativeId("Stack", "responsive"))
-      const initialImage = findByNativeId(initialElement, nativeId("Image", "hero"))
-
-      expect((yield* surface.currentViewport).breakpoint).toBe("sm")
-      expect(initialStack?.props.style).toMatchObject({
-        flexDirection: "column",
-        gap: 4,
-        padding: 4
-      })
-      expect(initialImage?.props.style).toMatchObject({
-        width: 240,
-        height: 80
-      })
-
-      viewport.set({ width: 900, height: 800 })
-      yield* nextTask
-      yield* Effect.yieldNow
-
-      const updatedElement = yield* surface.currentElement
-      const updatedStack = findByNativeId(updatedElement, nativeId("Stack", "responsive"))
-      const updatedImage = findByNativeId(updatedElement, nativeId("Image", "hero"))
-
-      expect((yield* surface.currentViewport).breakpoint).toBe("md")
-      expect(updatedStack?.props.style).toMatchObject({
-        flexDirection: "row",
-        gap: 12,
-        padding: 16
-      })
-      expect(updatedImage?.props.style).toMatchObject({
-        width: 480,
-        height: 160
-      })
-    })))
+    )
   })
 
   test("typed styles lower to RN style objects across all catalog components", () => {
-    expect(lowerStyle({
-      padding: "4",
-      backgroundColor: "surface",
-      borderRadius: "md",
-      typeScale: "label",
-      width: "full",
-      fontWeight: "bold"
-    })).toEqual({
+    expect(
+      lowerStyle({
+        padding: "4",
+        backgroundColor: "surface",
+        borderRadius: "md",
+        typeScale: "label",
+        width: "full",
+        fontWeight: "bold"
+      })
+    ).toEqual({
       padding: 16,
       backgroundColor: "#f8fafc",
       borderRadius: 6,
@@ -542,9 +582,7 @@ describe("React Native renderer", () => {
         Text({ key: "link-label", content: "Link", variant: "body" })
       ]),
       TextField({ key: "field", value: "", style: sharedStyle }),
-      List({ key: "list", style: sharedStyle }, [
-        keyed(Text({ key: "item", content: "Item", variant: "body" }))
-      ]),
+      List({ key: "list", style: sharedStyle }, [keyed(Text({ key: "item", content: "Item", variant: "body" }))]),
       Card({ key: "card", style: sharedStyle }),
       Spacer({ key: "spacer", size: "2", style: sharedStyle })
     ]
@@ -564,16 +602,19 @@ describe("React Native renderer", () => {
       Effect.sync(() => {
         reported.push(ref.name)
       })
-    const view = List({
-      key: "list",
-      virtualize: true,
-      estimatedItemSize: 32,
-      endReachedThreshold: 0.25,
-      onEndReached: IntentRef("EndReached", StaticPayload({}))
-    }, [
-      keyed(Text({ key: "first", content: "First", variant: "body" })),
-      keyed(Text({ key: "second", content: "Second", variant: "body" }))
-    ])
+    const view = List(
+      {
+        key: "list",
+        virtualize: true,
+        estimatedItemSize: 32,
+        endReachedThreshold: 0.25,
+        onEndReached: IntentRef("EndReached", StaticPayload({}))
+      },
+      [
+        keyed(Text({ key: "first", content: "First", variant: "body" })),
+        keyed(Text({ key: "second", content: "Second", variant: "body" }))
+      ]
+    )
     const element = renderReactNativeView(view, dependencies, report)
     const keyExtractor = element.props.keyExtractor
     const renderItem = element.props.renderItem
@@ -611,21 +652,22 @@ describe("React Native renderer", () => {
       Effect.sync(() => {
         reported.push(ref.name)
       })
-    const view = SectionList({
-      key: "settings",
-      virtualize: true,
-      estimatedItemSize: 40,
-      stickyHeaders: true,
-      onEndReached: IntentRef("EndReached", StaticPayload({}))
-    }, [
+    const view = SectionList(
       {
-        key: "account",
-        header: Text({ key: "account-header", content: "Account", variant: "label" }),
-        items: [
-          keyed(Text({ key: "email", content: "Email", variant: "body" }))
-        ]
-      }
-    ])
+        key: "settings",
+        virtualize: true,
+        estimatedItemSize: 40,
+        stickyHeaders: true,
+        onEndReached: IntentRef("EndReached", StaticPayload({}))
+      },
+      [
+        {
+          key: "account",
+          header: Text({ key: "account-header", content: "Account", variant: "label" }),
+          items: [keyed(Text({ key: "email", content: "Email", variant: "body" }))]
+        }
+      ]
+    )
     const element = renderReactNativeView(view, dependencies, report)
     const renderSectionHeader = element.props.renderSectionHeader
     const renderItem = element.props.renderItem
@@ -683,17 +725,25 @@ describe("React Native renderer", () => {
       ])
     ])
 
-    await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const rnSurface = yield* makeReactNativeRenderer({ dependencies }).mount(undefined, Stream.make(view), noopReport)
-      const headlessSurface = yield* makeHeadlessRenderer().mount(undefined, Stream.make(view), noopReport)
-      const headlessCurrent = yield* headlessSurface.current
+    await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const rnSurface = yield* makeReactNativeRenderer({ dependencies }).mount(
+            undefined,
+            Stream.make(view),
+            noopReport
+          )
+          const headlessSurface = yield* makeHeadlessRenderer().mount(undefined, Stream.make(view), noopReport)
+          const headlessCurrent = yield* headlessSurface.current
 
-      if (headlessCurrent === undefined) {
-        throw new Error("expected headless snapshot")
-      }
+          if (headlessCurrent === undefined) {
+            throw new Error("expected headless snapshot")
+          }
 
-      expect(yield* rnSurface.serialize).toEqual(viewStructure(headlessCurrent))
-    })))
+          expect(yield* rnSurface.serialize).toEqual(viewStructure(headlessCurrent))
+        })
+      )
+    )
   })
 
   test("EffectNativeSurface can be embedded with injected React Native dependencies", () => {
@@ -703,7 +753,7 @@ describe("React Native renderer", () => {
       useEffect: (effect: () => void | (() => void)) => {
         effects.push(effect)
       },
-      useState: <State,>(initial: State | (() => State)) => {
+      useState: <State>(initial: State | (() => State)) => {
         let value = typeof initial === "function" ? (initial as () => State)() : initial
         const setValue = (next: State | ((current: State) => State)) => {
           value = typeof next === "function" ? (next as (current: State) => State)(value) : next

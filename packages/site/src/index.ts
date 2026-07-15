@@ -41,11 +41,6 @@ export {
   type SiteState
 } from "./runtime"
 
-export {
-  Incremented,
-  counterView,
-  makeCounterProgram,
-  type CounterState
-} from "./sample-app"
+export { Incremented, counterView, makeCounterProgram, type CounterState } from "./sample-app"
 
 export const packageName = "@effect-native/site" as const

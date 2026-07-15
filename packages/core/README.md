@@ -38,16 +38,14 @@ failures; the catalog has no custom-component extension point.
 
 ```ts
 import { Effect, Schema } from "effect"
-import {
-  defineIntent,
-  dispatchIntent,
-  makeIntent,
-  makeIntentRegistryLayer
-} from "@effect-native/core"
+import { defineIntent, dispatchIntent, makeIntent, makeIntentRegistryLayer } from "@effect-native/core"
 
-const SubmittedForm = defineIntent("SubmittedForm", Schema.Struct({
-  email: Schema.String
-}))
+const SubmittedForm = defineIntent(
+  "SubmittedForm",
+  Schema.Struct({
+    email: Schema.String
+  })
+)
 
 const IntentLive = makeIntentRegistryLayer([SubmittedForm] as const, {
   SubmittedForm: (payload) =>
@@ -57,10 +55,7 @@ const IntentLive = makeIntentRegistryLayer([SubmittedForm] as const, {
 })
 
 await Effect.runPromise(
-  Effect.provide(
-    dispatchIntent(makeIntent("SubmittedForm", { email: "person@example.com" })),
-    IntentLive
-  )
+  Effect.provide(dispatchIntent(makeIntent("SubmittedForm", { email: "person@example.com" })), IntentLive)
 )
 ```
 
@@ -139,28 +134,30 @@ and keyed item trees, plus `stickyHeaders` for grouped feeds and settings.
 ```ts
 import { IntentRef, List, SectionList, StaticPayload, Text } from "@effect-native/core"
 
-List({
-  virtualize: true,
-  estimatedItemSize: 48,
-  endReachedThreshold: 0.5,
-  onEndReached: IntentRef("ReachedEnd", StaticPayload({ source: "feed" }))
-}, [
-  Text({ key: "receipt-1", content: "Receipt #1", variant: "body" })
-])
-
-SectionList({
-  stickyHeaders: true,
-  virtualize: true,
-  estimatedItemSize: 40
-}, [
+List(
   {
-    key: "account",
-    header: Text({ key: "account-header", content: "Account", variant: "label" }),
-    items: [
-      Text({ key: "email", content: "Email", variant: "body" })
-    ]
-  }
-])
+    virtualize: true,
+    estimatedItemSize: 48,
+    endReachedThreshold: 0.5,
+    onEndReached: IntentRef("ReachedEnd", StaticPayload({ source: "feed" }))
+  },
+  [Text({ key: "receipt-1", content: "Receipt #1", variant: "body" })]
+)
+
+SectionList(
+  {
+    stickyHeaders: true,
+    virtualize: true,
+    estimatedItemSize: 40
+  },
+  [
+    {
+      key: "account",
+      header: Text({ key: "account-header", content: "Account", variant: "label" }),
+      items: [Text({ key: "email", content: "Email", variant: "body" })]
+    }
+  ]
+)
 ```
 
 Overlays are also data. `Modal` and `Sheet` carry an `open` boolean or
@@ -169,34 +166,29 @@ normal state change from any handler; closing is an intent reported by the
 renderer. There is no imperative `open()` API.
 
 ```ts
-import {
-  Binding,
-  IntentRef,
-  Modal,
-  Sheet,
-  StaticPayload,
-  Text
-} from "@effect-native/core"
+import { Binding, IntentRef, Modal, Sheet, StaticPayload, Text } from "@effect-native/core"
 
-Modal({
-  title: "Approve change",
-  open: Binding(["approvalOpen"]),
-  dismissable: true,
-  size: "md",
-  onDismiss: IntentRef("DismissedOverlay", StaticPayload({ surface: "approval" }))
-}, [
-  Text({ content: "Approve this request?", variant: "body" })
-])
+Modal(
+  {
+    title: "Approve change",
+    open: Binding(["approvalOpen"]),
+    dismissable: true,
+    size: "md",
+    onDismiss: IntentRef("DismissedOverlay", StaticPayload({ surface: "approval" }))
+  },
+  [Text({ content: "Approve this request?", variant: "body" })]
+)
 
-Sheet({
-  open: Binding(["detailsOpen"]),
-  dismissable: true,
-  edge: "bottom",
-  detents: ["sm", "md"],
-  onDismiss: IntentRef("DismissedOverlay", StaticPayload({ surface: "details" }))
-}, [
-  Text({ content: "Details", variant: "body" })
-])
+Sheet(
+  {
+    open: Binding(["detailsOpen"]),
+    dismissable: true,
+    edge: "bottom",
+    detents: ["sm", "md"],
+    onDismiss: IntentRef("DismissedOverlay", StaticPayload({ surface: "details" }))
+  },
+  [Text({ content: "Details", variant: "body" })]
+)
 ```
 
 The v0 overlay stack is deliberately bounded: a view tree may contain at most
@@ -222,40 +214,47 @@ import {
   makeViewProgramFromState
 } from "@effect-native/core"
 
-const Pressed = defineIntent("Pressed", Schema.Struct({
-  amount: Schema.Number
-}))
-
-await Effect.runPromise(Effect.gen(function*() {
-  const state = yield* SubscriptionRef.make({ count: 0 })
-  const program = makeViewProgramFromState(state, () =>
-    Stack({ direction: "column", gap: "2" }, [
-      Text({ content: Binding(["count"]), variant: "heading" }),
-      Button({
-        label: "Increment",
-        variant: "primary",
-        onPress: IntentRef("Pressed", StaticPayload({ amount: 1 }))
-      })
-    ])
-  )
-  const renderer = makeHeadlessRenderer()
-
-  const IntentLive = makeIntentRegistryLayer([Pressed] as const, {
-    Pressed: (payload) =>
-      SubscriptionRef.update(state, (current) => ({
-        count: current.count + payload.amount
-      }))
+const Pressed = defineIntent(
+  "Pressed",
+  Schema.Struct({
+    amount: Schema.Number
   })
+)
 
-  return yield* Effect.provide(
-    Effect.scoped(Effect.gen(function*() {
-      const surface = yield* renderer.mount(undefined, program.viewStream, program.report)
-      yield* surface.simulate(IntentRef("Pressed", StaticPayload({ amount: 1 })))
-      return yield* surface.snapshots
-    })),
-    IntentLive
-  )
-}))
+await Effect.runPromise(
+  Effect.gen(function* () {
+    const state = yield* SubscriptionRef.make({ count: 0 })
+    const program = makeViewProgramFromState(state, () =>
+      Stack({ direction: "column", gap: "2" }, [
+        Text({ content: Binding(["count"]), variant: "heading" }),
+        Button({
+          label: "Increment",
+          variant: "primary",
+          onPress: IntentRef("Pressed", StaticPayload({ amount: 1 }))
+        })
+      ])
+    )
+    const renderer = makeHeadlessRenderer()
+
+    const IntentLive = makeIntentRegistryLayer([Pressed] as const, {
+      Pressed: (payload) =>
+        SubscriptionRef.update(state, (current) => ({
+          count: current.count + payload.amount
+        }))
+    })
+
+    return yield* Effect.provide(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const surface = yield* renderer.mount(undefined, program.viewStream, program.report)
+          yield* surface.simulate(IntentRef("Pressed", StaticPayload({ amount: 1 })))
+          return yield* surface.snapshots
+        })
+      ),
+      IntentLive
+    )
+  })
+)
 ```
 
 Bindings are serializable direct state paths. The binding language has no
@@ -269,12 +268,7 @@ own style contract, `mergeStyles` is deterministic last-wins by property, and
 variants resolve to flat style data before a renderer lowers values.
 
 ```ts
-import {
-  Spacer,
-  Text,
-  mergeStyles,
-  resolveStyle
-} from "@effect-native/core"
+import { Spacer, Text, mergeStyles, resolveStyle } from "@effect-native/core"
 
 const label = Text({
   content: "Save",
@@ -311,18 +305,21 @@ overrides; the runtime resolves them in breakpoint order before a renderer
 paints.
 
 ```ts
-Stack({
-  direction: { base: "column", md: "row" },
-  gap: { base: "2", lg: "4" },
-  padding: { base: "3", md: "6" }
-}, [
-  Image({
-    source: "https://example.com/hero.png",
-    alt: "Hero",
-    width: { base: "sm", md: "lg" },
-    height: { base: 160, md: 320 }
-  })
-])
+Stack(
+  {
+    direction: { base: "column", md: "row" },
+    gap: { base: "2", lg: "4" },
+    padding: { base: "3", md: "6" }
+  },
+  [
+    Image({
+      source: "https://example.com/hero.png",
+      alt: "Hero",
+      width: { base: "sm", md: "lg" },
+      height: { base: 160, md: 320 }
+    })
+  ]
+)
 ```
 
 The minimal responsive surface is deliberately narrow: `Stack.direction`,

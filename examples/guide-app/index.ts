@@ -96,8 +96,7 @@ export const guideAppIntents = [
   GoAbout
 ] as const
 
-const keyed = <V extends View>(view: V): V & { readonly key: string } =>
-  view as V & { readonly key: string }
+const keyed = <V extends View>(view: V): V & { readonly key: string } => view as V & { readonly key: string }
 
 export const guideAppView = (state: GuideAppState): View => {
   if (state.screen === "about") {
@@ -176,14 +175,8 @@ export const guideAppView = (state: GuideAppState): View => {
               placeholder: "Note title",
               field: FieldBinding("guide-note", "title"),
               focused: formFieldFocused(state.form, "title"),
-              onChange: IntentRef(
-                "FormFieldChanged",
-                FormFieldValueBinding(FieldBinding("guide-note", "title"))
-              ),
-              onSubmit: IntentRef(
-                "FormSubmitRequested",
-                StaticPayload({ form: "guide-note", via: "keyboard" })
-              )
+              onChange: IntentRef("FormFieldChanged", FormFieldValueBinding(FieldBinding("guide-note", "title"))),
+              onSubmit: IntentRef("FormSubmitRequested", StaticPayload({ form: "guide-note", via: "keyboard" }))
             }),
             Text({
               key: "title-error",
@@ -195,10 +188,7 @@ export const guideAppView = (state: GuideAppState): View => {
               key: "add",
               label: "Add note",
               variant: "primary",
-              onPress: IntentRef(
-                "FormSubmitRequested",
-                StaticPayload({ form: "guide-note", via: "button" })
-              )
+              onPress: IntentRef("FormSubmitRequested", StaticPayload({ form: "guide-note", via: "button" }))
             })
           ])
         ]
@@ -294,7 +284,7 @@ export const makeGuideAppRuntime = (
   initialState: GuideAppState = initialGuideAppState,
   options: GuideAppRuntimeOptions = {}
 ): Effect.Effect<GuideAppRuntime> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const state = yield* SubscriptionRef.make(initialState)
     const program = makeViewProgramFromState(state, guideAppView, {
       ...(options.devtoolsSink === undefined ? {} : { devtoolsSink: options.devtoolsSink }),
@@ -315,7 +305,7 @@ export const makeGuideAppRuntime = (
           form: blurFormField(noteFormSpec, current.form, payload.field)
         })),
       FormSubmitRequested: () =>
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           let title: string | undefined
           yield* SubscriptionRef.update(state, (current) => {
             const result = submitForm(noteFormSpec, current.form)
@@ -380,8 +370,7 @@ export const makeGuideAppRuntime = (
       redactIntent: makeFormIntentRedactor([noteFormSpec]),
       ...(options.devtoolsSink === undefined ? {} : { devtoolsSink: options.devtoolsSink })
     })
-    const report: IntentReporter = (ref, runtimeValue) =>
-      registry.dispatch(resolveIntentRef(ref, runtimeValue))
+    const report: IntentReporter = (ref, runtimeValue) => registry.dispatch(resolveIntentRef(ref, runtimeValue))
 
     return { state, program, registry, report }
   })

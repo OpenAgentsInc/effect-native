@@ -22,7 +22,7 @@ const browserNavigate = (destination: NavigationDestination): Effect.Effect<void
   return domNavigationHandler.navigate(destination)
 }
 
-const boot = Effect.gen(function*() {
+const boot = Effect.gen(function* () {
   const root = document.getElementById("app")
   if (root === null) {
     throw new Error("Missing #app root")

@@ -35,14 +35,14 @@ interface LoopState {
   readonly count: Ref.Ref<number>
 }
 
-const makeLoopState = Effect.gen(function*() {
+const makeLoopState = Effect.gen(function* () {
   const prev = yield* Ref.make<CanvasScene | undefined>(undefined)
   const count = yield* Ref.make(0)
   return { prev, count } satisfies LoopState
 })
 
 const runFrame = (backend: CanvasBackend, state: LoopState, frame: CanvasFrame): Effect.Effect<void> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const prev = yield* Ref.get(state.prev)
     const ops = diffScene(prev, frame.scene)
     yield* applyOps(backend, ops)
@@ -60,7 +60,7 @@ export const drainCanvasFrames = (
   backend: CanvasBackend,
   frames: Stream.Stream<CanvasFrame>
 ): Effect.Effect<CanvasRunResult> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const state = yield* makeLoopState
     yield* Stream.runForEach(frames, (frame) => runFrame(backend, state, frame))
     return {
@@ -78,16 +78,14 @@ export const mountCanvas = (
   backend: CanvasBackend,
   frames: Stream.Stream<CanvasFrame>
 ): Effect.Effect<CanvasSurface, never, Scope.Scope> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const parentScope = yield* Scope.Scope
     const surfaceScope = yield* Scope.fork(parentScope)
 
     return yield* Scope.provide(surfaceScope)(
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const state = yield* makeLoopState
-        yield* Stream.runForEach(frames, (frame) => runFrame(backend, state, frame)).pipe(
-          Effect.forkScoped
-        )
+        yield* Stream.runForEach(frames, (frame) => runFrame(backend, state, frame)).pipe(Effect.forkScoped)
         return {
           unmount: Scope.close(surfaceScope, Exit.void),
           framesRendered: Ref.get(state.count),
@@ -106,10 +104,7 @@ export const mountCanvas = (
  * `frame` increments per tick, `time` is a wall-clock reading, and `delta` is
  * the elapsed time since the previous tick (0 on the first tick).
  */
-export const frameClock = (
-  interval: Duration.Input,
-  now: () => number = Date.now
-): Stream.Stream<FrameTick> =>
+export const frameClock = (interval: Duration.Input, now: () => number = Date.now): Stream.Stream<FrameTick> =>
   Stream.tick(interval).pipe(
     Stream.mapAccum(
       () => ({ frame: -1, last: undefined as number | undefined }),
@@ -142,16 +137,10 @@ export const frameTicksFromTimes = (times: ReadonlyArray<number>): Stream.Stream
 export const withFrameTicks = (
   scenes: Stream.Stream<CanvasScene>,
   ticks: Stream.Stream<FrameTick>
-): Stream.Stream<CanvasFrame> =>
-  ticks.pipe(
-    Stream.zipLatestWith(scenes, (tick, scene) => ({ scene, tick }))
-  )
+): Stream.Stream<CanvasFrame> => ticks.pipe(Stream.zipLatestWith(scenes, (tick, scene) => ({ scene, tick })))
 
 /** Pair each scene in a finite sequence with a synthetic, monotonically increasing tick. */
-export const framesFromScenes = (
-  scenes: ReadonlyArray<CanvasScene>,
-  stepMillis = 16
-): Stream.Stream<CanvasFrame> =>
+export const framesFromScenes = (scenes: ReadonlyArray<CanvasScene>, stepMillis = 16): Stream.Stream<CanvasFrame> =>
   Stream.fromIterable(
     scenes.map((scene, frame) => ({
       scene,

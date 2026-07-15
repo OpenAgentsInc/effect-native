@@ -48,7 +48,7 @@ export interface SiteRuntimeOptions {
 }
 
 export const makeSiteRuntime = (options: SiteRuntimeOptions = {}): Effect.Effect<SiteRuntime> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const initialState: SiteState = {
       route: options.initialRoute ?? "/",
       content: options.content ?? fallbackSiteContent
@@ -59,7 +59,7 @@ export const makeSiteRuntime = (options: SiteRuntimeOptions = {}): Effect.Effect
 
     const handlers: IntentHandlers<typeof navigationIntentDefinitions> = {
       Navigate: (destination) =>
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           if (destination.kind === "path" && knownRoutes.has(destination.path)) {
             yield* SubscriptionRef.update(state, (current) => ({ ...current, route: destination.path }))
           }

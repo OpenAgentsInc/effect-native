@@ -54,12 +54,12 @@ app model.
 The loop is:
 
 ```sh
-bun install
-bun run check
+pnpm install
+pnpm run check
 
 cd examples/mobile
-bun install
-bun run ios
+pnpm install
+pnpm run ios
 ```
 
 The mobile shell supplies Expo, React, and React Native as host dependencies and
@@ -102,16 +102,16 @@ The native host should be small:
 
 The renderer should map catalog tags to SwiftUI primitives:
 
-| Effect Native | SwiftUI target |
-| --- | --- |
-| `Stack` | `HStack` / `VStack` / constrained layout wrappers |
-| `Text` | `SwiftUI.Text` |
-| `Button` | `SwiftUI.Button` |
-| `Image` | native image loading service + SwiftUI image view |
-| `TextField` | `TextField`, `SecureField`, or `TextEditor` |
-| `List` / `SectionList` | `List` or custom `ScrollView` + lazy stacks |
-| `Modal` / `Sheet` | SwiftUI presentation or bounded overlay host |
-| `Host` | `UIViewRepresentable` / native host registry driver |
+| Effect Native          | SwiftUI target                                      |
+| ---------------------- | --------------------------------------------------- |
+| `Stack`                | `HStack` / `VStack` / constrained layout wrappers   |
+| `Text`                 | `SwiftUI.Text`                                      |
+| `Button`               | `SwiftUI.Button`                                    |
+| `Image`                | native image loading service + SwiftUI image view   |
+| `TextField`            | `TextField`, `SecureField`, or `TextEditor`         |
+| `List` / `SectionList` | `List` or custom `ScrollView` + lazy stacks         |
+| `Modal` / `Sheet`      | SwiftUI presentation or bounded overlay host        |
+| `Host`                 | `UIViewRepresentable` / native host registry driver |
 
 The native renderer should prefer generated Swift types from the catalog
 schemas. The goal is for Swift to be exhaustive over known catalog tags and
@@ -139,16 +139,16 @@ ComponentActivity.setContent / ComposeView
 The Compose renderer should mirror the SwiftUI renderer at the contract level,
 not necessarily at the implementation level:
 
-| Effect Native | Compose target |
-| --- | --- |
-| `Stack` | `Row` / `Column` / constrained layout wrappers |
-| `Text` | `Text` |
-| `Button` | `Button` or owned themed wrapper |
-| `Image` | image loader + `Image` |
-| `TextField` | `TextField` / password text field |
-| `List` / `SectionList` | `LazyColumn` / grouped lazy content |
-| `Modal` / `Sheet` | `Dialog`, modal bottom sheet, or overlay host |
-| `Host` | `AndroidView` / typed native host registry driver |
+| Effect Native          | Compose target                                    |
+| ---------------------- | ------------------------------------------------- |
+| `Stack`                | `Row` / `Column` / constrained layout wrappers    |
+| `Text`                 | `Text`                                            |
+| `Button`               | `Button` or owned themed wrapper                  |
+| `Image`                | image loader + `Image`                            |
+| `TextField`            | `TextField` / password text field                 |
+| `List` / `SectionList` | `LazyColumn` / grouped lazy content               |
+| `Modal` / `Sheet`      | `Dialog`, modal bottom sheet, or overlay host     |
+| `Host`                 | `AndroidView` / typed native host registry driver |
 
 Android has no SwiftUI, but Compose is the same category of renderer:
 declarative native UI under a generated typed catalog.
@@ -161,12 +161,12 @@ native toolchains directly.
 Example planned commands:
 
 ```sh
-bun run build:ios
-bun run test:ios
-bun run archive:ios
-bun run build:android
-bun run test:android
-bun run bundle:android
+pnpm run build:ios
+pnpm run test:ios
+pnpm run archive:ios
+pnpm run build:android
+pnpm run test:android
+pnpm run bundle:android
 ```
 
 Under the hood, iOS uses `xcodebuild`:
@@ -226,7 +226,7 @@ Most changes stay in TypeScript:
 - edit Effect Native screen/data/state modules;
 - edit intent definitions and handlers;
 - edit tokenized styles;
-- run `bun run check`;
+- run `pnpm run check`;
 - run gallery/devtools;
 - run renderer conformance or app-level tests.
 

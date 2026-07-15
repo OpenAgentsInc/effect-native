@@ -2,16 +2,16 @@
  * Regression coverage for the testkit's own committed visual baselines
  * (`test/fixtures/baselines/`). If this fails, either the fixture screen
  * drifted unintentionally, or it changed on purpose and the baselines need
- * re-blessing: `bun run baselines:bless` (or
- * `bun packages/testkit/scripts/bless-baselines.ts`).
+ * re-blessing: `pnpm run baselines:bless` (or
+ * `pnpm exec tsx packages/testkit/scripts/bless-baselines.ts`).
  */
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect } from "effect"
 import { resolveBindings } from "@effect-native/core"
 import { compareBaseline, domVisualCapture, makeFileBaselineStore, type VisualTarget } from "../src/visual"
 import { counterView } from "./fixtures/counter-runtime"
 
-const baselineDir = `${import.meta.dir}/fixtures/baselines`
+const baselineDir = `${import.meta.dirname}/fixtures/baselines`
 const store = makeFileBaselineStore(baselineDir)
 
 const fixtureState = { count: 2, name: "Ada", navigations: [] }

@@ -2,13 +2,14 @@ import { Effect, Exit, Scope } from "effect"
 import { mountDevtoolsPanel } from "./panel"
 import { RecordingSchema, parseRecording, type Recording } from "./index"
 
-const emptyRecording = (): Recording => RecordingSchema.make({
-  version: "effect-native/devtools-recording/v0",
-  initialState: null,
-  timeline: []
-})
+const emptyRecording = (): Recording =>
+  RecordingSchema.make({
+    version: "effect-native/devtools-recording/v0",
+    initialState: null,
+    timeline: []
+  })
 
-const boot = Effect.gen(function*() {
+const boot = Effect.gen(function* () {
   const root = document.getElementById("app")
   if (root === null) {
     throw new Error("Missing #app root")

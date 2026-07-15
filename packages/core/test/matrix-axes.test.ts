@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import {
   Alert,
   Badge,
@@ -200,12 +200,14 @@ describe("Select/SelectControl trigger matrix (resolveSelectAppearance, #79)", (
   })
 
   test("Select's variant vocabulary excludes solid (a trigger is never a call-to-action)", () => {
-    expect(() => Select({
-      key: "bad",
-      value: "a",
-      options: [{ value: "a", label: "A" }],
-      variant: "solid" as never
-    })).toThrow()
+    expect(() =>
+      Select({
+        key: "bad",
+        value: "a",
+        options: [{ value: "a", label: "A" }],
+        variant: "solid" as never
+      })
+    ).toThrow()
   })
 
   test("Select constructs with multi-select fields and round-trips", () => {
@@ -247,7 +249,11 @@ describe("Alert (new component, #79)", () => {
   test("defaults tone to info, variant to soft, and icon to the tone's default glyph", () => {
     expect(resolveAlertAppearance({})).toEqual({ tone: "info", variant: "soft", icon: "InfoCircle" })
     expect(resolveAlertAppearance({ tone: "danger" })).toEqual({ tone: "danger", variant: "soft", icon: "AlertCircle" })
-    expect(resolveAlertAppearance({ tone: "warning", icon: "Zap" })).toEqual({ tone: "warning", variant: "soft", icon: "Zap" })
+    expect(resolveAlertAppearance({ tone: "warning", icon: "Zap" })).toEqual({
+      tone: "warning",
+      variant: "soft",
+      icon: "Zap"
+    })
   })
 
   test("Alert constructs with icon/title/message/onDismiss and round-trips", () => {

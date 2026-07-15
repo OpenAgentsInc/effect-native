@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Binding, Button, IntentRef, Stack, StaticPayload, Text } from "@effect-native/core"
 import { SnapshotFormatVersion, makeSnapshot, stableStringify, stringifySnapshot } from "../src/index"
 

@@ -5,7 +5,7 @@ Every prop table below is read from Schema definitions in
 table is maintained. The **closed tag set** and catalog version are
 conformance-checked by
 [`scripts/check-catalog-reference.ts`](../../scripts/check-catalog-reference.ts)
-(`bun run check:catalog-reference`) so this page cannot silently drop a shipped
+(`pnpm run check:catalog-reference`) so this page cannot silently drop a shipped
 component.
 
 Current catalog marker: `CatalogVersion = "effect-native/v39"` (v39,
@@ -541,10 +541,10 @@ live native animation loop is an additive, demand-gated follow-up tracked in
 
 Every component accepts these two, inherited from `NodeBase`:
 
-| Field | Type | Notes |
-|---|---|---|
-| `key` | `string` (optional) | Required (enforced by the schema, not just convention) on any view placed inside a `List`/`SectionList`/`Link` children array. |
-| `catalogVersion` | `"effect-native/v39"` | Set automatically by every constructor function — you never pass this yourself. |
+| Field            | Type                  | Notes                                                                                                                          |
+| ---------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `key`            | `string` (optional)   | Required (enforced by the schema, not just convention) on any view placed inside a `List`/`SectionList`/`Link` children array. |
+| `catalogVersion` | `"effect-native/v39"` | Set automatically by every constructor function — you never pass this yourself.                                                |
 
 ### Design tokens
 
@@ -553,16 +553,16 @@ numeric fields like `borderWidth`, `flex`, and pixel `Dimension`s) — they
 take a token from one of these closed vocabularies
 (`packages/tokens/src/index.ts`):
 
-| Token kind | Values |
-|---|---|
-| `SpacingToken` | `0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 5, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 56, 64` |
-| `ColorToken` | `background, surface, textPrimary, textMuted, accent, danger, border, focus` |
-| `RadiusToken` | `none, sm, md, lg, xl, full` |
-| `TypeScaleToken` | `caption, body, label, title, heading` |
-| `BreakpointToken` | `sm, md, lg, xl` |
-| `DimensionToken` | `xs, sm, md, lg, xl, full` |
-| `ControlToken` | `2xs, xs, sm, md, lg, xl` — the shared control size lattice (paired height, gutter, radius, font size, icon size per step, #76); sizes `Avatar`/`AvatarGroup`/`SegmentedControl` |
-| `SurfaceMaterial` | `glass` — style-level `surface` token on box-derived styles (GL-1): translucent blurred material on DOM, translucent theme surface + hairline border on RN core |
+| Token kind        | Values                                                                                                                                                                           |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SpacingToken`    | `0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 5, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 56, 64`                                                                                             |
+| `ColorToken`      | `background, surface, textPrimary, textMuted, accent, danger, border, focus`                                                                                                     |
+| `RadiusToken`     | `none, sm, md, lg, xl, full`                                                                                                                                                     |
+| `TypeScaleToken`  | `caption, body, label, title, heading`                                                                                                                                           |
+| `BreakpointToken` | `sm, md, lg, xl`                                                                                                                                                                 |
+| `DimensionToken`  | `xs, sm, md, lg, xl, full`                                                                                                                                                       |
+| `ControlToken`    | `2xs, xs, sm, md, lg, xl` — the shared control size lattice (paired height, gutter, radius, font size, icon size per step, #76); sizes `Avatar`/`AvatarGroup`/`SegmentedControl` |
+| `SurfaceMaterial` | `glass` — style-level `surface` token on box-derived styles (GL-1): translucent blurred material on DOM, translucent theme surface + hairline border on RN core                  |
 
 A `Dimension` is a `DimensionToken` **or** a non-negative pixel number — used
 for `width`/`height`/`estimatedItemSize` and similar layout fields.
@@ -570,17 +570,17 @@ for `width`/`height`/`estimatedItemSize` and similar layout fields.
 ### Style
 
 Every component that renders a box or text accepts an optional `style` whose
-shape is a *subset* of the full `StyleProperties` — a `Card`, for instance,
+shape is a _subset_ of the full `StyleProperties` — a `Card`, for instance,
 cannot set `fontWeight` (it has no text), and a `Spacer` cannot set
 `backgroundColor` (it has no paint). The subsets, from the source:
 
-| Component style | Keys |
-|---|---|
-| `StackStyle`, `ListStyle`, `CardStyle` | margin/padding family, `gap`\*, size/flex family, `backgroundColor`, `borderColor`, `borderRadius`, `borderWidth` (\*`Stack` only) |
-| `TextStyle` | margin family, size/flex family, `color`, `typeScale`, `fontWeight`, `textAlign` |
-| `ButtonStyle`, `LinkStyle`, `TextFieldStyle` | the box keys above **plus** `color`, `typeScale`, `fontWeight`, `textAlign` |
-| `ImageStyle` | margin family, size/flex family, `borderRadius` |
-| `SpacerStyle` | margin family, size/flex family only — no paint, no color |
+| Component style                              | Keys                                                                                                                               |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `StackStyle`, `ListStyle`, `CardStyle`       | margin/padding family, `gap`\*, size/flex family, `backgroundColor`, `borderColor`, `borderRadius`, `borderWidth` (\*`Stack` only) |
+| `TextStyle`                                  | margin family, size/flex family, `color`, `typeScale`, `fontWeight`, `textAlign`                                                   |
+| `ButtonStyle`, `LinkStyle`, `TextFieldStyle` | the box keys above **plus** `color`, `typeScale`, `fontWeight`, `textAlign`                                                        |
+| `ImageStyle`                                 | margin family, size/flex family, `borderRadius`                                                                                    |
+| `SpacerStyle`                                | margin family, size/flex family only — no paint, no color                                                                          |
 
 Any style value can additionally carry `variants: { state?, platform?,
 breakpoint? }`, resolved by the runtime (not a CSS cascade) — `state` covers
@@ -599,8 +599,8 @@ a `ResponsiveValue<T>` directly (`{ base: T, sm?: T, md?: T, lg?: T, xl?: T
   `onDismiss`) is a name plus an optional payload template — see
   [the intents chapter](./03-intents.md).
 - `NavigationDestination` (`Link.destination`) is one of `{ kind: "url",
-  href, target? }`, `{ kind: "path", path, replace? }`, or `{ kind:
-  "anchor", id }`.
+href, target? }`, `{ kind: "path", path, replace? }`, or `{ kind:
+"anchor", id }`.
 
 ## `Stack`
 
@@ -774,13 +774,10 @@ import { List, Text, type View } from "@effect-native/core"
 
 const keyed = <V extends View>(view: V): V & { readonly key: string } => view as V & { readonly key: string }
 
-const items = List(
-  { key: "items", virtualize: true, estimatedItemSize: 48, endReachedThreshold: 0.5 },
-  [
-    keyed(Text({ key: "row-1", content: "First", variant: "body" })),
-    keyed(Text({ key: "row-2", content: "Second", variant: "body" }))
-  ]
-)
+const items = List({ key: "items", virtualize: true, estimatedItemSize: 48, endReachedThreshold: 0.5 }, [
+  keyed(Text({ key: "row-1", content: "First", variant: "body" })),
+  keyed(Text({ key: "row-2", content: "Second", variant: "body" }))
+])
 ```
 
 ## `SectionList`

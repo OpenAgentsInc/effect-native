@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect } from "effect"
 import { GraphFigure, IntentRef, Timeline, type IntentReporter, type View } from "@effect-native/core"
 import {
@@ -91,7 +91,18 @@ describe("GraphFigure + Timeline (#37) React Native renderer", () => {
         key: "timeline",
         selectedId: "event-1",
         onEventSelect: IntentRef("Event"),
-        events: [{ id: "ev1", label: "Pairing opened", detail: "Child is checking tests", time: "12:00", status: "active", variant: "agent", icon: "Play", onSelect: IntentRef("OpenAgent") }]
+        events: [
+          {
+            id: "ev1",
+            label: "Pairing opened",
+            detail: "Child is checking tests",
+            time: "12:00",
+            status: "active",
+            variant: "agent",
+            icon: "Play",
+            onSelect: IntentRef("OpenAgent")
+          }
+        ]
       }) as View,
       dependencies,
       report

@@ -145,9 +145,7 @@ const disposeRuntime = (runtime: MutableSceneNodeRuntime): void => {
   runtime.scope.dispose()
 }
 
-export const createSceneNodeReconciler = (
-  options: SceneNodeReconcilerOptions
-): SceneNodeReconciler => {
+export const createSceneNodeReconciler = (options: SceneNodeReconcilerOptions): SceneNodeReconciler => {
   const rootScope = options.scope ?? createSceneResourceScope()
   const runtimes = new Map<string, MutableSceneNodeRuntime>()
 
@@ -184,10 +182,7 @@ export const createSceneNodeReconciler = (
     return runtime
   }
 
-  const updateRuntime = (
-    runtime: MutableSceneNodeRuntime,
-    descriptor: SceneNodeDescriptor
-  ): boolean => {
+  const updateRuntime = (runtime: MutableSceneNodeRuntime, descriptor: SceneNodeDescriptor): boolean => {
     const factory = options.catalogue[descriptor.kind]
     if (factory === undefined) {
       throw new Error(`No scene node factory registered for ${descriptor.kind}`)

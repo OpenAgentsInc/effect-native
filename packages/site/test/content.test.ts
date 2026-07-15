@@ -1,11 +1,5 @@
-import { describe, expect, test } from "bun:test"
-import {
-  extractParagraphs,
-  extractSection,
-  parsePhases,
-  parseRoleTable,
-  parseSiteContent
-} from "../src/content"
+import { describe, expect, test } from "vite-plus/test"
+import { extractParagraphs, extractSection, parsePhases, parseRoleTable, parseSiteContent } from "../src/content"
 
 const fixtureReadme = (version: string) => `# Effect Native
 

@@ -37,7 +37,7 @@ export const counterView = (state: CounterState): View =>
     })
   ])
 
-export const makeCounterProgram = Effect.gen(function*() {
+export const makeCounterProgram = Effect.gen(function* () {
   const state = yield* SubscriptionRef.make<CounterState>({ count: 0 })
   return makeViewProgramFromState(state, counterView)
 })

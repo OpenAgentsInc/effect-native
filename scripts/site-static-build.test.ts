@@ -1,21 +1,12 @@
-import { afterAll, describe, expect, test } from "bun:test"
+import { afterAll, describe, expect, test } from "vite-plus/test"
+import { spawnSync } from "node:child_process"
 import { existsSync, readFileSync } from "node:fs"
 import { resolve } from "node:path"
+import { isHtmlRequest, startStaticServer, type NodeStaticServer } from "./node-static-server"
 
-const root = resolve(import.meta.dir, "..")
+const root = resolve(import.meta.dirname, "..")
 const siteRoot = resolve(root, "dist/site")
-const servers: Array<ReturnType<typeof Bun.serve>> = []
-
-const contentType = (path: string): string => {
-  if (path.endsWith(".js")) return "text/javascript; charset=utf-8"
-  if (path.endsWith(".xml")) return "application/xml; charset=utf-8"
-  if (path.endsWith(".svg")) return "image/svg+xml"
-  return "text/html; charset=utf-8"
-}
-
-const isHtmlFallback = (request: Request, pathname: string): boolean =>
-  !pathname.split("/").at(-1)?.includes(".") &&
-  (request.headers.get("accept") ?? "").includes("text/html")
+const servers: Array<NodeStaticServer> = []
 
 // The gallery is a separate embedded SPA bundle (see docs/website.md,
 // "Embedding the gallery"): an unmatched path under /components/ falls back
@@ -25,50 +16,36 @@ const fallbackFile = (base: string, pathname: string): string =>
     ? resolve(base, "./components/index.html")
     : resolve(base, "./404.html")
 
-const makeStaticServer = (base: string) => {
-  const server = Bun.serve({
-    port: 0,
-    fetch: async (request) => {
-      const url = new URL(request.url)
-      const requestPathname = url.pathname
-      const pathname = requestPathname.endsWith("/") ? `${requestPathname}index.html` : requestPathname
-      let file = Bun.file(resolve(base, `.${pathname}`))
-      if (await file.exists()) {
-        return new Response(file, { headers: { "content-type": contentType(pathname) } })
+const makeStaticServer = async (base: string) => {
+  const server = await startStaticServer({
+    root: base,
+    fallback: (pathname, request) => {
+      if (!isHtmlRequest(request, pathname)) return undefined
+      const isGalleryFallback = pathname === "/components" || pathname.startsWith("/components/")
+      return {
+        file: fallbackFile(base, pathname),
+        status: isGalleryFallback ? 200 : 404
       }
-      if (!isHtmlFallback(request, requestPathname)) {
-        return new Response("Not found", { status: 404 })
-      }
-      const isGalleryFallback = requestPathname === "/components" || requestPathname.startsWith("/components/")
-      return new Response(Bun.file(fallbackFile(base, requestPathname)), {
-        status: isGalleryFallback ? 200 : 404,
-        headers: { "content-type": "text/html; charset=utf-8" }
-      })
     }
   })
   servers.push(server)
   return server
 }
 
-afterAll(() => {
-  for (const server of servers) {
-    server.stop(true)
-  }
-})
+afterAll(async () => Promise.all(servers.map((server) => server.stop())))
 
 describe("site static build", () => {
-  test("bun run site:build produces a real, curlable static site with the gallery embedded", async () => {
-    const build = Bun.spawnSync(["bun", "run", "site:build"], {
+  test("pnpm run site:build produces a real, curlable static site with the gallery embedded", async () => {
+    const build = spawnSync("pnpm", ["run", "site:build"], {
       cwd: root,
-      stdout: "pipe",
-      stderr: "pipe"
+      encoding: "utf8"
     })
 
-    if (build.exitCode !== 0) {
-      console.error(build.stdout.toString())
-      console.error(build.stderr.toString())
+    if (build.status !== 0) {
+      console.error(build.stdout)
+      console.error(build.stderr)
     }
-    expect(build.exitCode).toBe(0)
+    expect(build.status).toBe(0)
 
     expect(existsSync(resolve(siteRoot, "index.html"))).toBe(true)
     expect(existsSync(resolve(siteRoot, "app.js"))).toBe(true)
@@ -98,31 +75,31 @@ describe("site static build", () => {
     const notFoundHtml = readFileSync(resolve(siteRoot, "404.html"), "utf8")
     expect(notFoundHtml).toContain("404")
 
-    const server = makeStaticServer(siteRoot)
-    const home = await fetch(`http://localhost:${server.port}/`)
+    const server = await makeStaticServer(siteRoot)
+    const home = await fetch(`${server.url}/`)
     const homeText = await home.text()
     expect(home.status).toBe(200)
     expect(homeText).toContain("<title>")
     expect(homeText.length).toBeGreaterThan(500)
 
-    const docsFirstApp = await fetch(`http://localhost:${server.port}/docs/first-app/`, {
+    const docsFirstApp = await fetch(`${server.url}/docs/first-app/`, {
       headers: { accept: "text/html" }
     })
     expect(docsFirstApp.status).toBe(200)
     expect(await docsFirstApp.text()).toContain("Your first app")
 
-    const componentsIndex = await fetch(`http://localhost:${server.port}/components/`)
+    const componentsIndex = await fetch(`${server.url}/components/`)
     expect(componentsIndex.status).toBe(200)
-    const componentsStory = await fetch(`http://localhost:${server.port}/components/stories/button-primary`, {
+    const componentsStory = await fetch(`${server.url}/components/stories/button-primary`, {
       headers: { accept: "text/html" }
     })
     expect(componentsStory.status).toBe(200)
 
-    const missing = await fetch(`http://localhost:${server.port}/nowhere`, { headers: { accept: "text/html" } })
+    const missing = await fetch(`${server.url}/nowhere`, { headers: { accept: "text/html" } })
     expect(missing.status).toBe(404)
     expect(await missing.text()).toContain("404")
 
-    const sitemap = await fetch(`http://localhost:${server.port}/sitemap.xml`)
+    const sitemap = await fetch(`${server.url}/sitemap.xml`)
     expect(sitemap.status).toBe(200)
     expect(await sitemap.text()).toContain("<urlset")
   }, 120_000)

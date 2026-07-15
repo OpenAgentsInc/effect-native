@@ -25,7 +25,7 @@ const loadingSnapshot: ReactViewSnapshot<never> = { status: "loading", revision:
 export const makeReactViewStore = <Value = View>(
   viewStream: Stream.Stream<Value>
 ): Effect.Effect<ReactViewStore<Value>, never, Scope.Scope> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     let snapshot: ReactViewSnapshot<Value> = loadingSnapshot
     let revision = 0
     const listeners = new Set<() => void>()
@@ -39,14 +39,18 @@ export const makeReactViewStore = <Value = View>(
     }
 
     yield* viewStream.pipe(
-      Stream.runForEach((view) => Effect.sync(() => {
-        revision += 1
-        publish({ status: "ready", revision, view })
-      })),
-      Effect.catchCause(() => Effect.sync(() => {
-        revision += 1
-        publish({ status: "failed", revision, message: "Effect Native view stream failed" })
-      })),
+      Stream.runForEach((view) =>
+        Effect.sync(() => {
+          revision += 1
+          publish({ status: "ready", revision, view })
+        })
+      ),
+      Effect.catchCause(() =>
+        Effect.sync(() => {
+          revision += 1
+          publish({ status: "failed", revision, message: "Effect Native view stream failed" })
+        })
+      ),
       Effect.forkScoped
     )
 

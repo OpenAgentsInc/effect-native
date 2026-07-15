@@ -2,11 +2,11 @@
 
 **A framework for building native applications using [Effect](https://effect.website).**
 
-That is the same sentence React Native uses for itself — *"a framework for
-building native applications using React"* — with one word changed, and the
+That is the same sentence React Native uses for itself — _"a framework for
+building native applications using React"_ — with one word changed, and the
 change is the whole point. React Native takes **React** (a model for
 describing UI and state) and runs it on native platforms. Effect Native takes
-**Effect** (a model for describing *whole programs* — state, effects,
+**Effect** (a model for describing _whole programs_ — state, effects,
 concurrency, typed data, services, resource lifetimes, and UI) and runs it on
 native platforms.
 
@@ -38,19 +38,19 @@ model, and a per-platform host (Fabric) turns it into native views. Effect
 Native is "Effect + a native host" — and Effect supplies a far larger
 authoring model. Role for role:
 
-| Role | React Native | Effect Native |
-|---|---|---|
-| App-authoring model | React (components, hooks, JSX) | **Effect** (effects as values, `Effect.gen`) |
-| Execution engine | React Fiber reconciler | **Effect fiber runtime** |
-| Concurrency | Concurrent mode (cooperative) | **Structured concurrency** — fibers, supervision, interruption |
-| State | `useState` / component-local | **`Ref` / `SubscriptionRef` / `Atom`** — fiber-safe, observable |
-| Events | callbacks, event props | **`Stream`** (+ `PubSub`, `Queue`) |
-| Dependency wiring | Context / prop-drilling | **`Layer` + services** — a real DI graph |
-| Typed data at boundaries | PropTypes / erasable TS | **`Schema`** — decode/encode/validate everywhere |
-| Errors | throw / try-catch / boundaries | **Typed errors in the type** — never thrown |
-| Resource lifetime | `useEffect` cleanup | **`Scope`** — guaranteed cleanup on exit |
-| Platform host | Fabric (iOS/Android) | **`platform-native` adapter** + renderers |
-| UI description | JSX component tree | **Typed component set** — a serializable, validated tree |
+| Role                     | React Native                   | Effect Native                                                   |
+| ------------------------ | ------------------------------ | --------------------------------------------------------------- |
+| App-authoring model      | React (components, hooks, JSX) | **Effect** (effects as values, `Effect.gen`)                    |
+| Execution engine         | React Fiber reconciler         | **Effect fiber runtime**                                        |
+| Concurrency              | Concurrent mode (cooperative)  | **Structured concurrency** — fibers, supervision, interruption  |
+| State                    | `useState` / component-local   | **`Ref` / `SubscriptionRef` / `Atom`** — fiber-safe, observable |
+| Events                   | callbacks, event props         | **`Stream`** (+ `PubSub`, `Queue`)                              |
+| Dependency wiring        | Context / prop-drilling        | **`Layer` + services** — a real DI graph                        |
+| Typed data at boundaries | PropTypes / erasable TS        | **`Schema`** — decode/encode/validate everywhere                |
+| Errors                   | throw / try-catch / boundaries | **Typed errors in the type** — never thrown                     |
+| Resource lifetime        | `useEffect` cleanup            | **`Scope`** — guaranteed cleanup on exit                        |
+| Platform host            | Fabric (iOS/Android)           | **`platform-native` adapter** + renderers                       |
+| UI description           | JSX component tree             | **Typed component set** — a serializable, validated tree        |
 
 React was a UI library that grew an application model as an afterthought —
 no typed errors, no dependency injection, no structured concurrency, no
@@ -131,8 +131,8 @@ a high-velocity, machine-edited codebase legible and safe.
 Effect Native builds on **Effect v4** (the `effect-smol` line): the
 rewritten fiber runtime, `Schema` in core, and the reactive state primitives
 (`Atom`) that bind Effect state to views. The platform-adapter pattern it
-extends is already proven three times over in `@effect/platform-node`,
-`@effect/platform-browser`, and `@effect/platform-bun` — Effect Native is
+extends is already proven by `@effect/platform-node` and
+`@effect/platform-browser` — Effect Native is
 the next member of that family: a native host with a `runMain`, native
 service layers, and the renderers that paint the view.
 
@@ -167,7 +167,7 @@ per-renderer visual baselines, with runnable examples. [**The guide**](./docs/gu
 is a buildable tutorial plus full catalog reference for building an app on
 Effect Native from outside this repository — every code block in it is
 extracted and type-checked against the real packages by
-`bun run check:doc-snippets`. The
+`pnpm run check:doc-snippets`. The
 [effectnative.org source](./docs/website.md) -- the framework's own website,
 home page through component library, built and statically prerendered
 entirely with Effect Native itself -- is in this repository too; hosting is
@@ -193,6 +193,21 @@ and how non-native host views stay inside the typed `Host` boundary.
 
 Nothing here is stable yet. APIs will change without notice until a first
 tagged release.
+
+## Development
+
+The repository uses Node 24.13.1, pnpm 11.10.0, and Vite Plus 0.2.4. From a
+fresh checkout:
+
+```sh
+pnpm install --frozen-lockfile
+pnpm run ci
+```
+
+The root Vite Plus task graph owns typechecking, tests, browser example
+bundles, gallery/site builds, formatting, and linting. See the
+[toolchain migration receipt](./docs/toolchain-migration.md) for the exact
+authority pins, command map, and conversion evidence.
 
 ## License
 

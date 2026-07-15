@@ -28,13 +28,13 @@ prefix replay powers time-travel.
 Run the relay and panel bundle:
 
 ```sh
-bun run devtools
+pnpm run devtools
 ```
 
 Attach the web proof example:
 
 ```sh
-bun run example:web
+pnpm run example:web
 # open http://localhost:4173/?devtools=ws://localhost:4327/session
 ```
 

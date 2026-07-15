@@ -8,9 +8,6 @@
     "declarationMap": true,
     "resolveJsonModule": true
   },
-  "references": [
-    { "path": "../core" },
-    { "path": "../tokens" }
-  ],
+  "references": [{ "path": "../core" }, { "path": "../tokens" }],
   "include": ["src/**/*.ts", "test/**/*.ts"]
 }

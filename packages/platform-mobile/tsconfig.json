@@ -7,9 +7,6 @@
     "declaration": true,
     "declarationMap": true
   },
-  "references": [
-    { "path": "../core" },
-    { "path": "../render-rn" }
-  ],
+  "references": [{ "path": "../core" }, { "path": "../render-rn" }],
   "include": ["src/**/*.ts", "test/**/*.ts"]
 }

@@ -1,12 +1,5 @@
-import { describe, expect, test } from "bun:test"
-import {
-  CatalogVersion,
-  IntentRef,
-  StaticPayload,
-  Text,
-  decodeView,
-  encodeView
-} from "../src/index"
+import { describe, expect, test } from "vite-plus/test"
+import { CatalogVersion, IntentRef, StaticPayload, Text, decodeView, encodeView } from "../src/index"
 
 describe("mobile gesture interactions v25 (#56)", () => {
   test("serializes onLongPress / onSwipe / onPullToRefresh on NodeBase interactions", () => {

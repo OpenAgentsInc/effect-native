@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect } from "effect"
 import {
   Composer,
@@ -82,7 +82,7 @@ describe("chat chrome + submit lifecycle (#72, v29) React Native renderer", () =
     const row = renderItem({ item: userMessage })
 
     expect(row.props.testID).toBe("en-message-row:m1")
-    expect((row.props.style as { readonly width?: string; readonly justifyContent?: string })).toMatchObject({
+    expect(row.props.style as { readonly width?: string; readonly justifyContent?: string }).toMatchObject({
       width: "100%",
       justifyContent: "flex-end"
     })

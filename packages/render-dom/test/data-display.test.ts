@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect, SubscriptionRef } from "effect"
 import { Window } from "happy-dom"
 import {
@@ -35,62 +35,72 @@ describe("data display (#39) DOM renderer", () => {
     const { container, document, window } = createDom()
     const selected: Array<unknown> = []
 
-    await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const state = yield* SubscriptionRef.make(0)
-      const view = (): View =>
-        Stack({ key: "root", direction: "column" }, [
-          Stack({ key: "strip", direction: "row" }, [
-            Chip({ key: "slots", label: "Slots", value: "3/8", tone: "info" }),
-            StatTile({ key: "workers", label: "Workers", value: "12", tone: "success" })
-          ]),
-          Divider({ key: "sep", orientation: "horizontal" }),
-          Meter({ key: "cap", value: 0.5, label: "Capacity", tone: "info" }),
-          Table({
-            key: "fleet",
-            columns: [
-              { id: "name", header: "Name", align: "start" },
-              { id: "status", header: "Status", align: "end" }
-            ],
-            rows: [
-              { id: "row-orrery", cells: [Text({ key: "n", content: "Orrery", variant: "body" }), Badge({ key: "s", label: "ok", tone: "success" })] }
-            ],
-            onRowSelect: IntentRef("RowSelected")
-          })
-        ])
-      const program = makeViewProgramFromState(state, view)
-      const report: IntentReporter = (ref, runtimeValue) =>
-        Effect.sync(() => {
-          if (ref.name === "RowSelected") selected.push(runtimeValue)
+    await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const state = yield* SubscriptionRef.make(0)
+          const view = (): View =>
+            Stack({ key: "root", direction: "column" }, [
+              Stack({ key: "strip", direction: "row" }, [
+                Chip({ key: "slots", label: "Slots", value: "3/8", tone: "info" }),
+                StatTile({ key: "workers", label: "Workers", value: "12", tone: "success" })
+              ]),
+              Divider({ key: "sep", orientation: "horizontal" }),
+              Meter({ key: "cap", value: 0.5, label: "Capacity", tone: "info" }),
+              Table({
+                key: "fleet",
+                columns: [
+                  { id: "name", header: "Name", align: "start" },
+                  { id: "status", header: "Status", align: "end" }
+                ],
+                rows: [
+                  {
+                    id: "row-orrery",
+                    cells: [
+                      Text({ key: "n", content: "Orrery", variant: "body" }),
+                      Badge({ key: "s", label: "ok", tone: "success" })
+                    ]
+                  }
+                ],
+                onRowSelect: IntentRef("RowSelected")
+              })
+            ])
+          const program = makeViewProgramFromState(state, view)
+          const report: IntentReporter = (ref, runtimeValue) =>
+            Effect.sync(() => {
+              if (ref.name === "RowSelected") selected.push(runtimeValue)
+            })
+          const surface = yield* makeDomRenderer({ document }).mount(container, program.viewStream, report)
+
+          const chip = container.querySelector('[data-en-key="slots"]')
+          expect(chip?.getAttribute("data-en-tone")).toBe("info")
+          expect(chip?.querySelector('[data-en-role="value"]')?.textContent).toBe("3/8")
+
+          const stat = container.querySelector('[data-en-key="workers"]')
+          expect(stat?.querySelector('[data-en-role="label"]')?.textContent).toBe("Workers")
+          expect(stat?.querySelector('[data-en-role="value"]')?.textContent).toBe("12")
+
+          const divider = container.querySelector('[data-en-key="sep"]')
+          expect(divider?.getAttribute("role")).toBe("separator")
+          expect(divider?.getAttribute("aria-orientation")).toBe("horizontal")
+
+          const meter = container.querySelector('[data-en-key="cap"]')
+          expect(meter?.getAttribute("role")).toBe("progressbar")
+          expect(meter?.getAttribute("aria-valuenow")).toBe("0.5")
+          expect((meter?.querySelector('[data-en-role="bar"]') as HTMLElement | null)?.style.width).toBe("50%")
+
+          const table = container.querySelector('[data-en-key="fleet"]')
+          expect(table?.querySelectorAll("thead th").length).toBe(2)
+          const row = table?.querySelector('[data-en-row="row-orrery"]') as HTMLElement | null
+          expect(row?.querySelector('[data-en-tag="Badge"]')?.getAttribute("data-en-tone")).toBe("success")
+
+          row?.dispatchEvent(new window.MouseEvent("click", { bubbles: true }) as unknown as Event)
+          yield* nextTask
+          expect(selected).toEqual(["row-orrery"])
+
+          yield* surface.unmount
         })
-      const surface = yield* makeDomRenderer({ document }).mount(container, program.viewStream, report)
-
-      const chip = container.querySelector('[data-en-key="slots"]')
-      expect(chip?.getAttribute("data-en-tone")).toBe("info")
-      expect(chip?.querySelector('[data-en-role="value"]')?.textContent).toBe("3/8")
-
-      const stat = container.querySelector('[data-en-key="workers"]')
-      expect(stat?.querySelector('[data-en-role="label"]')?.textContent).toBe("Workers")
-      expect(stat?.querySelector('[data-en-role="value"]')?.textContent).toBe("12")
-
-      const divider = container.querySelector('[data-en-key="sep"]')
-      expect(divider?.getAttribute("role")).toBe("separator")
-      expect(divider?.getAttribute("aria-orientation")).toBe("horizontal")
-
-      const meter = container.querySelector('[data-en-key="cap"]')
-      expect(meter?.getAttribute("role")).toBe("progressbar")
-      expect(meter?.getAttribute("aria-valuenow")).toBe("0.5")
-      expect((meter?.querySelector('[data-en-role="bar"]') as HTMLElement | null)?.style.width).toBe("50%")
-
-      const table = container.querySelector('[data-en-key="fleet"]')
-      expect(table?.querySelectorAll("thead th").length).toBe(2)
-      const row = table?.querySelector('[data-en-row="row-orrery"]') as HTMLElement | null
-      expect(row?.querySelector('[data-en-tag="Badge"]')?.getAttribute("data-en-tone")).toBe("success")
-
-      row?.dispatchEvent(new window.MouseEvent("click", { bubbles: true }) as unknown as Event)
-      yield* nextTask
-      expect(selected).toEqual(["row-orrery"])
-
-      yield* surface.unmount
-    })))
+      )
+    )
   })
 })

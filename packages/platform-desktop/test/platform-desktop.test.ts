@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Cause, Duration, Effect, Exit, Fiber, Schema, Stream, SubscriptionRef } from "effect"
 import { Window } from "happy-dom"
 import {
@@ -64,40 +64,42 @@ const testView = (state: TestState): View =>
     })
   ])
 
-const makeRuntime = Effect.gen(function*() {
+const makeRuntime = Effect.gen(function* () {
   const state = yield* SubscriptionRef.make<TestState>({ count: 0 })
   const program = makeViewProgramFromState(state, testView)
   const handlers: IntentHandlers<typeof definitions> = {
-    "DesktopTest.Clicked": () =>
-      SubscriptionRef.update(state, (current) => ({ count: current.count + 1 }))
+    "DesktopTest.Clicked": () => SubscriptionRef.update(state, (current) => ({ count: current.count + 1 }))
   }
   const registry = yield* makeIntentRegistry(definitions, handlers)
-  const report: IntentReporter = (ref, runtimeValue) =>
-    registry.dispatch(resolveIntentRef(ref, runtimeValue))
+  const report: IntentReporter = (ref, runtimeValue) => registry.dispatch(resolveIntentRef(ref, runtimeValue))
   return { state, program, registry, report }
 })
 
 describe("@effect-native/platform-desktop", () => {
   test("runMainDesktop mounts the DOM renderer and dispatches typed intents", async () => {
-    const result = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const window = new Window()
-      const document = window.document as unknown as Document
-      const container = document.createElement("main")
-      document.body.appendChild(container)
-      const runtime = yield* makeRuntime
-      const app = yield* runMainDesktop({ container, runtime })
-      const before = container.textContent ?? ""
-      const button = container.querySelector('[data-en-key="desktop-button"]')
-      button?.dispatchEvent(new window.MouseEvent("click", { bubbles: true }) as unknown as Event)
-      yield* Effect.yieldNow
-      const state = yield* runtime.program.currentState
-      yield* app.unmount
-      return {
-        before,
-        state,
-        htmlAfterUnmount: container.innerHTML
-      }
-    })))
+    const result = await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const window = new Window()
+          const document = window.document as unknown as Document
+          const container = document.createElement("main")
+          document.body.appendChild(container)
+          const runtime = yield* makeRuntime
+          const app = yield* runMainDesktop({ container, runtime })
+          const before = container.textContent ?? ""
+          const button = container.querySelector('[data-en-key="desktop-button"]')
+          button?.dispatchEvent(new window.MouseEvent("click", { bubbles: true }) as unknown as Event)
+          yield* Effect.yieldNow
+          const state = yield* runtime.program.currentState
+          yield* app.unmount
+          return {
+            before,
+            state,
+            htmlAfterUnmount: container.innerHTML
+          }
+        })
+      )
+    )
 
     expect(result.before).toContain("Desktop count 0")
     expect(result.state.count).toBe(1)
@@ -108,62 +110,69 @@ describe("@effect-native/platform-desktop", () => {
     const bridgeHarness = await Effect.runPromise(makeDesktopBridgeTestHarness())
     let eventListenerFiber: Fiber.Fiber<void, never> | undefined
 
-    const result = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const window = new Window()
-      const document = window.document as unknown as Document
-      const container = document.createElement("main")
-      document.body.appendChild(container)
+    const result = await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const window = new Window()
+          const document = window.document as unknown as Document
+          const container = document.createElement("main")
+          document.body.appendChild(container)
 
-      const state = yield* SubscriptionRef.make<TestState>({ count: 0 })
-      const program = makeViewProgramFromState(state, bridgeTestView)
-      const handlers: IntentHandlers<typeof bridgeDefinitions> = {
-        "DesktopTest.PingSent": () =>
-          Effect.gen(function*() {
-            const response = yield* bridgeHarness.bridge.call({
-              channel: "ping",
-              payload: { amount: 1 }
-            })
-            const amount = typeof response === "object" && response !== null && !Array.isArray(response) &&
-                "amount" in response && typeof response.amount === "number"
-              ? response.amount
-              : 0
-            yield* SubscriptionRef.update(state, (current) => ({ count: current.count + amount }))
-          })
-      }
-      const registry = yield* makeIntentRegistry(bridgeDefinitions, handlers)
-      const report: IntentReporter = (ref, runtimeValue) =>
-        registry.dispatch(resolveIntentRef(ref, runtimeValue))
+          const state = yield* SubscriptionRef.make<TestState>({ count: 0 })
+          const program = makeViewProgramFromState(state, bridgeTestView)
+          const handlers: IntentHandlers<typeof bridgeDefinitions> = {
+            "DesktopTest.PingSent": () =>
+              Effect.gen(function* () {
+                const response = yield* bridgeHarness.bridge.call({
+                  channel: "ping",
+                  payload: { amount: 1 }
+                })
+                const amount =
+                  typeof response === "object" &&
+                  response !== null &&
+                  !Array.isArray(response) &&
+                  "amount" in response &&
+                  typeof response.amount === "number"
+                    ? response.amount
+                    : 0
+                yield* SubscriptionRef.update(state, (current) => ({ count: current.count + amount }))
+              })
+          }
+          const registry = yield* makeIntentRegistry(bridgeDefinitions, handlers)
+          const report: IntentReporter = (ref, runtimeValue) => registry.dispatch(resolveIntentRef(ref, runtimeValue))
 
-      // Consume the bridge's typed event stream back into app state — the
-      // other half of the main/renderer round trip alongside `call`.
-      eventListenerFiber = yield* bridgeHarness.bridge.events.pipe(
-        Stream.runForEach((event) =>
-          event.channel === "server-push"
-            ? SubscriptionRef.update(state, (current) => ({ count: current.count + 10 }))
-            : Effect.void
-        ),
-        Effect.forkScoped
+          // Consume the bridge's typed event stream back into app state — the
+          // other half of the main/renderer round trip alongside `call`.
+          eventListenerFiber = yield* bridgeHarness.bridge.events.pipe(
+            Stream.runForEach((event) =>
+              event.channel === "server-push"
+                ? SubscriptionRef.update(state, (current) => ({ count: current.count + 10 }))
+                : Effect.void
+            ),
+            Effect.forkScoped
+          )
+
+          const app = yield* runMainDesktop({ container, runtime: { program, report } })
+          const button = container.querySelector('[data-en-key="bridge-button"]')
+          button?.dispatchEvent(new window.MouseEvent("click", { bubbles: true }) as unknown as Event)
+          yield* Effect.yieldNow
+          const afterCall = yield* SubscriptionRef.get(state)
+
+          yield* bridgeHarness.emit({ channel: "server-push", payload: { note: "hello" } })
+          yield* Effect.yieldNow
+          const afterEvent = yield* SubscriptionRef.get(state)
+
+          yield* app.unmount
+
+          return {
+            afterCall,
+            afterEvent,
+            calls: yield* bridgeHarness.calls,
+            htmlAfterUnmount: container.innerHTML
+          }
+        })
       )
-
-      const app = yield* runMainDesktop({ container, runtime: { program, report } })
-      const button = container.querySelector('[data-en-key="bridge-button"]')
-      button?.dispatchEvent(new window.MouseEvent("click", { bubbles: true }) as unknown as Event)
-      yield* Effect.yieldNow
-      const afterCall = yield* SubscriptionRef.get(state)
-
-      yield* bridgeHarness.emit({ channel: "server-push", payload: { note: "hello" } })
-      yield* Effect.yieldNow
-      const afterEvent = yield* SubscriptionRef.get(state)
-
-      yield* app.unmount
-
-      return {
-        afterCall,
-        afterEvent,
-        calls: yield* bridgeHarness.calls,
-        htmlAfterUnmount: container.innerHTML
-      }
-    })))
+    )
 
     expect(result.calls).toEqual([{ channel: "ping", payload: { amount: 1 } }])
     expect(result.afterCall.count).toBe(1)
@@ -181,11 +190,7 @@ describe("@effect-native/platform-desktop", () => {
       throw new Error("event listener fiber was never forked")
     }
     const teardownExit = await Effect.runPromise(
-      Effect.exit(
-        Fiber.join(eventListenerFiber).pipe(
-          Effect.timeout(Duration.millis(200))
-        )
-      )
+      Effect.exit(Fiber.join(eventListenerFiber).pipe(Effect.timeout(Duration.millis(200))))
     )
     // `Stream.runForEach` over an open PubSub never completes on its own, so
     // the only way `Fiber.join` can settle at all here is if scope closure
@@ -203,55 +208,55 @@ describe("@effect-native/platform-desktop", () => {
   })
 
   test("test layers expose typed bridge and native service contracts", async () => {
-    const result = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const bridgeHarness = yield* makeDesktopBridgeTestHarness()
-      const menuHarness = yield* makeAppMenuTestHarness()
-      const windowHarness = yield* makeDesktopWindowTestHarness()
-      const deepLinkHarness = yield* makeDeepLinkTestHarness()
-      const singleInstanceHarness = yield* makeSingleInstanceTestHarness()
+    const result = await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const bridgeHarness = yield* makeDesktopBridgeTestHarness()
+          const menuHarness = yield* makeAppMenuTestHarness()
+          const windowHarness = yield* makeDesktopWindowTestHarness()
+          const deepLinkHarness = yield* makeDeepLinkTestHarness()
+          const singleInstanceHarness = yield* makeSingleInstanceTestHarness()
 
-      const deepLinkFiber = yield* deepLinkHarness.deepLink.events.pipe(
-        Stream.take(1),
-        Stream.runCollect,
-        Effect.forkScoped
-      )
-      const secondInstanceFiber = yield* singleInstanceHarness.singleInstance.secondInstanceEvents.pipe(
-        Stream.take(1),
-        Stream.runCollect,
-        Effect.forkScoped
-      )
-      yield* Effect.yieldNow
-      yield* bridgeHarness.bridge.call({ channel: "menu.ready", payload: { ok: true } })
-      yield* menuHarness.menu.setMenu({
-        items: [
-          {
-            id: "palette.open",
-            title: "Open Palette",
-            intentName: "KhalaChat.PaletteOpened",
-            enabled: true
+          const deepLinkFiber = yield* deepLinkHarness.deepLink.events.pipe(
+            Stream.take(1),
+            Stream.runCollect,
+            Effect.forkScoped
+          )
+          const secondInstanceFiber = yield* singleInstanceHarness.singleInstance.secondInstanceEvents.pipe(
+            Stream.take(1),
+            Stream.runCollect,
+            Effect.forkScoped
+          )
+          yield* Effect.yieldNow
+          yield* bridgeHarness.bridge.call({ channel: "menu.ready", payload: { ok: true } })
+          yield* menuHarness.menu.setMenu({
+            items: [
+              {
+                id: "palette.open",
+                title: "Open Palette",
+                intentName: "KhalaChat.PaletteOpened",
+                enabled: true
+              }
+            ]
+          })
+          yield* windowHarness.window.setTitle("Khala Code")
+          yield* windowHarness.window.focus
+          yield* deepLinkHarness.emit({ url: "openagents://thread/thread-effect-native" })
+          yield* singleInstanceHarness.emitSecondInstance({ argv: ["--open", "thread-effect-native"] })
+
+          return {
+            calls: yield* bridgeHarness.calls,
+            menu: yield* menuHarness.menu.current,
+            window: yield* windowHarness.window.current,
+            deepLinks: Array.from(yield* Fiber.join(deepLinkFiber)),
+            secondInstances: Array.from(yield* Fiber.join(secondInstanceFiber)),
+            acquired: yield* singleInstanceHarness.singleInstance.acquire,
+            layersPresent: [menuHarness.layer, windowHarness.layer, deepLinkHarness.layer, singleInstanceHarness.layer]
+              .length
           }
-        ]
-      })
-      yield* windowHarness.window.setTitle("Khala Code")
-      yield* windowHarness.window.focus
-      yield* deepLinkHarness.emit({ url: "openagents://thread/thread-effect-native" })
-      yield* singleInstanceHarness.emitSecondInstance({ argv: ["--open", "thread-effect-native"] })
-
-      return {
-        calls: yield* bridgeHarness.calls,
-        menu: yield* menuHarness.menu.current,
-        window: yield* windowHarness.window.current,
-        deepLinks: Array.from(yield* Fiber.join(deepLinkFiber)),
-        secondInstances: Array.from(yield* Fiber.join(secondInstanceFiber)),
-        acquired: yield* singleInstanceHarness.singleInstance.acquire,
-        layersPresent: [
-          menuHarness.layer,
-          windowHarness.layer,
-          deepLinkHarness.layer,
-          singleInstanceHarness.layer
-        ].length
-      }
-    })))
+        })
+      )
+    )
 
     expect(result.calls).toEqual([{ channel: "menu.ready", payload: { ok: true } }])
     expect(result.menu.items[0]?.id).toBe("palette.open")

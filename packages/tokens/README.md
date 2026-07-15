@@ -8,12 +8,7 @@ referenced by name in view/style data; renderers resolve names to platform
 values through a theme.
 
 ```ts
-import {
-  ThemeSchema,
-  defaultTheme,
-  defineTheme,
-  spacingTokens
-} from "@effect-native/tokens"
+import { ThemeSchema, defaultTheme, defineTheme, spacingTokens } from "@effect-native/tokens"
 
 const theme = defineTheme(defaultTheme)
 
@@ -52,7 +47,7 @@ through Effect's dependency graph instead of passing it as a plain option:
 import { Effect } from "effect"
 import { ThemeService, khalaThemeLayer } from "@effect-native/tokens"
 
-const program = Effect.gen(function*() {
+const program = Effect.gen(function* () {
   const theme = yield* ThemeService
   // ...
 })
@@ -64,7 +59,7 @@ There is intentionally **no light theme, no runtime theme toggle, and no
 `prefers-color-scheme` branch** anywhere in this package or its consumers —
 Khala product surfaces mount exactly one theme. `defaultTheme` remains only
 as the neutral schema-completeness fixture used by generic tests and
-tooling that need *a* valid theme and are not making a Khala product
+tooling that need _a_ valid theme and are not making a Khala product
 statement; it is not a "light mode" for the product.
 
 State variants (hover/press/focus/disabled) do not live in the token

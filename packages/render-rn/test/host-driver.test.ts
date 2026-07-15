@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect, Stream, SubscriptionRef } from "effect"
 import {
   decodeMediaVideoHostProps,
@@ -181,45 +181,50 @@ describe("render-rn host-driver registry (issue #70)", () => {
 
   test("surface Scope owns the driver lifecycle: one mount across emissions, sweep on removal, dispose on unmount", async () => {
     const log = emptyLog()
-    await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const state = yield* SubscriptionRef.make<{ showVideo: boolean; muted: boolean }>({
-        showVideo: true,
-        muted: false
-      })
-      const program = makeViewProgramFromState(state, (current) =>
-        Stack(
-          { key: "root", direction: "column" },
-          current.showVideo ? [MediaVideo({ key: "cam", muted: current.muted })] : []
-        ))
-      const surface = yield* makeReactNativeRenderer({
-        dependencies,
-        hostDrivers: [makeTestMediaVideoDriver(log)]
-      }).mount(undefined, program.viewStream, (() => Effect.void) as never)
+    await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const state = yield* SubscriptionRef.make<{ showVideo: boolean; muted: boolean }>({
+            showVideo: true,
+            muted: false
+          })
+          const program = makeViewProgramFromState(state, (current) =>
+            Stack(
+              { key: "root", direction: "column" },
+              current.showVideo ? [MediaVideo({ key: "cam", muted: current.muted })] : []
+            )
+          )
+          const surface = yield* makeReactNativeRenderer({
+            dependencies,
+            hostDrivers: [makeTestMediaVideoDriver(log)]
+          }).mount(undefined, program.viewStream, (() => Effect.void) as never)
 
-      expect(log.mounts).toBe(1)
-      expect(log.renders).toBe(1)
+          expect(log.mounts).toBe(1)
+          expect(log.renders).toBe(1)
 
-      // Prop change: same instance renders again, no remount.
-      yield* program.setState({ showVideo: true, muted: true })
-      yield* Effect.yieldNow
-      expect(log.mounts).toBe(1)
-      expect(log.renders).toBe(2)
-      expect(findByTestId(yield* surface.currentElement, "native-video")?.props.muted).toBe(true)
+          // Prop change: same instance renders again, no remount.
+          yield* program.setState({ showVideo: true, muted: true })
+          yield* Effect.yieldNow
+          expect(log.mounts).toBe(1)
+          expect(log.renders).toBe(2)
+          expect(findByTestId(yield* surface.currentElement, "native-video")?.props.muted).toBe(true)
 
-      // Node leaves the tree: the sweep unmounts the instance.
-      yield* program.setState({ showVideo: false, muted: true })
-      yield* Effect.yieldNow
-      expect(log.unmounts).toBe(1)
+          // Node leaves the tree: the sweep unmounts the instance.
+          yield* program.setState({ showVideo: false, muted: true })
+          yield* Effect.yieldNow
+          expect(log.unmounts).toBe(1)
 
-      // Node returns: fresh mount.
-      yield* program.setState({ showVideo: true, muted: false })
-      yield* Effect.yieldNow
-      expect(log.mounts).toBe(2)
+          // Node returns: fresh mount.
+          yield* program.setState({ showVideo: true, muted: false })
+          yield* Effect.yieldNow
+          expect(log.mounts).toBe(2)
 
-      // Surface scope close unmounts everything still live.
-      yield* surface.unmount
-      expect(log.unmounts).toBe(2)
-    })))
+          // Surface scope close unmounts everything still live.
+          yield* surface.unmount
+          expect(log.unmounts).toBe(2)
+        })
+      )
+    )
   })
 
   test("emit binds to the LATEST emission's onEvent, not the mount-time one", async () => {
@@ -229,20 +234,25 @@ describe("render-rn host-driver registry (issue #70)", () => {
       dispatched.push(ref.name)
       return Effect.void
     }
-    await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const state = yield* SubscriptionRef.make<{ intent: string }>({ intent: "First" })
-      const program = makeViewProgramFromState(state, (current) =>
-        MediaVideo({ key: "cam", onEvent: IntentRef(current.intent, StaticPayload({})) }))
-      yield* makeReactNativeRenderer({
-        dependencies,
-        hostDrivers: [makeTestMediaVideoDriver(log)]
-      }).mount(undefined, program.viewStream, report as never)
+    await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const state = yield* SubscriptionRef.make<{ intent: string }>({ intent: "First" })
+          const program = makeViewProgramFromState(state, (current) =>
+            MediaVideo({ key: "cam", onEvent: IntentRef(current.intent, StaticPayload({})) })
+          )
+          yield* makeReactNativeRenderer({
+            dependencies,
+            hostDrivers: [makeTestMediaVideoDriver(log)]
+          }).mount(undefined, program.viewStream, report as never)
 
-      yield* program.setState({ intent: "Second" })
-      yield* Effect.yieldNow
+          yield* program.setState({ intent: "Second" })
+          yield* Effect.yieldNow
 
-      log.emit?.({ type: "ready" })
-      expect(dispatched).toEqual(["Second"])
-    })))
+          log.emit?.({ type: "ready" })
+          expect(dispatched).toEqual(["Second"])
+        })
+      )
+    )
   })
 })

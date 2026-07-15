@@ -10,17 +10,17 @@ iOS and Android simulator pixels. See the honesty boundary below.
 
 ## Honesty bar (what is / is not proven)
 
-| Claim | Status |
-|---|---|
-| One typed mobile view tree for onboarding / threads / chat / settings | **Yes** — `examples/khala-mobile` |
-| Same scripted path: headless = DOM = RN(iOS host) = RN(Android host) | **Yes** — in-process host shims, not devices |
-| `runMainMobile` mounts on `platform: "ios" \| "android"` | **Yes** — process options only |
-| RN “pixel baselines” on both platforms | **Structural only** — `rnVisualCapture` serializes RN structure; no simulator bitmaps |
-| Desktop → mobile and mobile → desktop message convergence | **Yes under a memory hub** shaped like Khala Sync mutators/changelog |
-| Live round-trip over production Khala Sync (Cloud SQL + hub + WS) | **No** — not driven against staging/prod |
-| Real dual-client protocol via `@openagentsinc/khala-sync-client` sessions | **Yes (in openagents)** — see below |
-| Real RN production consumer on iOS simulator | **Yes** — OpenAgents GL-1 receipts |
-| Real RN production consumer on Android simulator | **Yes** — OpenAgents `da890eea8a` receipt |
+| Claim                                                                     | Status                                                                                |
+| ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| One typed mobile view tree for onboarding / threads / chat / settings     | **Yes** — `examples/khala-mobile`                                                     |
+| Same scripted path: headless = DOM = RN(iOS host) = RN(Android host)      | **Yes** — in-process host shims, not devices                                          |
+| `runMainMobile` mounts on `platform: "ios" \| "android"`                  | **Yes** — process options only                                                        |
+| RN “pixel baselines” on both platforms                                    | **Structural only** — `rnVisualCapture` serializes RN structure; no simulator bitmaps |
+| Desktop → mobile and mobile → desktop message convergence                 | **Yes under a memory hub** shaped like Khala Sync mutators/changelog                  |
+| Live round-trip over production Khala Sync (Cloud SQL + hub + WS)         | **No** — not driven against staging/prod                                              |
+| Real dual-client protocol via `@openagentsinc/khala-sync-client` sessions | **Yes (in openagents)** — see below                                                   |
+| Real RN production consumer on iOS simulator                              | **Yes** — OpenAgents GL-1 receipts                                                    |
+| Real RN production consumer on Android simulator                          | **Yes** — OpenAgents `da890eea8a` receipt                                             |
 
 The framework bar is met: live staging/prod Sync was explicitly waived for
 conversion, the real two-session protocol path is covered in `openagents`, and
@@ -32,12 +32,12 @@ made by this receipt.
 
 ### Mobile program — `examples/khala-mobile/index.ts`
 
-| Screen | Catalog |
-|---|---|
-| Onboarding | `BackgroundGradient` / `Spotlight` / `Frame` + `Pager` |
-| Thread list | virtualized `List` + `SwipeableListItem` + pull-to-refresh + `BlurredPopup` long-press quote |
-| Chat | `Transcript` of `Markdown` / `CodeBlock` / `DiffView` / tool `Card` + `Composer` (mention chips) + `VoiceInput` Host |
-| Settings | `FieldRow` + `Toggle` / `Checkbox` |
+| Screen      | Catalog                                                                                                              |
+| ----------- | -------------------------------------------------------------------------------------------------------------------- |
+| Onboarding  | `BackgroundGradient` / `Spotlight` / `Frame` + `Pager`                                                               |
+| Thread list | virtualized `List` + `SwipeableListItem` + pull-to-refresh + `BlurredPopup` long-press quote                         |
+| Chat        | `Transcript` of `Markdown` / `CodeBlock` / `DiffView` / tool `Card` + `Composer` (mention chips) + `VoiceInput` Host |
+| Settings    | `FieldRow` + `Toggle` / `Checkbox`                                                                                   |
 
 Boot: `runKhalaMobileMain(dependencies, "ios" | "android")` → `runMainMobile`.
 
@@ -50,16 +50,16 @@ Boot: `runKhalaMobileMain(dependencies, "ios" | "android")` → `runMainMobile`.
 ## Oracles (CI receipts)
 
 ```sh
-bun test scripts/khala-mobile-proof-oracle.test.ts
-bun test scripts/khala-cross-app-sync-oracle.test.ts
+pnpm exec vp test --run scripts/khala-mobile-proof-oracle.test.ts
+pnpm exec vp test --run scripts/khala-cross-app-sync-oracle.test.ts
 ```
 
-| Test | Asserts |
-|---|---|
-| Mobile path | onboarding → settings → threads → chat; headless = DOM = RN(iOS) = RN(Android) |
-| `runMainMobile` | boots on both platform options |
-| RN visual baselines | `rnVisualCapture` for chat on iOS + Android |
-| Cross-app Sync | desktop mutator lands on mobile; mobile mutator lands on desktop; same ordered turns; both views render |
+| Test                | Asserts                                                                                                 |
+| ------------------- | ------------------------------------------------------------------------------------------------------- |
+| Mobile path         | onboarding → settings → threads → chat; headless = DOM = RN(iOS) = RN(Android)                          |
+| `runMainMobile`     | boots on both platform options                                                                          |
+| RN visual baselines | `rnVisualCapture` for chat on iOS + Android                                                             |
+| Cross-app Sync      | desktop mutator lands on mobile; mobile mutator lands on desktop; same ordered turns; both views render |
 
 ## Cross-app Khala Sync exit test
 
@@ -118,18 +118,18 @@ program remains the deterministic structural/intent oracle.
 
 ## Receipt artifacts
 
-| Artifact | Path |
-|---|---|
-| Mobile program | `examples/khala-mobile/index.ts` |
-| Shared chat + hub | `examples/khala-shared-chat/index.ts` |
-| Mobile oracle | `scripts/khala-mobile-proof-oracle.test.ts` |
-| Cross-app oracle | `scripts/khala-cross-app-sync-oracle.test.ts` |
+| Artifact            | Path                                                     |
+| ------------------- | -------------------------------------------------------- |
+| Mobile program      | `examples/khala-mobile/index.ts`                         |
+| Shared chat + hub   | `examples/khala-shared-chat/index.ts`                    |
+| Mobile oracle       | `scripts/khala-mobile-proof-oracle.test.ts`              |
+| Cross-app oracle    | `scripts/khala-cross-app-sync-oracle.test.ts`            |
 | Desktop counterpart | `examples/khala-chat/index.ts` + `docs/proof-desktop.md` |
 
 ## Run
 
 ```sh
-bun install
-bun test scripts/khala-mobile-proof-oracle.test.ts scripts/khala-cross-app-sync-oracle.test.ts
-bun run check
+pnpm install
+pnpm exec vp test --run scripts/khala-mobile-proof-oracle.test.ts scripts/khala-cross-app-sync-oracle.test.ts
+pnpm run check
 ```

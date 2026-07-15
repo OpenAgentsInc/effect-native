@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect, Exit, Schema, SubscriptionRef } from "effect"
 import { Window } from "happy-dom"
 import {
@@ -47,40 +47,47 @@ describe("foreign-host escape hatch (#23)", () => {
       }
     }
 
-    await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const state = yield* SubscriptionRef.make<{ readonly value: string }>({ value: "hello" })
-      const program = makeViewProgramFromState(
-        state,
-        ({ value }): View =>
-          Host({
-            key: "editor",
-            kind: "code-editor",
-            props: { value },
-            onEvent: IntentRef("EditorEvent", ComponentValueBinding())
-          })
-      )
-      const report: IntentReporter = (ref, runtimeValue) =>
-        Effect.sync(() => {
-          events.push({ name: ref.name, value: runtimeValue ?? null })
+    await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const state = yield* SubscriptionRef.make<{ readonly value: string }>({ value: "hello" })
+          const program = makeViewProgramFromState(
+            state,
+            ({ value }): View =>
+              Host({
+                key: "editor",
+                kind: "code-editor",
+                props: { value },
+                onEvent: IntentRef("EditorEvent", ComponentValueBinding())
+              })
+          )
+          const report: IntentReporter = (ref, runtimeValue) =>
+            Effect.sync(() => {
+              events.push({ name: ref.name, value: runtimeValue ?? null })
+            })
+
+          const surface = yield* makeDomRenderer({ document, hostDrivers: [editorDriver] }).mount(
+            container,
+            program.viewStream,
+            report
+          )
+          yield* Effect.yieldNow
+
+          const hostEl = container.querySelector('[data-en-host-kind="code-editor"]')
+          expect(hostEl?.querySelector('[data-editor="true"]')).not.toBeNull()
+
+          // A typed prop change updates the same mounted instance (no remount).
+          yield* SubscriptionRef.set(state, { value: "world" })
+          yield* nextTask
+
+          // The driver emits a typed event outward through the onEvent intent.
+          emit?.({ type: "change", value: "world" })
+          expect(events).toEqual([{ name: "EditorEvent", value: { type: "change", value: "world" } }])
+
+          yield* surface.unmount
         })
-
-      const surface = yield* makeDomRenderer({ document, hostDrivers: [editorDriver] })
-        .mount(container, program.viewStream, report)
-      yield* Effect.yieldNow
-
-      const hostEl = container.querySelector('[data-en-host-kind="code-editor"]')
-      expect(hostEl?.querySelector('[data-editor="true"]')).not.toBeNull()
-
-      // A typed prop change updates the same mounted instance (no remount).
-      yield* SubscriptionRef.set(state, { value: "world" })
-      yield* nextTask
-
-      // The driver emits a typed event outward through the onEvent intent.
-      emit?.({ type: "change", value: "world" })
-      expect(events).toEqual([{ name: "EditorEvent", value: { type: "change", value: "world" } }])
-
-      yield* surface.unmount
-    })))
+      )
+    )
 
     // Lifecycle called in order; unmount fired exactly once on scope exit.
     expect(lifecycle).toEqual([
@@ -93,23 +100,23 @@ describe("foreign-host escape hatch (#23)", () => {
   test("a Host kind with no registered driver renders a loud error marker (not a silent no-op)", async () => {
     const { container, document } = createDom()
 
-    await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const state = yield* SubscriptionRef.make(0)
-      const program = makeViewProgramFromState(
-        state,
-        (): View => Host({ key: "term", kind: "terminal", props: {} })
-      )
-      const surface = yield* makeDomRenderer({ document }).mount(
-        container,
-        program.viewStream,
-        () => Effect.void
-      )
-      yield* Effect.yieldNow
+    await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const state = yield* SubscriptionRef.make(0)
+          const program = makeViewProgramFromState(
+            state,
+            (): View => Host({ key: "term", kind: "terminal", props: {} })
+          )
+          const surface = yield* makeDomRenderer({ document }).mount(container, program.viewStream, () => Effect.void)
+          yield* Effect.yieldNow
 
-      const hostEl = container.querySelector('[data-en-host-kind="terminal"]')
-      expect(hostEl?.getAttribute("data-en-host-error")).toBe("unsupported-host:terminal")
-      yield* surface.unmount
-    })))
+          const hostEl = container.querySelector('[data-en-host-kind="terminal"]')
+          expect(hostEl?.getAttribute("data-en-host-error")).toBe("unsupported-host:terminal")
+          yield* surface.unmount
+        })
+      )
+    )
   })
 
   test("an unregistered host kind is a typed decode failure, not a runtime surprise", () => {

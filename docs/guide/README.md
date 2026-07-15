@@ -17,7 +17,7 @@ intentionally closed (see [`../../GAPS.md`](../../GAPS.md)).
 
 Every `ts`/`typescript` code block in this guide is extracted and type-checked
 by [`scripts/check-doc-snippets.ts`](../../scripts/check-doc-snippets.ts)
-(`bun run check:doc-snippets`). The catalog tag list is guarded by
+(`pnpm run check:doc-snippets`). The catalog tag list is guarded by
 [`scripts/check-catalog-reference.ts`](../../scripts/check-catalog-reference.ts).
 
 ## Reading order
@@ -48,8 +48,8 @@ guide builds toward — form composer, note list, delete modal, About link, and
 responsive padding variants.
 
 ```sh
-bun run example:guide          # web at http://127.0.0.1:4177/
-bun test ./examples/guide-app  # testkit interaction tests
+pnpm run example:guide          # web at http://127.0.0.1:4177/
+pnpm exec vp test --run ./examples/guide-app  # testkit interaction tests
 ```
 
 On mobile (Expo app under `examples/mobile`):
@@ -64,5 +64,5 @@ tree as web.
 
 ## Larger examples
 
-- Signup + activity proof: [`../proof.md`](../proof.md) / `bun run example:web`
+- Signup + activity proof: [`../proof.md`](../proof.md) / `pnpm run example:web`
 - Desktop chat slice: [`../proof-desktop.md`](../proof-desktop.md)

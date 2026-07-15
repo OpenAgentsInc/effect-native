@@ -2,34 +2,33 @@
 
 ## Requirements
 
-- [Bun](https://bun.sh) 1.3+. This repository and its examples are built and
-  run with Bun; the packages themselves are plain TypeScript with no
-  Bun-specific runtime dependency, but the tooling in this guide assumes it.
-- Node-compatible TypeScript 5.8+ if you want your editor's language server
+- Node.js 24.13.1 and pnpm 11.10.0. The repository pins both so local and CI
+  installs use the same runtime and package manager.
+- TypeScript 5.8+ if you want your editor's language server
   to match what `tsc` reports (the workspace pins `typescript@5.8.3`).
 
 ## Get the packages
 
 Effect Native ships as a set of scoped packages, each independently useful:
 
-| Package | What it's for |
-|---|---|
-| `@effect-native/core` | the catalog, the intent algebra, the runtime — everything renderer-agnostic |
-| `@effect-native/tokens` | the design-token vocabulary (`re-exported by core`) |
-| `@effect-native/render-dom` | mounts a program in a browser DOM, no React |
-| `@effect-native/render-rn` | mounts a program on React Native (Expo or bare RN) |
+| Package                     | What it's for                                                               |
+| --------------------------- | --------------------------------------------------------------------------- |
+| `@effect-native/core`       | the catalog, the intent algebra, the runtime — everything renderer-agnostic |
+| `@effect-native/tokens`     | the design-token vocabulary (`re-exported by core`)                         |
+| `@effect-native/render-dom` | mounts a program in a browser DOM, no React                                 |
+| `@effect-native/render-rn`  | mounts a program on React Native (Expo or bare RN)                          |
 
 From a fresh project:
 
 ```sh
-bun add effect @effect-native/core
+pnpm add effect @effect-native/core
 ```
 
 Add a renderer for whichever platform(s) you're targeting:
 
 ```sh
-bun add @effect-native/render-dom       # web
-bun add @effect-native/render-rn        # iOS / Android
+pnpm add @effect-native/render-dom       # web
+pnpm add @effect-native/render-rn        # iOS / Android
 ```
 
 `@effect-native/render-rn` declares `react` and `react-native` as **optional
@@ -38,10 +37,10 @@ the package itself type-checks and can be imported even in a project that
 never touches React Native. You still need `react` and `react-native` (or an
 Expo project, which brings both) installed wherever you actually mount it.
 
-This repository is a Bun workspace of those packages plus a handful of
+This repository is a pnpm workspace of those packages plus a handful of
 example apps; there is no published npm release yet (the guide above shows
 the intended shape once one exists). If you're working from a clone of this
-repository instead, `bun install` at the repository root wires up every
+repository instead, `pnpm install` at the repository root wires up every
 package via workspace symlinks and that's the whole setup step.
 
 ## Project shape

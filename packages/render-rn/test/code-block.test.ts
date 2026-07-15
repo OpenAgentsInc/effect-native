@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect } from "effect"
 import { CodeBlock, DiffView, IntentRef, type IntentReporter, type View } from "@effect-native/core"
 import {
@@ -71,7 +71,15 @@ describe("code block + diff (#36) React Native renderer", () => {
         language: "typescript",
         showLineNumbers: true,
         onCopy: IntentRef("Copy"),
-        lines: [{ tokens: [{ kind: "keyword", text: "const" }, { kind: "plain", text: " x = " }, { kind: "number", text: "1" }] }]
+        lines: [
+          {
+            tokens: [
+              { kind: "keyword", text: "const" },
+              { kind: "plain", text: " x = " },
+              { kind: "number", text: "1" }
+            ]
+          }
+        ]
       }) as View,
       dependencies,
       report
@@ -89,20 +97,24 @@ describe("code block + diff (#36) React Native renderer", () => {
         onLineVerdict: IntentRef("Verdict"),
         onSourceControlAction: IntentRef("Action"),
         actions: [{ id: "approve", label: "Approve" }],
-        hunks: [{
-          header: "@@ -1 +1 @@",
-          rows: [
-            { kind: "remove", oldLine: 1, id: "r-1", tokens: [{ kind: "plain", text: "return 1" }] },
-            { kind: "add", newLine: 1, id: "r-2", tokens: [{ kind: "plain", text: "return 2" }] }
-          ]
-        }]
+        hunks: [
+          {
+            header: "@@ -1 +1 @@",
+            rows: [
+              { kind: "remove", oldLine: 1, id: "r-1", tokens: [{ kind: "plain", text: "return 1" }] },
+              { kind: "add", newLine: 1, id: "r-2", tokens: [{ kind: "plain", text: "return 2" }] }
+            ]
+          }
+        ]
       }) as View,
       dependencies,
       report
     )
     expect(diff.props.testID).toBe("en-diff:unified")
     expect(find(diff, (e) => e.props.testID === "en-diff-row:r-1")).not.toBeUndefined()
-    ;(find(diff, (e) => e.props.testID === "en-diff-verdict:r-2:approved")?.props.onPress as (() => void) | undefined)?.()
+    ;(
+      find(diff, (e) => e.props.testID === "en-diff-verdict:r-2:approved")?.props.onPress as (() => void) | undefined
+    )?.()
     await wait()
     expect(verdicts).toEqual([{ rowId: "r-2", verdict: "approved" }])
     ;(find(diff, (e) => e.props.testID === "en-diff-action:approve")?.props.onPress as (() => void) | undefined)?.()

@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Exit, Schema } from "effect"
 import {
   CatalogVersion,
@@ -98,9 +98,9 @@ describe("GraphFigure provenance vocabulary (#68, v31)", () => {
       ref: "datum:intake-call"
     })
     expect(payload.ref).toBe("datum:intake-call")
-    expect(
-      Exit.isFailure(Schema.decodeUnknownExit(GraphChipSelectPayloadSchema)({ nodeId: "", chipId: "d1" }))
-    ).toBe(true)
+    expect(Exit.isFailure(Schema.decodeUnknownExit(GraphChipSelectPayloadSchema)({ nodeId: "", chipId: "d1" }))).toBe(
+      true
+    )
   })
 
   test("a v30 GraphFigure tree (no provenance fields) still decodes under v31", () => {

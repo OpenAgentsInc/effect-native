@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect, Exit, Ref, Scope } from "effect"
 import * as Three from "three"
 import {
@@ -34,7 +34,7 @@ interface Recording {
   readonly renders: number
 }
 
-const makeRecordingGraph = Effect.gen(function*() {
+const makeRecordingGraph = Effect.gen(function* () {
   const ref = yield* Ref.make<Recording>({ updates: [], cameras: [], backgrounds: [], renders: 0 })
   const graph: ThreeSceneGraph = {
     update: (descriptors) => Ref.update(ref, (r) => ({ ...r, updates: [...r.updates, descriptors] })),
@@ -72,14 +72,12 @@ describe("Three.js canvas backend (against a recording port)", () => {
   test("forwards camera/background and pushes a reconciled descriptor tree per dirty frame", async () => {
     const rec = await Effect.runPromise(
       Effect.scoped(
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           const recording = yield* makeRecordingGraph
           const backend = yield* makeThreeCanvasBackend(recording.graph)
           const frames = framesFromScenes([
             scene({ camera: cam, background: "#0a0e14" }, [group({ key: "g" }, [meshNode("m1", "#fff")])]),
-            scene({ camera: cam, background: "#0a0e14" }, [
-              group({ key: "g" }, [meshNode("m1", "#4cc2ff")])
-            ])
+            scene({ camera: cam, background: "#0a0e14" }, [group({ key: "g" }, [meshNode("m1", "#4cc2ff")])])
           ])
           yield* drainCanvasFrames(backend, frames)
           return yield* recording.get
@@ -101,7 +99,7 @@ describe("live Three.js scene graph (createSceneNodeReconciler)", () => {
   test("builds real Three.js objects for mesh/line/label and updates across frames", async () => {
     const result = await Effect.runPromise(
       Effect.scoped(
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           const graph = yield* makeLiveThreeSceneGraph()
           expect(graph.root).toBeInstanceOf(Three.Object3D)
 
@@ -190,7 +188,7 @@ describe("live Three.js scene graph (createSceneNodeReconciler)", () => {
     let rootRef: Three.Object3D | undefined
     await Effect.runPromise(
       Effect.scoped(
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           const graph = yield* makeLiveThreeSceneGraph()
           rootRef = graph.root
           yield* graph.update([
@@ -216,7 +214,7 @@ describe("live Three.js scene graph (createSceneNodeReconciler)", () => {
   test("makeLiveThreeCanvasBackend drains a typed graph scene end-to-end", async () => {
     const run = await Effect.runPromise(
       Effect.scoped(
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           const backend = yield* makeLiveThreeCanvasBackend()
           const frames = framesFromScenes([
             scene({ camera: cam, background: "#111111" }, [
@@ -233,9 +231,7 @@ describe("live Three.js scene graph (createSceneNodeReconciler)", () => {
                 label({ key: "n", text: "A", color: "#ffffff", fontSize: 14, position: [0, 1, 0] })
               ])
             ]),
-            scene({ camera: cam, background: "#111111" }, [
-              group({ key: "root" }, [meshNode("a", "#00ff88")])
-            ])
+            scene({ camera: cam, background: "#111111" }, [group({ key: "root" }, [meshNode("a", "#00ff88")])])
           ])
           return yield* drainCanvasFrames(backend, frames)
         })
@@ -248,7 +244,7 @@ describe("live Three.js scene graph (createSceneNodeReconciler)", () => {
   test("live graph construction succeeds (no longer a die stub)", async () => {
     const exit = await Effect.runPromiseExit(
       Effect.scoped(
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           const graph = yield* makeLiveThreeSceneGraph()
           return graph.root !== undefined
         })

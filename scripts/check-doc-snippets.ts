@@ -29,10 +29,11 @@
  *
  * Every other fenced language (sh, json, tsx, ...) is left alone.
  */
+import { spawn } from "node:child_process"
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, join, relative, resolve } from "node:path"
 
-const repoRoot = resolve(import.meta.dir, "..")
+const repoRoot = resolve(import.meta.dirname, "..")
 const guideDir = join(repoRoot, "docs", "guide")
 const workDir = join(repoRoot, "scripts", ".doc-snippets")
 const baseTsconfig = join(repoRoot, "tsconfig.base.json")
@@ -142,22 +143,30 @@ const writeProjects = (allSnippets: ReadonlyMap<string, ReadonlyArray<Snippet>>)
 }
 
 const runTsc = async (project: Project): Promise<{ readonly ok: boolean; readonly output: string }> => {
-  const proc = Bun.spawn([tscBin, "-p", join(project.dir, "tsconfig.json")], {
+  const proc = spawn(tscBin, ["-p", join(project.dir, "tsconfig.json")], {
     cwd: repoRoot,
-    stdout: "pipe",
-    stderr: "pipe"
+    stdio: ["ignore", "pipe", "pipe"]
   })
-  const [stdout, stderr, exitCode] = await Promise.all([
-    new Response(proc.stdout).text(),
-    new Response(proc.stderr).text(),
-    proc.exited
-  ])
+  let stdout = ""
+  let stderr = ""
+  proc.stdout.setEncoding("utf8")
+  proc.stderr.setEncoding("utf8")
+  proc.stdout.on("data", (chunk: string) => {
+    stdout += chunk
+  })
+  proc.stderr.on("data", (chunk: string) => {
+    stderr += chunk
+  })
+  const exitCode = await new Promise<number>((resolveExit, reject) => {
+    proc.once("error", reject)
+    proc.once("close", (code) => resolveExit(code ?? 1))
+  })
   return { ok: exitCode === 0, output: (stdout + stderr).trim() }
 }
 
 const main = async () => {
   if (!existsSync(tscBin)) {
-    console.error(`Doc-snippet check: expected a local tsc at ${tscBin}. Run "bun install" first.`)
+    console.error(`Doc-snippet check: expected a local tsc at ${tscBin}. Run "pnpm install" first.`)
     process.exit(1)
   }
 
@@ -167,9 +176,7 @@ const main = async () => {
     return
   }
 
-  const bySourceFile = new Map<string, ReadonlyArray<Snippet>>(
-    files.map((file) => [file, extractSnippets(file)])
-  )
+  const bySourceFile = new Map<string, ReadonlyArray<Snippet>>(files.map((file) => [file, extractSnippets(file)]))
   const totalSnippets = [...bySourceFile.values()].reduce((sum, snippets) => sum + snippets.length, 0)
 
   if (totalSnippets === 0) {
@@ -208,7 +215,9 @@ const main = async () => {
     process.exit(1)
   }
 
-  console.log(`\nDoc-snippet check passed: ${totalSnippets} snippet(s) across ${files.length} guide page(s) compiled cleanly.`)
+  console.log(
+    `\nDoc-snippet check passed: ${totalSnippets} snippet(s) across ${files.length} guide page(s) compiled cleanly.`
+  )
 }
 
 await main()

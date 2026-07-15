@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { decodeView } from "@effect-native/core"
 import { fallbackSiteContent, parseSiteContent, type SiteContent } from "../src/content"
 import {
@@ -16,7 +16,11 @@ const findByKey = (view: unknown, key: string): boolean => {
   if (view === null || typeof view !== "object") {
     return false
   }
-  const node = view as { readonly key?: string; readonly children?: ReadonlyArray<unknown>; readonly items?: ReadonlyArray<unknown> }
+  const node = view as {
+    readonly key?: string
+    readonly children?: ReadonlyArray<unknown>
+    readonly items?: ReadonlyArray<unknown>
+  }
   if (node.key === key) {
     return true
   }
@@ -84,7 +88,8 @@ describe("renderRoadmap version threading", () => {
 
   test("real repo README/ROADMAP fixtures produce a decodable roadmap view", () => {
     const content = parseSiteContent({
-      readme: "# Effect Native\n\n**A framework for building native applications using Effect.**\n\n## Status\n\n**Early.** More.\n",
+      readme:
+        "# Effect Native\n\n**A framework for building native applications using Effect.**\n\n## Status\n\n**Early.** More.\n",
       roadmap: "## Phase 0 — The core (complete)\n\nBody.\n",
       packageJson: JSON.stringify({ version: "0.0.0" }),
       sampleSource: "/** doc */\nexport const x = 1\n"

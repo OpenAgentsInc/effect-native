@@ -172,13 +172,7 @@ export type GalleryViewportId = (typeof galleryViewports)[number]["id"]
 export const StoryKindSchema = Schema.Literals(["generated", "hand-authored"] as const)
 export type StoryKind = Schema.Schema.Type<typeof StoryKindSchema>
 
-export const StoryControlKindSchema = Schema.Literals([
-  "boolean",
-  "enum",
-  "text",
-  "number",
-  "token"
-] as const)
+export const StoryControlKindSchema = Schema.Literals(["boolean", "enum", "text", "number", "token"] as const)
 export type StoryControlKind = Schema.Schema.Type<typeof StoryControlKindSchema>
 
 export const StoryPathSegmentSchema = Schema.Union([Schema.String, Schema.Number])
@@ -233,8 +227,7 @@ export const StorybookSchema = Schema.Struct({
 })
 export type Storybook = Schema.Schema.Type<typeof StorybookSchema>
 
-const keyed = <V extends View>(view: V): V & { readonly key: string } =>
-  view as V & { readonly key: string }
+const keyed = <V extends View>(view: V): V & { readonly key: string } => view as V & { readonly key: string }
 
 const story = (input: {
   readonly id: string
@@ -285,19 +278,11 @@ const booleanControl = (
   value: boolean
 ): StoryControl => StoryControlSchema.make({ id, label, kind: "boolean", path, value })
 
-const textControl = (
-  id: string,
-  label: string,
-  path: ReadonlyArray<StoryPathSegment>,
-  value: string
-): StoryControl => StoryControlSchema.make({ id, label, kind: "text", path, value })
+const textControl = (id: string, label: string, path: ReadonlyArray<StoryPathSegment>, value: string): StoryControl =>
+  StoryControlSchema.make({ id, label, kind: "text", path, value })
 
-const numberControl = (
-  id: string,
-  label: string,
-  path: ReadonlyArray<StoryPathSegment>,
-  value: number
-): StoryControl => StoryControlSchema.make({ id, label, kind: "number", path, value })
+const numberControl = (id: string, label: string, path: ReadonlyArray<StoryPathSegment>, value: number): StoryControl =>
+  StoryControlSchema.make({ id, label, kind: "number", path, value })
 
 const Pressed = defineIntent("GalleryStory.Pressed", Schema.Struct({ id: Schema.String }))
 const Changed = defineIntent("GalleryStory.Changed", Schema.String)
@@ -335,16 +320,19 @@ const componentStoryMap = {
       component: "Stack",
       title: "Column stack",
       description: "Generated baseline for Stack direction, spacing, and padding.",
-      view: Stack({
-        key: "stack-column",
-        direction: "column",
-        gap: "2",
-        padding: "3",
-        style: { backgroundColor: "surface", borderColor: "border", borderWidth: 1 }
-      }, [
-        Text({ key: "stack-one", content: "First row", variant: "body" }),
-        Text({ key: "stack-two", content: "Second row", variant: "body" })
-      ]),
+      view: Stack(
+        {
+          key: "stack-column",
+          direction: "column",
+          gap: "2",
+          padding: "3",
+          style: { backgroundColor: "surface", borderColor: "border", borderWidth: 1 }
+        },
+        [
+          Text({ key: "stack-one", content: "First row", variant: "body" }),
+          Text({ key: "stack-two", content: "Second row", variant: "body" })
+        ]
+      ),
       controls: [
         enumControl("stack-direction", "Direction", ["direction"], "column", stackDirections),
         tokenControl("stack-gap", "Gap", ["gap"], "2", spacingControlOptions),
@@ -357,20 +345,23 @@ const componentStoryMap = {
       title: "Responsive stack",
       description: "Hand-authored composition proving breakpoint data stays in the story.",
       kind: "hand-authored",
-      view: Stack({
-        key: "stack-responsive",
-        direction: { base: "column", md: "row" },
-        gap: { base: "2", md: "4" },
-        padding: "3",
-        style: {
-          borderColor: "border",
-          borderWidth: 1,
-          variants: { breakpoint: { md: { backgroundColor: "surface" } } }
-        }
-      }, [
-        Card({ key: "responsive-a", padding: "3", radius: "md" }, cardCopy("responsive-a", "Mobile first")),
-        Card({ key: "responsive-b", padding: "3", radius: "md" }, cardCopy("responsive-b", "Desktop row"))
-      ])
+      view: Stack(
+        {
+          key: "stack-responsive",
+          direction: { base: "column", md: "row" },
+          gap: { base: "2", md: "4" },
+          padding: "3",
+          style: {
+            borderColor: "border",
+            borderWidth: 1,
+            variants: { breakpoint: { md: { backgroundColor: "surface" } } }
+          }
+        },
+        [
+          Card({ key: "responsive-a", padding: "3", radius: "md" }, cardCopy("responsive-a", "Mobile first")),
+          Card({ key: "responsive-b", padding: "3", radius: "md" }, cardCopy("responsive-b", "Desktop row"))
+        ]
+      )
     })
   ],
   Text: [
@@ -492,7 +483,8 @@ const componentStoryMap = {
       id: "textfield-matrix-variant",
       component: "TextField",
       title: "TextField (matrix variant + size + invalid, harmonization #79)",
-      description: "Opt-in `variant`/`size`/`gutterSize` matrix box chrome and `invalid` danger cue; omitting `variant`/`size` keeps the original renderer-drawn-chromeless look (style-driven boxes still work unchanged).",
+      description:
+        "Opt-in `variant`/`size`/`gutterSize` matrix box chrome and `invalid` danger cue; omitting `variant`/`size` keeps the original renderer-drawn-chromeless look (style-driven boxes still work unchanged).",
       view: TextField({
         key: "textfield-matrix-variant",
         label: "Email",
@@ -513,7 +505,8 @@ const componentStoryMap = {
       id: "textfield-multiline-autoresize",
       component: "TextField",
       title: "TextField (multiline autoResize, Textarea parity)",
-      description: "Plain multiline mode that grows its height to fit content (DOM); React Native already grows a multiline field with no fixed height, so `autoResize` is a declared no-op there.",
+      description:
+        "Plain multiline mode that grows its height to fit content (DOM); React Native already grows a multiline field with no fixed height, so `autoResize` is a declared no-op there.",
       view: TextField({
         key: "textfield-multiline-autoresize",
         label: "Notes",
@@ -523,9 +516,7 @@ const componentStoryMap = {
         variant: "outline",
         onChange: IntentRef("GalleryStory.Changed", ComponentValueBinding())
       }),
-      controls: [
-        booleanControl("textfield-autoresize", "Auto-resize", ["autoResize"], true)
-      ]
+      controls: [booleanControl("textfield-autoresize", "Auto-resize", ["autoResize"], true)]
     })
   ],
   List: [
@@ -534,10 +525,13 @@ const componentStoryMap = {
       component: "List",
       title: "List",
       description: "Generated list and virtualization coverage.",
-      view: List({
-        key: "list-basic",
-        style: { borderColor: "border", borderWidth: 1, padding: "2", borderRadius: "md" }
-      }, listItems),
+      view: List(
+        {
+          key: "list-basic",
+          style: { borderColor: "border", borderWidth: 1, padding: "2", borderRadius: "md" }
+        },
+        listItems
+      ),
       controls: [
         booleanControl("list-virtualize", "Virtualize", ["virtualize"], false),
         numberControl("list-estimated-size", "Estimated item size", ["estimatedItemSize"], 48)
@@ -549,15 +543,15 @@ const componentStoryMap = {
       title: "Virtualized list",
       description: "Hand-authored virtualized list fixture.",
       kind: "hand-authored",
-      view: List({
-        key: "list-virtualized",
-        virtualize: true,
-        estimatedItemSize: 48,
-        style: { borderColor: "border", borderWidth: 1, padding: "2", borderRadius: "md" }
-      }, [
-        ...listItems,
-        keyed(Text({ key: "item-four", content: "Archived", variant: "body" }))
-      ])
+      view: List(
+        {
+          key: "list-virtualized",
+          virtualize: true,
+          estimatedItemSize: 48,
+          style: { borderColor: "border", borderWidth: 1, padding: "2", borderRadius: "md" }
+        },
+        [...listItems, keyed(Text({ key: "item-four", content: "Archived", variant: "body" }))]
+      )
     })
   ],
   SectionList: [
@@ -566,17 +560,20 @@ const componentStoryMap = {
       component: "SectionList",
       title: "Section list",
       description: "Generated section list and sticky header coverage.",
-      view: SectionList({
-        key: "sectionlist-basic",
-        stickyHeaders: true,
-        style: { borderColor: "border", borderWidth: 1, padding: "2", borderRadius: "md" }
-      }, [
+      view: SectionList(
         {
-          key: "first-section",
-          header: Text({ key: "first-header", content: "First section", variant: "label" }),
-          items: sectionItems
-        }
-      ]),
+          key: "sectionlist-basic",
+          stickyHeaders: true,
+          style: { borderColor: "border", borderWidth: 1, padding: "2", borderRadius: "md" }
+        },
+        [
+          {
+            key: "first-section",
+            header: Text({ key: "first-header", content: "First section", variant: "label" }),
+            items: sectionItems
+          }
+        ]
+      ),
       controls: [
         booleanControl("sectionlist-sticky", "Sticky headers", ["stickyHeaders"], true),
         booleanControl("sectionlist-virtualize", "Virtualize", ["virtualize"], false),
@@ -590,12 +587,15 @@ const componentStoryMap = {
       component: "Card",
       title: "Card",
       description: "Generated card padding, radius, and surface coverage.",
-      view: Card({
-        key: "card-basic",
-        padding: "4",
-        radius: "lg",
-        style: { backgroundColor: "surface", borderColor: "border", borderWidth: 1 }
-      }, cardCopy("card-basic")),
+      view: Card(
+        {
+          key: "card-basic",
+          padding: "4",
+          radius: "lg",
+          style: { backgroundColor: "surface", borderColor: "border", borderWidth: 1 }
+        },
+        cardCopy("card-basic")
+      ),
       controls: [
         tokenControl("card-padding", "Padding", ["padding"], "4", spacingControlOptions),
         tokenControl("card-radius", "Radius", ["radius"], "lg", radiusControlOptions)
@@ -613,25 +613,26 @@ const componentStoryMap = {
         Spacer({ key: "spacer-size", size: "8" }),
         Text({ key: "spacer-after", content: "After", variant: "body" })
       ]),
-      controls: [
-        tokenControl("spacer-size", "Size", ["children", 1, "size"], "8", spacingControlOptions)
-      ]
+      controls: [tokenControl("spacer-size", "Size", ["children", 1, "size"], "8", spacingControlOptions)]
     }),
     story({
       id: "spacer-flex",
       component: "Spacer",
       title: "Flex spacer",
       description: "Generated flex spacer coverage.",
-      view: Stack({
-        key: "spacer-flex-wrap",
-        direction: "row",
-        align: "center",
-        style: { width: "full" }
-      }, [
-        Text({ key: "spacer-flex-before", content: "Start", variant: "body" }),
-        Spacer({ key: "spacer-flex", flex: true }),
-        Text({ key: "spacer-flex-after", content: "End", variant: "body" })
-      ])
+      view: Stack(
+        {
+          key: "spacer-flex-wrap",
+          direction: "row",
+          align: "center",
+          style: { width: "full" }
+        },
+        [
+          Text({ key: "spacer-flex-before", content: "Start", variant: "body" }),
+          Spacer({ key: "spacer-flex", flex: true }),
+          Text({ key: "spacer-flex-after", content: "End", variant: "body" })
+        ]
+      )
     })
   ],
   Link: [
@@ -640,29 +641,29 @@ const componentStoryMap = {
       component: "Link",
       title: "Path link",
       description: "Generated typed navigation destination coverage.",
-      view: Link({
-        key: "link-path",
-        destination: { kind: "path", path: "/docs" },
-        style: { color: "accent", padding: "2", borderRadius: "md" }
-      }, [
-        Text({ key: "link-path-label", content: "Read the docs", variant: "body" })
-      ]),
-      controls: [
-        textControl("link-label", "Label", ["children", 0, "content"], "Read the docs")
-      ]
+      view: Link(
+        {
+          key: "link-path",
+          destination: { kind: "path", path: "/docs" },
+          style: { color: "accent", padding: "2", borderRadius: "md" }
+        },
+        [Text({ key: "link-path-label", content: "Read the docs", variant: "body" })]
+      ),
+      controls: [textControl("link-label", "Label", ["children", 0, "content"], "Read the docs")]
     }),
     story({
       id: "link-anchor",
       component: "Link",
       title: "Anchor link",
       description: "Generated anchor destination coverage.",
-      view: Link({
-        key: "link-anchor",
-        destination: { kind: "anchor", id: "component-preview" },
-        style: { color: "accent", padding: "2" }
-      }, [
-        Text({ key: "link-anchor-label", content: "Jump to preview", variant: "body" })
-      ])
+      view: Link(
+        {
+          key: "link-anchor",
+          destination: { kind: "anchor", id: "component-preview" },
+          style: { color: "accent", padding: "2" }
+        },
+        [Text({ key: "link-anchor-label", content: "Jump to preview", variant: "body" })]
+      )
     })
   ],
   Modal: [
@@ -671,24 +672,23 @@ const componentStoryMap = {
       component: "Modal",
       title: "Open modal",
       description: "Generated modal size, open, and dismissable-state coverage.",
-      view: Modal({
-        key: "modal-open",
-        title: "Confirm operation",
-        open: true,
-        dismissable: true,
-        size: "md",
-        onDismiss: IntentRef("GalleryStory.Dismissed", StaticPayload({ surface: "modal" }))
-      }, [
-        Text({ key: "modal-open-copy", content: "Modal body content.", variant: "body" })
-      ]),
+      view: Modal(
+        {
+          key: "modal-open",
+          title: "Confirm operation",
+          open: true,
+          dismissable: true,
+          size: "md",
+          onDismiss: IntentRef("GalleryStory.Dismissed", StaticPayload({ surface: "modal" }))
+        },
+        [Text({ key: "modal-open-copy", content: "Modal body content.", variant: "body" })]
+      ),
       controls: [
         booleanControl("modal-open", "Open", ["open"], true),
         booleanControl("modal-dismissable", "Dismissable", ["dismissable"], true),
         enumControl("modal-size", "Size", ["size"], "md", dimensionOptions)
       ],
-      interactions: [
-        { label: "Dismiss", intent: { name: "GalleryStory.Dismissed", payload: { surface: "modal" } } }
-      ]
+      interactions: [{ label: "Dismiss", intent: { name: "GalleryStory.Dismissed", payload: { surface: "modal" } } }]
     })
   ],
   Sheet: sheetEdges.map((edge) =>
@@ -697,23 +697,22 @@ const componentStoryMap = {
       component: "Sheet",
       title: `${edge} sheet`,
       description: "Generated sheet edge, detent, and open-state coverage.",
-      view: Sheet({
-        key: `sheet-${edge}`,
-        open: true,
-        dismissable: true,
-        edge,
-        detents: ["sm", "md"],
-        onDismiss: IntentRef("GalleryStory.Dismissed", StaticPayload({ surface: "sheet" }))
-      }, [
-        Text({ key: `sheet-${edge}-copy`, content: "Sheet body content.", variant: "body" })
-      ]),
+      view: Sheet(
+        {
+          key: `sheet-${edge}`,
+          open: true,
+          dismissable: true,
+          edge,
+          detents: ["sm", "md"],
+          onDismiss: IntentRef("GalleryStory.Dismissed", StaticPayload({ surface: "sheet" }))
+        },
+        [Text({ key: `sheet-${edge}-copy`, content: "Sheet body content.", variant: "body" })]
+      ),
       controls: [
         booleanControl("sheet-open", "Open", ["open"], true),
         enumControl("sheet-edge", "Edge", ["edge"], edge, sheetEdges)
       ],
-      interactions: [
-        { label: "Dismiss", intent: { name: "GalleryStory.Dismissed", payload: { surface: "sheet" } } }
-      ]
+      interactions: [{ label: "Dismiss", intent: { name: "GalleryStory.Dismissed", payload: { surface: "sheet" } } }]
     })
   ),
   Host: hostKinds.map((kind) =>
@@ -737,9 +736,10 @@ const componentStoryMap = {
       component: "Icon",
       title: "Icon set",
       description: "Closed icon-name set rendered from the per-renderer registry.",
-      view: Stack({ key: "icon-set-wrap", direction: "row", gap: "2", align: "center" },
-        iconNames.map((name) =>
-          Icon({ key: `icon-${name}`, name, size: "md", color: "textPrimary", label: name }))),
+      view: Stack(
+        { key: "icon-set-wrap", direction: "row", gap: "2", align: "center" },
+        iconNames.map((name) => Icon({ key: `icon-${name}`, name, size: "md", color: "textPrimary", label: name }))
+      ),
       controls: [
         enumControl("icon-name", "Name", ["children", 0, "name"], iconNames[0], iconNames),
         enumControl("icon-size", "Size", ["children", 0, "size"], "md", iconSizes)
@@ -771,7 +771,8 @@ const componentStoryMap = {
       id: "badge-matrix-variant",
       component: "Badge",
       title: "Badge (matrix variant + size, harmonization #79)",
-      description: "Opt-in tone x variant x size matrix chrome via `variant`/`size`; omitting both keeps the original tone-colored-text-only look.",
+      description:
+        "Opt-in tone x variant x size matrix chrome via `variant`/`size`; omitting both keeps the original tone-colored-text-only look.",
       view: Badge({ key: "badge-matrix-variant", label: "Danger", tone: "danger", variant: "soft", size: "sm" }),
       controls: [
         enumControl("badge-matrix-tone", "Tone", ["tone"], "danger", tones),
@@ -793,8 +794,16 @@ const componentStoryMap = {
       id: "chip-matrix-variant",
       component: "Chip",
       title: "Chip (matrix variant + size, harmonization #79)",
-      description: "Opt-in tone x variant x size matrix chrome via `variant`/`size`; omitting both keeps the original look.",
-      view: Chip({ key: "chip-matrix-variant", label: "Workers", value: "3/8", tone: "info", variant: "outline", size: "sm" }),
+      description:
+        "Opt-in tone x variant x size matrix chrome via `variant`/`size`; omitting both keeps the original look.",
+      view: Chip({
+        key: "chip-matrix-variant",
+        label: "Workers",
+        value: "3/8",
+        tone: "info",
+        variant: "outline",
+        size: "sm"
+      }),
       controls: [
         enumControl("chip-matrix-tone", "Tone", ["tone"], "info", tones),
         enumControl("chip-matrix-variant-select", "Variant", ["variant"], "outline", ["solid", "soft", "outline"]),
@@ -863,7 +872,13 @@ const componentStoryMap = {
         key: "split-pane-basic",
         orientation: "row",
         panes: [
-          { id: "sidebar", size: 240, min: 160, max: 360, content: Text({ key: "sp-side", content: "Sidebar", variant: "body" }) },
+          {
+            id: "sidebar",
+            size: 240,
+            min: 160,
+            max: 360,
+            content: Text({ key: "sp-side", content: "Sidebar", variant: "body" })
+          },
           { id: "main", content: Text({ key: "sp-main", content: "Main", variant: "body" }) }
         ],
         onResize: IntentRef("GalleryStory.Pressed", StaticPayload({ id: "split-pane-basic" })),
@@ -919,16 +934,17 @@ const componentStoryMap = {
       component: "Popover",
       title: "Popover",
       description: "Anchored floating surface; presence is typed state, dismiss is a typed intent.",
-      view: Popover({
-        key: "popover-basic",
-        open: true,
-        placement: { side: "bottom", align: "start" },
-        anchorKey: "popover-anchor",
-        dismissable: true,
-        onDismiss: IntentRef("GalleryStory.Dismissed", StaticPayload({ surface: "popover" }))
-      }, [
-        Text({ key: "popover-copy", content: "Thread token details", variant: "body" })
-      ]),
+      view: Popover(
+        {
+          key: "popover-basic",
+          open: true,
+          placement: { side: "bottom", align: "start" },
+          anchorKey: "popover-anchor",
+          dismissable: true,
+          onDismiss: IntentRef("GalleryStory.Dismissed", StaticPayload({ surface: "popover" }))
+        },
+        [Text({ key: "popover-copy", content: "Thread token details", variant: "body" })]
+      ),
       controls: [booleanControl("popover-open", "Open", ["open"], true)]
     })
   ],
@@ -979,14 +995,15 @@ const componentStoryMap = {
       component: "Tooltip",
       title: "Tooltip",
       description: "Non-interactive hover/focus label wrapping one target; aria-describedby.",
-      view: Tooltip({
-        key: "tooltip-basic",
-        content: "Run the current cell",
-        placement: { side: "top", align: "center" },
-        delayMillis: 200
-      }, [
-        Icon({ key: "tooltip-target", name: "Play", size: "md", label: "Run" })
-      ])
+      view: Tooltip(
+        {
+          key: "tooltip-basic",
+          content: "Run the current cell",
+          placement: { side: "top", align: "center" },
+          delayMillis: 200
+        },
+        [Icon({ key: "tooltip-target", name: "Play", size: "md", label: "Run" })]
+      )
     })
   ],
   Combobox: [
@@ -1004,9 +1021,23 @@ const componentStoryMap = {
         onHighlight: IntentRef("GalleryStory.Pressed", ComponentValueBinding()),
         onSelect: IntentRef("GalleryStory.Pressed", ComponentValueBinding()),
         options: [
-          { id: "open-file", label: "Open file", subtitle: "Jump to a workspace file", icon: "Play", group: "Navigation", keybinding: "⌘P" },
+          {
+            id: "open-file",
+            label: "Open file",
+            subtitle: "Jump to a workspace file",
+            icon: "Play",
+            group: "Navigation",
+            keybinding: "⌘P"
+          },
           { id: "open-recent", label: "Open recent", group: "Navigation" },
-          { id: "reload", label: "Reload window", group: "Session", icon: "Reload", disabled: true, disabledReason: "Unavailable while a turn is streaming" }
+          {
+            id: "reload",
+            label: "Reload window",
+            group: "Session",
+            icon: "Reload",
+            disabled: true,
+            disabledReason: "Unavailable while a turn is streaming"
+          }
         ]
       })
     })
@@ -1138,7 +1169,8 @@ const componentStoryMap = {
       id: "select-matrix-variant",
       component: "Select",
       title: "Select trigger (matrix variant + size + pill + dropdownIcon, harmonization #79)",
-      description: "Opt-in tone-neutral trigger chrome via `variant`/`size`/`pill`/`dropdownIcon`; omitting `variant`/`size` keeps the pre-#79 platform-default `<select>` look.",
+      description:
+        "Opt-in tone-neutral trigger chrome via `variant`/`size`/`pill`/`dropdownIcon`; omitting `variant`/`size` keeps the pre-#79 platform-default `<select>` look.",
       view: Select({
         key: "select-matrix-variant",
         value: "claude",
@@ -1350,7 +1382,8 @@ const componentStoryMap = {
       id: "alert-basic",
       component: "Alert",
       title: "Alert (harmonization #79)",
-      description: "Icon + title + body callout on the tone x variant matrix — a new component distinct from StatusBanner's persistent single-line banner role.",
+      description:
+        "Icon + title + body callout on the tone x variant matrix — a new component distinct from StatusBanner's persistent single-line banner role.",
       view: Alert({
         key: "alert-basic",
         tone: "warning",
@@ -1363,7 +1396,12 @@ const componentStoryMap = {
         enumControl("alert-tone", "Tone", ["tone"], "warning", toneTokens),
         enumControl("alert-variant", "Variant", ["variant"], "soft", toneVariantTokens),
         textControl("alert-title", "Title", ["title"], "Review recommended"),
-        textControl("alert-message", "Message", ["message"], "This change touches a shared schema file. Confirm the migration before merging.")
+        textControl(
+          "alert-message",
+          "Message",
+          ["message"],
+          "This change touches a shared schema file. Confirm the migration before merging."
+        )
       ]
     }),
     story({
@@ -1392,8 +1430,18 @@ const componentStoryMap = {
         status: "Reconnecting to the desktop bridge…",
         message: "Your work is safe. Choose how to proceed.",
         actions: [
-          { id: "retry", label: "Retry now", variant: "primary", action: IntentRef("GalleryStory.Pressed", StaticPayload({ id: "retry" })) },
-          { id: "restart", label: "Restart", variant: "secondary", action: IntentRef("GalleryStory.Pressed", StaticPayload({ id: "restart" })) }
+          {
+            id: "retry",
+            label: "Retry now",
+            variant: "primary",
+            action: IntentRef("GalleryStory.Pressed", StaticPayload({ id: "retry" }))
+          },
+          {
+            id: "restart",
+            label: "Restart",
+            variant: "secondary",
+            action: IntentRef("GalleryStory.Pressed", StaticPayload({ id: "restart" }))
+          }
         ]
       }),
       controls: [booleanControl("recovery-overlay-open", "Open", ["open"], true)]
@@ -1409,16 +1457,23 @@ const componentStoryMap = {
         key: "markdown-basic",
         blocks: [
           { kind: "heading", level: 2, children: [{ kind: "text", text: "Plan" }] },
-          { kind: "paragraph", children: [
-            { kind: "text", text: "Ship the " },
-            { kind: "strong", children: [{ kind: "text", text: "diff" }] },
-            { kind: "text", text: " with " },
-            { kind: "code", text: "make test" }
-          ] },
-          { kind: "list", ordered: false, items: [
-            [{ kind: "paragraph", children: [{ kind: "text", text: "Run the suite" }] }],
-            [{ kind: "paragraph", children: [{ kind: "text", text: "Open a PR" }] }]
-          ] }
+          {
+            kind: "paragraph",
+            children: [
+              { kind: "text", text: "Ship the " },
+              { kind: "strong", children: [{ kind: "text", text: "diff" }] },
+              { kind: "text", text: " with " },
+              { kind: "code", text: "make test" }
+            ]
+          },
+          {
+            kind: "list",
+            ordered: false,
+            items: [
+              [{ kind: "paragraph", children: [{ kind: "text", text: "Run the suite" }] }],
+              [{ kind: "paragraph", children: [{ kind: "text", text: "Open a PR" }] }]
+            ]
+          }
         ]
       })
     })
@@ -1434,8 +1489,27 @@ const componentStoryMap = {
         pinToEnd: true,
         onPinnedChange: IntentRef("GalleryStory.Pressed", ComponentValueBinding()),
         messages: [
-          { key: "m1", role: "user", body: [Markdown({ key: "m1-md", blocks: [{ kind: "paragraph", children: [{ kind: "text", text: "Fix the failing test." }] }] })] },
-          { key: "m2", role: "assistant", status: "streaming", body: [Markdown({ key: "m2-md", blocks: [{ kind: "paragraph", children: [{ kind: "text", text: "On it — running the suite now." }] }] })] }
+          {
+            key: "m1",
+            role: "user",
+            body: [
+              Markdown({
+                key: "m1-md",
+                blocks: [{ kind: "paragraph", children: [{ kind: "text", text: "Fix the failing test." }] }]
+              })
+            ]
+          },
+          {
+            key: "m2",
+            role: "assistant",
+            status: "streaming",
+            body: [
+              Markdown({
+                key: "m2-md",
+                blocks: [{ kind: "paragraph", children: [{ kind: "text", text: "On it — running the suite now." }] }]
+              })
+            ]
+          }
         ]
       })
     })
@@ -1452,8 +1526,23 @@ const componentStoryMap = {
         showLineNumbers: true,
         onCopy: IntentRef("GalleryStory.Pressed", ComponentValueBinding()),
         lines: [
-          { tokens: [{ kind: "keyword", text: "const" }, { kind: "plain", text: " x " }, { kind: "operator", text: "=" }, { kind: "plain", text: " " }, { kind: "number", text: "1" }] },
-          { tokens: [{ kind: "keyword", text: "function" }, { kind: "plain", text: " " }, { kind: "function", text: "run" }, { kind: "operator", text: "()" }] }
+          {
+            tokens: [
+              { kind: "keyword", text: "const" },
+              { kind: "plain", text: " x " },
+              { kind: "operator", text: "=" },
+              { kind: "plain", text: " " },
+              { kind: "number", text: "1" }
+            ]
+          },
+          {
+            tokens: [
+              { kind: "keyword", text: "function" },
+              { kind: "plain", text: " " },
+              { kind: "function", text: "run" },
+              { kind: "operator", text: "()" }
+            ]
+          }
         ]
       })
     })
@@ -1471,13 +1560,30 @@ const componentStoryMap = {
         onLineVerdict: IntentRef("GalleryStory.Pressed", ComponentValueBinding()),
         onLineComment: IntentRef("GalleryStory.Pressed", ComponentValueBinding()),
         onSourceControlAction: IntentRef("GalleryStory.Pressed", ComponentValueBinding()),
-        actions: [{ id: "approve", label: "Approve" }, { id: "stage", label: "Stage" }],
+        actions: [
+          { id: "approve", label: "Approve" },
+          { id: "stage", label: "Stage" }
+        ],
         hunks: [
           {
             header: "@@ -1,2 +1,2 @@",
             rows: [
-              { kind: "context", oldLine: 1, newLine: 1, tokens: [{ kind: "keyword", text: "const" }, { kind: "plain", text: " x" }] },
-              { kind: "remove", oldLine: 2, id: "r-2", verdict: "pending", tokens: [{ kind: "plain", text: "  return 1" }] },
+              {
+                kind: "context",
+                oldLine: 1,
+                newLine: 1,
+                tokens: [
+                  { kind: "keyword", text: "const" },
+                  { kind: "plain", text: " x" }
+                ]
+              },
+              {
+                kind: "remove",
+                oldLine: 2,
+                id: "r-2",
+                verdict: "pending",
+                tokens: [{ kind: "plain", text: "  return 1" }]
+              },
               { kind: "add", newLine: 2, id: "r-3", tokens: [{ kind: "plain", text: "  return 2" }] }
             ]
           }
@@ -1534,10 +1640,9 @@ const componentStoryMap = {
       component: "Section",
       title: "Section",
       description: "Marketing layout band with contained width and vertical padding.",
-      view: Section(
-        { key: "section-contained", width: "contained", paddingY: "6", background: "surface" },
-        [Text({ key: "section-body", content: "Section content", variant: "body" })]
-      )
+      view: Section({ key: "section-contained", width: "contained", paddingY: "6", background: "surface" }, [
+        Text({ key: "section-body", content: "Section content", variant: "body" })
+      ])
     })
   ],
   Hero: [
@@ -1560,10 +1665,9 @@ const componentStoryMap = {
             onPress: IntentRef("GalleryStory.Pressed", StaticPayload({ amount: 1 }))
           })
         ],
-        media: MockupFrame(
-          { key: "hero-media", variant: "browser", tilt: "left" },
-          [Text({ key: "hero-media-label", content: "Product", variant: "body" })]
-        )
+        media: MockupFrame({ key: "hero-media", variant: "browser", tilt: "left" }, [
+          Text({ key: "hero-media-label", content: "Product", variant: "body" })
+        ])
       })
     })
   ],
@@ -1792,10 +1896,9 @@ const componentStoryMap = {
       component: "Glow",
       title: "Glow",
       description: "Bounded radial accent glow behind a child slot.",
-      view: Glow(
-        { key: "glow-basic", intensity: "md" },
-        [Text({ key: "glow-child", content: "Highlighted", variant: "title" })]
-      )
+      view: Glow({ key: "glow-basic", intensity: "md" }, [
+        Text({ key: "glow-child", content: "Highlighted", variant: "title" })
+      ])
     })
   ],
   MockupFrame: [
@@ -1804,10 +1907,9 @@ const componentStoryMap = {
       component: "MockupFrame",
       title: "MockupFrame",
       description: "Browser/device frame with optional perspective tilt.",
-      view: MockupFrame(
-        { key: "mockup-frame-browser", variant: "browser", tilt: "left" },
-        [Text({ key: "mockup-child", content: "Product screenshot", variant: "body" })]
-      )
+      view: MockupFrame({ key: "mockup-frame-browser", variant: "browser", tilt: "left" }, [
+        Text({ key: "mockup-child", content: "Product screenshot", variant: "body" })
+      ])
     })
   ],
   Pager: [
@@ -1884,10 +1986,9 @@ const componentStoryMap = {
       component: "Wallpaper",
       title: "Wallpaper",
       description: "Bounded wallpaper variant behind children.",
-      view: Wallpaper(
-        { key: "wallpaper-city", variant: "city" },
-        [Text({ key: "wall-label", content: "City wallpaper", variant: "body" })]
-      )
+      view: Wallpaper({ key: "wallpaper-city", variant: "city" }, [
+        Text({ key: "wall-label", content: "City wallpaper", variant: "body" })
+      ])
     })
   ],
   Spotlight: [
@@ -1896,10 +1997,9 @@ const componentStoryMap = {
       component: "Spotlight",
       title: "Spotlight",
       description: "Focus glow treatment around a child slot.",
-      view: Spotlight(
-        { key: "spotlight-basic", intensity: "md" },
-        [Text({ key: "spot-label", content: "Focused", variant: "title" })]
-      )
+      view: Spotlight({ key: "spotlight-basic", intensity: "md" }, [
+        Text({ key: "spot-label", content: "Focused", variant: "title" })
+      ])
     })
   ],
   Frame: [
@@ -1908,10 +2008,9 @@ const componentStoryMap = {
       component: "Frame",
       title: "Frame",
       description: "Arcade bordered frame around content.",
-      view: Frame(
-        { key: "frame-arcade", variant: "arcade" },
-        [Text({ key: "frame-label", content: "Framed", variant: "body" })]
-      )
+      view: Frame({ key: "frame-arcade", variant: "arcade" }, [
+        Text({ key: "frame-label", content: "Framed", variant: "body" })
+      ])
     })
   ],
   BlurredPopup: [
@@ -1966,24 +2065,21 @@ const componentStoryMap = {
       component: "Toolbar",
       title: "Toolbar",
       description: "Floating glass action strip with icon buttons.",
-      view: Toolbar(
-        { key: "toolbar-glass", placement: "bottom-floating", surface: "glass" },
-        [
-          IconButton({
-            key: "toolbar-play",
-            icon: "Play",
-            accessibilityLabel: "Start",
-            onPress: IntentRef("GalleryStory.Pressed", StaticPayload({ amount: 1 }))
-          }),
-          IconButton({
-            key: "toolbar-pause",
-            icon: "Pause",
-            accessibilityLabel: "Pause",
-            onPress: IntentRef("GalleryStory.Pressed", StaticPayload({ amount: 1 }))
-          }),
-          Text({ key: "toolbar-hint", content: "Fleet ready", variant: "caption" })
-        ]
-      )
+      view: Toolbar({ key: "toolbar-glass", placement: "bottom-floating", surface: "glass" }, [
+        IconButton({
+          key: "toolbar-play",
+          icon: "Play",
+          accessibilityLabel: "Start",
+          onPress: IntentRef("GalleryStory.Pressed", StaticPayload({ amount: 1 }))
+        }),
+        IconButton({
+          key: "toolbar-pause",
+          icon: "Pause",
+          accessibilityLabel: "Pause",
+          onPress: IntentRef("GalleryStory.Pressed", StaticPayload({ amount: 1 }))
+        }),
+        Text({ key: "toolbar-hint", content: "Fleet ready", variant: "caption" })
+      ])
     })
   ],
   EmptyMessage: [
@@ -2032,7 +2128,14 @@ const componentStoryMap = {
           tone: "info",
           label: "Orrery"
         }),
-        Avatar({ key: "avatar-initials", initials: "WF", size: "lg", tone: "success", variant: "solid", label: "Whitefang" }),
+        Avatar({
+          key: "avatar-initials",
+          initials: "WF",
+          size: "lg",
+          tone: "success",
+          variant: "solid",
+          label: "Whitefang"
+        }),
         Avatar({ key: "avatar-icon", icon: "Circle", size: "lg", tone: "neutral" })
       ]),
       controls: [
@@ -2076,7 +2179,7 @@ const componentStoryMap = {
       view: Stack({ key: "copy-button-row", direction: "row", gap: "2", align: "center" }, [
         CopyButton({
           key: "copy-plain",
-          content: "bun install effect",
+          content: "pnpm add effect",
           accessibilityLabel: "Copy install command",
           onCopy: IntentRef("GalleryStory.Changed", ComponentValueBinding())
         }),
@@ -2108,7 +2211,8 @@ const componentStoryMap = {
       id: "spinner-indeterminate",
       component: "Spinner",
       title: "Spinner",
-      description: "Compact indeterminate in-flight ring on the control-lattice icon sub-token. " +
+      description:
+        "Compact indeterminate in-flight ring on the control-lattice icon sub-token. " +
         "Determinate circular progress stays a Meter variant.",
       view: Spinner({ key: "spinner", size: "lg", tone: "info", label: "Loading" }),
       controls: [
@@ -2178,13 +2282,9 @@ export const allStories = (storybook: Storybook = defaultStorybook): ReadonlyArr
 export const storiesForComponent = (
   component: ComponentTag,
   storybook: Storybook = defaultStorybook
-): ReadonlyArray<Story> =>
-  storybook.groups.find((group) => group.component === component)?.stories ?? []
+): ReadonlyArray<Story> => storybook.groups.find((group) => group.component === component)?.stories ?? []
 
-export const storyById = (
-  storyId: string,
-  storybook: Storybook = defaultStorybook
-): Story | undefined =>
+export const storyById = (storyId: string, storybook: Storybook = defaultStorybook): Story | undefined =>
   allStories(storybook).find((candidate) => candidate.id === storyId)
 
 export const storyCoverage = (
@@ -2238,7 +2338,8 @@ export const componentPageSummaries = {
   Text: "Typography primitive over the closed type scale (caption/body/label/title/heading) with token colors and weights.",
   Button: "Pressable action with variants primary / secondary / ghost, disabled state, and a typed onPress intent.",
   Image: "Media box with fit contain / cover / fill, alt text, and token radius.",
-  TextField: "Single- or multi-line text input with label, placeholder, secure mode, focus state, and typed change/submit intents; opt-in variant/size/gutterSize matrix box chrome, invalid cue, and multiline autoResize (harmonization #79).",
+  TextField:
+    "Single- or multi-line text input with label, placeholder, secure mode, focus state, and typed change/submit intents; opt-in variant/size/gutterSize matrix box chrome, invalid cue, and multiline autoResize (harmonization #79).",
   List: "Keyed vertical collection with optional virtualization and estimated item size.",
   SectionList: "Grouped keyed collection with sticky headers and optional virtualization.",
   Card: "Bordered surface container with token padding and radius.",
@@ -2249,7 +2350,8 @@ export const componentPageSummaries = {
   Host: "Foreign-host escape hatch: serializable kind + props, driver-owned widget.",
   Icon: "Closed icon-name registry rendered at token sizes with token colors.",
   Divider: "Horizontal or vertical separator line.",
-  Badge: "Status/count pill over the closed tone set; opt-in tone x variant x size matrix chrome via variant/size (harmonization #79).",
+  Badge:
+    "Status/count pill over the closed tone set; opt-in tone x variant x size matrix chrome via variant/size (harmonization #79).",
   Chip: "Label + value pill for dense status strips; opt-in tone x variant x size matrix chrome via variant/size (harmonization #79).",
   Meter: "Determinate progress/capacity readout with tone.",
   StatTile: "Label + strong value summary cell.",
@@ -2266,7 +2368,8 @@ export const componentPageSummaries = {
   Tabs: "WAI-ARIA tablist with typed tab items, badges, and panel association by id.",
   Composer: "Chat input over a typed document model with mentions, attachments, and slash/mention autocomplete.",
   Toggle: "Boolean switch with typed value and onChange intent.",
-  Select: "Single choice from a typed option list; opt-in trigger variant/size/pill/dropdownIcon chrome, and additive multi-select via multiple/values (harmonization #79).",
+  Select:
+    "Single choice from a typed option list; opt-in trigger variant/size/pill/dropdownIcon chrome, and additive multi-select via multiple/values (harmonization #79).",
   Checkbox: "Multi-select boolean with typed checked state.",
   RadioGroup: "Exclusive choice group with typed value.",
   SegmentedControl: "Single-choice control with an animated selection thumb (DOM); lattice size, gutterSize, and pill.",
@@ -2276,7 +2379,8 @@ export const componentPageSummaries = {
   Toast: "Single transient notification with live region and dismiss.",
   ToastRegion: "Stacked, placement-aware notification region.",
   StatusBanner: "Persistent inline banner with typed tone plus retry/dismiss intents.",
-  Alert: "Icon + title + body callout on the tone x variant matrix (harmonization #79) — distinct from StatusBanner's persistent single-line banner role.",
+  Alert:
+    "Icon + title + body callout on the tone x variant matrix (harmonization #79) — distinct from StatusBanner's persistent single-line banner role.",
   RecoveryOverlay: "Full-surface blocking overlay with typed recovery actions.",
   Markdown: "Pre-parsed typed block+inline document model — no parser, no raw HTML.",
   Transcript: "Append-optimized log of role-styled messages with typed status.",
@@ -2306,22 +2410,21 @@ export const componentPageSummaries = {
   BlurredPopup: "Blur-backed popup on the overlay presence lifecycle.",
   IconButton: "Circular icon-only pressable over the closed icon set with glass surface variant.",
   Toolbar: "Floating action strip (glass surface) hosting icon buttons.",
-  EmptyMessage: "Centered empty-state block: icon badge (bounded tone/size), title, description, and a typed Button action slot.",
-  Avatar: "Identity mark with the typed image -> initials -> icon fallback chain, lattice size, and tone soft/solid variants.",
+  EmptyMessage:
+    "Centered empty-state block: icon badge (bounded tone/size), title, description, and a typed Button action slot.",
+  Avatar:
+    "Identity mark with the typed image -> initials -> icon fallback chain, lattice size, and tone soft/solid variants.",
   AvatarGroup: "Overlapping keyed avatars with a cutout ring and a +N overflow count past max.",
-  CopyButton: "Copy-to-clipboard control over the injected Clipboard service: icon-only lattice default, labelled shape, copied-state feedback, typed onCopy intent.",
-  Spinner: "Compact indeterminate in-flight ring on the lattice icon sub-token; determinate progress stays a Meter variant.",
+  CopyButton:
+    "Copy-to-clipboard control over the injected Clipboard service: icon-only lattice default, labelled shape, copied-state feedback, typed onCopy intent.",
+  Spinner:
+    "Compact indeterminate in-flight ring on the lattice icon sub-token; determinate progress stays a Meter variant.",
   LoadingDots: "3-dot pulse loading indicator on the lattice icon sub-token.",
-  ShimmerText: "Shimmer sweep over real pending text or a skeleton placeholder width; reduced motion is a static affordance."
+  ShimmerText:
+    "Shimmer sweep over real pending text or a skeleton placeholder width; reduced motion is a static affordance."
 } as const satisfies Record<ComponentTag, string>
 
-export const foundationPageIds = [
-  "design-tokens",
-  "colors",
-  "typography",
-  "icons",
-  "responsive"
-] as const
+export const foundationPageIds = ["design-tokens", "colors", "typography", "icons", "responsive"] as const
 export type FoundationPageId = (typeof foundationPageIds)[number]
 
 export type GalleryPageKind = "component" | "foundation"
@@ -2374,41 +2477,47 @@ const componentPageView = (tag: ComponentTag): View => {
       )
     ]),
     ...stories.map((storyItem) =>
-      Card({
-        key: `page-story-${storyItem.id}`,
-        padding: "4",
-        radius: "lg",
-        style: { backgroundColor: "surface", borderColor: "border", borderWidth: 1 }
-      }, [
-        Stack({ key: `page-story-${storyItem.id}-stack`, direction: "column", gap: "2" }, [
-          Stack({ key: `page-story-${storyItem.id}-head`, direction: "row", gap: "2", align: "center" }, [
+      Card(
+        {
+          key: `page-story-${storyItem.id}`,
+          padding: "4",
+          radius: "lg",
+          style: { backgroundColor: "surface", borderColor: "border", borderWidth: 1 }
+        },
+        [
+          Stack({ key: `page-story-${storyItem.id}-stack`, direction: "column", gap: "2" }, [
+            Stack({ key: `page-story-${storyItem.id}-head`, direction: "row", gap: "2", align: "center" }, [
+              Text({
+                key: `page-story-${storyItem.id}-title`,
+                content: storyItem.title,
+                variant: "title",
+                color: "textPrimary"
+              }),
+              Badge({
+                key: `page-story-${storyItem.id}-kind`,
+                label: storyItem.kind,
+                tone: storyItem.kind === "hand-authored" ? "info" : "neutral"
+              })
+            ]),
             Text({
-              key: `page-story-${storyItem.id}-title`,
-              content: storyItem.title,
-              variant: "title",
-              color: "textPrimary"
+              key: `page-story-${storyItem.id}-description`,
+              content: storyItem.description,
+              variant: "body",
+              color: "textMuted"
             }),
-            Badge({
-              key: `page-story-${storyItem.id}-kind`,
-              label: storyItem.kind,
-              tone: storyItem.kind === "hand-authored" ? "info" : "neutral"
-            })
-          ]),
-          Text({
-            key: `page-story-${storyItem.id}-description`,
-            content: storyItem.description,
-            variant: "body",
-            color: "textMuted"
-          }),
-          ...storyVariantFacts(storyItem),
-          Card({
-            key: `page-story-${storyItem.id}-canvas`,
-            padding: "4",
-            radius: "md",
-            style: { backgroundColor: "background", borderColor: "borderSubtle", borderWidth: 1 }
-          }, [storyItem.view])
-        ])
-      ])
+            ...storyVariantFacts(storyItem),
+            Card(
+              {
+                key: `page-story-${storyItem.id}-canvas`,
+                padding: "4",
+                radius: "md",
+                style: { backgroundColor: "background", borderColor: "borderSubtle", borderWidth: 1 }
+              },
+              [storyItem.view]
+            )
+          ])
+        ]
+      )
     )
   ])
 }
@@ -2417,7 +2526,8 @@ const designTokensPageView: View = Stack({ key: "page-design-tokens", direction:
   Text({ key: "page-design-tokens-title", content: "Design tokens", variant: "heading", color: "textPrimary" }),
   Text({
     key: "page-design-tokens-summary",
-    content: "Every themable value in Effect Native is a closed token scale resolved through the single khalaTheme. Values below are the live khalaTheme numbers.",
+    content:
+      "Every themable value in Effect Native is a closed token scale resolved through the single khalaTheme. Values below are the live khalaTheme numbers.",
     variant: "body",
     color: "textMuted"
   }),
@@ -2595,7 +2705,8 @@ const responsivePageView: View = Stack({ key: "page-responsive", direction: "col
   Text({ key: "page-responsive-title", content: "Responsive", variant: "heading", color: "textPrimary" }),
   Text({
     key: "page-responsive-summary",
-    content: "Responsive behavior is typed data: any responsive prop takes per-breakpoint values ({ base, sm, md, lg, xl }) resolved against the theme breakpoints below.",
+    content:
+      "Responsive behavior is typed data: any responsive prop takes per-breakpoint values ({ base, sm, md, lg, xl }) resolved against the theme breakpoints below.",
     variant: "body",
     color: "textMuted"
   }),
@@ -2622,31 +2733,31 @@ const responsivePageView: View = Stack({ key: "page-responsive", direction: "col
         color: "textPrimary",
         style: { width: 64 }
       }),
-      pageCaption(
-        `page-viewport-${entry.id}-value`,
-        `${entry.viewport.width} × ${entry.viewport.height}`
-      )
+      pageCaption(`page-viewport-${entry.id}-value`, `${entry.viewport.width} × ${entry.viewport.height}`)
     ])
   ),
   pageSectionTitle("page-responsive-demo-title", "Live demo: column below md, row at md and up"),
-  Stack({
-    key: "page-responsive-demo",
-    direction: { base: "column", md: "row" },
-    gap: { base: "2", md: "4" },
-    padding: "3",
-    style: {
-      borderColor: "border",
-      borderWidth: 1,
-      variants: { breakpoint: { md: { backgroundColor: "surface" } } }
-    }
-  }, [
-    Card({ key: "page-responsive-demo-a", padding: "3", radius: "md" }, [
-      Text({ key: "page-responsive-demo-a-copy", content: "Mobile first", variant: "body", color: "textPrimary" })
-    ]),
-    Card({ key: "page-responsive-demo-b", padding: "3", radius: "md" }, [
-      Text({ key: "page-responsive-demo-b-copy", content: "Desktop row", variant: "body", color: "textPrimary" })
-    ])
-  ])
+  Stack(
+    {
+      key: "page-responsive-demo",
+      direction: { base: "column", md: "row" },
+      gap: { base: "2", md: "4" },
+      padding: "3",
+      style: {
+        borderColor: "border",
+        borderWidth: 1,
+        variants: { breakpoint: { md: { backgroundColor: "surface" } } }
+      }
+    },
+    [
+      Card({ key: "page-responsive-demo-a", padding: "3", radius: "md" }, [
+        Text({ key: "page-responsive-demo-a-copy", content: "Mobile first", variant: "body", color: "textPrimary" })
+      ]),
+      Card({ key: "page-responsive-demo-b", padding: "3", radius: "md" }, [
+        Text({ key: "page-responsive-demo-b-copy", content: "Desktop row", variant: "body", color: "textPrimary" })
+      ])
+    ]
+  )
 ])
 
 const foundationPageViews: Record<FoundationPageId, View> = {
@@ -2660,7 +2771,8 @@ const foundationPageViews: Record<FoundationPageId, View> = {
 const foundationPageMeta: Record<FoundationPageId, { readonly title: string; readonly description: string }> = {
   "design-tokens": {
     title: "Design tokens",
-    description: "Spacing, radius, dimension, control-lattice, motion, and elevation scales with live khalaTheme values."
+    description:
+      "Spacing, radius, dimension, control-lattice, motion, and elevation scales with live khalaTheme values."
   },
   colors: {
     title: "Colors",
@@ -2724,11 +2836,9 @@ export const galleryPageCoverage = (): {
   }
 }
 
-export const serializeStory = (input: Story): string =>
-  JSON.stringify(Schema.encodeSync(StorySchema)(input), null, 2)
+export const serializeStory = (input: Story): string => JSON.stringify(Schema.encodeSync(StorySchema)(input), null, 2)
 
-export const parseStory = (source: string): Story =>
-  Schema.decodeUnknownSync(StorySchema)(JSON.parse(source))
+export const parseStory = (source: string): Story => Schema.decodeUnknownSync(StorySchema)(JSON.parse(source))
 
 export const serializeStorybook = (input: Storybook): string =>
   JSON.stringify(Schema.encodeSync(StorybookSchema)(input), null, 2)
@@ -2736,11 +2846,7 @@ export const serializeStorybook = (input: Storybook): string =>
 export const parseStorybook = (source: string): Storybook =>
   Schema.decodeUnknownSync(StorybookSchema)(JSON.parse(source))
 
-const setAtPath = (
-  value: unknown,
-  path: ReadonlyArray<StoryPathSegment>,
-  next: JsonPayload
-): unknown => {
+const setAtPath = (value: unknown, path: ReadonlyArray<StoryPathSegment>, next: JsonPayload): unknown => {
   if (path.length === 0) {
     return next
   }
@@ -2748,42 +2854,29 @@ const setAtPath = (
   const [segment, ...rest] = path
   if (Array.isArray(value)) {
     const index = typeof segment === "number" ? segment : Number(segment)
-    return value.map((item, itemIndex) =>
-      itemIndex === index ? setAtPath(item, rest, next) : item
-    )
+    return value.map((item, itemIndex) => (itemIndex === index ? setAtPath(item, rest, next) : item))
   }
 
-  const object = typeof value === "object" && value !== null
-    ? value as Record<string, unknown>
-    : {}
+  const object = typeof value === "object" && value !== null ? (value as Record<string, unknown>) : {}
   return {
     ...object,
     [String(segment)]: setAtPath(object[String(segment)], rest, next)
   }
 }
 
-export const applyStoryControlValue = (
-  input: Story,
-  controlId: string,
-  value: JsonPayload
-): Story => {
+export const applyStoryControlValue = (input: Story, controlId: string, value: JsonPayload): Story => {
   const control = input.controls.find((candidate) => candidate.id === controlId)
   if (control === undefined) {
     return input
   }
   return StorySchema.make({
     ...input,
-    controls: input.controls.map((candidate) =>
-      candidate.id === controlId ? { ...candidate, value } : candidate
-    ),
+    controls: input.controls.map((candidate) => (candidate.id === controlId ? { ...candidate, value } : candidate)),
     view: Schema.decodeUnknownSync(ViewSchema)(setAtPath(input.view, control.path, value))
   })
 }
 
-export const applyStoryControlValues = (
-  input: Story,
-  values: Readonly<Record<string, JsonPayload>>
-): Story =>
+export const applyStoryControlValues = (input: Story, values: Readonly<Record<string, JsonPayload>>): Story =>
   Object.entries(values).reduce(
     (current, [controlId, value]) => applyStoryControlValue(current, controlId, value),
     input
@@ -2791,10 +2884,13 @@ export const applyStoryControlValues = (
 
 export const StorySelected = defineIntent("Gallery.StorySelected", Schema.NonEmptyString)
 export const ComponentSelected = defineIntent("Gallery.ComponentSelected", Schema.Literals(componentTags))
-export const ControlValueChanged = defineIntent("Gallery.ControlValueChanged", Schema.Struct({
-  controlId: Schema.NonEmptyString,
-  value: JsonPayloadSchema
-}))
+export const ControlValueChanged = defineIntent(
+  "Gallery.ControlValueChanged",
+  Schema.Struct({
+    controlId: Schema.NonEmptyString,
+    value: JsonPayloadSchema
+  })
+)
 export const ThemeSelected = defineIntent("Gallery.ThemeSelected", Schema.Literals(["default", "dark"] as const))
 export const ViewportSelected = defineIntent(
   "Gallery.ViewportSelected",
@@ -2830,9 +2926,7 @@ export const GalleryStateSchema = Schema.Struct({
 })
 export type GalleryState = Schema.Schema.Type<typeof GalleryStateSchema>
 
-export const initialGalleryState = (
-  storybook: Storybook = defaultStorybook
-): GalleryState => {
+export const initialGalleryState = (storybook: Storybook = defaultStorybook): GalleryState => {
   const firstGroup = storybook.groups[0]
   const firstStory = firstGroup?.stories[0]
   if (firstGroup === undefined || firstStory === undefined) {
@@ -2877,20 +2971,19 @@ const selectedStoryGroup = (state: GalleryState): StoryGroup =>
 const controlValue = (state: GalleryState, story: Story, control: StoryControl): JsonPayload =>
   state.controlValues[story.id]?.[control.id] ?? control.value
 
-const optionButtons = (
-  story: Story,
-  control: StoryControl,
-  current: JsonPayload
-): ReadonlyArray<View> =>
+const optionButtons = (story: Story, control: StoryControl, current: JsonPayload): ReadonlyArray<View> =>
   (control.options ?? []).map((option) =>
     Button({
       key: `${control.id}-${option}`,
       label: option,
       variant: current === option ? "secondary" : "ghost",
-      onPress: IntentRef("Gallery.ControlValueChanged", StaticPayload({
-        controlId: control.id,
-        value: option
-      })),
+      onPress: IntentRef(
+        "Gallery.ControlValueChanged",
+        StaticPayload({
+          controlId: control.id,
+          value: option
+        })
+      ),
       style: {
         borderColor: current === option ? "accent" : "border",
         borderWidth: 1,
@@ -2918,21 +3011,27 @@ const controlEditor = (state: GalleryState, story: Story, control: StoryControl)
           key: `${control.id}-toggle`,
           label: current === true ? "On" : "Off",
           variant: current === true ? "secondary" : "ghost",
-          onPress: IntentRef("Gallery.ControlValueChanged", StaticPayload({
-            controlId: control.id,
-            value: current !== true
-          })),
+          onPress: IntentRef(
+            "Gallery.ControlValueChanged",
+            StaticPayload({
+              controlId: control.id,
+              value: current !== true
+            })
+          ),
           style: { borderRadius: "md", padding: "2" }
         })
       ])
     case "text":
     case "number": {
       const fallback = control.value
-      const nextValue: JsonPayload = control.kind === "number"
-        ? (typeof current === "number" && current !== 220 ? 220 : fallback)
-        : (typeof current === "string" && current !== `${control.value} updated`
+      const nextValue: JsonPayload =
+        control.kind === "number"
+          ? typeof current === "number" && current !== 220
+            ? 220
+            : fallback
+          : typeof current === "string" && current !== `${control.value} updated`
             ? `${control.value} updated`
-            : fallback)
+            : fallback
       return Stack({ key: `control-${control.id}`, direction: "row", gap: "2", align: "center" }, [
         baseLabel,
         Spacer({ key: `${control.id}-spacer`, flex: true }),
@@ -2940,10 +3039,13 @@ const controlEditor = (state: GalleryState, story: Story, control: StoryControl)
           key: `${control.id}-edit`,
           label: String(current ?? ""),
           variant: "ghost",
-          onPress: IntentRef("Gallery.ControlValueChanged", StaticPayload({
-            controlId: control.id,
-            value: nextValue
-          })),
+          onPress: IntentRef(
+            "Gallery.ControlValueChanged",
+            StaticPayload({
+              controlId: control.id,
+              value: nextValue
+            })
+          ),
           style: { borderRadius: "md", padding: "2", textAlign: "left" }
         })
       ])
@@ -2952,107 +3054,134 @@ const controlEditor = (state: GalleryState, story: Story, control: StoryControl)
     case "token":
       return Stack({ key: `control-${control.id}`, direction: "column", gap: "2" }, [
         baseLabel,
-        Stack({ key: `${control.id}-options`, direction: "row", gap: "1", style: { flex: 1 } }, optionButtons(story, control, current))
+        Stack(
+          { key: `${control.id}-options`, direction: "row", gap: "1", style: { flex: 1 } },
+          optionButtons(story, control, current)
+        )
       ])
   }
 }
 
 const componentNavigation = (state: GalleryState): View =>
-  Card({
-    key: "component-nav",
-    padding: "3",
-    radius: "lg",
-    style: { backgroundColor: "surface", borderColor: "border", borderWidth: 1, width: 240 }
-  }, [
-    Stack({ key: "component-nav-stack", direction: "column", gap: "2" }, [
-      Text({ key: "component-nav-title", content: "Components", variant: "title", color: "textPrimary" }),
-      Button({
-        key: "component-nav-docs",
-        label: "Docs & foundations",
-        variant: "ghost",
-        onPress: IntentRef("Gallery.PageSelected", StaticPayload(foundationPageIds[0])),
-        style: { borderColor: "border", borderWidth: 1, borderRadius: "md", padding: "2", textAlign: "left" }
-      }),
-      List({ key: "component-list" }, state.storybook.groups.map((group) =>
-        keyed(Button({
-          key: `component-${group.component}`,
-          label: `${group.component} (${group.stories.length})`,
-          variant: state.activeComponent === group.component ? "secondary" : "ghost",
-          onPress: IntentRef("Gallery.ComponentSelected", StaticPayload(group.component)),
-          style: { borderRadius: "md", padding: "2", textAlign: "left" }
-        }))
-      ))
-    ])
-  ])
+  Card(
+    {
+      key: "component-nav",
+      padding: "3",
+      radius: "lg",
+      style: { backgroundColor: "surface", borderColor: "border", borderWidth: 1, width: 240 }
+    },
+    [
+      Stack({ key: "component-nav-stack", direction: "column", gap: "2" }, [
+        Text({ key: "component-nav-title", content: "Components", variant: "title", color: "textPrimary" }),
+        Button({
+          key: "component-nav-docs",
+          label: "Docs & foundations",
+          variant: "ghost",
+          onPress: IntentRef("Gallery.PageSelected", StaticPayload(foundationPageIds[0])),
+          style: { borderColor: "border", borderWidth: 1, borderRadius: "md", padding: "2", textAlign: "left" }
+        }),
+        List(
+          { key: "component-list" },
+          state.storybook.groups.map((group) =>
+            keyed(
+              Button({
+                key: `component-${group.component}`,
+                label: `${group.component} (${group.stories.length})`,
+                variant: state.activeComponent === group.component ? "secondary" : "ghost",
+                onPress: IntentRef("Gallery.ComponentSelected", StaticPayload(group.component)),
+                style: { borderRadius: "md", padding: "2", textAlign: "left" }
+              })
+            )
+          )
+        )
+      ])
+    ]
+  )
 
 const storyNavigation = (state: GalleryState): View => {
   const group = selectedStoryGroup(state)
-  return Card({
-    key: "story-nav",
-    padding: "3",
-    radius: "lg",
-    style: { backgroundColor: "surface", borderColor: "border", borderWidth: 1, width: 280 }
-  }, [
-    Stack({ key: "story-nav-stack", direction: "column", gap: "2" }, [
-      Text({ key: "story-nav-title", content: group.title, variant: "title", color: "textPrimary" }),
-      Button({
-        key: "story-nav-docs-page",
-        label: `Open ${group.component} docs page`,
-        variant: "ghost",
-        onPress: IntentRef("Gallery.PageSelected", StaticPayload(componentPageId(group.component))),
-        style: { borderColor: "border", borderWidth: 1, borderRadius: "md", padding: "2", textAlign: "left" }
-      }),
-      List({ key: "story-list" }, group.stories.map((storyItem) =>
-        keyed(Button({
-          key: `story-${storyItem.id}`,
-          label: `${storyItem.title}\n${storyItem.kind}`,
-          variant: state.activeStoryId === storyItem.id ? "secondary" : "ghost",
-          onPress: IntentRef("Gallery.StorySelected", StaticPayload(storyItem.id)),
-          style: { borderRadius: "md", padding: "2", textAlign: "left" }
-        }))
-      ))
-    ])
-  ])
+  return Card(
+    {
+      key: "story-nav",
+      padding: "3",
+      radius: "lg",
+      style: { backgroundColor: "surface", borderColor: "border", borderWidth: 1, width: 280 }
+    },
+    [
+      Stack({ key: "story-nav-stack", direction: "column", gap: "2" }, [
+        Text({ key: "story-nav-title", content: group.title, variant: "title", color: "textPrimary" }),
+        Button({
+          key: "story-nav-docs-page",
+          label: `Open ${group.component} docs page`,
+          variant: "ghost",
+          onPress: IntentRef("Gallery.PageSelected", StaticPayload(componentPageId(group.component))),
+          style: { borderColor: "border", borderWidth: 1, borderRadius: "md", padding: "2", textAlign: "left" }
+        }),
+        List(
+          { key: "story-list" },
+          group.stories.map((storyItem) =>
+            keyed(
+              Button({
+                key: `story-${storyItem.id}`,
+                label: `${storyItem.title}\n${storyItem.kind}`,
+                variant: state.activeStoryId === storyItem.id ? "secondary" : "ghost",
+                onPress: IntentRef("Gallery.StorySelected", StaticPayload(storyItem.id)),
+                style: { borderRadius: "md", padding: "2", textAlign: "left" }
+              })
+            )
+          )
+        )
+      ])
+    ]
+  )
 }
 
 const pagesNavigation = (state: GalleryState): View =>
-  Card({
-    key: "pages-nav",
-    padding: "3",
-    radius: "lg",
-    style: { backgroundColor: "surface", borderColor: "border", borderWidth: 1, width: 240 }
-  }, [
-    Stack({ key: "pages-nav-stack", direction: "column", gap: "2" }, [
-      Text({ key: "pages-nav-title", content: "Docs", variant: "title", color: "textPrimary" }),
-      Button({
-        key: "pages-nav-browser",
-        label: "Back to story browser",
-        variant: "ghost",
-        onPress: IntentRef("Gallery.PageSelected", StaticPayload("")),
-        style: { borderColor: "border", borderWidth: 1, borderRadius: "md", padding: "2", textAlign: "left" }
-      }),
-      Text({ key: "pages-nav-foundations", content: "Foundations", variant: "caption", color: "textMuted" }),
-      ...foundationPages.map((page) =>
+  Card(
+    {
+      key: "pages-nav",
+      padding: "3",
+      radius: "lg",
+      style: { backgroundColor: "surface", borderColor: "border", borderWidth: 1, width: 240 }
+    },
+    [
+      Stack({ key: "pages-nav-stack", direction: "column", gap: "2" }, [
+        Text({ key: "pages-nav-title", content: "Docs", variant: "title", color: "textPrimary" }),
         Button({
-          key: `pages-nav-${page.id}`,
-          label: page.title,
-          variant: state.activePageId === page.id ? "secondary" : "ghost",
-          onPress: IntentRef("Gallery.PageSelected", StaticPayload(page.id)),
-          style: { borderRadius: "md", padding: "2", textAlign: "left" }
-        })
-      ),
-      Text({ key: "pages-nav-components", content: "Components", variant: "caption", color: "textMuted" }),
-      List({ key: "pages-nav-component-list" }, componentPages.map((page) =>
-        keyed(Button({
-          key: `pages-nav-${page.id}`,
-          label: page.title,
-          variant: state.activePageId === page.id ? "secondary" : "ghost",
-          onPress: IntentRef("Gallery.PageSelected", StaticPayload(page.id)),
-          style: { borderRadius: "md", padding: "2", textAlign: "left" }
-        }))
-      ))
-    ])
-  ])
+          key: "pages-nav-browser",
+          label: "Back to story browser",
+          variant: "ghost",
+          onPress: IntentRef("Gallery.PageSelected", StaticPayload("")),
+          style: { borderColor: "border", borderWidth: 1, borderRadius: "md", padding: "2", textAlign: "left" }
+        }),
+        Text({ key: "pages-nav-foundations", content: "Foundations", variant: "caption", color: "textMuted" }),
+        ...foundationPages.map((page) =>
+          Button({
+            key: `pages-nav-${page.id}`,
+            label: page.title,
+            variant: state.activePageId === page.id ? "secondary" : "ghost",
+            onPress: IntentRef("Gallery.PageSelected", StaticPayload(page.id)),
+            style: { borderRadius: "md", padding: "2", textAlign: "left" }
+          })
+        ),
+        Text({ key: "pages-nav-components", content: "Components", variant: "caption", color: "textMuted" }),
+        List(
+          { key: "pages-nav-component-list" },
+          componentPages.map((page) =>
+            keyed(
+              Button({
+                key: `pages-nav-${page.id}`,
+                label: page.title,
+                variant: state.activePageId === page.id ? "secondary" : "ghost",
+                onPress: IntentRef("Gallery.PageSelected", StaticPayload(page.id)),
+                style: { borderRadius: "md", padding: "2", textAlign: "left" }
+              })
+            )
+          )
+        )
+      ])
+    ]
+  )
 
 const pageMain = (state: GalleryState, page: GalleryPage): View =>
   Stack({ key: "gallery-main", direction: "column", gap: "3", style: { flex: 1, minWidth: 0 } }, [
@@ -3071,12 +3200,15 @@ const pageMain = (state: GalleryState, page: GalleryPage): View =>
       }),
       toolbar(state)
     ]),
-    Card({
-      key: "page-canvas",
-      padding: "4",
-      radius: "lg",
-      style: { backgroundColor: "background", borderColor: "border", borderWidth: 1, minHeight: 260 }
-    }, [page.view])
+    Card(
+      {
+        key: "page-canvas",
+        padding: "4",
+        radius: "lg",
+        style: { backgroundColor: "background", borderColor: "border", borderWidth: 1, minHeight: 260 }
+      },
+      [page.view]
+    )
   ])
 
 const toolbar = (state: GalleryState): View =>
@@ -3106,90 +3238,99 @@ const toolbar = (state: GalleryState): View =>
 
 const storyPreview = (state: GalleryState): View => {
   const storyItem = activeStory(state)
-  return Card({
-    key: "component-preview",
-    padding: "4",
-    radius: "lg",
-    style: {
-      backgroundColor: "background",
-      borderColor: "border",
-      borderWidth: 1,
-      minHeight: 260
-    }
-  }, [
-    Stack({ key: "component-preview-stack", direction: "column", gap: "3" }, [
-      Stack({ key: "preview-head", direction: "row", align: "center", gap: "2" }, [
-        Text({ key: "preview-title", content: storyItem.title, variant: "title", color: "textPrimary" }),
-        Spacer({ key: "preview-head-spacer", flex: true }),
-        Text({
-          key: "preview-meta",
-          content: `${storyItem.component} - ${activeViewport(state).label}`,
-          variant: "caption",
-          color: "textMuted"
-        })
-      ]),
-      Text({ key: "preview-description", content: storyItem.description, variant: "body", color: "textMuted" }),
-      storyItem.view
-    ])
-  ])
+  return Card(
+    {
+      key: "component-preview",
+      padding: "4",
+      radius: "lg",
+      style: {
+        backgroundColor: "background",
+        borderColor: "border",
+        borderWidth: 1,
+        minHeight: 260
+      }
+    },
+    [
+      Stack({ key: "component-preview-stack", direction: "column", gap: "3" }, [
+        Stack({ key: "preview-head", direction: "row", align: "center", gap: "2" }, [
+          Text({ key: "preview-title", content: storyItem.title, variant: "title", color: "textPrimary" }),
+          Spacer({ key: "preview-head-spacer", flex: true }),
+          Text({
+            key: "preview-meta",
+            content: `${storyItem.component} - ${activeViewport(state).label}`,
+            variant: "caption",
+            color: "textMuted"
+          })
+        ]),
+        Text({ key: "preview-description", content: storyItem.description, variant: "body", color: "textMuted" }),
+        storyItem.view
+      ])
+    ]
+  )
 }
 
 const controlPanel = (state: GalleryState): View => {
   const storyItem = activeStory(state)
-  return Card({
-    key: "control-panel",
-    padding: "3",
-    radius: "lg",
-    style: { backgroundColor: "surface", borderColor: "border", borderWidth: 1 }
-  }, [
-    Stack({ key: "control-panel-stack", direction: "column", gap: "3" }, [
-      Text({ key: "control-panel-title", content: "Controls", variant: "title", color: "textPrimary" }),
-      ...(storyItem.controls.length === 0
-        ? [
-            Text({
-              key: "control-empty",
-              content: "This story has no editable controls.",
-              variant: "body",
-              color: "textMuted"
-            })
-          ]
-        : storyItem.controls.map((control) => controlEditor(state, storyItem, control)))
-    ])
-  ])
+  return Card(
+    {
+      key: "control-panel",
+      padding: "3",
+      radius: "lg",
+      style: { backgroundColor: "surface", borderColor: "border", borderWidth: 1 }
+    },
+    [
+      Stack({ key: "control-panel-stack", direction: "column", gap: "3" }, [
+        Text({ key: "control-panel-title", content: "Controls", variant: "title", color: "textPrimary" }),
+        ...(storyItem.controls.length === 0
+          ? [
+              Text({
+                key: "control-empty",
+                content: "This story has no editable controls.",
+                variant: "body",
+                color: "textMuted"
+              })
+            ]
+          : storyItem.controls.map((control) => controlEditor(state, storyItem, control)))
+      ])
+    ]
+  )
 }
 
 const serializedPanel = (state: GalleryState): View => {
   const storyItem = activeStory(state)
-  return Card({
-    key: "serialized-panel",
-    padding: "3",
-    radius: "lg",
-    style: { backgroundColor: "surface", borderColor: "border", borderWidth: 1 }
-  }, [
-    Stack({ key: "serialized-panel-stack", direction: "column", gap: "2" }, [
-      Text({ key: "serialized-panel-title", content: "Serialized story", variant: "title", color: "textPrimary" }),
-      TextField({
-        key: "serialized-story",
-        label: "JSON",
-        value: serializeStory({
-          ...storyItem,
-          theme: activeTheme(state).theme,
-          viewport: activeViewport(state).viewport
-        }),
-        multiline: true,
-        onChange: IntentRef("Gallery.SerializedStoryChanged", ComponentValueBinding()),
-        style: {
-          minHeight: 220,
-          borderColor: "border",
-          borderWidth: 1,
-          borderRadius: "md",
-          padding: "3",
-          color: "textPrimary",
-          backgroundColor: "background"
-        }
-      })
-    ])
-  ])
+  return Card(
+    {
+      key: "serialized-panel",
+      padding: "3",
+      radius: "lg",
+      style: { backgroundColor: "surface", borderColor: "border", borderWidth: 1 }
+    },
+    [
+      Stack({ key: "serialized-panel-stack", direction: "column", gap: "2" }, [
+        Text({ key: "serialized-panel-title", content: "Serialized story", variant: "title", color: "textPrimary" }),
+        TextField({
+          key: "serialized-story",
+          label: "JSON",
+          value: serializeStory({
+            ...storyItem,
+            theme: activeTheme(state).theme,
+            viewport: activeViewport(state).viewport
+          }),
+          multiline: true,
+          onChange: IntentRef("Gallery.SerializedStoryChanged", ComponentValueBinding()),
+          style: {
+            minHeight: 220,
+            borderColor: "border",
+            borderWidth: 1,
+            borderRadius: "md",
+            padding: "3",
+            color: "textPrimary",
+            backgroundColor: "background"
+          }
+        })
+      ])
+    ]
+  )
 }
 
 const galleryRootStyle = {
@@ -3205,53 +3346,56 @@ const galleryRootStyle = {
 export const galleryView = (state: GalleryState): View => {
   const page = state.activePageId === "" ? undefined : galleryPageById(state.activePageId)
   if (page !== undefined) {
-    return Stack({
+    return Stack(
+      {
+        key: "gallery-root",
+        direction: { base: "column", lg: "row" },
+        gap: "3",
+        padding: "3",
+        style: galleryRootStyle
+      },
+      [pagesNavigation(state), pageMain(state, page)]
+    )
+  }
+  return Stack(
+    {
       key: "gallery-root",
       direction: { base: "column", lg: "row" },
       gap: "3",
       padding: "3",
       style: galleryRootStyle
-    }, [
-      pagesNavigation(state),
-      pageMain(state, page)
-    ])
-  }
-  return Stack({
-    key: "gallery-root",
-    direction: { base: "column", lg: "row" },
-    gap: "3",
-    padding: "3",
-    style: galleryRootStyle
-  }, [
-    componentNavigation(state),
-    storyNavigation(state),
-    Stack({ key: "gallery-main", direction: "column", gap: "3", style: { flex: 1, minWidth: 0 } }, [
-      Stack({ key: "gallery-head", direction: "column", gap: "2" }, [
-        Text({
-          key: "gallery-title",
-          content: "Effect Native component gallery",
-          variant: "heading",
-          color: "textPrimary"
-        }),
-        Text({
-          key: "gallery-subtitle",
-          content: "Stories are typed data shared by web, mobile, headless tests, and visual baselines.",
-          variant: "body",
-          color: "textMuted"
-        }),
-        toolbar(state)
-      ]),
-      storyPreview(state),
-      Stack({ key: "gallery-lower", direction: { base: "column", lg: "row" }, gap: "3" }, [
-        Stack({ key: "gallery-controls-column", direction: "column", gap: "3", style: { flex: 1 } }, [
-          controlPanel(state)
+    },
+    [
+      componentNavigation(state),
+      storyNavigation(state),
+      Stack({ key: "gallery-main", direction: "column", gap: "3", style: { flex: 1, minWidth: 0 } }, [
+        Stack({ key: "gallery-head", direction: "column", gap: "2" }, [
+          Text({
+            key: "gallery-title",
+            content: "Effect Native component gallery",
+            variant: "heading",
+            color: "textPrimary"
+          }),
+          Text({
+            key: "gallery-subtitle",
+            content: "Stories are typed data shared by web, mobile, headless tests, and visual baselines.",
+            variant: "body",
+            color: "textMuted"
+          }),
+          toolbar(state)
         ]),
-        Stack({ key: "gallery-json-column", direction: "column", gap: "3", style: { flex: 1 } }, [
-          serializedPanel(state)
+        storyPreview(state),
+        Stack({ key: "gallery-lower", direction: { base: "column", lg: "row" }, gap: "3" }, [
+          Stack({ key: "gallery-controls-column", direction: "column", gap: "3", style: { flex: 1 } }, [
+            controlPanel(state)
+          ]),
+          Stack({ key: "gallery-json-column", direction: "column", gap: "3", style: { flex: 1 } }, [
+            serializedPanel(state)
+          ])
         ])
       ])
-    ])
-  ])
+    ]
+  )
 }
 
 export interface GalleryRuntime {
@@ -3261,10 +3405,8 @@ export interface GalleryRuntime {
   readonly report: IntentReporter
 }
 
-export const makeGalleryRuntime = (
-  storybook: Storybook = defaultStorybook
-): Effect.Effect<GalleryRuntime> =>
-  Effect.gen(function*() {
+export const makeGalleryRuntime = (storybook: Storybook = defaultStorybook): Effect.Effect<GalleryRuntime> =>
+  Effect.gen(function* () {
     const state = yield* SubscriptionRef.make(initialGalleryState(storybook))
     const program = makeViewProgramFromState(state, galleryView, {
       redactState: (current) => Schema.encodeSync(GalleryStateSchema)(current) as unknown as JsonPayload
@@ -3310,30 +3452,31 @@ export const makeGalleryRuntime = (
       "Gallery.SerializedStoryChanged": () => Effect.void,
       "Gallery.PageSelected": (pageId) =>
         SubscriptionRef.update(state, (current) =>
-          pageId === "" || galleryPageById(pageId) !== undefined
-            ? { ...current, activePageId: pageId }
-            : current
+          pageId === "" || galleryPageById(pageId) !== undefined ? { ...current, activePageId: pageId } : current
         )
     }
     const registry = yield* makeIntentRegistry(galleryIntentDefinitions, handlers, { now: () => 0 })
-    const report: IntentReporter = (ref, runtimeValue) =>
-      registry.dispatch(resolveIntentRef(ref, runtimeValue))
+    const report: IntentReporter = (ref, runtimeValue) => registry.dispatch(resolveIntentRef(ref, runtimeValue))
 
     return { state, program, registry, report }
   })
 
 export const makeStoryIntentRegistry = (): Effect.Effect<IntentRegistry> =>
-  makeIntentRegistry(storyIntentDefinitions, {
-    "GalleryStory.Pressed": () => Effect.void,
-    "GalleryStory.Changed": () => Effect.void,
-    "GalleryStory.Submitted": () => Effect.void,
-    "GalleryStory.Dismissed": () => Effect.void
-  }, { now: () => 0 })
+  makeIntentRegistry(
+    storyIntentDefinitions,
+    {
+      "GalleryStory.Pressed": () => Effect.void,
+      "GalleryStory.Changed": () => Effect.void,
+      "GalleryStory.Submitted": () => Effect.void,
+      "GalleryStory.Dismissed": () => Effect.void
+    },
+    { now: () => 0 }
+  )
 
 export const replayStoryInteractions = (
   input: Story
 ): Effect.Effect<ReadonlyArray<string>, import("@effect-native/core").IntentError> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const registry = yield* makeStoryIntentRegistry()
     for (const interaction of input.interactions) {
       yield* registry.dispatch(interaction.intent)

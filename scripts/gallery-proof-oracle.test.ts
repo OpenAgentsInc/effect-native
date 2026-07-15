@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect, Exit } from "effect"
 import { Window } from "happy-dom"
 import { IntentRef, StaticPayload, makeHeadlessRenderer, resolveIntentRef, type IntentEvent } from "@effect-native/core"
@@ -29,9 +29,7 @@ const createElement = (
   key: typeof props?.key === "string" ? props.key : null,
   props: {
     ...(props ?? {}),
-    ...(children.length === 0
-      ? {}
-      : { children: children.length === 1 ? children[0] : children })
+    ...(children.length === 0 ? {} : { children: children.length === 1 ? children[0] : children })
   }
 })
 
@@ -57,7 +55,7 @@ const children = (node: ReactElementLike): ReadonlyArray<ReactNodeLike> => {
   if (value === undefined || value === null) {
     return []
   }
-  return Array.isArray(value) ? value as ReadonlyArray<ReactNodeLike> : [value as ReactNodeLike]
+  return Array.isArray(value) ? (value as ReadonlyArray<ReactNodeLike>) : [value as ReactNodeLike]
 }
 
 const findNativeNode = (node: ReactNodeLike, tag: string, key: string): ReactElementLike | undefined => {
@@ -83,88 +81,80 @@ interface GalleryProof {
   readonly structure?: ReactNativeStructure
 }
 
-const runHeadless = Effect.scoped(Effect.gen(function*() {
-  const runtime = yield* makeGalleryRuntime()
-  const surface = yield* makeHeadlessRenderer().mount(
-    undefined,
-    runtime.program.viewStream,
-    runtime.report
-  )
-  yield* runtime.registry.dispatch(resolveIntentRef(
-    IntentRef("Gallery.ComponentSelected", StaticPayload("Button"))
-  ))
-  yield* Effect.yieldNow
-  const state = yield* runtime.program.currentState
-  const current = yield* surface.current
-  return {
-    activeComponent: state.activeComponent,
-    activeStoryComponent: activeStory(state).component,
-    events: normalizeEvents(yield* runtime.registry.events),
-    structure: current === undefined ? undefined : domViewStructure(current)
-  } satisfies GalleryProof
-}))
+const runHeadless = Effect.scoped(
+  Effect.gen(function* () {
+    const runtime = yield* makeGalleryRuntime()
+    const surface = yield* makeHeadlessRenderer().mount(undefined, runtime.program.viewStream, runtime.report)
+    yield* runtime.registry.dispatch(resolveIntentRef(IntentRef("Gallery.ComponentSelected", StaticPayload("Button"))))
+    yield* Effect.yieldNow
+    const state = yield* runtime.program.currentState
+    const current = yield* surface.current
+    return {
+      activeComponent: state.activeComponent,
+      activeStoryComponent: activeStory(state).component,
+      events: normalizeEvents(yield* runtime.registry.events),
+      structure: current === undefined ? undefined : domViewStructure(current)
+    } satisfies GalleryProof
+  })
+)
 
-const runDom = Effect.scoped(Effect.gen(function*() {
-  const window = new Window()
-  const document = window.document as unknown as Document
-  const container = document.createElement("main")
-  document.body.appendChild(container)
-  const runtime = yield* makeGalleryRuntime()
-  const surface = yield* makeDomRenderer({ document }).mount(
-    container,
-    runtime.program.viewStream,
-    runtime.report
-  )
-  const button = container.querySelector('[data-en-key="component-Button"]')
-  if (button === null) {
-    throw new Error("missing Button component selector in DOM gallery")
-  }
-  button.dispatchEvent(new window.MouseEvent("click", { bubbles: true }) as unknown as Event)
-  yield* nextTask
-  yield* Effect.yieldNow
-  const state = yield* runtime.program.currentState
-  return {
-    activeComponent: state.activeComponent,
-    activeStoryComponent: activeStory(state).component,
-    events: normalizeEvents(yield* runtime.registry.events),
-    structure: yield* surface.serialize
-  } satisfies GalleryProof
-}))
+const runDom = Effect.scoped(
+  Effect.gen(function* () {
+    const window = new Window()
+    const document = window.document as unknown as Document
+    const container = document.createElement("main")
+    document.body.appendChild(container)
+    const runtime = yield* makeGalleryRuntime()
+    const surface = yield* makeDomRenderer({ document }).mount(container, runtime.program.viewStream, runtime.report)
+    const button = container.querySelector('[data-en-key="component-Button"]')
+    if (button === null) {
+      throw new Error("missing Button component selector in DOM gallery")
+    }
+    button.dispatchEvent(new window.MouseEvent("click", { bubbles: true }) as unknown as Event)
+    yield* nextTask
+    yield* Effect.yieldNow
+    const state = yield* runtime.program.currentState
+    return {
+      activeComponent: state.activeComponent,
+      activeStoryComponent: activeStory(state).component,
+      events: normalizeEvents(yield* runtime.registry.events),
+      structure: yield* surface.serialize
+    } satisfies GalleryProof
+  })
+)
 
-const runReactNative = Effect.scoped(Effect.gen(function*() {
-  const runtime = yield* makeGalleryRuntime()
-  const surface = yield* makeReactNativeRenderer({
-    dependencies: rnDependencies,
-    platform: "ios",
-    viewport: { width: 390, height: 844 }
-  }).mount(undefined, runtime.program.viewStream, runtime.report)
-  const button = findNativeNode(yield* surface.currentElement, "Button", "component-Button")
-  const handler = button?.props.onPress
-  if (typeof handler === "function") {
-    handler()
-  } else {
-    yield* runtime.registry.dispatch(resolveIntentRef(
-      IntentRef("Gallery.ComponentSelected", StaticPayload("Button"))
-    ))
-  }
-  yield* nextTask
-  yield* Effect.yieldNow
-  const state = yield* runtime.program.currentState
-  return {
-    activeComponent: state.activeComponent,
-    activeStoryComponent: activeStory(state).component,
-    events: normalizeEvents(yield* runtime.registry.events),
-    structure: yield* surface.serialize
-  } satisfies GalleryProof
-}))
+const runReactNative = Effect.scoped(
+  Effect.gen(function* () {
+    const runtime = yield* makeGalleryRuntime()
+    const surface = yield* makeReactNativeRenderer({
+      dependencies: rnDependencies,
+      platform: "ios",
+      viewport: { width: 390, height: 844 }
+    }).mount(undefined, runtime.program.viewStream, runtime.report)
+    const button = findNativeNode(yield* surface.currentElement, "Button", "component-Button")
+    const handler = button?.props.onPress
+    if (typeof handler === "function") {
+      handler()
+    } else {
+      yield* runtime.registry.dispatch(
+        resolveIntentRef(IntentRef("Gallery.ComponentSelected", StaticPayload("Button")))
+      )
+    }
+    yield* nextTask
+    yield* Effect.yieldNow
+    const state = yield* runtime.program.currentState
+    return {
+      activeComponent: state.activeComponent,
+      activeStoryComponent: activeStory(state).component,
+      events: normalizeEvents(yield* runtime.registry.events),
+      structure: yield* surface.serialize
+    } satisfies GalleryProof
+  })
+)
 
 describe("Phase 3 gallery proof oracle", () => {
   test("headless, DOM, and React Native browse the same story data", async () => {
-    const [headless, dom, reactNative] = await Effect.runPromise(Effect.all([
-      runHeadless,
-      runDom,
-      runReactNative
-    ]))
+    const [headless, dom, reactNative] = await Effect.runPromise(Effect.all([runHeadless, runDom, runReactNative]))
 
     expect(dom.activeComponent).toBe(headless.activeComponent)
     expect(reactNative.activeComponent).toBe(headless.activeComponent)

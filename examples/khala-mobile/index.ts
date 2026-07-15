@@ -40,8 +40,7 @@ import type { ReactNativeDependencies } from "@effect-native/render-rn"
 
 export const khalaMobileTheme: Theme = khalaTheme
 
-const keyed = <V extends View>(view: V): V & { readonly key: string } =>
-  view as V & { readonly key: string }
+const keyed = <V extends View>(view: V): V & { readonly key: string } => view as V & { readonly key: string }
 
 export const KhalaMobileThreadSchema = Schema.Struct({
   id: Schema.NonEmptyString,
@@ -219,57 +218,51 @@ export const khalaMobileView = (state: KhalaMobileState): View => {
     return BackgroundGradient(
       { key: "mobile-onboarding-bg", direction: "vertical", from: "background", to: "surface" },
       [
-        Spotlight(
-          { key: "mobile-onboarding-spot", intensity: "md" },
-          [
-            Frame(
-              { key: "mobile-onboarding-frame", variant: "arcade" },
-              [
-                Pager({
-                  key: "onboarding",
-                  activeStepId: state.onboardingStep,
-                  progress: "dots",
-                  canGoBack: state.onboardingStep !== "welcome",
-                  canAdvance: state.onboardingStep !== "task",
-                  onStepChange: IntentRef("KhalaMobile.SelectStep", ComponentValueBinding()),
-                  onAdvance: IntentRef("KhalaMobile.SelectStep", ComponentValueBinding()),
-                  onComplete: IntentRef("KhalaMobile.CompleteOnboarding", StaticPayload({})),
-                  steps: [
-                    { id: "welcome", label: "Welcome" },
-                    { id: "repo", label: "Repo" },
-                    { id: "task", label: "Task" }
-                  ],
-                  panels: [
-                    {
-                      id: "welcome",
-                      content: Text({
-                        key: "welcome-copy",
-                        content: "Welcome to Khala Code Mobile",
-                        variant: "title"
-                      })
-                    },
-                    {
-                      id: "repo",
-                      content: Text({
-                        key: "repo-copy",
-                        content: "Pick a repository to work in",
-                        variant: "body"
-                      })
-                    },
-                    {
-                      id: "task",
-                      content: Text({
-                        key: "task-copy",
-                        content: "Describe the first coding task",
-                        variant: "body"
-                      })
-                    }
-                  ]
-                })
+        Spotlight({ key: "mobile-onboarding-spot", intensity: "md" }, [
+          Frame({ key: "mobile-onboarding-frame", variant: "arcade" }, [
+            Pager({
+              key: "onboarding",
+              activeStepId: state.onboardingStep,
+              progress: "dots",
+              canGoBack: state.onboardingStep !== "welcome",
+              canAdvance: state.onboardingStep !== "task",
+              onStepChange: IntentRef("KhalaMobile.SelectStep", ComponentValueBinding()),
+              onAdvance: IntentRef("KhalaMobile.SelectStep", ComponentValueBinding()),
+              onComplete: IntentRef("KhalaMobile.CompleteOnboarding", StaticPayload({})),
+              steps: [
+                { id: "welcome", label: "Welcome" },
+                { id: "repo", label: "Repo" },
+                { id: "task", label: "Task" }
+              ],
+              panels: [
+                {
+                  id: "welcome",
+                  content: Text({
+                    key: "welcome-copy",
+                    content: "Welcome to Khala Code Mobile",
+                    variant: "title"
+                  })
+                },
+                {
+                  id: "repo",
+                  content: Text({
+                    key: "repo-copy",
+                    content: "Pick a repository to work in",
+                    variant: "body"
+                  })
+                },
+                {
+                  id: "task",
+                  content: Text({
+                    key: "task-copy",
+                    content: "Describe the first coding task",
+                    variant: "body"
+                  })
+                }
               ]
-            )
-          ]
-        )
+            })
+          ])
+        ])
       ]
     )
   }
@@ -342,10 +335,7 @@ export const khalaMobileView = (state: KhalaMobileState): View => {
                 variant: "ghost",
                 onPress: IntentRef("KhalaMobile.OpenThread", StaticPayload(thread.id)),
                 interactions: {
-                  onLongPress: IntentRef(
-                    "KhalaMobile.OpenQuotePopup",
-                    StaticPayload(thread.preview)
-                  )
+                  onLongPress: IntentRef("KhalaMobile.OpenQuotePopup", StaticPayload(thread.preview))
                 }
               })
             })
@@ -400,7 +390,7 @@ export const khalaMobileView = (state: KhalaMobileState): View => {
   ])
 }
 
-export const makeKhalaMobileRuntime = Effect.gen(function*() {
+export const makeKhalaMobileRuntime = Effect.gen(function* () {
   const state = yield* SubscriptionRef.make(initialKhalaMobileState)
   const program = makeViewProgramFromState(state, khalaMobileView)
   const handlers: IntentHandlers<typeof khalaMobileIntentDefinitions> = {
@@ -412,7 +402,7 @@ export const makeKhalaMobileRuntime = Effect.gen(function*() {
     "KhalaMobile.CompleteOnboarding": () =>
       SubscriptionRef.update(state, (current) => ({ ...current, screen: "threads" })),
     "KhalaMobile.RefreshThreads": () =>
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         yield* SubscriptionRef.update(state, (current) => ({ ...current, refreshing: true }))
         yield* SubscriptionRef.update(state, (current) => ({
           ...current,
@@ -455,10 +445,8 @@ export const makeKhalaMobileRuntime = Effect.gen(function*() {
           streamPatchCount: current.streamPatchCount + 1
         }
       }),
-    "KhalaMobile.BackToThreads": () =>
-      SubscriptionRef.update(state, (current) => ({ ...current, screen: "threads" })),
-    "KhalaMobile.OpenSettings": () =>
-      SubscriptionRef.update(state, (current) => ({ ...current, screen: "settings" })),
+    "KhalaMobile.BackToThreads": () => SubscriptionRef.update(state, (current) => ({ ...current, screen: "threads" })),
+    "KhalaMobile.OpenSettings": () => SubscriptionRef.update(state, (current) => ({ ...current, screen: "settings" })),
     "KhalaMobile.ToggleAutoApprove": (value) =>
       SubscriptionRef.update(state, (current) => ({
         ...current,
@@ -479,8 +467,7 @@ export const makeKhalaMobileRuntime = Effect.gen(function*() {
       SubscriptionRef.update(state, (current) => ({ ...current, quotePopupOpen: false }))
   }
   const registry = yield* makeIntentRegistry(khalaMobileIntentDefinitions, handlers, { now: () => 0 })
-  const report: IntentReporter = (ref, runtimeValue) =>
-    registry.dispatch(resolveIntentRef(ref, runtimeValue))
+  const report: IntentReporter = (ref, runtimeValue) => registry.dispatch(resolveIntentRef(ref, runtimeValue))
   return { state, program, registry, report } satisfies {
     readonly state: SubscriptionRef.SubscriptionRef<KhalaMobileState>
     readonly program: ViewProgram<KhalaMobileState>
@@ -490,11 +477,8 @@ export const makeKhalaMobileRuntime = Effect.gen(function*() {
 })
 
 /** Boot the mobile proof under runMainMobile (iOS or Android platform option). */
-export const runKhalaMobileMain = (
-  dependencies: ReactNativeDependencies,
-  platform: "ios" | "android"
-) =>
-  Effect.gen(function*() {
+export const runKhalaMobileMain = (dependencies: ReactNativeDependencies, platform: "ios" | "android") =>
+  Effect.gen(function* () {
     const runtime = yield* makeKhalaMobileRuntime
     const app = yield* runMainMobile({
       runtime: {

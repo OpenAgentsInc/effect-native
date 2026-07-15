@@ -20,7 +20,7 @@ Stories are built from the same closed catalog any app uses.
 ## Run The Web Gallery
 
 ```sh
-bun run gallery
+pnpm run gallery
 ```
 
 The local server starts on `http://localhost:4175/`. The script rebuilds
@@ -29,7 +29,7 @@ The local server starts on `http://localhost:4175/`. The script rebuilds
 ## Build Static Files
 
 ```sh
-bun run gallery:build
+pnpm run gallery:build
 ```
 
 The static build writes:
@@ -61,7 +61,7 @@ proof screen:
 
 ```sh
 cd examples/mobile
-EXPO_PUBLIC_EFFECT_NATIVE_SURFACE=gallery bun run ios
+EXPO_PUBLIC_EFFECT_NATIVE_SURFACE=gallery pnpm run ios
 ```
 
 `examples/mobile/App.tsx` selects the gallery when that environment variable is
@@ -93,7 +93,7 @@ entry appears in the storybook.
 The gallery is covered by the normal repo check:
 
 ```sh
-bun run check
+pnpm run check
 ```
 
 Relevant coverage:

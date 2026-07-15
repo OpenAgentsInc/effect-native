@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect, Exit } from "effect"
 import { Window } from "happy-dom"
 import { makeHeadlessRenderer, type IntentEvent } from "@effect-native/core"
@@ -44,9 +44,7 @@ const createElement = (
   key: typeof props?.key === "string" ? props.key : null,
   props: {
     ...(props ?? {}),
-    ...(children.length === 0
-      ? {}
-      : { children: children.length === 1 ? children[0] : children })
+    ...(children.length === 0 ? {} : { children: children.length === 1 ? children[0] : children })
   }
 })
 
@@ -71,7 +69,7 @@ const children = (node: ReactElementLike): ReadonlyArray<ReactNodeLike> => {
   if (value === undefined || value === null) {
     return []
   }
-  return Array.isArray(value) ? value as ReadonlyArray<ReactNodeLike> : [value as ReactNodeLike]
+  return Array.isArray(value) ? (value as ReadonlyArray<ReactNodeLike>) : [value as ReactNodeLike]
 }
 
 const findNativeNode = (node: ReactNodeLike, tag: string, key: string): ReactElementLike | undefined => {
@@ -90,131 +88,135 @@ const findNativeNode = (node: ReactNodeLike, tag: string, key: string): ReactEle
   return undefined
 }
 
-const runHeadlessProof = Effect.scoped(Effect.gen(function*() {
-  const runtime = yield* makeSignupActivityRuntime()
-  const surface = yield* makeHeadlessRenderer().mount(undefined, runtime.program.viewStream, runtime.report)
-  const snapshots: Array<DomStructure | undefined> = []
-  const pushSnapshot = Effect.gen(function*() {
-    const current = yield* surface.current
-    snapshots.push(current === undefined ? undefined : domViewStructure(current))
-  })
+const runHeadlessProof = Effect.scoped(
+  Effect.gen(function* () {
+    const runtime = yield* makeSignupActivityRuntime()
+    const surface = yield* makeHeadlessRenderer().mount(undefined, runtime.program.viewStream, runtime.report)
+    const snapshots: Array<DomStructure | undefined> = []
+    const pushSnapshot = Effect.gen(function* () {
+      const current = yield* surface.current
+      snapshots.push(current === undefined ? undefined : domViewStructure(current))
+    })
 
-  yield* pushSnapshot
-  for (const step of scriptedProofSteps) {
-    yield* surface.simulate(step.ref, step.runtimeValue ?? null)
-    yield* Effect.yieldNow
     yield* pushSnapshot
-  }
-
-  return {
-    state: yield* runtime.program.currentState,
-    events: normalizeEvents(yield* runtime.registry.events),
-    snapshots
-  } satisfies ProofResult
-}))
-
-const runDomProof = Effect.scoped(Effect.gen(function*() {
-  const window = new Window()
-  const document = window.document as unknown as Document
-  const container = document.createElement("main")
-  document.body.appendChild(container)
-  const runtime = yield* makeSignupActivityRuntime()
-  const surface = yield* makeDomRenderer({ document }).mount(container, runtime.program.viewStream, runtime.report)
-  const snapshots: Array<DomStructure | undefined> = []
-  const pushSnapshot = Effect.gen(function*() {
-    snapshots.push(yield* surface.serialize)
-  })
-
-  yield* pushSnapshot
-  for (const step of scriptedProofSteps) {
-    if (step.kind === "change" || step.kind === "submit") {
-      const field = container.querySelector(
-        `[data-en-key="${step.key}"] [data-en-role="control"]`
-      ) as HTMLInputElement | null
-      if (field === null) {
-        throw new Error(`missing DOM field ${step.key}`)
-      }
-      field.value = step.value ?? ""
-      field.dispatchEvent(
-        step.kind === "submit"
-          ? new window.KeyboardEvent("keydown", { key: "Enter", bubbles: true }) as unknown as Event
-          : new window.Event("input", { bubbles: true }) as unknown as Event
-      )
-    } else {
-      const button = container.querySelector(`[data-en-key="${step.key}"]`)
-      if (button === null) {
-        throw new Error(`missing DOM button ${step.key}`)
-      }
-      button.dispatchEvent(new window.MouseEvent("click", { bubbles: true }) as unknown as Event)
+    for (const step of scriptedProofSteps) {
+      yield* surface.simulate(step.ref, step.runtimeValue ?? null)
+      yield* Effect.yieldNow
+      yield* pushSnapshot
     }
 
-    yield* nextTask
-    yield* Effect.yieldNow
-    yield* pushSnapshot
-  }
-
-  return {
-    state: yield* runtime.program.currentState,
-    events: normalizeEvents(yield* runtime.registry.events),
-    snapshots
-  } satisfies ProofResult
-}))
-
-const runReactNativeProof = Effect.scoped(Effect.gen(function*() {
-  const runtime = yield* makeSignupActivityRuntime()
-  const surface = yield* makeReactNativeRenderer({ dependencies: rnDependencies }).mount(
-    undefined,
-    runtime.program.viewStream,
-    runtime.report
-  )
-  const snapshots: Array<ReactNativeStructure | undefined> = []
-  const pushSnapshot = Effect.gen(function*() {
-    snapshots.push(yield* surface.serialize)
+    return {
+      state: yield* runtime.program.currentState,
+      events: normalizeEvents(yield* runtime.registry.events),
+      snapshots
+    } satisfies ProofResult
   })
+)
 
-  yield* pushSnapshot
-  for (const step of scriptedProofSteps) {
-    const current = yield* surface.currentElement
-    if (step.kind === "change" || step.kind === "submit") {
-      const input = findNativeNode(current, "TextField", step.key)
-      const eventName = step.kind === "submit" ? "onSubmitEditing" : "onChangeText"
-      const handler = input?.props[eventName]
-      if (typeof handler !== "function") {
-        throw new Error(`missing RN ${eventName} for ${step.key}`)
-      }
-      if (step.kind === "submit") {
-        handler({ nativeEvent: { text: step.value ?? "" } })
+const runDomProof = Effect.scoped(
+  Effect.gen(function* () {
+    const window = new Window()
+    const document = window.document as unknown as Document
+    const container = document.createElement("main")
+    document.body.appendChild(container)
+    const runtime = yield* makeSignupActivityRuntime()
+    const surface = yield* makeDomRenderer({ document }).mount(container, runtime.program.viewStream, runtime.report)
+    const snapshots: Array<DomStructure | undefined> = []
+    const pushSnapshot = Effect.gen(function* () {
+      snapshots.push(yield* surface.serialize)
+    })
+
+    yield* pushSnapshot
+    for (const step of scriptedProofSteps) {
+      if (step.kind === "change" || step.kind === "submit") {
+        const field = container.querySelector(
+          `[data-en-key="${step.key}"] [data-en-role="control"]`
+        ) as HTMLInputElement | null
+        if (field === null) {
+          throw new Error(`missing DOM field ${step.key}`)
+        }
+        field.value = step.value ?? ""
+        field.dispatchEvent(
+          step.kind === "submit"
+            ? (new window.KeyboardEvent("keydown", { key: "Enter", bubbles: true }) as unknown as Event)
+            : (new window.Event("input", { bubbles: true }) as unknown as Event)
+        )
       } else {
-        handler(step.value ?? "")
+        const button = container.querySelector(`[data-en-key="${step.key}"]`)
+        if (button === null) {
+          throw new Error(`missing DOM button ${step.key}`)
+        }
+        button.dispatchEvent(new window.MouseEvent("click", { bubbles: true }) as unknown as Event)
       }
-    } else {
-      const button = findNativeNode(current, "Button", step.key)
-      const handler = button?.props.onPress
-      if (typeof handler !== "function") {
-        throw new Error(`missing RN onPress for ${step.key}`)
-      }
-      handler()
+
+      yield* nextTask
+      yield* Effect.yieldNow
+      yield* pushSnapshot
     }
 
-    yield* nextTask
-    yield* Effect.yieldNow
-    yield* pushSnapshot
-  }
+    return {
+      state: yield* runtime.program.currentState,
+      events: normalizeEvents(yield* runtime.registry.events),
+      snapshots
+    } satisfies ProofResult
+  })
+)
 
-  return {
-    state: yield* runtime.program.currentState,
-    events: normalizeEvents(yield* runtime.registry.events),
-    snapshots
-  } satisfies ProofResult
-}))
+const runReactNativeProof = Effect.scoped(
+  Effect.gen(function* () {
+    const runtime = yield* makeSignupActivityRuntime()
+    const surface = yield* makeReactNativeRenderer({ dependencies: rnDependencies }).mount(
+      undefined,
+      runtime.program.viewStream,
+      runtime.report
+    )
+    const snapshots: Array<ReactNativeStructure | undefined> = []
+    const pushSnapshot = Effect.gen(function* () {
+      snapshots.push(yield* surface.serialize)
+    })
+
+    yield* pushSnapshot
+    for (const step of scriptedProofSteps) {
+      const current = yield* surface.currentElement
+      if (step.kind === "change" || step.kind === "submit") {
+        const input = findNativeNode(current, "TextField", step.key)
+        const eventName = step.kind === "submit" ? "onSubmitEditing" : "onChangeText"
+        const handler = input?.props[eventName]
+        if (typeof handler !== "function") {
+          throw new Error(`missing RN ${eventName} for ${step.key}`)
+        }
+        if (step.kind === "submit") {
+          handler({ nativeEvent: { text: step.value ?? "" } })
+        } else {
+          handler(step.value ?? "")
+        }
+      } else {
+        const button = findNativeNode(current, "Button", step.key)
+        const handler = button?.props.onPress
+        if (typeof handler !== "function") {
+          throw new Error(`missing RN onPress for ${step.key}`)
+        }
+        handler()
+      }
+
+      yield* nextTask
+      yield* Effect.yieldNow
+      yield* pushSnapshot
+    }
+
+    return {
+      state: yield* runtime.program.currentState,
+      events: normalizeEvents(yield* runtime.registry.events),
+      snapshots
+    } satisfies ProofResult
+  })
+)
 
 describe("Phase 1 proof oracle", () => {
   test("headless, DOM, and React Native produce the same state, intent log, and structure snapshots", async () => {
-    const [headless, dom, reactNative] = await Effect.runPromise(Effect.all([
-      runHeadlessProof,
-      runDomProof,
-      runReactNativeProof
-    ]))
+    const [headless, dom, reactNative] = await Effect.runPromise(
+      Effect.all([runHeadlessProof, runDomProof, runReactNativeProof])
+    )
 
     expect(dom.state).toEqual(headless.state)
     expect(reactNative.state).toEqual(headless.state)

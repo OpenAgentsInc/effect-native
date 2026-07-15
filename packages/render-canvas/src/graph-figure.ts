@@ -61,10 +61,7 @@ const toneColorToken: Record<Tone, ColorToken> = {
   danger: "danger"
 }
 
-export const graphFigureToScene = (
-  view: GraphFigureView,
-  options: GraphFigureSceneOptions = {}
-): CanvasScene => {
+export const graphFigureToScene = (view: GraphFigureView, options: GraphFigureSceneOptions = {}): CanvasScene => {
   const theme = options.theme ?? defaultTheme
   const positions = layoutGraphNodes(view)
   const camera = view.camera ?? { x: 0, y: 0, zoom: 1 }

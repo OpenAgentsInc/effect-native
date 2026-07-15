@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect, Ref, Schema, Stream } from "effect"
 import {
   TextField,
@@ -23,12 +23,8 @@ import {
   type JsonPayload
 } from "../src/index"
 
-const RequiredString = Schema.String.check(
-  Schema.isPattern(/\S/, { title: "NonBlank" })
-)
-const EmailString = Schema.String.check(
-  Schema.isPattern(/^[^@\s]+@[^@\s]+\.[^@\s]+$/, { title: "Email" })
-)
+const RequiredString = Schema.String.check(Schema.isPattern(/\S/, { title: "NonBlank" }))
+const EmailString = Schema.String.check(Schema.isPattern(/^[^@\s]+@[^@\s]+\.[^@\s]+$/, { title: "Email" }))
 
 const noopReport: IntentReporter = () => Effect.succeed(undefined)
 
@@ -119,59 +115,70 @@ describe("Schema-backed forms", () => {
         }
       ]
     } as const)
-    const LoginSubmitted = defineIntent("LoginSubmitted", Schema.Struct({
-      form: Schema.String,
-      password: Schema.String
-    }))
+    const LoginSubmitted = defineIntent(
+      "LoginSubmitted",
+      Schema.Struct({
+        form: Schema.String,
+        password: Schema.String
+      })
+    )
     const definitions = [...formIntentDefinitions, LoginSubmitted] as const
     const seen: Array<JsonPayload> = []
 
-    await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const handlers: IntentHandlers<typeof definitions> = {
-        FormFieldChanged: (payload) =>
-          Effect.sync(() => {
-            seen.push(payload.value)
-          }),
-        FormFieldBlurred: () => Effect.succeed(undefined),
-        FormSubmitRequested: () => Effect.succeed(undefined),
-        LoginSubmitted: (payload) =>
-          Effect.sync(() => {
-            seen.push(payload.password)
+    await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const handlers: IntentHandlers<typeof definitions> = {
+            FormFieldChanged: (payload) =>
+              Effect.sync(() => {
+                seen.push(payload.value)
+              }),
+            FormFieldBlurred: () => Effect.succeed(undefined),
+            FormSubmitRequested: () => Effect.succeed(undefined),
+            LoginSubmitted: (payload) =>
+              Effect.sync(() => {
+                seen.push(payload.password)
+              })
+          }
+          const registry = yield* makeIntentRegistry(definitions, handlers, {
+            now: () => 0,
+            redactIntent: makeFormIntentRedactor([spec])
           })
-      }
-      const registry = yield* makeIntentRegistry(definitions, handlers, {
-        now: () => 0,
-        redactIntent: makeFormIntentRedactor([spec])
-      })
 
-      yield* registry.dispatch(makeIntent("FormFieldChanged", {
-        form: "login",
-        field: "password",
-        value: "secret"
-      }))
-      yield* registry.dispatch(makeIntent("LoginSubmitted", {
-        form: "login",
-        password: "secret"
-      }))
+          yield* registry.dispatch(
+            makeIntent("FormFieldChanged", {
+              form: "login",
+              field: "password",
+              value: "secret"
+            })
+          )
+          yield* registry.dispatch(
+            makeIntent("LoginSubmitted", {
+              form: "login",
+              password: "secret"
+            })
+          )
 
-      const events = yield* registry.events
-      expect(seen).toEqual(["secret", "secret"])
-      expect(events.map((event) => event.intent.payload)).toEqual([
-        { form: "login", field: "password", value: redactedValue },
-        { form: "login", password: redactedValue }
-      ])
+          const events = yield* registry.events
+          expect(seen).toEqual(["secret", "secret"])
+          expect(events.map((event) => event.intent.payload)).toEqual([
+            { form: "login", field: "password", value: redactedValue },
+            { form: "login", password: redactedValue }
+          ])
 
-      const surface = yield* makeHeadlessRenderer().mount(
-        undefined,
-        Stream.make(TextField({ key: "password", value: "secret", secure: true })),
-        noopReport
+          const surface = yield* makeHeadlessRenderer().mount(
+            undefined,
+            Stream.make(TextField({ key: "password", value: "secret", secure: true })),
+            noopReport
+          )
+          const current = yield* surface.current
+          if (current?._tag !== "TextField") {
+            throw new Error("expected text field snapshot")
+          }
+          expect(current.value).toBe(redactedValue)
+        })
       )
-      const current = yield* surface.current
-      if (current?._tag !== "TextField") {
-        throw new Error("expected text field snapshot")
-      }
-      expect(current.value).toBe(redactedValue)
-    })))
+    )
   })
 
   test("form interaction event logs replay to the same state", async () => {
@@ -203,15 +210,13 @@ describe("Schema-backed forms", () => {
       makeIntent("FormSubmitRequested", { form: "signup", via: "button" })
     ]
     const runSequence = (intents: ReadonlyArray<Intent<string, JsonPayload>>) =>
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const form = yield* Ref.make<FormState>(makeFormState(spec))
         const handlers: IntentHandlers<typeof formIntentDefinitions> = {
           FormFieldChanged: (payload) =>
             Ref.update(form, (current) => setFormFieldValue(spec, current, payload.field, payload.value)),
-          FormFieldBlurred: (payload) =>
-            Ref.update(form, (current) => blurFormField(spec, current, payload.field)),
-          FormSubmitRequested: () =>
-            Ref.update(form, (current) => submitForm(spec, current).state)
+          FormFieldBlurred: (payload) => Ref.update(form, (current) => blurFormField(spec, current, payload.field)),
+          FormSubmitRequested: () => Ref.update(form, (current) => submitForm(spec, current).state)
         }
         const registry = yield* makeIntentRegistry(formIntentDefinitions, handlers, { now: () => 0 })
 

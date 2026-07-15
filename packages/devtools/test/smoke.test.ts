@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test"
+import { expect, test } from "vite-plus/test"
 import { makeRecordingSink, packageName } from "../src/index"
 
 test("@effect-native/devtools smoke test", () => {

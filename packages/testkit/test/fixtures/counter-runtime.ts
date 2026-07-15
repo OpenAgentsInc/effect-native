@@ -61,9 +61,7 @@ export const counterView = (state: CounterState): View =>
     })
   ])
 
-export const makeCounterHandlers = (
-  program: ViewProgram<CounterState>
-): IntentHandlers<typeof counterDefinitions> => ({
+export const makeCounterHandlers = (program: ViewProgram<CounterState>): IntentHandlers<typeof counterDefinitions> => ({
   Increment: (payload) => program.updateState((state) => ({ ...state, count: state.count + payload.amount })),
   FormFieldChanged: (payload) =>
     program.updateState((state) =>
@@ -85,7 +83,7 @@ export interface CounterRuntimeOptions {
 
 /** Builds a fresh counter program + intent registry, wired together. */
 export const makeCounterRuntime = (options: CounterRuntimeOptions = {}): Effect.Effect<CounterRuntime> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const state = yield* SubscriptionRef.make(initialCounterState)
     const program = makeViewProgramFromState(state, counterView, {
       ...(options.now === undefined ? {} : { now: options.now }),

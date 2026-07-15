@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Exit, Schema } from "effect"
 import {
   PaletteSchema,
@@ -29,11 +29,7 @@ const relativeLuminance = (hex: string): number => {
   return 0.2126 * srgbToLinear(r) + 0.7152 * srgbToLinear(g) + 0.0722 * srgbToLinear(b)
 }
 
-const expectMonotonicRamp = (
-  name: string,
-  steps: ReadonlyArray<string>,
-  ramp: Record<string, string>
-): void => {
+const expectMonotonicRamp = (name: string, steps: ReadonlyArray<string>, ramp: Record<string, string>): void => {
   for (let index = 1; index < steps.length; index++) {
     const previous = ramp[steps[index - 1] as keyof typeof ramp] as string
     const current = ramp[steps[index] as keyof typeof ramp] as string

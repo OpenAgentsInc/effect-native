@@ -1,14 +1,5 @@
-import { describe, expect, test } from "bun:test"
-import {
-  CatalogVersion,
-  IntentRef,
-  List,
-  SectionList,
-  StaticPayload,
-  Text,
-  decodeView,
-  encodeView
-} from "../src/index"
+import { describe, expect, test } from "vite-plus/test"
+import { CatalogVersion, IntentRef, List, SectionList, StaticPayload, Text, decodeView, encodeView } from "../src/index"
 
 describe("PullToRefresh list props v22 (#61)", () => {
   test("List and SectionList round-trip refreshing + onRefresh", () => {
@@ -18,9 +9,7 @@ describe("PullToRefresh list props v22 (#61)", () => {
         refreshing: true,
         onRefresh: IntentRef("RefreshThreads", StaticPayload({}))
       },
-      [
-        Text({ key: "t1", content: "Thread one", variant: "body" }) as never
-      ]
+      [Text({ key: "t1", content: "Thread one", variant: "body" }) as never]
     )
     const sections = SectionList(
       {

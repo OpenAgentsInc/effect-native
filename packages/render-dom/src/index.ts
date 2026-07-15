@@ -358,8 +358,7 @@ export const makeMediaVideoDriver = (options: MediaVideoDriverOptions = {}): Dom
     applyProps(props as MediaVideoHostProps)
     const onPlaying = () => context.emit({ type: "ready" })
     const onEnded = () => context.emit({ type: "ended" })
-    const onError = () =>
-      context.emit({ type: "error", message: video.error?.message ?? "media_error" })
+    const onError = () => context.emit({ type: "error", message: video.error?.message ?? "media_error" })
     video.addEventListener("playing", onPlaying)
     video.addEventListener("ended", onEnded)
     video.addEventListener("error", onError)
@@ -421,8 +420,7 @@ export const makeNavigatorClipboard = (document?: Document): Clipboard => ({
     })
 })
 
-export const makeNavigatorClipboardLayer = (document?: Document) =>
-  makeClipboardLayer(makeNavigatorClipboard(document))
+export const makeNavigatorClipboardLayer = (document?: Document) => makeClipboardLayer(makeNavigatorClipboard(document))
 
 export interface DomMountedSurface extends MountedSurface {
   readonly root: HTMLElement
@@ -448,9 +446,7 @@ export interface DomNavigationHandlerOptions {
 const navigationDocument = (options: DomNavigationHandlerOptions = {}): Document =>
   options.document ?? globalThis.document
 
-export const makeDomNavigationHandler = (
-  options: DomNavigationHandlerOptions = {}
-): NavigationHandler => ({
+export const makeDomNavigationHandler = (options: DomNavigationHandlerOptions = {}): NavigationHandler => ({
   navigate: (destination: NavigationDestination) =>
     Effect.sync(() => {
       const document = navigationDocument(options)
@@ -484,9 +480,8 @@ export const makeDomNavigationHandler = (
     })
 })
 
-export const makeDomNavigationHandlerLayer = (
-  options: DomNavigationHandlerOptions = {}
-) => Layer.succeed(NavigationHandler, makeDomNavigationHandler(options))
+export const makeDomNavigationHandlerLayer = (options: DomNavigationHandlerOptions = {}) =>
+  Layer.succeed(NavigationHandler, makeDomNavigationHandler(options))
 
 type EventCleanup = () => void
 
@@ -653,33 +648,39 @@ const styleDeclarations = (key: string, value: unknown): ReadonlyArray<readonly 
 // `resolveButtonAppearance` (the pre-#78 legacy-variant normalizer, #78) is
 // what guarantees `data-en-tone`/`data-en-variant` are always one of these
 // generated combinations, never a legacy "primary"/"secondary" token.
-const buttonToneVariantRules = toneTokens.flatMap((tone) =>
-  toneVariantTokens.map((variant) =>
-    `[data-effect-native-surface="dom"] [data-en-component="button"][data-en-tone="${tone}"][data-en-variant="${variant}"]{` +
-    `--en-button-background:var(--en-matrix-${tone}-${variant}-rest-background);` +
-    `--en-button-background-hover:var(--en-matrix-${tone}-${variant}-hover-background);` +
-    `--en-button-background-active:var(--en-matrix-${tone}-${variant}-active-background);` +
-    `--en-button-background-selected:var(--en-matrix-${tone}-${variant}-selected-background);` +
-    `--en-button-text:var(--en-matrix-${tone}-${variant}-rest-text);` +
-    `--en-button-border:var(--en-matrix-${tone}-${variant}-rest-border);` +
-    "}"
+const buttonToneVariantRules = toneTokens
+  .flatMap((tone) =>
+    toneVariantTokens.map(
+      (variant) =>
+        `[data-effect-native-surface="dom"] [data-en-component="button"][data-en-tone="${tone}"][data-en-variant="${variant}"]{` +
+        `--en-button-background:var(--en-matrix-${tone}-${variant}-rest-background);` +
+        `--en-button-background-hover:var(--en-matrix-${tone}-${variant}-hover-background);` +
+        `--en-button-background-active:var(--en-matrix-${tone}-${variant}-active-background);` +
+        `--en-button-background-selected:var(--en-matrix-${tone}-${variant}-selected-background);` +
+        `--en-button-text:var(--en-matrix-${tone}-${variant}-rest-text);` +
+        `--en-button-border:var(--en-matrix-${tone}-${variant}-rest-border);` +
+        "}"
+    )
   )
-).join("")
+  .join("")
 
 // Button control-lattice size selectors (harmonization #78, C3/#76): one
 // `size` prop coherently sizes height, horizontal gutter, corner radius,
 // label font size, and (while loading) the spinner glyph from the same
 // lattice step — the apps-sdk-ui `--control-*` indirection extended to
 // Button's own local vars.
-const buttonSizeRules = controlTokens.map((size) =>
-  `[data-effect-native-surface="dom"] [data-en-component="button"][data-en-size="${size}"]{` +
-  `--en-button-height:var(--en-control-${size}-height);` +
-  `--en-button-gutter:var(--en-control-${size}-gutter);` +
-  `--en-button-radius:var(--en-control-${size}-radius);` +
-  `--en-button-font-size:var(--en-control-${size}-font-size);` +
-  `--en-button-icon-size:var(--en-control-${size}-icon);` +
-  "}"
-).join("")
+const buttonSizeRules = controlTokens
+  .map(
+    (size) =>
+      `[data-effect-native-surface="dom"] [data-en-component="button"][data-en-size="${size}"]{` +
+      `--en-button-height:var(--en-control-${size}-height);` +
+      `--en-button-gutter:var(--en-control-${size}-gutter);` +
+      `--en-button-radius:var(--en-control-${size}-radius);` +
+      `--en-button-font-size:var(--en-control-${size}-font-size);` +
+      `--en-button-icon-size:var(--en-control-${size}-icon);` +
+      "}"
+  )
+  .join("")
 
 // Component-token tier (C1 tier 3 + C4 data-* lowering, issue #77, extended by
 // #78's tone/variant/size matrix): the apps-sdk-ui indirection chain —
@@ -721,26 +722,32 @@ const componentBaseRules = [
 // `resolveSelectAppearance`'s `isLegacy` flag), so these selectors can never
 // match a pre-#79 tree and cannot change its rendering.
 const toneVariantColorRules = (component: string): string =>
-  toneTokens.flatMap((tone) =>
-    toneVariantTokens.map((variant) =>
-      `[data-effect-native-surface="dom"] [data-en-component="${component}"][data-en-tone="${tone}"][data-en-variant="${variant}"]{` +
-      `background-color:var(--en-matrix-${tone}-${variant}-rest-background);` +
-      `border-color:var(--en-matrix-${tone}-${variant}-rest-border);` +
-      `color:var(--en-matrix-${tone}-${variant}-rest-text);` +
-      "border-width:1px;border-style:solid;" +
-      "}"
+  toneTokens
+    .flatMap((tone) =>
+      toneVariantTokens.map(
+        (variant) =>
+          `[data-effect-native-surface="dom"] [data-en-component="${component}"][data-en-tone="${tone}"][data-en-variant="${variant}"]{` +
+          `background-color:var(--en-matrix-${tone}-${variant}-rest-background);` +
+          `border-color:var(--en-matrix-${tone}-${variant}-rest-border);` +
+          `color:var(--en-matrix-${tone}-${variant}-rest-text);` +
+          "border-width:1px;border-style:solid;" +
+          "}"
+      )
     )
-  ).join("")
+    .join("")
 
 const controlSizeBoxRules = (component: string): string =>
-  controlTokens.map((size) =>
-    `[data-effect-native-surface="dom"] [data-en-component="${component}"][data-en-size="${size}"]{` +
-    `min-height:var(--en-control-${size}-height);` +
-    `padding-inline:var(--en-control-${size}-gutter);` +
-    `border-radius:var(--en-control-${size}-radius);` +
-    `font-size:var(--en-control-${size}-font-size);` +
-    "}"
-  ).join("")
+  controlTokens
+    .map(
+      (size) =>
+        `[data-effect-native-surface="dom"] [data-en-component="${component}"][data-en-size="${size}"]{` +
+        `min-height:var(--en-control-${size}-height);` +
+        `padding-inline:var(--en-control-${size}-gutter);` +
+        `border-radius:var(--en-control-${size}-radius);` +
+        `font-size:var(--en-control-${size}-font-size);` +
+        "}"
+    )
+    .join("")
 
 const matrixAxesComponentRules = [
   `:where([data-effect-native-surface="dom"]) :where([data-en-component="badge"][data-en-variant]){display:inline-flex;align-items:center;gap:${spacingValue("1")};padding-block:${spacingValue("0.5")};}`,
@@ -896,9 +903,7 @@ class AtomicStyleSheet {
       }
     }
 
-    const classes = Array.from(declarations.entries()).map(([property, value]) =>
-      this.classFor(property, value)
-    )
+    const classes = Array.from(declarations.entries()).map(([property, value]) => this.classFor(property, value))
     const existing = Array.from(element.classList).filter((className) => !className.startsWith("en-"))
     element.className = [...existing, ...classes].join(" ")
   }
@@ -909,8 +914,8 @@ class AtomicStyleSheet {
       ...Object.entries(this.#theme.spacing).map(([key, value]) => `--en-spacing-${cssEscape(key)}:${px(value)};`),
       ...Object.entries(this.#theme.color).map(([key, value]) => `--en-color-${cssEscape(key)}:${value};`),
       ...Object.entries(this.#theme.radius).map(([key, value]) => `--en-radius-${cssEscape(key)}:${px(value)};`),
-      ...Object.entries(this.#theme.dimension).map(([key, value]) =>
-        `--en-dimension-${cssEscape(key)}:${typeof value === "number" ? px(value) : value};`
+      ...Object.entries(this.#theme.dimension).map(
+        ([key, value]) => `--en-dimension-${cssEscape(key)}:${typeof value === "number" ? px(value) : value};`
       ),
       ...Object.entries(this.#theme.typeScale).flatMap(([key, value]) => [
         `--en-type-${cssEscape(key)}-fontSize:${px(value.fontSize)};`,
@@ -958,8 +963,9 @@ class AtomicStyleSheet {
         Object.entries(variantMap as Record<string, Record<string, Record<string, string>>>).flatMap(
           ([variant, stateMap]) =>
             Object.entries(stateMap).flatMap(([state, cell]) =>
-              Object.entries(cell as Record<string, string>).map(([role, value]) =>
-                `--en-matrix-${cssEscape(tone)}-${cssEscape(variant)}-${cssEscape(state)}-${cssEscape(role)}:${value};`
+              Object.entries(cell as Record<string, string>).map(
+                ([role, value]) =>
+                  `--en-matrix-${cssEscape(tone)}-${cssEscape(variant)}-${cssEscape(state)}-${cssEscape(role)}:${value};`
               )
             )
         )
@@ -1000,8 +1006,7 @@ class AtomicStyleSheet {
         return `.${className}{${property}:${value};}`
       })
       .join("")
-    this.element.textContent =
-      `${themeRules}${componentBaseRules}${matrixAxesComponentRules}${segmentedControlBaseRules}${motionBaseRules}${loadingIndicatorBaseRules}${chromeBaseRules}${atomicRules}`
+    this.element.textContent = `${themeRules}${componentBaseRules}${matrixAxesComponentRules}${segmentedControlBaseRules}${motionBaseRules}${loadingIndicatorBaseRules}${chromeBaseRules}${atomicRules}`
   }
 
   dispose(): void {
@@ -1018,10 +1023,8 @@ export interface DomThemeStyleSheet {
 }
 
 /** Shared canonical token and component CSS for both DOM backends. */
-export const mountDomThemeStyleSheet = (
-  document: Document,
-  theme: Theme = defaultTheme
-): DomThemeStyleSheet => new AtomicStyleSheet(document, theme)
+export const mountDomThemeStyleSheet = (document: Document, theme: Theme = defaultTheme): DomThemeStyleSheet =>
+  new AtomicStyleSheet(document, theme)
 
 class DomRendererState {
   readonly root: HTMLElement
@@ -1128,7 +1131,7 @@ class DomRendererState {
       this.overlayBodyOverflow = document.body.style.overflow
       document.body.style.overflow = "hidden"
       const overlay = this.root.querySelector('[data-en-overlay-open="true"]') as HTMLElement | null
-      return overlay === null ? undefined : focusableElements(overlay)[0] ?? overlay
+      return overlay === null ? undefined : (focusableElements(overlay)[0] ?? overlay)
     }
 
     if (!hasOpenOverlay && this.overlayOpen) {
@@ -1186,11 +1189,7 @@ class DomRendererState {
   }
 }
 
-const runReportedIntent = (
-  report: IntentReporter,
-  ref: IntentRef,
-  runtimeValue: JsonPayload = null
-): void => {
+const runReportedIntent = (report: IntentReporter, ref: IntentRef, runtimeValue: JsonPayload = null): void => {
   void Effect.runPromise(report(ref, runtimeValue) as Effect.Effect<void, IntentError>).catch(() => {
     // Intent failures are recorded by the registry; DOM event handlers stay total.
   })
@@ -1206,8 +1205,7 @@ const applyBaseStyle = (element: HTMLElement, view: View, state: DomRendererStat
 
 // Stable element id derived from a node key, used for aria-activedescendant
 // wiring (roving focus) and imperative focus targeting.
-const nodeElementId = (view: View): string | undefined =>
-  view.key === undefined ? undefined : `en-${view.key}`
+const nodeElementId = (view: View): string | undefined => (view.key === undefined ? undefined : `en-${view.key}`)
 
 // DOM KeyboardEvent.key -> bounded catalog KeyName (issue #24). Returns
 // undefined for keys outside the closed set so unmapped keys never dispatch.
@@ -1245,12 +1243,7 @@ const applyA11y = (element: HTMLElement, view: View): void => {
 
 // Wire the named, typed, closure-free interaction bindings (issue #24). Every
 // DOM event is projected to a bounded descriptor before an intent is reported.
-const applyInteractions = (
-  element: HTMLElement,
-  view: View,
-  state: DomRendererState,
-  report: IntentReporter
-): void => {
+const applyInteractions = (element: HTMLElement, view: View, state: DomRendererState, report: IntentReporter): void => {
   const interactions = view.interactions
   if (interactions === undefined) return
 
@@ -1629,9 +1622,10 @@ const renderSheet = (view: SheetView, state: DomRendererState, report: IntentRep
   panel.style.padding = "var(--en-spacing-4)"
   panel.style.width = view.edge === "bottom" ? "100%" : dimensionValue(view.detents[0]!)
   panel.style.height = view.edge === "bottom" ? dimensionValue(view.detents[0]!) : "100%"
-  panel.style.borderRadius = view.edge === "bottom"
-    ? "var(--en-radius-lg) var(--en-radius-lg) 0 0"
-    : "var(--en-radius-lg) 0 0 var(--en-radius-lg)"
+  panel.style.borderRadius =
+    view.edge === "bottom"
+      ? "var(--en-radius-lg) var(--en-radius-lg) 0 0"
+      : "var(--en-radius-lg) 0 0 var(--en-radius-lg)"
   panel.append(...view.children.map((child) => renderView(child, state, report)))
   element.replaceChildren(backdrop, panel)
 
@@ -1680,9 +1674,10 @@ const renderTextField = (view: TextFieldView, state: DomRendererState, report: I
   state.resetListeners(element)
   const fieldTag = view.multiline === true ? "textarea" : "input"
   const document = element.ownerDocument
-  const existingField = Array.from(element.children).find((child) =>
-    child.localName === fieldTag
-  ) as HTMLInputElement | HTMLTextAreaElement | undefined
+  const existingField = Array.from(element.children).find((child) => child.localName === fieldTag) as
+    | HTMLInputElement
+    | HTMLTextAreaElement
+    | undefined
   const fieldWasActive = existingField !== undefined && document.activeElement === existingField
   element.replaceChildren()
   element.style.display = "grid"
@@ -1764,8 +1759,8 @@ const renderTextField = (view: TextFieldView, state: DomRendererState, report: I
   // Textarea-equivalent autoResize (harmonization #79, Textarea parity): grow
   // the textarea's height to its scrollHeight on every input, so a plain
   // multiline TextField needs no app-side row-counting logic.
-  const autoResize = field.localName === "textarea" &&
-    (view as unknown as { readonly autoResize?: boolean }).autoResize === true
+  const autoResize =
+    field.localName === "textarea" && (view as unknown as { readonly autoResize?: boolean }).autoResize === true
   const applyAutoResize = (): void => {
     field.style.height = "auto"
     field.style.height = `${field.scrollHeight}px`
@@ -1774,9 +1769,8 @@ const renderTextField = (view: TextFieldView, state: DomRendererState, report: I
     field.style.overflowY = "hidden"
     applyAutoResize()
   }
-  const onChange = view.field === undefined
-    ? view.onChange
-    : IntentRef("FormFieldChanged", FormFieldValueBinding(view.field))
+  const onChange =
+    view.field === undefined ? view.onChange : IntentRef("FormFieldChanged", FormFieldValueBinding(view.field))
   if (onChange !== undefined || autoResize) {
     state.addListener(field, "input", () => {
       if (autoResize) applyAutoResize()
@@ -1825,11 +1819,9 @@ const dimensionPixels = (value: Dimension, theme: Theme): number => {
   return typeof resolved === "number" ? resolved : 44
 }
 
-const collectionIdentity = (view: ListView | SectionListView): string =>
-  `${view._tag}:${view.key ?? "unkeyed"}`
+const collectionIdentity = (view: ListView | SectionListView): string => `${view._tag}:${view.key ?? "unkeyed"}`
 
-const collectionThreshold = (view: ListView | SectionListView): number =>
-  view.endReachedThreshold ?? 0.5
+const collectionThreshold = (view: ListView | SectionListView): number => view.endReachedThreshold ?? 0.5
 
 const viewportExtent = (element: HTMLElement): number => {
   const inlineHeight = Number.parseFloat(element.style.height)
@@ -1917,7 +1909,7 @@ const prepareVirtualCollection = (
   element.setAttribute("data-en-virtualized", "true")
   element.style.overflowY = "auto"
   element.style.contain = "content"
-  if (view.style === undefined || !("height" in view.style) && !("maxHeight" in view.style)) {
+  if (view.style === undefined || (!("height" in view.style) && !("maxHeight" in view.style))) {
     element.style.height = px(Math.min(defaultVirtualViewportSize, Math.max(itemSize, rowCount * itemSize)))
   }
   renderRows()
@@ -1962,30 +1954,20 @@ const renderList = (view: ListView, state: DomRendererState, report: IntentRepor
   state.resetListeners(element)
   const itemSize = Math.max(
     1,
-    view.estimatedItemSize === undefined
-      ? 44
-      : dimensionPixels(view.estimatedItemSize, state.theme)
+    view.estimatedItemSize === undefined ? 44 : dimensionPixels(view.estimatedItemSize, state.theme)
   )
 
   if (view.virtualize === true) {
-    prepareVirtualCollection(
-      element,
-      view,
-      state,
-      view.items.length,
-      itemSize,
-      report,
-      () => {
-        const { start, end } = virtualWindow(element, view.items.length, itemSize)
-        const rows = view.items.slice(start, end).map((item) => renderListItem(element, item, state, report))
-        element.replaceChildren(
-          virtualSpacer(element.ownerDocument, start * itemSize, "li"),
-          ...rows,
-          virtualSpacer(element.ownerDocument, (view.items.length - end) * itemSize, "li")
-        )
-        renderRefreshAffordance(element, view, state, report)
-      }
-    )
+    prepareVirtualCollection(element, view, state, view.items.length, itemSize, report, () => {
+      const { start, end } = virtualWindow(element, view.items.length, itemSize)
+      const rows = view.items.slice(start, end).map((item) => renderListItem(element, item, state, report))
+      element.replaceChildren(
+        virtualSpacer(element.ownerDocument, start * itemSize, "li"),
+        ...rows,
+        virtualSpacer(element.ownerDocument, (view.items.length - end) * itemSize, "li")
+      )
+      renderRefreshAffordance(element, view, state, report)
+    })
   } else {
     resetCollectionStyle(element)
     element.replaceChildren(...view.items.map((item) => renderListItem(element, item, state, report)))
@@ -2045,48 +2027,32 @@ const renderSectionRow = (
   return rowElement
 }
 
-const renderSectionList = (
-  view: SectionListView,
-  state: DomRendererState,
-  report: IntentReporter
-): HTMLElement => {
+const renderSectionList = (view: SectionListView, state: DomRendererState, report: IntentReporter): HTMLElement => {
   const element = state.keyedElement(view, "section")
   state.resetListeners(element)
   const rows = sectionRows(view)
   const stickyHeaders = view.stickyHeaders === true
   const itemSize = Math.max(
     1,
-    view.estimatedItemSize === undefined
-      ? 44
-      : dimensionPixels(view.estimatedItemSize, state.theme)
+    view.estimatedItemSize === undefined ? 44 : dimensionPixels(view.estimatedItemSize, state.theme)
   )
 
   if (view.virtualize === true) {
-    prepareVirtualCollection(
-      element,
-      view,
-      state,
-      rows.length,
-      itemSize,
-      report,
-      () => {
-        const { start, end } = virtualWindow(element, rows.length, itemSize)
-        const renderedRows = rows
-          .slice(start, end)
-          .map((row) => renderSectionRow(element, row, stickyHeaders, state, report))
-        element.replaceChildren(
-          virtualSpacer(element.ownerDocument, start * itemSize, "div"),
-          ...renderedRows,
-          virtualSpacer(element.ownerDocument, (rows.length - end) * itemSize, "div")
-        )
-        renderRefreshAffordance(element, view, state, report)
-      }
-    )
+    prepareVirtualCollection(element, view, state, rows.length, itemSize, report, () => {
+      const { start, end } = virtualWindow(element, rows.length, itemSize)
+      const renderedRows = rows
+        .slice(start, end)
+        .map((row) => renderSectionRow(element, row, stickyHeaders, state, report))
+      element.replaceChildren(
+        virtualSpacer(element.ownerDocument, start * itemSize, "div"),
+        ...renderedRows,
+        virtualSpacer(element.ownerDocument, (rows.length - end) * itemSize, "div")
+      )
+      renderRefreshAffordance(element, view, state, report)
+    })
   } else {
     resetCollectionStyle(element)
-    element.replaceChildren(
-      ...rows.map((row) => renderSectionRow(element, row, stickyHeaders, state, report))
-    )
+    element.replaceChildren(...rows.map((row) => renderSectionRow(element, row, stickyHeaders, state, report)))
   }
 
   renderRefreshAffordance(element, view, state, report)
@@ -2146,23 +2112,56 @@ const iconRegistry: Record<IconName, { readonly body: string; readonly fill: boo
   // Glass-chrome icons (v30, GL-1 openagents#8647).
   Menu: { body: '<path d="M4 7h16M4 12h16M4 17h16"/>', fill: false },
   Compose: { body: '<path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4"/>', fill: false },
-  Mic: { body: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>', fill: false },
-  Sparkles: { body: '<path d="M12 4l1.8 4.7L18.5 10l-4.7 1.3L12 16l-1.8-4.7L5.5 10l4.7-1.3zM18 15l.9 2.1L21 18l-2.1.9L18 21l-.9-2.1L15 18l2.1-.9z"/>', fill: false },
+  Mic: {
+    body: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',
+    fill: false
+  },
+  Sparkles: {
+    body: '<path d="M12 4l1.8 4.7L18.5 10l-4.7 1.3L12 16l-1.8-4.7L5.5 10l4.7-1.3zM18 15l.9 2.1L21 18l-2.1.9L18 21l-.9-2.1L15 18l2.1-.9z"/>',
+    fill: false
+  },
   // Desktop shell set (v32, #85) — own drawings in the house stroke style.
-  Agent: { body: '<circle cx="12" cy="3.8" r="1.2"/><path d="M12 5v3M9.5 12.5v2M14.5 12.5v2"/><rect x="5" y="8" width="14" height="11" rx="2"/>', fill: false },
-  ChatCompose: { body: '<path d="M20 15a2 2 0 0 1-2 2H9l-5 4V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"/><path d="M12 7.5v6M9 10.5h6"/>', fill: false },
-  Chats: { body: '<path d="M14 4H5a2 2 0 0 0-2 2v10l3-3h8a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/><path d="M18 8h1a2 2 0 0 1 2 2v10l-3-3h-7a2 2 0 0 1-2-2v-1"/>', fill: false },
+  Agent: {
+    body: '<circle cx="12" cy="3.8" r="1.2"/><path d="M12 5v3M9.5 12.5v2M14.5 12.5v2"/><rect x="5" y="8" width="14" height="11" rx="2"/>',
+    fill: false
+  },
+  ChatCompose: {
+    body: '<path d="M20 15a2 2 0 0 1-2 2H9l-5 4V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"/><path d="M12 7.5v6M9 10.5h6"/>',
+    fill: false
+  },
+  Chats: {
+    body: '<path d="M14 4H5a2 2 0 0 0-2 2v10l3-3h8a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/><path d="M18 8h1a2 2 0 0 1 2 2v10l-3-3h-7a2 2 0 0 1-2-2v-1"/>',
+    fill: false
+  },
   Code: { body: '<path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/>', fill: false },
-  Compare: { body: '<rect x="3" y="5" width="7" height="14" rx="1"/><rect x="14" y="5" width="7" height="14" rx="1"/>', fill: false },
-  Folder: { body: '<path d="M3 7a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>', fill: false },
+  Compare: {
+    body: '<rect x="3" y="5" width="7" height="14" rx="1"/><rect x="14" y="5" width="7" height="14" rx="1"/>',
+    fill: false
+  },
+  Folder: {
+    body: '<path d="M3 7a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+    fill: false
+  },
   Home: { body: '<path d="M4 11l8-7 8 7"/><path d="M6 9.5V20h12V9.5M10 20v-6h4v6"/>', fill: false },
-  NotificationBell: { body: '<path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10.5 19a1.5 1.5 0 0 0 3 0"/>', fill: false },
+  NotificationBell: {
+    body: '<path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10.5 19a1.5 1.5 0 0 0 3 0"/>',
+    fill: false
+  },
   Plane: { body: '<path d="M21 3L3 11l7 3 3 7z"/><path d="M21 3L10 14"/>', fill: false },
-  Settings: { body: '<circle cx="12" cy="12" r="3.2"/><circle cx="12" cy="12" r="6.8"/><path d="M12 5.2V2.5M12 21.5v-2.7M18.8 12h2.7M2.5 12h2.7M16.8 7.2l1.9-1.9M5.3 18.7l1.9-1.9M16.8 16.8l1.9 1.9M5.3 5.3l1.9 1.9"/>', fill: false },
+  Settings: {
+    body: '<circle cx="12" cy="12" r="3.2"/><circle cx="12" cy="12" r="6.8"/><path d="M12 5.2V2.5M12 21.5v-2.7M18.8 12h2.7M2.5 12h2.7M16.8 7.2l1.9-1.9M5.3 18.7l1.9-1.9M16.8 16.8l1.9 1.9M5.3 5.3l1.9 1.9"/>',
+    fill: false
+  },
   Terminal: { body: '<path d="M5 7l5 5-5 5M12 17h7"/>', fill: false },
-  Tools: { body: '<rect x="3" y="9" width="18" height="10" rx="2"/><path d="M9 9V7a3 3 0 0 1 6 0v2M3 13.5h18"/>', fill: false },
+  Tools: {
+    body: '<rect x="3" y="9" width="18" height="10" rx="2"/><path d="M9 9V7a3 3 0 0 1 6 0v2M3 13.5h18"/>',
+    fill: false
+  },
   History: { body: '<path d="M5.5 6.5A7.5 7.5 0 1 1 4.5 12M4 6v4h4"/><path d="M12 8v4l3 2"/>', fill: false },
-  Branch: { body: '<circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="8" r="2"/><path d="M6 8v8M18 10a10 10 0 0 1-10 8"/>', fill: false },
+  Branch: {
+    body: '<circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="8" r="2"/><path d="M6 8v8M18 10a10 10 0 0 1-10 8"/>',
+    fill: false
+  },
   InfoCircle: { body: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 7.6v.4"/>', fill: false },
   // Expansion batch (v32, #85) — arrows / navigation.
   ArrowUp: { body: '<path d="M12 19V5M5 12l7-7 7 7"/>', fill: false },
@@ -2180,71 +2179,179 @@ const iconRegistry: Record<IconName, { readonly body: string; readonly fill: boo
   Loader: { body: '<path d="M12 3a9 9 0 1 1-9 9"/>', fill: false },
   // Git panel.
   GitCommit: { body: '<circle cx="12" cy="12" r="3.5"/><path d="M2.5 12h6M15.5 12h6"/>', fill: false },
-  GitPullRequest: { body: '<circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/><path d="M6 8v8M18 16v-5a4 4 0 0 0-4-4h-2M14.5 4.5L12 7l2.5 2.5"/>', fill: false },
-  GitMerge: { body: '<circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="12" r="2"/><path d="M6 8v8M6 8c0 4 4 4 10 4"/>', fill: false },
+  GitPullRequest: {
+    body: '<circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/><path d="M6 8v8M18 16v-5a4 4 0 0 0-4-4h-2M14.5 4.5L12 7l2.5 2.5"/>',
+    fill: false
+  },
+  GitMerge: {
+    body: '<circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="12" r="2"/><path d="M6 8v8M6 8c0 4 4 4 10 4"/>',
+    fill: false
+  },
   Minus: { body: '<path d="M5 12h14"/>', fill: false },
   // Files / workspace tree.
-  File: { body: '<path d="M13 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9z"/><path d="M13 3v6h6"/>', fill: false },
-  FileText: { body: '<path d="M13 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9z"/><path d="M13 3v6h6M9 13h6M9 17h6"/>', fill: false },
-  FilePlus: { body: '<path d="M13 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9z"/><path d="M13 3v6h6M12 12.5v5M9.5 15h5"/>', fill: false },
-  FolderOpen: { body: '<path d="M3 19V7a2 2 0 0 1 2-2h4l2 3h7a2 2 0 0 1 2 2v1"/><path d="M3 19l3-7h16l-3 7z"/>', fill: false },
-  FolderPlus: { body: '<path d="M3 7a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v6M9 14h6"/>', fill: false },
-  Image: { body: '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="M21 15l-5-5-9 9"/>', fill: false },
+  File: {
+    body: '<path d="M13 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9z"/><path d="M13 3v6h6"/>',
+    fill: false
+  },
+  FileText: {
+    body: '<path d="M13 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9z"/><path d="M13 3v6h6M9 13h6M9 17h6"/>',
+    fill: false
+  },
+  FilePlus: {
+    body: '<path d="M13 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9z"/><path d="M13 3v6h6M12 12.5v5M9.5 15h5"/>',
+    fill: false
+  },
+  FolderOpen: {
+    body: '<path d="M3 19V7a2 2 0 0 1 2-2h4l2 3h7a2 2 0 0 1 2 2v1"/><path d="M3 19l3-7h16l-3 7z"/>',
+    fill: false
+  },
+  FolderPlus: {
+    body: '<path d="M3 7a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v6M9 14h6"/>',
+    fill: false
+  },
+  Image: {
+    body: '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="M21 15l-5-5-9 9"/>',
+    fill: false
+  },
   // Edit actions.
   Pencil: { body: '<path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4"/>', fill: false },
-  Trash: { body: '<path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6.5 7l1 13h9l1-13"/><path d="M10 11v6M14 11v6"/>', fill: false },
-  Copy: { body: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/>', fill: false },
-  Save: { body: '<path d="M19 21H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h11l4 4v13a1 1 0 0 1-1 1z"/><path d="M8 3v5h7V3M7 21v-8h10v8"/>', fill: false },
+  Trash: {
+    body: '<path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6.5 7l1 13h9l1-13"/><path d="M10 11v6M14 11v6"/>',
+    fill: false
+  },
+  Copy: {
+    body: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/>',
+    fill: false
+  },
+  Save: {
+    body: '<path d="M19 21H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h11l4 4v13a1 1 0 0 1-1 1z"/><path d="M8 3v5h7V3M7 21v-8h10v8"/>',
+    fill: false
+  },
   Undo: { body: '<path d="M8 5L3 10l5 5"/><path d="M3 10h12a5.5 5.5 0 0 1 0 11h-5"/>', fill: false },
   Redo: { body: '<path d="M16 5l5 5-5 5"/><path d="M21 10H9a5.5 5.5 0 0 0 0 11h5"/>', fill: false },
   // Transcript / message actions.
-  ThumbsUp: { body: '<path d="M7 11v9H4a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1z"/><path d="M7 11l4-7a2 2 0 0 1 2 2v4h6a1.8 1.8 0 0 1 1.8 2.2l-1.2 6A2 2 0 0 1 17.6 20H7"/>', fill: false },
-  ThumbsDown: { body: '<path d="M17 13V4h3a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1z"/><path d="M17 13l-4 7a2 2 0 0 1-2-2v-4H5a1.8 1.8 0 0 1-1.8-2.2l1.2-6A2 2 0 0 1 6.4 4H17"/>', fill: false },
-  Share: { body: '<circle cx="6" cy="12" r="2.5"/><circle cx="17.5" cy="5.5" r="2.5"/><circle cx="17.5" cy="18.5" r="2.5"/><path d="M8.3 10.8l6.9-4M8.3 13.2l6.9 4"/>', fill: false },
-  Ellipsis: { body: '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>', fill: true },
-  EllipsisVertical: { body: '<circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/>', fill: true },
+  ThumbsUp: {
+    body: '<path d="M7 11v9H4a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1z"/><path d="M7 11l4-7a2 2 0 0 1 2 2v4h6a1.8 1.8 0 0 1 1.8 2.2l-1.2 6A2 2 0 0 1 17.6 20H7"/>',
+    fill: false
+  },
+  ThumbsDown: {
+    body: '<path d="M17 13V4h3a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1z"/><path d="M17 13l-4 7a2 2 0 0 1-2-2v-4H5a1.8 1.8 0 0 1-1.8-2.2l1.2-6A2 2 0 0 1 6.4 4H17"/>',
+    fill: false
+  },
+  Share: {
+    body: '<circle cx="6" cy="12" r="2.5"/><circle cx="17.5" cy="5.5" r="2.5"/><circle cx="17.5" cy="18.5" r="2.5"/><path d="M8.3 10.8l6.9-4M8.3 13.2l6.9 4"/>',
+    fill: false
+  },
+  Ellipsis: {
+    body: '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
+    fill: true
+  },
+  EllipsisVertical: {
+    body: '<circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/>',
+    fill: true
+  },
   Expand: { body: '<path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5"/>', fill: false },
   Collapse: { body: '<path d="M4 9h5V4M20 9h-5V4M4 15h5v5M20 15h-5v5"/>', fill: false },
   // Search / filtering.
   Search: { body: '<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.4-4.4"/>', fill: false },
   Filter: { body: '<path d="M4 5h16l-6.5 7.5V19l-3 2v-8.5z"/>', fill: false },
-  Sliders: { body: '<path d="M5 6h14M5 12h14M5 18h14"/><circle cx="9" cy="6" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="8" cy="18" r="2"/>', fill: false },
+  Sliders: {
+    body: '<path d="M5 6h14M5 12h14M5 18h14"/><circle cx="9" cy="6" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="8" cy="18" r="2"/>',
+    fill: false
+  },
   // Fleet / connectivity / infrastructure.
-  Wifi: { body: '<path d="M2.5 9.5a14 14 0 0 1 19 0M5.5 13a9.5 9.5 0 0 1 13 0M8.5 16.5a5 5 0 0 1 7 0M12 19.8v.4"/>', fill: false },
-  WifiOff: { body: '<path d="M3 4l17 17M8.5 16.5a5 5 0 0 1 7 0M5.5 13a9.5 9.5 0 0 1 3-2M15.5 11a9.5 9.5 0 0 1 3 2M12 19.8v.4"/>', fill: false },
-  Server: { body: '<rect x="3" y="4" width="18" height="7" rx="1.5"/><rect x="3" y="13" width="18" height="7" rx="1.5"/><path d="M6.8 7.5h.4M6.8 16.5h.4"/>', fill: false },
-  Database: { body: '<ellipse cx="12" cy="5.5" rx="8" ry="2.8"/><path d="M4 5.5v13c0 1.5 3.6 2.8 8 2.8s8-1.3 8-2.8v-13"/><path d="M4 12c0 1.5 3.6 2.8 8 2.8s8-1.3 8-2.8"/>', fill: false },
-  Cpu: { body: '<rect x="6" y="6" width="12" height="12" rx="1.5"/><rect x="10" y="10" width="4" height="4"/><path d="M9 3v3M15 3v3M9 18v3M15 18v3M3 9h3M3 15h3M18 9h3M18 15h3"/>', fill: false },
+  Wifi: {
+    body: '<path d="M2.5 9.5a14 14 0 0 1 19 0M5.5 13a9.5 9.5 0 0 1 13 0M8.5 16.5a5 5 0 0 1 7 0M12 19.8v.4"/>',
+    fill: false
+  },
+  WifiOff: {
+    body: '<path d="M3 4l17 17M8.5 16.5a5 5 0 0 1 7 0M5.5 13a9.5 9.5 0 0 1 3-2M15.5 11a9.5 9.5 0 0 1 3 2M12 19.8v.4"/>',
+    fill: false
+  },
+  Server: {
+    body: '<rect x="3" y="4" width="18" height="7" rx="1.5"/><rect x="3" y="13" width="18" height="7" rx="1.5"/><path d="M6.8 7.5h.4M6.8 16.5h.4"/>',
+    fill: false
+  },
+  Database: {
+    body: '<ellipse cx="12" cy="5.5" rx="8" ry="2.8"/><path d="M4 5.5v13c0 1.5 3.6 2.8 8 2.8s8-1.3 8-2.8v-13"/><path d="M4 12c0 1.5 3.6 2.8 8 2.8s8-1.3 8-2.8"/>',
+    fill: false
+  },
+  Cpu: {
+    body: '<rect x="6" y="6" width="12" height="12" rx="1.5"/><rect x="10" y="10" width="4" height="4"/><path d="M9 3v3M15 3v3M9 18v3M15 18v3M3 9h3M3 15h3M18 9h3M18 15h3"/>',
+    fill: false
+  },
   Activity: { body: '<path d="M3 12h4l3-8 4 16 3-8h4"/>', fill: false },
-  Globe: { body: '<circle cx="12" cy="12" r="8.5"/><ellipse cx="12" cy="12" rx="4" ry="8.5"/><path d="M3.5 12h17"/>', fill: false },
+  Globe: {
+    body: '<circle cx="12" cy="12" r="8.5"/><ellipse cx="12" cy="12" rx="4" ry="8.5"/><path d="M3.5 12h17"/>',
+    fill: false
+  },
   // Account / security.
   Lock: { body: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>', fill: false },
-  Unlock: { body: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.8-1.3"/>', fill: false },
+  Unlock: {
+    body: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.8-1.3"/>',
+    fill: false
+  },
   Key: { body: '<circle cx="8" cy="15" r="4"/><path d="M10.8 12.2L20 3M15 8l3 3"/>', fill: false },
   Shield: { body: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/>', fill: false },
   User: { body: '<circle cx="12" cy="8" r="4"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>', fill: false },
-  Users: { body: '<circle cx="9" cy="8.5" r="3.5"/><path d="M2.5 19.5a6.5 6.5 0 0 1 13 0"/><path d="M16 5.5a3.5 3.5 0 0 1 0 6M18 13.6a6.5 6.5 0 0 1 3.5 5.9"/>', fill: false },
-  LogOut: { body: '<path d="M9 4H5a1.5 1.5 0 0 0-1.5 1.5v13A1.5 1.5 0 0 0 5 20h4"/><path d="M15 8l4 4-4 4M19 12H9"/>', fill: false },
+  Users: {
+    body: '<circle cx="9" cy="8.5" r="3.5"/><path d="M2.5 19.5a6.5 6.5 0 0 1 13 0"/><path d="M16 5.5a3.5 3.5 0 0 1 0 6M18 13.6a6.5 6.5 0 0 1 3.5 5.9"/>',
+    fill: false
+  },
+  LogOut: {
+    body: '<path d="M9 4H5a1.5 1.5 0 0 0-1.5 1.5v13A1.5 1.5 0 0 0 5 20h4"/><path d="M15 8l4 4-4 4M19 12H9"/>',
+    fill: false
+  },
   // Payments.
-  Wallet: { body: '<path d="M19 7V5.5A1.5 1.5 0 0 0 17.5 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2H5"/><path d="M16.3 13.4h.4"/>', fill: false },
+  Wallet: {
+    body: '<path d="M19 7V5.5A1.5 1.5 0 0 0 17.5 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2H5"/><path d="M16.3 13.4h.4"/>',
+    fill: false
+  },
   CreditCard: { body: '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10.5h18M6.5 15h4"/>', fill: false },
   Zap: { body: '<path d="M13 2L4.5 13.5H11L9.5 22 18 10.5h-6.5z"/>', fill: true },
   // Common desktop chrome.
   Clock: { body: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2"/>', fill: false },
   Download: { body: '<path d="M12 4v11M7 10.5l5 5 5-5M4.5 19.5h15"/>', fill: false },
   Upload: { body: '<path d="M12 15V4M7 8.5l5-5 5 5M4.5 19.5h15"/>', fill: false },
-  ExternalLink: { body: '<path d="M14 4h6v6M20 4l-9 9"/><path d="M19 14v5a1.5 1.5 0 0 1-1.5 1.5h-12A1.5 1.5 0 0 1 4 19V6.5A1.5 1.5 0 0 1 5.5 5H10"/>', fill: false },
-  Link: { body: '<path d="M10 14a4.5 4.5 0 0 0 6.4.4l3-3a4.5 4.5 0 0 0-6.4-6.4l-1.5 1.5"/><path d="M14 10a4.5 4.5 0 0 0-6.4-.4l-3 3a4.5 4.5 0 0 0 6.4 6.4l1.5-1.5"/>', fill: false },
-  Eye: { body: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>', fill: false },
-  EyeOff: { body: '<path d="M4 4l16 16"/><path d="M10.5 6a10 10 0 0 1 1.5-.1c6 0 9.5 6.1 9.5 6.1a17.6 17.6 0 0 1-2.7 3.4M6.6 6.9A16.9 16.9 0 0 0 2.5 12S6 18.1 12 18.1a9.6 9.6 0 0 0 4.3-1"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>', fill: false },
-  Paperclip: { body: '<path d="M20 11.5l-8 8a5 5 0 0 1-7-7l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7L9.7 17.2a1.7 1.7 0 0 1-2.4-2.4L15 7"/>', fill: false },
+  ExternalLink: {
+    body: '<path d="M14 4h6v6M20 4l-9 9"/><path d="M19 14v5a1.5 1.5 0 0 1-1.5 1.5h-12A1.5 1.5 0 0 1 4 19V6.5A1.5 1.5 0 0 1 5.5 5H10"/>',
+    fill: false
+  },
+  Link: {
+    body: '<path d="M10 14a4.5 4.5 0 0 0 6.4.4l3-3a4.5 4.5 0 0 0-6.4-6.4l-1.5 1.5"/><path d="M14 10a4.5 4.5 0 0 0-6.4-.4l-3 3a4.5 4.5 0 0 0 6.4 6.4l1.5-1.5"/>',
+    fill: false
+  },
+  Eye: {
+    body: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>',
+    fill: false
+  },
+  EyeOff: {
+    body: '<path d="M4 4l16 16"/><path d="M10.5 6a10 10 0 0 1 1.5-.1c6 0 9.5 6.1 9.5 6.1a17.6 17.6 0 0 1-2.7 3.4M6.6 6.9A16.9 16.9 0 0 0 2.5 12S6 18.1 12 18.1a9.6 9.6 0 0 0 4.3-1"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
+    fill: false
+  },
+  Paperclip: {
+    body: '<path d="M20 11.5l-8 8a5 5 0 0 1-7-7l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7L9.7 17.2a1.7 1.7 0 0 1-2.4-2.4L15 7"/>',
+    fill: false
+  },
   Pin: { body: '<path d="M9 3.5h6M10 3.5l-.5 7L6.5 13v1.5h11V13l-3-2.5-.5-7"/><path d="M12 14.5V21"/>', fill: false },
   Star: { body: '<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>', fill: false },
-  Archive: { body: '<rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9M10 13h4"/>', fill: false },
-  Command: { body: '<path d="M9 9V6a3 3 0 1 0-3 3zM15 9h3a3 3 0 1 0-3-3zM9 15H6a3 3 0 1 0 3 3zM15 15v3a3 3 0 1 0 3-3z"/><rect x="9" y="9" width="6" height="6"/>', fill: false },
-  Bug: { body: '<rect x="8" y="7" width="8" height="11" rx="4"/><path d="M8 11H3.5M8 15H4.5M16 11h4.5M16 15h3.5M9.5 7L8 4.5M14.5 7L16 4.5M12 7v11"/>', fill: false },
+  Archive: {
+    body: '<rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9M10 13h4"/>',
+    fill: false
+  },
+  Command: {
+    body: '<path d="M9 9V6a3 3 0 1 0-3 3zM15 9h3a3 3 0 1 0-3-3zM9 15H6a3 3 0 1 0 3 3zM15 15v3a3 3 0 1 0 3-3z"/><rect x="9" y="9" width="6" height="6"/>',
+    fill: false
+  },
+  Bug: {
+    body: '<rect x="8" y="7" width="8" height="11" rx="4"/><path d="M8 11H3.5M8 15H4.5M16 11h4.5M16 15h3.5M9.5 7L8 4.5M14.5 7L16 4.5M12 7v11"/>',
+    fill: false
+  },
   Package: { body: '<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/>', fill: false },
-  HelpCircle: { body: '<circle cx="12" cy="12" r="8.5"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.8 2.1c-.8.5-1.3 1-1.3 1.9"/><path d="M12 16.8v.4"/>', fill: false }
+  HelpCircle: {
+    body: '<circle cx="12" cy="12" r="8.5"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.8 2.1c-.8.5-1.3 1-1.3 1.9"/><path d="M12 16.8v.4"/>',
+    fill: false
+  }
 }
 
 const renderIcon = (view: IconView, state: DomRendererState): HTMLElement => {
@@ -2604,11 +2711,7 @@ const applyAvatarSurface = (
   }
 }
 
-const renderAvatarElement = (
-  view: AvatarView,
-  state: DomRendererState,
-  defaults: AvatarDefaults = {}
-): HTMLElement => {
+const renderAvatarElement = (view: AvatarView, state: DomRendererState, defaults: AvatarDefaults = {}): HTMLElement => {
   const element = state.keyedElement(view, "span")
   state.resetListeners(element)
   applyAvatarSurface(
@@ -2669,8 +2772,7 @@ const renderAvatarElement = (
   return element
 }
 
-const renderAvatar = (view: AvatarView, state: DomRendererState): HTMLElement =>
-  renderAvatarElement(view, state)
+const renderAvatar = (view: AvatarView, state: DomRendererState): HTMLElement => renderAvatarElement(view, state)
 
 const renderAvatarGroup = (view: AvatarGroupView, state: DomRendererState): HTMLElement => {
   const element = state.keyedElement(view, "span")
@@ -2830,8 +2932,7 @@ const renderShimmerText = (view: ShimmerTextView, state: DomRendererState): HTML
       element.style.color = colorValue("textFaint")
     } else {
       element.style.color = "transparent"
-      element.style.backgroundImage =
-        `linear-gradient(90deg, ${colorValue("textFaint")} 25%, ${colorValue("textPrimary")} 50%, ${colorValue("textFaint")} 75%)`
+      element.style.backgroundImage = `linear-gradient(90deg, ${colorValue("textFaint")} 25%, ${colorValue("textPrimary")} 50%, ${colorValue("textFaint")} 75%)`
       element.style.setProperty("-webkit-background-clip", "text")
       element.style.setProperty("background-clip", "text")
     }
@@ -2846,8 +2947,7 @@ const renderShimmerText = (view: ShimmerTextView, state: DomRendererState): HTML
     if (reduceMotion) {
       element.style.background = colorValue("surfaceRaised")
     } else {
-      element.style.backgroundImage =
-        `linear-gradient(90deg, ${colorValue("surfaceRaised")} 25%, ${colorValue("surfaceOverlay")} 50%, ${colorValue("surfaceRaised")} 75%)`
+      element.style.backgroundImage = `linear-gradient(90deg, ${colorValue("surfaceRaised")} 25%, ${colorValue("surfaceOverlay")} 50%, ${colorValue("surfaceRaised")} 75%)`
     }
   }
   applyLoadingIndicatorA11y(element, view.label)
@@ -2922,7 +3022,9 @@ const iconSvg = (name: IconName): string => {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" ${paint}>${glyph.body}</svg>`
 }
 
-const splitAxis = (orientation: "row" | "column"): {
+const splitAxis = (
+  orientation: "row" | "column"
+): {
   readonly clientAxis: "clientX" | "clientY"
   readonly sizeField: "width" | "height"
   readonly cursor: string
@@ -3006,9 +3108,12 @@ const renderSplitPane = (view: SplitPaneView, state: DomRendererState, report: I
           dragging = true
           startCoord = (event as PointerEvent)[axis.clientAxis]
           const rect = paneEl.getBoundingClientRect?.()
-          startSize = rect === undefined
-            ? (typeof pane.size === "number" ? pane.size : dimensionPixels(pane.size ?? 0, state.theme))
-            : rect[axis.sizeField]
+          startSize =
+            rect === undefined
+              ? typeof pane.size === "number"
+                ? pane.size
+                : dimensionPixels(pane.size ?? 0, state.theme)
+              : rect[axis.sizeField]
           element.ownerDocument.addEventListener("pointermove", move as EventListener)
           element.ownerDocument.addEventListener("pointerup", up as EventListener)
         })
@@ -3123,9 +3228,7 @@ const renderWorkbench = (view: WorkbenchView, state: DomRendererState, report: I
   element.style.flex = "1 1 0"
   element.style.minWidth = "0"
   const keepMounted = view.keepMounted === true
-  const panesToRender = keepMounted
-    ? view.panes
-    : view.panes.filter((pane) => pane.id === view.activePaneId)
+  const panesToRender = keepMounted ? view.panes : view.panes.filter((pane) => pane.id === view.activePaneId)
   const children = panesToRender.map((pane) => {
     const paneEl = element.ownerDocument.createElement("div")
     paneEl.setAttribute("data-en-pane", pane.id)
@@ -3228,7 +3331,7 @@ const wireMenuKeyboard = (
 ): void => {
   state.addListener(menuEl, "keydown", (event) => {
     const key = (event as KeyboardEvent).key
-    const items = Array.from(menuEl.querySelectorAll('[data-en-menu-item]:not([disabled])')) as Array<HTMLElement>
+    const items = Array.from(menuEl.querySelectorAll("[data-en-menu-item]:not([disabled])")) as Array<HTMLElement>
     if (items.length === 0) return
     const activeIndex = items.indexOf(menuEl.ownerDocument.activeElement as HTMLElement)
     if (key === "ArrowDown") {
@@ -3261,7 +3364,7 @@ const syncAnchoredFocus = (
   const wasOpen = state.anchoredOpen.get(signatureKey) === true
   state.anchoredOpen.set(signatureKey, open)
   if (open && !wasOpen) {
-    const first = (element.querySelector('[data-en-menu-item]:not([disabled])') ?? focusableElements(element)[0]) as
+    const first = (element.querySelector("[data-en-menu-item]:not([disabled])") ?? focusableElements(element)[0]) as
       | HTMLElement
       | undefined
     if (first !== undefined) state.requestFocus(first)
@@ -3391,8 +3494,12 @@ const renderTooltip = (view: TooltipView, state: DomRendererState, report: Inten
   bubble.style.color = "var(--en-color-textPrimary)"
   bubble.style.padding = "var(--en-spacing-1) var(--en-spacing-2)"
   bubble.style.borderRadius = "var(--en-radius-sm)"
-  const show = () => { bubble.hidden = false }
-  const hide = () => { bubble.hidden = true }
+  const show = () => {
+    bubble.hidden = false
+  }
+  const hide = () => {
+    bubble.hidden = true
+  }
   state.addListener(element, "pointerenter", show)
   state.addListener(element, "pointerleave", hide)
   state.addListener(element, "focusin", show)
@@ -3562,7 +3669,11 @@ const renderCombobox = (view: ComboboxView, state: DomRendererState, report: Int
   return element
 }
 
-const renderCommandPalette = (view: CommandPaletteView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+const renderCommandPalette = (
+  view: CommandPaletteView,
+  state: DomRendererState,
+  report: IntentReporter
+): HTMLElement => {
   const element = state.keyedElement(view, "div")
   state.resetListeners(element)
   const open = view.open === true
@@ -3700,9 +3811,8 @@ const renderTabs = (view: TabsView, state: DomRendererState, report: IntentRepor
     tablist.appendChild(button)
   }
 
-  const panelsToRender = view.keepMounted === true
-    ? view.panels
-    : view.panels.filter((panel) => panel.id === view.selectedId)
+  const panelsToRender =
+    view.keepMounted === true ? view.panels : view.panels.filter((panel) => panel.id === view.selectedId)
   const panelEls = panelsToRender.map((panel) => {
     const panelEl = document.createElement("div")
     panelEl.id = `en-tabpanel-${cssEscape(panel.id)}`
@@ -3736,8 +3846,8 @@ const renderComposer = (view: ComposerView, state: DomRendererState, report: Int
   element.style.gap = "var(--en-spacing-1)"
   const document = element.ownerDocument
 
-  const existingEditor = Array.from(element.children).find((child) =>
-    child.getAttribute("data-en-role") === "control"
+  const existingEditor = Array.from(element.children).find(
+    (child) => child.getAttribute("data-en-role") === "control"
   ) as HTMLElement | undefined
   const editorWasActive = existingEditor !== undefined && document.activeElement === existingEditor
   const editor = existingEditor ?? document.createElement("div")
@@ -3890,7 +4000,10 @@ const controlChangeIntent = (view: {
 }): IntentRef | undefined =>
   view.field !== undefined ? IntentRef("FormFieldChanged", FormFieldValueBinding(view.field)) : view.onChange
 
-const applyControlA11y = (element: HTMLElement, view: { readonly disabled?: boolean; readonly invalid?: boolean }): void => {
+const applyControlA11y = (
+  element: HTMLElement,
+  view: { readonly disabled?: boolean; readonly invalid?: boolean }
+): void => {
   if (view.invalid === true) element.setAttribute("aria-invalid", "true")
 }
 
@@ -4146,8 +4259,8 @@ const renderSegmentedControl = (
   // ResizeObserver stable element identity across re-renders, same reuse
   // discipline as the thumb above.
   const existingSegments = new Map(
-    Array.from(element.querySelectorAll('[data-en-role="segment"]')).map((segmentEl) =>
-      [segmentEl.getAttribute("data-en-segment"), segmentEl as HTMLButtonElement] as const
+    Array.from(element.querySelectorAll('[data-en-role="segment"]')).map(
+      (segmentEl) => [segmentEl.getAttribute("data-en-segment"), segmentEl as HTMLButtonElement] as const
     )
   )
 
@@ -4224,9 +4337,9 @@ const renderSegmentedControl = (
   // segment's live bounds across layout changes (container resize, font
   // loading, content reflow) that don't otherwise trigger a re-render.
   state.segmentedControlObservers.get(element)?.disconnect()
-  const observerWindow = element.ownerDocument.defaultView as unknown as
-    | { readonly ResizeObserver?: typeof ResizeObserver }
-    | null
+  const observerWindow = element.ownerDocument.defaultView as unknown as {
+    readonly ResizeObserver?: typeof ResizeObserver
+  } | null
   if (observerWindow?.ResizeObserver !== undefined) {
     const observer = new observerWindow.ResizeObserver(() => reposition())
     observer.observe(element)
@@ -4522,7 +4635,11 @@ const renderAlert = (view: AlertView, state: DomRendererState, report: IntentRep
   return element
 }
 
-const renderRecoveryOverlay = (view: RecoveryOverlayView, state: DomRendererState, report: IntentReporter): HTMLElement => {
+const renderRecoveryOverlay = (
+  view: RecoveryOverlayView,
+  state: DomRendererState,
+  report: IntentReporter
+): HTMLElement => {
   const element = state.keyedElement(view, "div")
   state.resetListeners(element)
   const open = view.open === true
@@ -4973,10 +5090,7 @@ const renderGraphFigure = (view: GraphFigureView, state: DomRendererState, repor
 
   const root = document.createElementNS(SVG_NS, "g")
   root.setAttribute("data-en-role", "camera")
-  root.setAttribute(
-    "transform",
-    `translate(${width / 2 + camera.x} ${height / 2 + camera.y}) scale(${camera.zoom})`
-  )
+  root.setAttribute("transform", `translate(${width / 2 + camera.x} ${height / 2 + camera.y}) scale(${camera.zoom})`)
 
   for (const edge of view.edges) {
     const from = positions.get(edge.from)
@@ -5072,14 +5186,19 @@ const renderGraphFigure = (view: GraphFigureView, state: DomRendererState, repor
     }
     if (entryPolicy !== "none" && !isFirstCommit && !previouslySeen.has(node.id)) {
       g.setAttribute("data-en-entry", entryPolicy)
-      const animate = (g as unknown as {
-        animate?: (keyframes: ReadonlyArray<Record<string, unknown>>, options: Record<string, unknown>) => unknown
-      }).animate
+      const animate = (
+        g as unknown as {
+          animate?: (keyframes: ReadonlyArray<Record<string, unknown>>, options: Record<string, unknown>) => unknown
+        }
+      ).animate
       if (typeof animate === "function") {
         animate.call(
           g,
           entryPolicy === "pop"
-            ? [{ opacity: 0, transform: "scale(0.6)" }, { opacity: 1, transform: "scale(1)" }]
+            ? [
+                { opacity: 0, transform: "scale(0.6)" },
+                { opacity: 1, transform: "scale(1)" }
+              ]
             : [{ opacity: 0 }, { opacity: 1 }],
           { duration: 180, easing: "ease-out" }
         )
@@ -5091,7 +5210,9 @@ const renderGraphFigure = (view: GraphFigureView, state: DomRendererState, repor
     }
     if (view.onNodeHover !== undefined) {
       const onNodeHover = view.onNodeHover
-      state.addListener(g as unknown as HTMLElement, "pointerenter", () => runReportedIntent(report, onNodeHover, node.id))
+      state.addListener(g as unknown as HTMLElement, "pointerenter", () =>
+        runReportedIntent(report, onNodeHover, node.id)
+      )
     }
     root.appendChild(g)
   }
@@ -5367,7 +5488,9 @@ const commitView = (view: View, state: DomRendererState, report: IntentReporter)
   state.styles.beginRender()
   const element = renderView(view, state, report)
   state.root.replaceChildren(element)
-  for (const timeline of Array.from(state.root.querySelectorAll<HTMLElement>('[data-en-role="timeline"][data-en-key]'))) {
+  for (const timeline of Array.from(
+    state.root.querySelectorAll<HTMLElement>('[data-en-role="timeline"][data-en-key]')
+  )) {
     const position = timelineScrollPositions.get(timeline.getAttribute("data-en-key") ?? "")
     if (position !== undefined) {
       timeline.scrollTop = position.top
@@ -5381,18 +5504,22 @@ const commitView = (view: View, state: DomRendererState, report: IntentReporter)
       section.scrollLeft = position.left
     }
   }
-  for (const active of Array.from(state.root.querySelectorAll<HTMLElement>('[data-en-nav-item][data-en-active="true"]'))) {
+  for (const active of Array.from(
+    state.root.querySelectorAll<HTMLElement>('[data-en-nav-item][data-en-active="true"]')
+  )) {
     const section = active.closest<HTMLElement>("[data-en-section]")
     if (section === null || section.clientHeight <= 0) continue
     const rows = Array.from(section.querySelectorAll<HTMLElement>("[data-en-nav-item]"))
     const index = rows.indexOf(active)
     if (index < 0) continue
     const measuredHeight = rows.map((row) => row.getBoundingClientRect().height).find((height) => height > 0) ?? 32
-    const labelHeight = section.querySelector<HTMLElement>('[data-en-role="section-label"]')?.getBoundingClientRect().height ?? 0
+    const labelHeight =
+      section.querySelector<HTMLElement>('[data-en-role="section-label"]')?.getBoundingClientRect().height ?? 0
     const estimatedTop = labelHeight + index * measuredHeight
     const estimatedBottom = estimatedTop + measuredHeight
     if (estimatedTop < section.scrollTop) section.scrollTop = estimatedTop
-    else if (estimatedBottom > section.scrollTop + section.clientHeight) section.scrollTop = estimatedBottom - section.clientHeight
+    else if (estimatedBottom > section.scrollTop + section.clientHeight)
+      section.scrollTop = estimatedBottom - section.clientHeight
   }
   const focusRequest = state.consumeFocusRequest()
   const overlayFocus = state.syncOverlayLifecycle(
@@ -5433,9 +5560,9 @@ const serializeElement = (element: Element): DomStructure | undefined => {
   const key = element.getAttribute("data-en-key") ?? undefined
   const serializeChildren = (root: Element): ReadonlyArray<DomStructure> =>
     Array.from(root.children)
-      .filter((child) =>
-        child.getAttribute("data-en-role") !== "label" &&
-        child.getAttribute("data-en-role") !== "virtual-spacer"
+      .filter(
+        (child) =>
+          child.getAttribute("data-en-role") !== "label" && child.getAttribute("data-en-role") !== "virtual-spacer"
       )
       .flatMap((child) => {
         if (child.getAttribute("data-en-tag") !== null) {
@@ -5606,98 +5733,99 @@ export const viewStructure = (view: View): DomStructure => {
 
 export const makeDomRenderer = (options: DomRendererOptions = {}): RendererAdapter<Element, DomMountedSurface> => ({
   mount: (container, viewStream, report) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const parentScope = yield* Scope.Scope
       const surfaceScope = yield* Scope.fork(parentScope)
 
-      return yield* Scope.provide(surfaceScope)(Effect.gen(function*() {
-        const document = options.document ?? container.ownerDocument ?? globalThis.document
-        const theme = options.theme ?? defaultTheme
-        const viewport = yield* makeViewportService(options.viewport ?? readDomViewport(document), { theme })
-        // Clipboard resolution (v35, #84): explicit option, then the Clipboard
-        // Layer from the mounting Effect context, then the navigator default.
-        const contextClipboard = yield* Effect.serviceOption(Clipboard)
-        const clipboard = options.clipboard ??
-          (Option.isSome(contextClipboard) ? contextClipboard.value : makeNavigatorClipboard(document))
-        const motionPreference = yield* makeMotionPreferenceService(
-          options.reducedMotion !== undefined
-            ? { reduced: options.reducedMotion }
-            : readDomMotionPreference(document)
-        )
-        const state = new DomRendererState(container, document, theme, options.hostDrivers ?? [], clipboard)
-        const ready = yield* Deferred.make<void>()
-        const window = document.defaultView
-        const resolvedViewStream = viewStream.pipe(
-          Stream.zipLatestWith(
-            Stream.zipLatest(viewport.stream, motionPreference.stream),
-            (view, [currentViewport, currentMotionPreference]) =>
-              resolveView(view, {
-                viewport: currentViewport,
-                platform: "web",
-                reducedMotion: currentMotionPreference.reduced
-              })
+      return yield* Scope.provide(surfaceScope)(
+        Effect.gen(function* () {
+          const document = options.document ?? container.ownerDocument ?? globalThis.document
+          const theme = options.theme ?? defaultTheme
+          const viewport = yield* makeViewportService(options.viewport ?? readDomViewport(document), { theme })
+          // Clipboard resolution (v35, #84): explicit option, then the Clipboard
+          // Layer from the mounting Effect context, then the navigator default.
+          const contextClipboard = yield* Effect.serviceOption(Clipboard)
+          const clipboard =
+            options.clipboard ??
+            (Option.isSome(contextClipboard) ? contextClipboard.value : makeNavigatorClipboard(document))
+          const motionPreference = yield* makeMotionPreferenceService(
+            options.reducedMotion !== undefined ? { reduced: options.reducedMotion } : readDomMotionPreference(document)
           )
-        )
+          const state = new DomRendererState(container, document, theme, options.hostDrivers ?? [], clipboard)
+          const ready = yield* Deferred.make<void>()
+          const window = document.defaultView
+          const resolvedViewStream = viewStream.pipe(
+            Stream.zipLatestWith(
+              Stream.zipLatest(viewport.stream, motionPreference.stream),
+              (view, [currentViewport, currentMotionPreference]) =>
+                resolveView(view, {
+                  viewport: currentViewport,
+                  platform: "web",
+                  reducedMotion: currentMotionPreference.reduced
+                })
+            )
+          )
 
-        yield* Effect.addFinalizer(() =>
-          Effect.sync(() => {
-            state.dispose()
-          })
-        )
-        if (window !== null) {
-          const updateViewport = () => {
-            void Effect.runPromise(viewport.set(readDomViewport(document))).catch(() => {
-              // Host resize callbacks must stay total.
-            })
-          }
-          window.addEventListener("resize", updateViewport)
           yield* Effect.addFinalizer(() =>
             Effect.sync(() => {
-              window.removeEventListener("resize", updateViewport)
+              state.dispose()
             })
           )
-          // Live `prefers-reduced-motion` updates (issue #83): only wired when
-          // the app has not pinned a static `reducedMotion` override.
-          if (options.reducedMotion === undefined && typeof window.matchMedia === "function") {
-            const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)")
-            const updateMotionPreference = () => {
-              void Effect.runPromise(motionPreference.set({ reduced: mediaQuery.matches })).catch(() => {
-                // Host media-query callbacks must stay total.
+          if (window !== null) {
+            const updateViewport = () => {
+              void Effect.runPromise(viewport.set(readDomViewport(document))).catch(() => {
+                // Host resize callbacks must stay total.
               })
             }
-            mediaQuery.addEventListener("change", updateMotionPreference)
+            window.addEventListener("resize", updateViewport)
             yield* Effect.addFinalizer(() =>
               Effect.sync(() => {
-                mediaQuery.removeEventListener("change", updateMotionPreference)
+                window.removeEventListener("resize", updateViewport)
               })
             )
+            // Live `prefers-reduced-motion` updates (issue #83): only wired when
+            // the app has not pinned a static `reducedMotion` override.
+            if (options.reducedMotion === undefined && typeof window.matchMedia === "function") {
+              const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)")
+              const updateMotionPreference = () => {
+                void Effect.runPromise(motionPreference.set({ reduced: mediaQuery.matches })).catch(() => {
+                  // Host media-query callbacks must stay total.
+                })
+              }
+              mediaQuery.addEventListener("change", updateMotionPreference)
+              yield* Effect.addFinalizer(() =>
+                Effect.sync(() => {
+                  mediaQuery.removeEventListener("change", updateMotionPreference)
+                })
+              )
+            }
           }
-        }
 
-        yield* resolvedViewStream.pipe(
-          Stream.runForEach((view) =>
-            Effect.gen(function*() {
-              yield* Effect.sync(() => {
-                commitView(view, state, report)
+          yield* resolvedViewStream.pipe(
+            Stream.runForEach((view) =>
+              Effect.gen(function* () {
+                yield* Effect.sync(() => {
+                  commitView(view, state, report)
+                })
+                yield* Deferred.succeed(ready, undefined)
               })
-              yield* Deferred.succeed(ready, undefined)
-            })
-          ),
-          Effect.forkScoped
-        )
-        yield* Deferred.await(ready)
+            ),
+            Effect.forkScoped
+          )
+          yield* Deferred.await(ready)
 
-        return {
-          root: state.root,
-          stylesheet: state.styles.element,
-          unmount: Scope.close(surfaceScope, Exit.void),
-          serialize: Effect.sync(() => serializeDomStructure(state.root)),
-          stylesheetText: Effect.sync(() => state.styles.element.textContent ?? ""),
-          setTheme: (theme: Theme) => Effect.sync(() => state.setTheme(theme)),
-          currentViewport: viewport.current,
-          setViewport: viewport.set
-        }
-      }))
+          return {
+            root: state.root,
+            stylesheet: state.styles.element,
+            unmount: Scope.close(surfaceScope, Exit.void),
+            serialize: Effect.sync(() => serializeDomStructure(state.root)),
+            stylesheetText: Effect.sync(() => state.styles.element.textContent ?? ""),
+            setTheme: (theme: Theme) => Effect.sync(() => state.setTheme(theme)),
+            currentViewport: viewport.current,
+            setViewport: viewport.set
+          }
+        })
+      )
     })
 })
 
@@ -5908,11 +6036,7 @@ const renderAccordion = (view: AccordionView, state: DomRendererState, report: I
   return el
 }
 
-const renderPricingColumn = (
-  view: PricingColumnView,
-  state: DomRendererState,
-  report: IntentReporter
-): HTMLElement => {
+const renderPricingColumn = (view: PricingColumnView, state: DomRendererState, report: IntentReporter): HTMLElement => {
   const el = state.keyedElement(view, "article")
   state.resetListeners(el)
   el.setAttribute("data-en-pricing-column", view.highlighted === true ? "highlighted" : "default")
@@ -5941,11 +6065,7 @@ const renderPricingColumn = (
   return el
 }
 
-const renderPricingTable = (
-  view: PricingTableView,
-  state: DomRendererState,
-  report: IntentReporter
-): HTMLElement => {
+const renderPricingTable = (view: PricingTableView, state: DomRendererState, report: IntentReporter): HTMLElement => {
   const el = state.keyedElement(view, "div")
   state.resetListeners(el)
   el.style.display = "flex"
@@ -6037,11 +6157,7 @@ const renderGlow = (view: GlowView, state: DomRendererState, report: IntentRepor
   return el
 }
 
-const renderMockupFrame = (
-  view: MockupFrameView,
-  state: DomRendererState,
-  report: IntentReporter
-): HTMLElement => {
+const renderMockupFrame = (view: MockupFrameView, state: DomRendererState, report: IntentReporter): HTMLElement => {
   const el = state.keyedElement(view, "div")
   state.resetListeners(el)
   el.setAttribute("data-en-mockup", view.variant ?? "browser")
@@ -6114,8 +6230,7 @@ const renderPager = (view: PagerView, state: DomRendererState, report: IntentRep
         dot.style.height = "0.55rem"
         dot.style.borderRadius = "999px"
         dot.style.border = "none"
-        dot.style.background =
-          index === activeIndex ? "var(--en-color-accent)" : "var(--en-color-border)"
+        dot.style.background = index === activeIndex ? "var(--en-color-accent)" : "var(--en-color-border)"
         state.addListener(dot, "click", () => runReportedIntent(report, view.onStepChange, step.id))
         progressEl.appendChild(dot)
       }
@@ -6123,9 +6238,7 @@ const renderPager = (view: PagerView, state: DomRendererState, report: IntentRep
     el.appendChild(progressEl)
   }
 
-  const panels = view.keepMounted === true
-    ? view.panels
-    : view.panels.filter((panel) => panel.id === view.activeStepId)
+  const panels = view.keepMounted === true ? view.panels : view.panels.filter((panel) => panel.id === view.activeStepId)
   for (const panel of panels) {
     const region = el.ownerDocument.createElement("div")
     region.setAttribute("data-en-pager-panel", panel.id)
@@ -6175,7 +6288,6 @@ const renderPager = (view: PagerView, state: DomRendererState, report: IntentRep
   applyA11y(el, view)
   return el
 }
-
 
 const renderSwipeableListItem = (
   view: SwipeableListItemView,
@@ -6262,8 +6374,7 @@ const renderMobileSurfaceShell = (
   if (view._tag === "Frame") {
     el.setAttribute("data-en-frame", view.variant ?? "square")
     el.style.border = "1px solid var(--en-color-accent)"
-    el.style.borderRadius =
-      view.variant === "rounded" || view.variant === "arcade" ? "var(--en-radius-lg)" : "0"
+    el.style.borderRadius = view.variant === "rounded" || view.variant === "arcade" ? "var(--en-radius-lg)" : "0"
     el.style.padding = "var(--en-spacing-3)"
   }
   el.replaceChildren(...view.children.map((child) => renderView(child, state, report)))
@@ -6272,11 +6383,7 @@ const renderMobileSurfaceShell = (
   return el
 }
 
-const renderBlurredPopup = (
-  view: BlurredPopupView,
-  state: DomRendererState,
-  report: IntentReporter
-): HTMLElement => {
+const renderBlurredPopup = (view: BlurredPopupView, state: DomRendererState, report: IntentReporter): HTMLElement => {
   const el = state.keyedElement(view, "div")
   state.resetListeners(el)
   el.setAttribute("data-en-blurred-popup", view.open ? "open" : "closed")
@@ -6318,17 +6425,10 @@ const applySurfaceMergedStyle = (
   state: DomRendererState
 ): void => {
   const merged = withSurfaceStyle(style, surface)
-  state.styles.apply(
-    element,
-    merged === undefined ? undefined : resolveStyle(merged, { platform: "web" })
-  )
+  state.styles.apply(element, merged === undefined ? undefined : resolveStyle(merged, { platform: "web" }))
 }
 
-const renderIconButton = (
-  view: IconButtonView,
-  state: DomRendererState,
-  report: IntentReporter
-): HTMLElement => {
+const renderIconButton = (view: IconButtonView, state: DomRendererState, report: IntentReporter): HTMLElement => {
   const element = state.keyedElement(view, "button") as HTMLButtonElement
   state.resetListeners(element)
   element.type = "button"
@@ -6358,11 +6458,7 @@ const renderIconButton = (
   return element
 }
 
-const renderToolbar = (
-  view: ToolbarView,
-  state: DomRendererState,
-  report: IntentReporter
-): HTMLElement => {
+const renderToolbar = (view: ToolbarView, state: DomRendererState, report: IntentReporter): HTMLElement => {
   const element = state.keyedElement(view, "div")
   state.resetListeners(element)
   element.setAttribute("role", "toolbar")
@@ -6419,8 +6515,7 @@ const applyCopyButtonPresentation = (
   const icon = document.createElement("span")
   icon.setAttribute("data-en-role", "copy-icon")
   icon.style.display = "inline-flex"
-  icon.innerHTML =
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${control.icon}" height="${control.icon}" viewBox="0 0 24 24" aria-hidden="true" ${paint}>${glyph.body}</svg>`
+  icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="${control.icon}" height="${control.icon}" viewBox="0 0 24 24" aria-hidden="true" ${paint}>${glyph.body}</svg>`
   element.appendChild(icon)
 
   const copiedLabel = view.copiedLabel ?? "Copied"
@@ -6451,11 +6546,7 @@ const applyCopyButtonPresentation = (
   }
 }
 
-const renderCopyButton = (
-  view: CopyButtonView,
-  state: DomRendererState,
-  report: IntentReporter
-): HTMLElement => {
+const renderCopyButton = (view: CopyButtonView, state: DomRendererState, report: IntentReporter): HTMLElement => {
   const element = state.keyedElement(view, "button") as HTMLButtonElement
   state.resetListeners(element)
   element.type = "button"

@@ -13,11 +13,11 @@
   },
   "scripts": {
     "typecheck": "tsc -b",
-    "test": "bun test"
+    "test": "vp test --run"
   },
   "dependencies": {
     "@effect-native/core": "workspace:*",
-    "effect": "4.0.0-beta.94",
+    "effect": "catalog:",
     "three": "0.184.0"
   },
   "devDependencies": {

@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect, Exit, Scope, Stream } from "effect"
 import {
   basicMaterial,
@@ -23,10 +23,28 @@ const cam = perspectiveCamera({ position: [0, 0, 8], target: [0, 0, 0], fov: 60,
 const graphScene = (edgeColor: string): CanvasScene =>
   scene({ camera: cam, background: "#0a0e14" }, [
     group({ key: "nodes" }, [
-      mesh({ key: "n1", geometry: sphere({ radius: 1 }), material: basicMaterial({ color: "#4cc2ff" }), position: [-2, 0, 0] }),
-      mesh({ key: "n2", geometry: box({ width: 1, height: 1, depth: 1 }), material: basicMaterial({ color: "#4cc2ff" }), position: [2, 0, 0] })
+      mesh({
+        key: "n1",
+        geometry: sphere({ radius: 1 }),
+        material: basicMaterial({ color: "#4cc2ff" }),
+        position: [-2, 0, 0]
+      }),
+      mesh({
+        key: "n2",
+        geometry: box({ width: 1, height: 1, depth: 1 }),
+        material: basicMaterial({ color: "#4cc2ff" }),
+        position: [2, 0, 0]
+      })
     ]),
-    line({ key: "e1", points: [[-2, 0, 0], [2, 0, 0]], color: edgeColor, width: 2 }),
+    line({
+      key: "e1",
+      points: [
+        [-2, 0, 0],
+        [2, 0, 0]
+      ],
+      color: edgeColor,
+      width: 2
+    }),
     label({ key: "l1", text: "edge", color: "#ffffff", fontSize: 12, position: [0, 0.5, 0] })
   ])
 
@@ -34,7 +52,7 @@ describe("headless canvas backend", () => {
   test("renders a typed graph scene and records the reconciled tree (snapshot)", async () => {
     const snapshot = await Effect.runPromise(
       Effect.scoped(
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           const headless = yield* makeHeadlessCanvasBackend()
           yield* drainCanvasFrames(headless.backend, framesFromScenes([graphScene("#89b4fa")]))
           return yield* headless.snapshot
@@ -55,7 +73,7 @@ describe("headless canvas backend", () => {
   test("updates across frames via the reconciler (minimal op set)", async () => {
     const result = await Effect.runPromise(
       Effect.scoped(
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           const headless = yield* makeHeadlessCanvasBackend()
           const frames = framesFromScenes([graphScene("#89b4fa"), graphScene("#f38ba8")])
           const run = yield* drainCanvasFrames(headless.backend, frames)
@@ -76,7 +94,7 @@ describe("headless canvas backend", () => {
 
   test("disposes cleanly on scope exit (no leaked resources)", async () => {
     const observed = await Effect.runPromise(
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const scopeRef = yield* Scope.make()
         const headless = yield* Scope.provide(scopeRef)(makeHeadlessCanvasBackend())
         yield* drainCanvasFrames(headless.backend, framesFromScenes([graphScene("#89b4fa")]))
@@ -94,7 +112,7 @@ describe("headless canvas backend", () => {
   test("mountCanvas runs a live Stream-driven loop and unmounts on scope exit", async () => {
     const result = await Effect.runPromise(
       Effect.scoped(
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           const headless = yield* makeHeadlessCanvasBackend()
           const frames = framesFromScenes([graphScene("#89b4fa"), graphScene("#f38ba8")])
           const surface = yield* mountCanvas(headless.backend, frames)
@@ -114,9 +132,7 @@ describe("frame clock", () => {
   test("frameClock emits increasing frame indices with deltas", async () => {
     let t = 1000
     const ticks = await Effect.runPromise(
-      Stream.runCollect(
-        frameClock("10 millis", () => (t += 10)).pipe(Stream.take(3))
-      )
+      Stream.runCollect(frameClock("10 millis", () => (t += 10)).pipe(Stream.take(3)))
     )
     const arr = [...ticks]
     expect(arr.map((tk) => tk.frame)).toEqual([0, 1, 2])

@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { LoadingDots, Spinner, ShimmerText, type View } from "@effect-native/core"
 import {
   renderReactNativeView,
@@ -35,10 +35,7 @@ const dependencies: ReactNativeDependencies = {
   }
 }
 
-const find = (
-  node: ReactNodeLike,
-  predicate: (element: ReactElementLike) => boolean
-): ReactElementLike | undefined => {
+const find = (node: ReactNodeLike, predicate: (element: ReactElementLike) => boolean): ReactElementLike | undefined => {
   if (typeof node !== "object" || node === null || !("props" in node)) return undefined
   const element = node as ReactElementLike
   if (predicate(element)) return element
@@ -92,13 +89,9 @@ describe("Spinner + LoadingDots + ShimmerText (#83) React Native renderer", () =
   })
 
   test("Spinner with a label is meaningful (progressbar + aria-busy)", () => {
-    const element = renderReactNativeView(
-      Spinner({ key: "spinner", label: "Loading" }) as View,
-      dependencies,
-      () => {
-        throw new Error("no intents expected")
-      }
-    )
+    const element = renderReactNativeView(Spinner({ key: "spinner", label: "Loading" }) as View, dependencies, () => {
+      throw new Error("no intents expected")
+    })
     expect(element.props.accessibilityRole).toBe("progressbar")
     expect(element.props.accessibilityLabel).toBe("Loading")
     expect(element.props["aria-busy"]).toBe(true)
@@ -120,16 +113,15 @@ describe("Spinner + LoadingDots + ShimmerText (#83) React Native renderer", () =
   })
 
   test("LoadingDots renders three tone-colored static dots", () => {
-    const element = renderReactNativeView(
-      LoadingDots({ key: "dots", tone: "success" }) as View,
-      dependencies,
-      () => {
-        throw new Error("no intents expected")
-      }
-    )
+    const element = renderReactNativeView(LoadingDots({ key: "dots", tone: "success" }) as View, dependencies, () => {
+      throw new Error("no intents expected")
+    })
     expect(element.props.testID).toBe("en-loading-dots:success")
-    const dots = findAll(element, (candidate) =>
-      typeof candidate.props.testID === "string" && candidate.props.testID.startsWith("en-loading-dots-dot:"))
+    const dots = findAll(
+      element,
+      (candidate) =>
+        typeof candidate.props.testID === "string" && candidate.props.testID.startsWith("en-loading-dots-dot:")
+    )
     expect(dots.length).toBe(3)
     for (const dot of dots) {
       expect((dot.props.style as { opacity: number }).opacity).toBe(0.6)
@@ -156,13 +148,9 @@ describe("Spinner + LoadingDots + ShimmerText (#83) React Native renderer", () =
   })
 
   test("ShimmerText with only a width renders a static skeleton placeholder View", () => {
-    const element = renderReactNativeView(
-      ShimmerText({ key: "shimmer", width: 96 }) as View,
-      dependencies,
-      () => {
-        throw new Error("no intents expected")
-      }
-    )
+    const element = renderReactNativeView(ShimmerText({ key: "shimmer", width: 96 }) as View, dependencies, () => {
+      throw new Error("no intents expected")
+    })
     expect(element.type).toBe("View")
     expect(element.props.testID).toBe("en-shimmer-placeholder")
     expect(element.props.accessibilityElementsHidden).toBe(true)

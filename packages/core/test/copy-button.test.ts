@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vite-plus/test"
 import { Effect, Exit, Schema, Stream } from "effect"
 import {
   CatalogVersion,
@@ -35,7 +35,7 @@ describe("CopyButton (#84, v35)", () => {
     expect(componentTags).toContain("CopyButton")
     const view = CopyButton({
       key: "copy-cmd",
-      content: "bun install effect",
+      content: "pnpm add effect",
       onCopy: IntentRef("Copied")
     })
     expect(view._tag).toBe("CopyButton")
@@ -102,24 +102,30 @@ describe("CopyButton (#84, v35)", () => {
   })
 
   test("recording clipboard retains writes in order", async () => {
-    const writes = await Effect.runPromise(Effect.gen(function*() {
-      const clipboard = yield* makeRecordingClipboard
-      yield* clipboard.writeText("one")
-      yield* clipboard.writeText("two")
-      return yield* clipboard.writes
-    }))
+    const writes = await Effect.runPromise(
+      Effect.gen(function* () {
+        const clipboard = yield* makeRecordingClipboard
+        yield* clipboard.writeText("one")
+        yield* clipboard.writeText("two")
+        return yield* clipboard.writes
+      })
+    )
     expect(writes).toEqual(["one", "two"])
   })
 
   test("headless renderer records the clipboard write and fires the typed onCopy intent", async () => {
     const copied: Array<string> = []
     const Copied = defineIntent("Copied", Schema.String)
-    const layer = makeIntentRegistryLayer([Copied] as const, {
-      Copied: (payload: string) =>
-        Effect.sync(() => {
-          copied.push(payload)
-        })
-    }, { now: () => 0 })
+    const layer = makeIntentRegistryLayer(
+      [Copied] as const,
+      {
+        Copied: (payload: string) =>
+          Effect.sync(() => {
+            copied.push(payload)
+          })
+      },
+      { now: () => 0 }
+    )
     const view: View = Stack({ key: "root", direction: "column" }, [
       CopyButton({
         key: "copy-me",
@@ -127,75 +133,85 @@ describe("CopyButton (#84, v35)", () => {
         onCopy: IntentRef("Copied", ComponentValueBinding())
       })
     ])
-    const result = await Effect.runPromise(Effect.provide(
-      Effect.scoped(Effect.gen(function*() {
-        const registry = yield* IntentRegistry
-        const report: IntentReporter = (ref, runtimeValue = null) =>
-          registry.dispatch(resolveIntentRef(ref, runtimeValue))
-        const surface = yield* makeHeadlessRenderer().mount(undefined, Stream.make(view), report)
-        yield* surface.simulateCopy("copy-me")
-        const writes = yield* surface.clipboardWrites
-        yield* surface.unmount
-        return writes
-      })),
-      layer
-    ))
+    const result = await Effect.runPromise(
+      Effect.provide(
+        Effect.scoped(
+          Effect.gen(function* () {
+            const registry = yield* IntentRegistry
+            const report: IntentReporter = (ref, runtimeValue = null) =>
+              registry.dispatch(resolveIntentRef(ref, runtimeValue))
+            const surface = yield* makeHeadlessRenderer().mount(undefined, Stream.make(view), report)
+            yield* surface.simulateCopy("copy-me")
+            const writes = yield* surface.clipboardWrites
+            yield* surface.unmount
+            return writes
+          })
+        ),
+        layer
+      )
+    )
     expect(result).toEqual(["the copied payload"])
     expect(copied).toEqual(["the copied payload"])
   })
 
   test("headless renderer forwards writes to an injected clipboard delegate", async () => {
     const layer = makeIntentRegistryLayer([] as const, {}, { now: () => 0 })
-    const result = await Effect.runPromise(Effect.provide(
-      Effect.scoped(Effect.gen(function*() {
-        const delegate = yield* makeRecordingClipboard
-        const registry = yield* IntentRegistry
-        const report: IntentReporter = (ref, runtimeValue = null) =>
-          registry.dispatch(resolveIntentRef(ref, runtimeValue))
-        const surface = yield* makeHeadlessRenderer({ clipboard: delegate }).mount(
-          undefined,
-          Stream.make(CopyButton({ key: "copy-me", content: "forwarded" })),
-          report
-        )
-        yield* surface.simulateCopy("copy-me")
-        const recorded = yield* surface.clipboardWrites
-        const forwarded = yield* delegate.writes
-        yield* surface.unmount
-        return { recorded, forwarded }
-      })),
-      layer
-    ))
+    const result = await Effect.runPromise(
+      Effect.provide(
+        Effect.scoped(
+          Effect.gen(function* () {
+            const delegate = yield* makeRecordingClipboard
+            const registry = yield* IntentRegistry
+            const report: IntentReporter = (ref, runtimeValue = null) =>
+              registry.dispatch(resolveIntentRef(ref, runtimeValue))
+            const surface = yield* makeHeadlessRenderer({ clipboard: delegate }).mount(
+              undefined,
+              Stream.make(CopyButton({ key: "copy-me", content: "forwarded" })),
+              report
+            )
+            yield* surface.simulateCopy("copy-me")
+            const recorded = yield* surface.clipboardWrites
+            const forwarded = yield* delegate.writes
+            yield* surface.unmount
+            return { recorded, forwarded }
+          })
+        ),
+        layer
+      )
+    )
     expect(result.recorded).toEqual(["forwarded"])
     expect(result.forwarded).toEqual(["forwarded"])
   })
 
   test("headless simulateCopy is a no-op for a disabled CopyButton", async () => {
     const layer = makeIntentRegistryLayer([] as const, {}, { now: () => 0 })
-    const writes = await Effect.runPromise(Effect.provide(
-      Effect.scoped(Effect.gen(function*() {
-        const registry = yield* IntentRegistry
-        const report: IntentReporter = (ref, runtimeValue = null) =>
-          registry.dispatch(resolveIntentRef(ref, runtimeValue))
-        const surface = yield* makeHeadlessRenderer().mount(
-          undefined,
-          Stream.make(CopyButton({ key: "copy-off", content: "never", disabled: true })),
-          report
-        )
-        yield* surface.simulateCopy("copy-off")
-        const recorded = yield* surface.clipboardWrites
-        yield* surface.unmount
-        return recorded
-      })),
-      layer
-    ))
+    const writes = await Effect.runPromise(
+      Effect.provide(
+        Effect.scoped(
+          Effect.gen(function* () {
+            const registry = yield* IntentRegistry
+            const report: IntentReporter = (ref, runtimeValue = null) =>
+              registry.dispatch(resolveIntentRef(ref, runtimeValue))
+            const surface = yield* makeHeadlessRenderer().mount(
+              undefined,
+              Stream.make(CopyButton({ key: "copy-off", content: "never", disabled: true })),
+              report
+            )
+            yield* surface.simulateCopy("copy-off")
+            const recorded = yield* surface.clipboardWrites
+            yield* surface.unmount
+            return recorded
+          })
+        ),
+        layer
+      )
+    )
     expect(writes).toEqual([])
   })
 
   test("findViewByKey locates nested CopyButtons", () => {
     const tree = Stack({ key: "root", direction: "column" }, [
-      Stack({ key: "row", direction: "row" }, [
-        CopyButton({ key: "deep-copy", content: "found" })
-      ])
+      Stack({ key: "row", direction: "row" }, [CopyButton({ key: "deep-copy", content: "found" })])
     ])
     const found = findViewByKey(tree, "deep-copy")
     expect(found?._tag).toBe("CopyButton")
@@ -204,10 +220,10 @@ describe("CopyButton (#84, v35)", () => {
 
   test("makeClipboardLayer provides the Clipboard service", async () => {
     const writes = await Effect.runPromise(
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const recorder = yield* makeRecordingClipboard
         const layer = makeClipboardLayer(recorder)
-        yield* Effect.gen(function*() {
+        yield* Effect.gen(function* () {
           const clipboard = yield* Clipboard
           yield* clipboard.writeText("via layer")
         }).pipe(Effect.provide(layer))

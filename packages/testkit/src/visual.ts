@@ -27,6 +27,7 @@
  */
 import { Effect, Stream } from "effect"
 import { Window } from "happy-dom"
+import { readFile, writeFile } from "node:fs/promises"
 import type { IntentReporter, PlatformVariant, Theme, View, ViewportInput } from "@effect-native/core"
 import { makeDomRenderer } from "@effect-native/render-dom"
 import {
@@ -84,7 +85,7 @@ const noopReport: IntentReporter = () => Effect.succeed(undefined)
 export const domVisualCapture: VisualCapture = {
   capture: (target) =>
     Effect.scoped(
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const window = new Window({ width: target.viewport.width, height: target.viewport.height })
         const document = window.document as unknown as Document
         const container = document.createElement("main")
@@ -131,15 +132,16 @@ export const makeFileBaselineStore = (directory: string): BaselineStore => {
   return {
     read: (key) =>
       Effect.promise(async () => {
-        const file = Bun.file(pathFor(key))
-        if (!(await file.exists())) {
+        try {
+          return JSON.parse(await readFile(pathFor(key), "utf8")) as VisualArtifact
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error
           return undefined
         }
-        return JSON.parse(await file.text()) as VisualArtifact
       }),
     write: (key, artifact) =>
       Effect.promise(async () => {
-        await Bun.write(pathFor(key), `${JSON.stringify(artifact, null, 2)}\n`)
+        await writeFile(pathFor(key), `${JSON.stringify(artifact, null, 2)}\n`, "utf8")
       })
   }
 }
@@ -167,7 +169,7 @@ export const compareBaseline = (
   target: VisualTarget,
   key: string = baselineKey(target)
 ): Effect.Effect<ComparisonResult> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const existing = yield* store.read(key)
     const actual = yield* capture.capture(target)
     if (existing === undefined) {
@@ -186,11 +188,10 @@ export const blessBaseline = (
   target: VisualTarget,
   key: string = baselineKey(target)
 ): Effect.Effect<void> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const artifact = yield* capture.capture(target)
     yield* store.write(key, artifact)
   })
-
 
 export const RnBaselineFormat = "effect-native/testkit-visual-rn/v1" as const
 
@@ -203,9 +204,7 @@ const createElement = (
   key: typeof props?.key === "string" ? props.key : null,
   props: {
     ...(props ?? {}),
-    ...(children.length === 0
-      ? {}
-      : { children: children.length === 1 ? children[0] : children })
+    ...(children.length === 0 ? {} : { children: children.length === 1 ? children[0] : children })
   }
 })
 
@@ -232,10 +231,8 @@ const headlessRnDependencies: ReactNativeDependencies = {
 export const rnVisualCapture: VisualCapture = {
   capture: (target) =>
     Effect.scoped(
-      Effect.gen(function*() {
-        const platform = target.platform === "android" || target.platform === "ios"
-          ? target.platform
-          : "ios"
+      Effect.gen(function* () {
+        const platform = target.platform === "android" || target.platform === "ios" ? target.platform : "ios"
         const surface = yield* makeReactNativeRenderer({
           dependencies: headlessRnDependencies,
           platform,
