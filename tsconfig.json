@@ -2,6 +2,7 @@
   "files": [],
   "references": [
     { "path": "./packages/tokens" },
+    { "path": "./packages/khala-ui" },
     { "path": "./packages/core" },
     { "path": "./packages/render-dom" },
     { "path": "./packages/render-rn" },

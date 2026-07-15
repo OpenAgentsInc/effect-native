@@ -54,6 +54,9 @@ importers:
       '@effect-native/gallery':
         specifier: workspace:*
         version: link:packages/gallery
+      '@effect-native/khala-ui':
+        specifier: workspace:*
+        version: link:packages/khala-ui
       '@effect-native/platform-desktop':
         specifier: workspace:*
         version: link:packages/platform-desktop
@@ -173,6 +176,15 @@ importers:
       '@effect-native/core':
         specifier: workspace:*
         version: link:../core
+      '@effect-native/tokens':
+        specifier: workspace:*
+        version: link:../tokens
+      effect:
+        specifier: 4.0.0-beta.94
+        version: 4.0.0-beta.94
+
+  packages/khala-ui:
+    dependencies:
       '@effect-native/tokens':
         specifier: workspace:*
         version: link:../tokens

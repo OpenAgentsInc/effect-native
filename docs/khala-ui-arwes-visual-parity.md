@@ -15,8 +15,8 @@ renderer contract, accessibility correction, issue, and implementation status.
 | Family | Accounted capability rows | Implementation issue |
 | --- | ---: | --- |
 | Theme and static paint | theme derivation; steps; strip; separator | theme shipped in #90; paint completes in #98 |
-| Motion | 31 easing names; among/steps interpolation; typed style projection; driver; element/X state transitions; property/fade/flicker/draw presets | #92 |
-| Choreography | four stable states; parallel, sequence/reverse, stagger/reverse, switch, merge/combine | #92 |
+| Motion | 31 easing names; among/steps interpolation; typed style projection; driver; element/X state transitions; property/fade/flicker/draw presets | #92 shipped |
+| Choreography | four transition states; parallel, sequence/reverse, stagger/reverse, switch, merge/combine plan semantics | #92 shipped |
 | Frames | generic SVG scene; Underline, Lines, Corners, Octagon, Nero, Nefrex, Kranox, Header, Circle; Octagon/Kranox clipping; assembly | static #98; assembly #92 |
 | Text | sequence/caret and seeded decipher/recipher plus duration derivation | #99 |
 | Illumination | HTML radial illumination and SVG radial illumination | #100 |
@@ -50,4 +50,3 @@ adapter name.
   visibility and power suspension, and exact Scope teardown.
 - Frame expressions are typed and bounded. No `eval`, arbitrary markup, unbounded
   CSS strings, or focus/content clipping is permitted.
-

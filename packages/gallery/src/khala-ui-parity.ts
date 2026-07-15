@@ -104,7 +104,7 @@ export const khalaUiVisualParity = [
     rendererContract: "Headless sampling is canonical; renderer drivers consume sampled or native-compatible curves.",
     accessibilityCorrection: "Reduced motion bypasses the sampler and resolves the target at tick zero.",
     issue: "#92",
-    status: "planned"
+    status: "shipped"
   }),
   capability({
     id: "motion.css-properties",
@@ -119,7 +119,7 @@ export const khalaUiVisualParity = [
     rendererContract: "DOM/React DOM WAAPI/CSS; RN native values; headless target-state snapshot.",
     accessibilityCorrection: "No arbitrary CSS property or string execution; decoration cannot move focus or semantic order.",
     issue: "#92",
-    status: "planned"
+    status: "shipped"
   }),
   capability({
     id: "motion.driver",
@@ -131,7 +131,7 @@ export const khalaUiVisualParity = [
     rendererContract: "One lifecycle contract with renderer-specific paint adapters.",
     accessibilityCorrection: "Cancellation is total; reduced motion allocates no timer, frame, Fiber, or subscription.",
     issue: "#92",
-    status: "planned"
+    status: "shipped"
   }),
   capability({
     id: "motion.element",
@@ -143,7 +143,7 @@ export const khalaUiVisualParity = [
     rendererContract: "Effect owns state; React/RN adapters only reconcile paint state.",
     accessibilityCorrection: "Stable semantic content precedes optional client animation and stays visible in SSR/no-JS.",
     issue: "#92",
-    status: "planned"
+    status: "shipped"
   }),
   capability({
     id: "motion.presets",
@@ -155,7 +155,7 @@ export const khalaUiVisualParity = [
     rendererContract: "DOM/React DOM/SVG supported; RN receives equivalent opacity/transform or static stroke state.",
     accessibilityCorrection: "Flicker is bounded and disabled for reduced motion; stroke drawing never hides semantic content.",
     issue: "#92",
-    status: "planned"
+    status: "shipped"
   }),
   capability({
     id: "choreography.animator",
@@ -167,7 +167,7 @@ export const khalaUiVisualParity = [
     rendererContract: "Serializable transition plans drive DOM, React DOM, RN, SVG, and Canvas adapters.",
     accessibilityCorrection: "Convergence, interruption, deterministic hydration, Strict Mode replay, and zero-work reduced motion are invariants.",
     issue: "#92",
-    status: "planned"
+    status: "shipped"
   }),
   ...([
     ["underline", "createFrameUnderlineSettings", "FrameUnderline"],
@@ -227,7 +227,7 @@ export const khalaUiVisualParity = [
     rendererContract: "SVG/DOM supported, RN equivalent or stable assembled state, headless deterministic plan.",
     accessibilityCorrection: "Content is already complete; reduced motion begins assembled with no driver.",
     issue: "#92",
-    status: "planned"
+    status: "shipped"
   }),
   capability({
     id: "text.sequence",
