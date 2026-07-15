@@ -42,8 +42,10 @@ KU-9 (#98) ships the full static foundation in v43: twelve owned frame motifs,
 generic bounded grouping/compositing scene data, stepped/strip/separator paint
 descriptors, inert DOM/React DOM SVG, and explicit React Native geometry or
 degradation. Motion/choreography (#92) is shipped in the dedicated
-`@effect-native/khala-ui` package. Final cross-renderer proof (#101) remains
-tracked separately. All four bounded Canvas background families ship through
+`@effect-native/khala-ui` package. Final cross-renderer proof ships in #101:
+30/30 non-audio parity rows have source-addressed gallery stories, executable
+family receipts, renderer dispositions, and a React 19/Electron Scope bridge.
+All four bounded Canvas background families ship through
 `@effect-native/render-canvas` in #93 with deterministic seeds, quality/DPR/
 memory/active-surface budgets, host-policy suspension, and exact Scope cleanup.
 HTML/SVG illumination

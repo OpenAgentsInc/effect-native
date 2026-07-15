@@ -17,6 +17,8 @@
   },
   "dependencies": {
     "@effect-native/core": "workspace:*",
+    "@effect-native/khala-ui": "workspace:*",
+    "@effect-native/render-canvas": "workspace:*",
     "@effect-native/tokens": "workspace:*",
     "effect": "catalog:"
   }

@@ -176,6 +176,12 @@ importers:
       '@effect-native/core':
         specifier: workspace:*
         version: link:../core
+      '@effect-native/khala-ui':
+        specifier: workspace:*
+        version: link:../khala-ui
+      '@effect-native/render-canvas':
+        specifier: workspace:*
+        version: link:../render-canvas
       '@effect-native/tokens':
         specifier: workspace:*
         version: link:../tokens

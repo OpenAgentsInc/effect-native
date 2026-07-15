@@ -3,6 +3,7 @@ import {
   Component,
   StrictMode,
   createElement,
+  useEffect,
   useLayoutEffect,
   useSyncExternalStore,
   type ErrorInfo,
@@ -142,6 +143,35 @@ const ReactViewProjection = (props: EffectNativeReactDomSurfaceProps): ReactElem
 
 export const EffectNativeReactDomSurface = (props: EffectNativeReactDomSurfaceProps): ReactElement =>
   createElement(ReactViewProjection, props)
+
+export interface EffectNativeScopedEffectOptions {
+  readonly onError?: (cause: unknown) => void
+}
+
+/**
+ * Own an Effect resource Scope from an ordinary React component. React only
+ * signals mount/unmount; Effect remains the lifecycle and choreography
+ * authority. Strict Mode replay closes the first Scope before reacquiring.
+ */
+export const useEffectNativeScopedEffect = (
+  makeEffect: () => Effect.Effect<unknown, unknown, Scope.Scope>,
+  dependencies: ReadonlyArray<unknown>,
+  options: EffectNativeScopedEffectOptions = {}
+): void => {
+  useEffect(() => {
+    const scope = Effect.runSync(Scope.make())
+    const fiber = Effect.runFork(makeEffect().pipe(Scope.provide(scope)))
+    void Effect.runPromise(Fiber.await(fiber)).then((exit) => {
+      if (exit._tag === "Failure") options.onError?.(exit.cause)
+    })
+    return () => {
+      Effect.runFork(Fiber.interrupt(fiber))
+      Effect.runFork(Scope.close(scope, Exit.void))
+    }
+    // The caller supplies React's dependency list exactly as for useEffect.
+    // Effect resources are still acquired/released through Scope.
+  }, dependencies)
+}
 
 const mountCompatibilityBackend = (
   container: Element,

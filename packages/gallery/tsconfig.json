@@ -7,6 +7,11 @@
     "declaration": true,
     "declarationMap": true
   },
-  "references": [{ "path": "../core" }, { "path": "../tokens" }],
+  "references": [
+    { "path": "../core" },
+    { "path": "../tokens" },
+    { "path": "../khala-ui" },
+    { "path": "../render-canvas" }
+  ],
   "include": ["src/**/*.ts", "test/**/*.ts"]
 }

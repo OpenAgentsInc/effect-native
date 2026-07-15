@@ -9,6 +9,9 @@ The machine-readable authority is
 `packages/gallery/src/khala-ui-parity.ts`. It records source paths, public visual
 exports (including their React adapter surfaces), behavior, owned destination,
 renderer contract, accessibility correction, issue, and implementation status.
+All 30 non-audio rows are shipped. The generated evidence and final renderer
+matrix live in `packages/gallery/src/khala-ui-effects-gallery.ts`; the host and
+acceptance receipt is `docs/khala-ui-full-visual-parity.md`.
 
 ## Exhaustive capability families
 
@@ -21,7 +24,7 @@ renderer contract, accessibility correction, issue, and implementation status.
 | Text | sequence/caret and seeded decipher/recipher plus duration derivation | #99 shipped |
 | Illumination | HTML radial illumination and SVG radial illumination | #100 shipped |
 | Backgrounds | Dots (box/circle/cross), GridLines, MovingLines, Puffs | #93 shipped |
-| Final adapters/proof | headless, DOM, React DOM, React Native, native degradation, SVG, Canvas, React 19/Electron | #101 |
+| Final adapters/proof | headless, DOM, React DOM, React Native, native degradation, SVG, Canvas, React 19/Electron | #101 shipped |
 
 React and Solid packages in the reference are adapter APIs around these same
 behaviors, not additional effects. Khala UI preserves that distinction: Effect

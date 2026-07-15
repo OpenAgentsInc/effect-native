@@ -201,6 +201,10 @@ The [Khala Canvas backgrounds contract](./docs/khala-ui-canvas-backgrounds.md)
 ships Dots, GridLines, MovingLines, and Puffs through the Effect Native Canvas
 renderer for DOM, React, and Electron hosts, with deterministic static frame
 plans for unsupported renderers.
+The [full visual-parity receipt](./docs/khala-ui-full-visual-parity.md) closes
+30/30 non-audio rows with generated gallery evidence and shows how ordinary
+React 19 components in Electron acquire these effects without creating another
+state, theme, or choreography authority.
 
 Phase 4 (desktop + canvas) is demand-driven by the Khala Code Desktop port —
 a **UI migration, not a backend rewrite**. Catalog demand through
