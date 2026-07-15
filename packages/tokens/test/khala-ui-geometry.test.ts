@@ -165,9 +165,35 @@ describe("deterministic Khala motif geometry", () => {
       polygon: [],
       lines: [
         { from: { x: 0, y: 0 }, to: { x: 48, y: 0 }, role: "focus", width: 2 },
-        { from: { x: 56, y: 0 }, to: { x: 320, y: 0 }, role: "focus", width: 1 }
+        { from: { x: 48, y: 0 }, to: { x: 320, y: 0 }, role: "focus", width: 1 }
       ]
     })
+  })
+
+  test("keeps header signal and structural strokes continuous across responsive inputs", () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 1, max: 2_000 }),
+        fc.integer({ min: 1, max: 1_200 }),
+        fc.integer({ min: 1, max: 4 }),
+        fc.constantFrom(...khalaDensityTokens),
+        fc.boolean(),
+        (width, height, zoom, density, forcedColors) => {
+          const geometry = Effect.runSync(
+            resolveKhalaMotif({ motif: "header-line", width, height, zoom, density, forcedColors }, khalaTheme.khalaUi)
+          )
+          if (geometry.collapse === "border-only") {
+            expect(geometry.lines).toHaveLength(1)
+            expect(geometry.lines[0]).toMatchObject({ from: { x: 0, y: 0 }, to: { x: width, y: 0 } })
+            return
+          }
+          expect(geometry.lines).toHaveLength(2)
+          expect(geometry.lines[0]?.to).toEqual(geometry.lines[1]?.from)
+          expect(geometry.lines[0]?.from.y).toBe(geometry.lines[1]?.to.y)
+        }
+      ),
+      { numRuns: 300 }
+    )
   })
 
   test("collapses to an ordinary forced-color border before decoration consumes narrow content", () => {

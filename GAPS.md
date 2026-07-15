@@ -23,7 +23,7 @@ their reason so pressure is visible without weakening the catalog contract.
 
 ## Catalog Versioning Policy
 
-The current catalog marker is `effect-native/v40`, exposed by
+The current catalog marker is `effect-native/v41`, exposed by
 `CatalogVersion`. `compatibleCatalogVersions` is the decode allow-list, and
 `CompatibleViewSchema` is the schema app authors and renderers should use when
 accepting persisted or externally-authored trees.

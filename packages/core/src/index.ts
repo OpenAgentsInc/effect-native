@@ -133,8 +133,9 @@ export const LoadingIndicatorCatalogVersion = "effect-native/v38" as const
 // decision).
 export const MatrixAxesCatalogVersion = "effect-native/v39" as const
 export const KhalaStaticCatalogVersion = "effect-native/v40" as const
-export const PreviousCatalogVersion = MatrixAxesCatalogVersion
-export const CatalogVersion = KhalaStaticCatalogVersion
+export const KhalaHeaderLineContinuityCatalogVersion = "effect-native/v41" as const
+export const PreviousCatalogVersion = KhalaStaticCatalogVersion
+export const CatalogVersion = KhalaHeaderLineContinuityCatalogVersion
 export const CatalogVersionSchema = Schema.Literal(CatalogVersion)
 export type CatalogVersion = typeof CatalogVersion
 export const compatibleCatalogVersions = [
@@ -178,7 +179,8 @@ export const compatibleCatalogVersions = [
   ButtonMatrixCatalogVersion,
   LoadingIndicatorCatalogVersion,
   MatrixAxesCatalogVersion,
-  KhalaStaticCatalogVersion
+  KhalaStaticCatalogVersion,
+  KhalaHeaderLineContinuityCatalogVersion
 ] as const
 export type CompatibleCatalogVersion = (typeof compatibleCatalogVersions)[number]
 export const CompatibleCatalogVersionSchema = Schema.Literals(compatibleCatalogVersions)

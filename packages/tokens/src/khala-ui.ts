@@ -352,7 +352,7 @@ export const resolveKhalaMotif = (input: unknown, theme: unknown) =>
           ? [line(0, 0, decodedInput.width, 0, quietRole, strokeWidth)]
           : [
               line(0, 0, accentLength, 0, signalRole, signalWidth),
-              line(accentLength + density.gap, 0, decodedInput.width, 0, quietRole, strokeWidth)
+              line(accentLength, 0, decodedInput.width, 0, quietRole, strokeWidth)
             ]
       return {
         motif: decodedInput.motif,

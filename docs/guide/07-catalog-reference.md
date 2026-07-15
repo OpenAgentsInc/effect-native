@@ -8,8 +8,9 @@ conformance-checked by
 (`pnpm run check:catalog-reference`) so this page cannot silently drop a shipped
 component.
 
-Current catalog marker: `CatalogVersion = "effect-native/v40"` (v40, issue
-#91: the existing `Frame` gains optional bounded Khala static decoration with
+Current catalog marker: `CatalogVersion = "effect-native/v41"` (v41, issue
+#95: `header-line` signal and structural strokes now share one continuous
+baseline). v40, issue #91, made the existing `Frame` gain optional bounded Khala static decoration with
 a stable caller-owned id and complete DOM, React DOM, and React Native
 support/degradation receipts).
 
@@ -552,7 +553,7 @@ Every component accepts these two, inherited from `NodeBase`:
 | Field            | Type                  | Notes                                                                                                                          |
 | ---------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | `key`            | `string` (optional)   | Required (enforced by the schema, not just convention) on any view placed inside a `List`/`SectionList`/`Link` children array. |
-| `catalogVersion` | `"effect-native/v40"` | Set automatically by every constructor function — you never pass this yourself.                                                |
+| `catalogVersion` | `"effect-native/v41"` | Set automatically by every constructor function — you never pass this yourself.                                                |
 
 ### Design tokens
 
