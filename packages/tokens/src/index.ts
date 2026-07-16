@@ -1009,6 +1009,27 @@ export const encodeTheme = Schema.encodeSync(ThemeSchema)
  * issue #25. Renderers and apps should treat this as the only theme value
  * they ever mount.
  *
+ * Owner clarification (2026-07-16): Autopilot UI's tactical-instrument
+ * grammar (square corners, mono badge/status conventions, restrained-not-
+ * alarming presentation) folds into the workbench component layer — it never
+ * mounts as a second theme, and it never overrides or competes with the blue
+ * background/surface/accent family that must stay visually dominant ("I want
+ * autopilot colors but not overriding our blue — gray is not supposed to
+ * dominate over blue in general theming"). Concretely: `radius` and `danger`
+ * below stay EXACTLY as pinned — every color role here must derive from the
+ * palette (enforced by `test/palette.test.ts`'s derivation-closure check),
+ * clear WCAG AA text contrast against `background` (enforced by
+ * `test/khala-theme.test.ts`'s contrast pins), and the control lattice's
+ * radii must stay members of this `radius` scale (enforced by
+ * `test/control-lattice.test.ts`) — flattening `radius` here would square
+ * every button/input app-wide, a far bigger change than this epic's chat/
+ * tool-card scope. Autopilot's square-corner and restrained-danger grammar is
+ * instead applied as a LOCAL override inside the workbench component tree
+ * (`packages/ui`'s workbench stylesheet shadows `--en-radius-*` under its own
+ * root selector; danger TEXT blends toward `textPrimary` there rather than
+ * changing the token's hue), so the rest of the app keeps this theme's
+ * default corners/tones untouched.
+ *
  * Every color role is a derivation from `khalaPalette` (tier 1 → tier 2);
  * no role holds free-floating hex. The derived values are pinned as exact
  * hex literals in `test/khala-theme.test.ts` so the ramp refactor is
@@ -1076,8 +1097,8 @@ export const khalaTheme = ThemeSchema.make({
   },
   // The Khala control lattice: heights/gutters/icons unchanged from the
   // trimmed 4-step lattice (24/28/32/40 with 2xs/xs added for dense desktop
-  // chrome). Radii sit on the theme's sharper radius scale (controls render
-  // at radius-md = 4px today) and font sizes on the caption/label/body type
+  // chrome). Radii sit on the theme's radius scale (controls render at
+  // radius-md = 4px today) and font sizes on the caption/label/body type
   // scale, so one `size` prop sizes a control coherently with zero drift
   // from current desktop rendering.
   control: {
